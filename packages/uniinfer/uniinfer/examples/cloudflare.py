@@ -3,7 +3,8 @@ import json
 import os
 from credgoo import get_api_key
 # Cloudflare API Details
-ACCOUNT_ID = os.getenv("CLOUDFLARE_ACCOUNT_ID", "YOUR_ACCOUNT_ID")
+ACCOUNT_ID = os.getenv("CLOUDFLARE_ACCOUNT_ID",
+                       "1ee331dfd225ac49d67c521a73ca7fe8")
 API_URL = f"https://api.cloudflare.com/client/v4/accounts/{ACCOUNT_ID}/ai/run/"
 MODEL_NAME = "@cf/meta/llama-3-8b-instruct"  # Change to the model you need
 API_TOKEN = get_api_key("cloudflare")
