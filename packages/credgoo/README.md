@@ -1,5 +1,8 @@
 # Credgoo
 
+[![Python Version](https://img.shields.io/badge/python-3.6+-blue.svg)](https://www.python.org/downloads/)
+[![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](../LICENSE)
+
 A Python package for securely retrieving API keys from Google Sheets with local caching.
 
 ## Overview
@@ -21,8 +24,7 @@ Credgoo combines the convenience of centralized credential management with the s
 ## Installation
 
 ```bash
-pip install -r https://skale.dev/credgoo
-pip install git+https://github.com/devskale/python-utils.git@v0.1.3#subdirectory=packages/credgoo
+pip install git+https://github.com/devskale/python-utils.git@v0.1.5#subdirectory=packages/credgoo
 ```
 
 ## Usage
@@ -94,29 +96,37 @@ By default, retrieved keys are cached in `~/.config/api_keys/api_keys.json` with
 
 Credgoo provides a secure and convenient way to manage your API keys:
 
-🔒 **Personal Secure Storage**
+**Personal Secure Storage**
 
 - Your keys are stored in your personal Google Sheet, not on some third-party server
 - Only you have access to your spreadsheet (Google account protected)
 
-🔑 **Double-Layer Security**
+**Double-Layer Security**
 
 - Protected by both a SECRET_TOKEN (authentication)
 - And an ENCRYPTION_KEY (data security)
 - Both are required to access your credentials
 
-🛡️ **Encrypted Transmission**
+**Encrypted Transmission**
 
 - Keys are encrypted before being sent over the network
 - Uses robust encryption with unique initialization vectors
 
-💻 **CLI Integration**
+**CLI Integration**
 
 - Easy to use from command line with automatic decryption
 - No keys stored in plaintext in your local environment
 
-🔁 **Centralized Management**
+**Centralized Management**
 
 - Update keys in one place (your spreadsheet)
 - Changes are immediately available everywhere
 - No need to update multiple config files
+
+## Google Apps Script Setup
+
+See [appscript/README.md](appscript/README.md) for instructions on setting up the Google Apps Script integration.
+
+## License
+
+MIT - see [LICENSE](../LICENSE) for details.
