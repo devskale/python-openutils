@@ -20,16 +20,16 @@ A Python package for securely retrieving API keys from Google Sheets with local 
 - Centralized credential management
 
 ### [UniInfer](packages/uniinfer/)
-Unified Inference API for LLM chat completions across 15+ providers with streaming, fallback strategies, and secure API key management.
+OpenAI-compatible proxy server providing unified access to 500+ models from 20+ providers with multi-modal support.
 
 **Features:**
-- Single API for 20+ LLM providers (OpenAI, Anthropic, Google Gemini, Mistral, etc.)
+- OpenAI-compatible FastAPI proxy - Drop-in replacement for OpenAI API
+- 500+ models across 20+ providers (OpenAI, Anthropic, Google Gemini, Mistral, etc.)
+- Multi-modal support: LLM, Image, Text-to-Speech (TTS), and Transcription
 - Secure API key management with credgoo integration
 - Real-time streaming support
-- Text-to-Speech (TTS) and Speech-to-Text (STT) support
 - Embedding support for semantic search
 - Automatic fallback strategies
-- OpenAI-compatible FastAPI proxy server
 
 ## Quick Start
 
