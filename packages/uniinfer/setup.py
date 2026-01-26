@@ -1,10 +1,74 @@
 import os
+import subprocess
+import sys
+from urllib.request import urlopen
 
 from setuptools import find_packages, setup
 
+REMOTE_REQUIREMENTS = [
+    "https://skale.dev/credgoo",
+]
+
+
+def get_remote_requirements() -> list[str]:
+    """Fetch and parse remote requirements files."""
+    requirements = []
+    for url in REMOTE_REQUIREMENTS:
+        try:
+            with urlopen(url) as response:
+                content = response.read().decode("utf-8")
+                for line in content.splitlines():
+                    line = line.strip()
+                    if not line or line.startswith("#"):
+                        continue
+
+                    if line.startswith("git+"):
+                        if "subdirectory=" in line:
+                            # Extract package name from subdirectory
+                            # e.g. ...#subdirectory=packages/uniinfer -> uniinfer
+                            subdir = line.split("subdirectory=")[1]
+                            pkg_name = subdir.split("/")[-1]
+                            requirements.append(f"{pkg_name} @ {line}")
+                        else:
+                            # If no subdirectory, use the line as is if it's a valid requirement
+                            requirements.append(line)
+                    else:
+                        requirements.append(line)
+        except Exception as e:
+            print(f"Warning: Could not fetch requirements from {url}: {e}")
+    return requirements
+
+
+def install_remote_requirements() -> None:
+    """Install external requirement bundles for installs."""
+    if not {"install", "develop"} & set(sys.argv) or "bdist_wheel" in sys.argv:
+        return
+
+    for url in REMOTE_REQUIREMENTS:
+        try:
+            subprocess.check_call(
+                [sys.executable, "-m", "pip", "install", "-r", url])
+        except subprocess.CalledProcessError as e:
+            print(f"Warning: Could not install requirements from {url}: {e}")
+
+
+install_remote_requirements()
+
+# Get all requirements
+all_requirements = get_remote_requirements() + [
+    "requests>=2.25.0",
+    "python-dotenv>=1.0.0",
+    "openai",
+    "fastapi>=0.100.0",
+    "uvicorn[standard]>=0.23.0",
+    "pydantic",
+    "python-multipart",
+    "importlib-metadata; python_version<'3.8'",
+]
+
 setup(
     name="uniinfer",
-    version="0.4.0",
+    version="0.4.1",
     url="https://github.com/devskale/python-openutils",
     description="Unified Inference API for LLM chat completions across 15+ providers with streaming, fallback strategies, and secure API key management",
     long_description="UniInfer provides a unified interface for LLM inference across 15+ providers including OpenAI, Anthropic, Google Gemini, Mistral, and more. Features include real-time streaming, automatic fallback strategies, secure API key management via credgoo, and OpenAI-compatible proxy server.",
@@ -13,16 +77,7 @@ setup(
     author_email="dev@skale.dev",
     keywords="llm, ai, inference, openai, anthropic, gemini, mistral, chat, completion, streaming, api",
     packages=find_packages(where=".", include=["uniinfer*"]),
-    install_requires=[
-        "requests>=2.25.0",
-        "python-dotenv>=1.0.0",
-        "openai",
-        "fastapi>=0.100.0",
-        "uvicorn[standard]>=0.23.0",
-        "pydantic",
-        "python-multipart",
-        "importlib-metadata; python_version<'3.8'",
-    ],
+    install_requires=all_requirements,
     classifiers=[
         "Development Status :: 4 - Beta",
         "Intended Audience :: Developers",
