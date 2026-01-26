@@ -29,10 +29,9 @@ cd packages/uniinfer && pip install -e ".[all]"
 
 ### Testing
 
-UniInfer package uses pytest framework. Credgoo currently has no tests.
+UniInfer uses pytest. Credgoo has no tests yet.
 
 ```bash
-# From package directory
 cd packages/uniinfer
 
 # Run all tests
@@ -41,17 +40,14 @@ pytest
 # Run single test file
 pytest uniinfer/tests/test_async_functionality.py
 
-# Run specific test
+# Run specific test with full path
 pytest uniinfer/tests/test_async.py::TestClass::test_method
 
-# Verbose output
-pytest -v
-
-# With coverage
-pytest --cov=uniinfer --cov-report=term-mit
-
-# Run specific test function
+# Run specific test function by name
 pytest -k "test_function_name"
+
+# Verbose output with coverage
+pytest -v --cov=uniinfer --cov-report=term-mit
 ```
 
 ### Code Formatting
@@ -59,22 +55,16 @@ pytest -k "test_function_name"
 Apply to package directory being modified:
 
 ```bash
-# Format code
-black packages/credgoo/    # or packages/uniinfer/
-
-# Sort imports
-isort packages/credgoo/
-
-# Run linter
-ruff check packages/credgoo/
-ruff check packages/credgoo/ --fix  # Auto-fix issues
+black packages/credgoo/    # Format code
+isort packages/credgoo/    # Sort imports
+ruff check packages/credgoo/    # Run linter
+ruff check packages/credgoo/ --fix    # Auto-fix issues
 ```
 
 ### Package Distribution
 
 ```bash
 cd packages/credgoo  # or packages/uniinfer
-
 python setup.py sdist bdist_wheel
 pip install dist/*.whl
 ```
@@ -97,12 +87,10 @@ import json
 import requests
 from pathlib import Path
 from typing import Dict, List, Optional
-
 from uniinfer.core import ChatProvider, ChatCompletionRequest
 ```
 
-Sort with isort (profile: black, multi_line_output: 3).
-Run `isort .` on package directory before committing.
+Run `isort .` on package directory before committing (profile: black, multi_line_output: 3).
 
 ### Naming Conventions
 
@@ -112,8 +100,6 @@ Run `isort .` on package directory before committing.
 - **Private methods**: leading underscore (`_normalize_base_url()`)
 
 ### Type Hints
-
-Use standard typing from Python 3.6+:
 
 ```python
 def complete(
