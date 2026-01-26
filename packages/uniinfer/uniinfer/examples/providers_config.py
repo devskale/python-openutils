@@ -2,6 +2,8 @@
 Module containing provider configurations and related utilities.
 """
 
+import os
+
 # Check if HuggingFace support is available
 try:
     from uniinfer import HuggingFaceProvider
@@ -140,7 +142,7 @@ PROVIDER_CONFIGS = {
         'default_model': '@cf/meta/llama-4-scout-17b-16e-instruct',
         'needs_api_key': True,
         'extra_params': {
-            'account_id': 'YOUR_CLOUDFLARE_ACCOUNT_ID'  # Will be prompted during setup
+            'account_id': os.getenv('CLOUDFLARE_ACCOUNT_ID', '1ee331dfd225ac49d67c521a73ca7fe8')
         }
     }
 }
