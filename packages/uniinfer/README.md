@@ -306,8 +306,19 @@ export ANTHROPIC_API_KEY=your_key_here
 | HuggingFace     | Llama, Mistral             | sentence-transformers  | ✅        |
 | Cohere          | Command R+                 | embed-english-v3.0     | ✅        |
 | Groq            | Llama 3.1                  | -                      | ✅        |
-| OpenAI Proxy    | Compatible with OpenAI SDK | -                      | ✅        |
-| And 10+ more... |                            |                        |           |
+| AI21            | Jamba 1.5                  | -                      | ✅        |
+| Moonshot        | Kimi                       | -                      | ✅        |
+| Arli AI         | Qwen 2.5, Llama 3.1        | -                      | ✅        |
+| Sambanova       | Llama 3.1                  | -                      | ✅        |
+| Upstage         | Solar                      | -                      | ✅        |
+| NGC             | Llama 3.1                  | -                      | ✅        |
+| Cloudflare      | Llama 3.1                  | -                      | ✅        |
+| Bigmodel        | GLM-4                      | -                      | ✅        |
+| Tu AI           | Various                    | -                      | ✅        |
+| Chutes          | Various                    | -                      | ✅        |
+| Pollinations    | Free OpenAI-compatible     | -                      | ✅        |
+| StepFun         | Various                    | -                      | ✅        |
+| InternLM        | InternLM 2.5               | -                      | ✅        |
 
 ## Troubleshooting
 
