@@ -1,8 +1,5 @@
 {
-  "api_key": "test23@test34",
+  "api_key": "test_token",
   "base_url": "http://localhost:8123/v1",
-  "models_to_test": [
-    "tu@qwen-coder-30b",
-    "tu@glm-4.7-355b"
-  ]
+  "models_to_test": ["tu@qwen-coder-30b", "tu@glm-4.7-355b"]
 }
