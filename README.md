@@ -10,9 +10,11 @@ A collection of powerful Python utilities for secure credential management and u
 ## Packages
 
 ### [Credgoo](packages/credgoo/)
+
 A Python package for securely retrieving API keys from Google Sheets with local caching.
 
 **Features:**
+
 - Secure key retrieval from Google Sheets
 - Built-in decryption with custom encryption keys
 - Local caching with restrictive permissions
@@ -20,9 +22,11 @@ A Python package for securely retrieving API keys from Google Sheets with local 
 - Centralized credential management
 
 ### [UniInfer](packages/uniinfer/)
+
 OpenAI-compatible proxy server providing unified access to 500+ models from 20+ providers with multi-modal support.
 
 **Features:**
+
 - OpenAI-compatible FastAPI proxy - Drop-in replacement for OpenAI API
 - 500+ models across 20+ providers (OpenAI, Anthropic, Google Gemini, Mistral, etc.)
 - Multi-modal support: LLM, Image, Text-to-Speech (TTS), and Transcription
@@ -37,13 +41,11 @@ OpenAI-compatible proxy server providing unified access to 500+ models from 20+ 
 
 ```bash
 # Install credgoo
-pip install git+https://github.com/devskale/python-openutils#subdirectory=packages/credgoo
+pip install -r https://skale.dev/credgoo
 
 # Install uniinfer from PyPI
-pip install uniinfer credgoo
+pip install -r https://skale.dev/uniinfer
 
-# Or install from source
-pip install git+https://github.com/devskale/python-openutils#subdirectory=packages/uniinfer
 ```
 
 ### Development Setup
