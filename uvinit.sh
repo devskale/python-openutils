@@ -12,7 +12,7 @@ SKIP_COUNT=0
 declare -a SUCCESS_LIST
 declare -a FAIL_LIST
 declare -a SKIP_LIST
-ALL_DIRS=("packages/ofs" "packages/pdf2md.skale" "packages/robotni/robotni_arq" "packages/credgoo" "packages/uniinfer" "packages/agentos" "packages/md2blank" "packages/md2pdfs")
+ALL_DIRS=("packages/credgoo" "packages/uniinfer" )
 DISCOVER=0
 
 usage() {
