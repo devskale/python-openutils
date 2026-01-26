@@ -5,7 +5,7 @@ from setuptools import find_packages, setup
 setup(
     name="uniinfer",
     version="0.4.0",
-    url="https://github.com/skale-dev/uniinfer",
+    url="https://github.com/devskale/python-openutils",
     description="Unified Inference API for LLM chat completions across 15+ providers with streaming, fallback strategies, and secure API key management",
     long_description="UniInfer provides a unified interface for LLM inference across 15+ providers including OpenAI, Anthropic, Google Gemini, Mistral, and more. Features include real-time streaming, automatic fallback strategies, secure API key management via credgoo, and OpenAI-compatible proxy server.",
     long_description_content_type="text/plain",

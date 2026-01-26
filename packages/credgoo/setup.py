@@ -14,7 +14,7 @@ setup(
     long_description=open("README.md", "r", encoding="utf-8").read(
     ) if os.path.exists("README.md") else "",
     long_description_content_type="text/markdown",
-    url="https://github.com/devskale/python-utils/tree/master/packages/credgoo",
+    url="https://github.com/devskale/python-openutils/tree/master/packages/credgoo",
     classifiers=[
         "Programming Language :: Python :: 3",
         "License :: OSI Approved :: MIT License",

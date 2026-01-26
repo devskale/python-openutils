@@ -423,6 +423,6 @@ MIT License - see [LICENSE](LICENSE) for details.
 
 ## Links
 
-- [GitHub Repository](https://github.com/skale-dev/uniinfer)
+- [GitHub Repository](https://github.com/devskale/python-openutils)
 - [PyPI Package](https://pypi.org/project/uniinfer/)
-- [Issues](https://github.com/skale-dev/uniinfer/issues)
+- [Issues](https://github.com/devskale/python-openutils/issues)
