@@ -19,42 +19,9 @@ UniInfer provides a consistent Python interface for **LLM chat completions and t
 
 ## Installation
 
-### Basic Installation
-
 ```bash
-pip install uniinfer credgoo
-```
-
-### Install with Extras
-
-Install specific provider support to reduce dependencies:
-
-```bash
-# Install all provider support
-pip install uniinfer[all] credgoo
-
-# Install specific providers
-pip install uniinfer[gemini,anthropic,mistral,cohere] credgoo
-
-# Install API server dependencies
-pip install uniinfer[api] credgoo
-```
-
-### Install from Source
-
-```bash
-# Install via pip
-pip install "git+https://github.com/devskale/python-openutils#subdirectory=packages/uniinfer"
-
-# Or clone and install
-git clone https://github.com/devskale/python-openutils.git
-cd python-openutils/packages/uniinfer
-pip install -e ".[all]"
-```
-
-### Install with uv
-
-```bash
+# Install
+uv venv
 uv pip install -r https://skale.dev/uniinfer
 ```
 
