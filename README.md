@@ -11,15 +11,17 @@ A collection of powerful Python utilities for secure credential management and u
 
 ### [Credgoo](packages/credgoo/)
 
-A Python package for securely retrieving API keys from Google Sheets with local caching.
+**The Secure Credentials Manager for Everywhere.**
+
+Securely manage your credentials in Google Sheets with encrypted Apps Script integration and access them seamlessly across all your environments.
 
 **Features:**
 
-- Secure key retrieval from Google Sheets
-- Built-in decryption with custom encryption keys
-- Local caching with restrictive permissions
-- Command-line interface for easy key retrieval
-- Centralized credential management
+- **Use Everywhere**: Unified access for local, dev, and production.
+- **Secure Google Sheets Integration**: Encrypted Apps Script backend.
+- **End-to-End Encryption**: Secure transmission and storage.
+- **Smart Local Caching**: Performance optimized with restrictive permissions.
+- **Centralized Control**: Single source of truth for all your secrets.
 
 ### [UniInfer](packages/uniinfer/)
 

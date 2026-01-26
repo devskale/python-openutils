@@ -3,23 +3,24 @@
 [![Python Version](https://img.shields.io/badge/python-3.6+-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](../LICENSE)
 
-A Python package for securely retrieving API keys from Google Sheets with local caching.
+**The Secure Credentials Manager for Everywhere.**
+
+Credgoo is a powerful credentials manager that allows you to securely add and maintain API keys in Google Sheets using an encrypted Apps Script integration, making them available everywhere you work.
 
 ## Overview
 
-Credgoo provides a secure way to manage API keys by retrieving them from Google Sheets and implementing local caching for better performance. This approach allows teams to centrally manage API credentials while providing secure access to individual developers.
+Credgoo transforms your Google Sheets into a secure, centralized vault for your API keys and secrets. By leveraging an encrypted Google Apps Script integration, you can easily manage credentials in a familiar interface and access them securely across all your environments.
 
-Credgoo combines the convenience of centralized credential management with the security of local storage and encryption.
+Whether you are developing locally, deploying to a staging server, or running in production, Credgoo ensures your credentials are always available, encrypted, and up-to-date. With built-in local caching, you get the convenience of cloud management with the speed and reliability of local access.
 
 ## Features
 
-- **Secure Key Retrieval**: Fetch encrypted API keys from Google Sheets
-- **Decryption**: Built-in decryption with custom encryption keys
-- **Local Caching**: Store retrieved keys locally to reduce API calls
-- **Command-line Interface**: Easy-to-use CLI for key retrieval
-- **Secure Storage**: Cached keys are stored with restrictive permissions (0600)
-- **Centralized Management**: Update keys in one place (your spreadsheet)
-- **Encrypted Transmission**: Keys are encrypted before network transmission
+- **Use Everywhere**: Access your credentials seamlessly across local, dev, and production environments.
+- **Secure Google Sheets Integration**: Manage keys in Google Sheets with a secure, encrypted Apps Script backend.
+- **End-to-End Encryption**: Credentials are encrypted during transmission and storage.
+- **Smart Local Caching**: High-performance caching with restrictive permissions (0600) to minimize API calls.
+- **Centralized Control**: Update secrets in one place and have them propagate everywhere.
+- **Developer Friendly**: Simple CLI and Python API for instant integration.
 
 ## Installation
 
