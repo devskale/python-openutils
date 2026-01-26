@@ -1,5 +1,10 @@
 # Python Open Utils
 
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![GitHub Stars](https://img.shields.io/github/stars/devskale/python-openutils)](https://github.com/devskale/python-openutils/stargazers)
+[![GitHub Issues](https://img.shields.io/github/issues/devskale/python-openutils)](https://github.com/devskale/python-openutils/issues)
+[![Python](https://img.shields.io/badge/python-3.6+-blue.svg)](https://www.python.org/downloads/)
+
 A collection of powerful Python utilities for secure credential management and unified LLM inference.
 
 ## Packages
