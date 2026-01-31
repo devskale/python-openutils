@@ -105,7 +105,7 @@ if HAS_AI21:
 if HAS_GENAI:
     ProviderFactory.register_provider("gemini", GeminiProvider)
 
-__version__ = "0.1.0"
+__version__ = "0.4.5"
 
 # Export commonly used functions and classes
 __all__ = [
