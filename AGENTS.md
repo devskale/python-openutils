@@ -27,7 +27,7 @@ cd packages/uniinfer && uv pip install -e ".[all]"
 
 ## Build/Lint/Test Commands
 
-### Testing
+### Running Tests
 
 UniInfer uses pytest. Credgoo has no tests yet.
 
@@ -37,17 +37,20 @@ cd packages/uniinfer
 # Run all tests
 uv run pytest
 
-# Run single test file
-uv run pytest uniinfer/tests/test_async_functionality.py
+# Run a single test file
+uv run pytest uniinfer/tests/test_auth.py
 
-# Run specific test with full path
-uv run pytest uniinfer/tests/test_async.py::TestClass::test_method
+# Run a specific test class
+uv run pytest uniinfer/tests/test_auth.py::TestAuth
 
-# Run specific test function by name
-uv run pytest -k "test_function_name"
+# Run a specific test method
+uv run pytest uniinfer/tests/test_auth.py::TestAuth::test_token_validation
+
+# Run tests by keyword (function name)
+uv run pytest -k "test_token_validation"
 
 # Verbose output with coverage
-uv run pytest -v --cov=uniinfer --cov-report=term-mit
+uv run pytest -v --cov=uniinfer --cov-report=term-missing
 ```
 
 ### Code Formatting
@@ -55,19 +58,56 @@ uv run pytest -v --cov=uniinfer --cov-report=term-mit
 Apply to package directory being modified:
 
 ```bash
-black packages/credgoo/    # Format code
-isort packages/credgoo/    # Sort imports
-ruff check packages/credgoo/    # Run linter
-ruff check packages/credgoo/ --fix    # Auto-fix issues
+cd packages/credgoo  # or packages/uniinfer
+uv run black .         # Format code
+uv run isort .         # Sort imports
+uv run ruff check .    # Run linter
+uv run ruff check . --fix    # Auto-fix issues
 ```
 
 ### Package Distribution
 
 ```bash
 cd packages/credgoo  # or packages/uniinfer
-python setup.py sdist bdist_wheel
+uv run python setup.py sdist bdist_wheel
 uv pip install dist/*.whl
 ```
+
+## Writing Tests
+
+Place tests in `uniinfer/tests/` directory. Name files `test_*.py`.
+
+```python
+# Example: uniinfer/tests/test_feature.py
+import pytest
+from unittest.mock import patch, MagicMock
+
+class TestFeature:
+    """Test suite for feature X."""
+    
+    def test_success_case(self):
+        """Test the happy path."""
+        assert True
+    
+    @patch('uniinfer.module.external_call')
+    def test_with_mock(self, mock_call):
+        """Test with mocked external API."""
+        mock_call.return_value = {'result': 'success'}
+        # test code here
+        mock_call.assert_called_once()
+    
+    def test_error_handling(self):
+        """Test error conditions."""
+        with pytest.raises(ValueError):
+            raise ValueError("expected")
+```
+
+Testing best practices:
+- Use descriptive test names that explain what's being tested
+- Mock external API calls with `unittest.mock`
+- Test both sync and async methods
+- Test edge cases and error conditions
+- Use pytest fixtures for shared setup
 
 ## Code Style Guidelines
 
@@ -113,16 +153,20 @@ def get_api_key(service: str, cache_dir: Optional[Path] = None) -> Optional[str]
 
 ### Error Handling
 
-Use exception chaining with context:
+Use standardized exceptions from `uniinfer/errors.py`:
 
 ```python
+from uniinfer.errors import (
+    UniInferError, ProviderError, AuthenticationError,
+    RateLimitError, TimeoutError, InvalidRequestError
+)
+
 try:
     result = some_operation()
 except Exception as e:
-    raise ValueError(f"Failed to process request: {e}")
+    mapped_error = map_provider_error("provider_name", e)
+    raise mapped_error
 ```
-
-For API errors, use descriptive messages with context.
 
 ### Security Considerations
 
@@ -150,8 +194,8 @@ Credgoo handles sensitive credentials:
 1. Create `uniinfer/providers/newprovider.py`
 2. Inherit from base provider class (`ChatProvider`, `EmbeddingProvider`, etc.)
 3. Implement required methods (`complete()`, `stream_complete()`, `list_models()`)
-4. Use standardized error handling
-5. Register in `uniinfer/__init__.py`
+4. Use standardized error handling with `map_provider_error()`
+5. Register in `uniinfer/__init__.py` with `ProviderFactory.register_provider()`
 6. Add provider dependencies to `setup.py` extras_require
 7. Export in `uniinfer/providers/__init__.py`
 
@@ -161,10 +205,4 @@ When asked to update version in `setup.py`:
 - **Minor bump** (default): Increment patch (0.1.5 → 0.1.6)
 - **Major bump**: Increment minor, reset patch (0.1.5 → 0.2.0)
 
-### Testing
-
-- Use `unittest.mock` for external API calls
-- Write descriptive test names
-- Test edge cases and error conditions
-
-No tests exist for credgoo yet - add tests when fixing bugs or adding features.
+Update both `setup.py` and `pyproject.toml` if both exist.
