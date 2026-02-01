@@ -15,7 +15,9 @@ UniInfer is a unified LLM inference interface for Python providing a consistent 
 ```bash
 cd $PROJECTDIR/python-utils/packages/uniinfer
 source .venv/bin/activate  # Use local virtual environment
-uv pip install -e ".[all]"    # Install all dependencies
+uv pip install -e ".[all]"    # Install all dependencies (editable mode)
+# OR for reproducible builds:
+uv pip install -r requirements.lock
 ```
 
 ## Build/Lint/Test Commands
@@ -54,9 +56,9 @@ uv run ruff check . --fix           # Auto-fix linting issues
 ### Package Distribution
 
 ```bash
-uv run python setup.py sdist bdist_wheel   # Build package
-uv pip install dist/*.whl                  # Install built wheel
-```
+uv build                                    # Build package (sdist + wheel)
+uv pip install dist/*.whl                   # Install built wheel
+``````
 
 ## Writing Tests
 

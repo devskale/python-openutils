@@ -6,7 +6,7 @@
 | ----------------------- | -------------------- | ------------------------------ | --------- |
 | **Core Metrics**        |                      |                                |           |
 | Language                | Python 3.7+          | TypeScript (Node.js 20+)       | Context   |
-| Version                 | 0.4.1 (inconsistent) | 0.50.7                         | pi-ai     |
+| Version                 | 0.4.7                | 0.50.7                         | pi-ai     |
 | Code Lines              | 14,119               | 21,308                         | pi-ai     |
 | Provider Files          | 27                   | 14                             | uniinfer  |
 | Test Files              | 3                    | 30+                            | pi-ai     |
@@ -51,7 +51,7 @@
 | Documentation           | 7/10                 | 8.5/10                         | pi-ai     |
 | **Security**            |                      |                                |           |
 | API Key Management      | 7/10                 | 8/10                           | pi-ai     |
-| Input Validation        | 2/10                 | 7/10                           | pi-ai     |
+| Input Validation        | 6/10                 | 7/10                           | pi-ai     |
 | Error Handling          | 3/10                 | 7/10                           | pi-ai     |
 | Dependencies Security   | 3/10                 | 4/10                           | pi-ai     |
 | Network Security        | 7/10                 | 6/10                           | uniinfer  |
@@ -61,11 +61,11 @@
 | Maturity                | 5/10                 | 9/10                           | pi-ai     |
 | Architecture            | 5/10                 | 9/10                           | pi-ai     |
 | Features                | 6.4/10               | 9.4/10                         | pi-ai     |
-| Code Quality            | 4.4/10               | 7.4/10                         | pi-ai     |
+| Code Quality            | 4.8/10               | 7.4/10                         | pi-ai     |
 | Performance             | ?/10                 | ?/10                           | Unknown   |
-| Security                | 6.5/10               | 6.4/10                         | uniinfer  |
+| Security                | 7.5/10               | 6.4/10                         | uniinfer  |
 | Ecosystem               | ?/10                 | ?/10                           | Unknown   |
-| **FINAL SCORE**         | **5.8/10**           | **8.2/10**                     | **pi-ai** |
+| **FINAL SCORE**         | **6.0/10**           | **8.2/10**                     | **pi-ai** |
 
 ---
 

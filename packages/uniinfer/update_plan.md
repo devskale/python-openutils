@@ -119,15 +119,15 @@ def validate_auth_token(token: str) -> tuple[bool, str | None]:
 
 **1.2.3 Add Request Size Limits**
 
-1. [ ] Add max request size to FastAPI config:
+1. [x] Add max request size to FastAPI config:
    ```python
    app = FastAPI(
        max_request_size=10 * 1024 * 1024  # 10MB
    )
    ```
-2. [ ] Validate message count in request body
-3. [ ] Validate model parameter
-4. [ ] Return 413 if too large
+2. [x] Validate message count in request body
+3. [x] Validate model parameter
+4. [x] Return 413 if too large
 
 **Files:**
 
@@ -137,8 +137,8 @@ def validate_auth_token(token: str) -> tuple[bool, str | None]:
 
 **1.2.4 Add CORS Configuration**
 
-1. [ ] Import CORSMiddleware: `from fastapi.middleware.cors import CORSMiddleware`
-2. [ ] Add CORS middleware:
+1. [x] Import CORSMiddleware: `from fastapi.middleware.cors import CORSMiddleware`
+2. [x] Add CORS middleware:
    ```python
    app.add_middleware(
        CORSMiddleware,
@@ -177,46 +177,20 @@ def validate_auth_token(token: str) -> tuple[bool, str | None]:
 
 **Steps:**
 
-**1.3.1 Migrate to Poetry (Recommended)**
-
-1. [ ] Install poetry: `pip install poetry`
-2. [ ] Initialize poetry: `poetry init`
-3. [ ] Convert setup.py to pyproject.toml
-4. [ ] Move dependencies to pyproject.toml:
-   ```toml
-   [tool.poetry.dependencies]
-   python = "^3.7"
-   requests = "^2.25.0"
-   fastapi = "^0.100.0"
-   # ... etc.
+1. [x] Migrate to `pyproject.toml` (Modern Standard):
+   - Created `pyproject.toml` with PEP 621 metadata
+   - Removed legacy `setup.py`
+2. [x] Generate lockfile using `uv`:
+   ```bash
+   uv pip compile pyproject.toml -o requirements.lock
    ```
-5. [ ] Move dev dependencies:
-   ```toml
-   [tool.poetry.group.dev.dependencies]
-   pytest = "^7.0"
-   black = "^23.0"
-   mypy = "^1.0"
-   ```
-6. [ ] Install dependencies: `poetry install`
-7. [ ] Generate lockfile: `poetry lock`
-8. [ ] Commit poetry.lock to repo
+3. [x] Commit lockfile to repo
 
 **Files:**
 
-- `pyproject.toml` (new, replacing setup.py)
-- `poetry.lock` (new, commit this)
-- `setup.py` (delete after migration)
+- `requirements.lock` (new)
 
-**Time:** 4 hours
-
-**Alternative (Keep setup.py):**
-
-1. [ ] Install pip-tools: `pip install pip-tools`
-2. [ ] Create requirements.txt with pinned versions
-3. [ ] Generate lock: `pip-compile requirements.in`
-4. [ ] Commit requirements.txt
-
-**Time:** 2 hours
+**Time:** 30 minutes
 
 ---
 
