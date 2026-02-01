@@ -20,3 +20,34 @@
 3. Validates that rate limits are enforced (triggering 429 after limit is exceeded).
 4. Verifies presence of X-RateLimit headers on 401 (auth failure) and 429 (rate limit exceeded) responses.
    **result:** All live checks passed.
+
+## Authentication Logic Verification
+
+**script:** `uniinfer/tests/test_auth.py`
+**howtorun:** `uv run pytest uniinfer/tests/test_auth.py`
+**description:** Unit tests for the authentication module (`uniinfer/auth.py`).
+
+1. Validates `validate_proxy_token` dependency.
+2. Validates `get_optional_proxy_token` dependency.
+3. Tests token format validation (Bearer scheme).
+   **result:** All tests passed.
+
+## Rate Limiting Verification
+
+**script:** `uniinfer/tests/test_rate_limiting.py`
+**howtorun:** `uv run pytest uniinfer/tests/test_rate_limiting.py`
+**description:** Tests the integration of `slowapi` rate limiting with the proxy server.
+
+1. Sets low limits via environment variables.
+2. Verifies that requests exceeding the limit return 429 Too Many Requests.
+   **result:** All tests passed.
+
+## Proxy Security Verification
+
+**script:** `uniinfer/tests/test_proxy_security.py`
+**howtorun:** `uv run pytest uniinfer/tests/test_proxy_security.py`
+**description:** Tests security controls on the proxy endpoints.
+
+1. Verifies that `/v1/chat/completions` requires authentication for non-local providers.
+2. Tests response status codes for unauthorized access (401).
+   **result:** All tests passed.

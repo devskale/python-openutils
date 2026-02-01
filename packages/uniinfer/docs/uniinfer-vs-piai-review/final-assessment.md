@@ -7,7 +7,7 @@ After a comprehensive code review of two LLM inference libraries:
 - **UniInfer** (Python, v0.4.7) - Improving rapidly
 - **pi-ai** (TypeScript, v0.50.7) - Complex but production-ready
 
-### Overall Winner: **pi-ai** (8.2/10 vs 5.8/10)
+### Overall Winner: **pi-ai** (8.2/10 vs 6.0/10)
 
 **pi-ai** remains the superior choice for production applications requiring full async support and advanced agentic features.
 
@@ -23,10 +23,10 @@ After a comprehensive code review of two LLM inference libraries:
 | **Maturity**      | 5.5      | 9.0     | 15%    | 0.82 vs 1.35   |
 | **Architecture**  | 5.0      | 9.0     | 15%    | 0.75 vs 1.35   |
 | **Features**      | 6.8      | 9.4     | 20%    | 1.36 vs 1.88   |
-| **Code Quality**  | 5.0      | 7.4     | 15%    | 0.75 vs 1.11   |
-| **Security**      | 6.5      | 6.4     | 10%    | 0.65 vs 0.64   |
+| **Code Quality**  | 5.5      | 7.4     | 15%    | 0.82 vs 1.11   |
+| **Security**      | 7.5      | 6.4     | 10%    | 0.75 vs 0.64   |
 | **Ecosystem**     | 5.0\*    | 7.0\*   | 15%    | 0.75 vs 1.05   |
-| **TOTAL**         | **5.8**  | **8.2** | 100%   | -              |
+| **TOTAL**         | **6.0**  | **8.2** | 100%   | -              |
 
 \*Ecosystem score estimated (not fully analyzed)
 
@@ -52,7 +52,7 @@ After a comprehensive code review of two LLM inference libraries:
 **Weaknesses (Critical):**
 
 1. ❌ **No async support** - Fundamental performance limitation
-2. ❌ **No input validation** - Partially addressed in Proxy, but core needs work
+2. 🟡 **Partial Input Validation** - Implemented in Proxy (Size, Count, Format), pending in Core
 3. ❌ **Testing Gaps** - Improved (7+ files) but still low coverage
 4. ❌ **No CI/CD** - No automated testing or quality checks
 5. ❌ **No token tracking** - Production blocker
@@ -144,10 +144,10 @@ After a comprehensive code review of two LLM inference libraries:
    - Fix: Use specific exception types
    - Priority: MEDIUM
 
-7. **🟡 MEDIUM: Partial Input Validation**
-   - Impact: API abuse possible
-   - Fix: Extend Pydantic validation to all core methods (Started in Proxy)
-   - Priority: MEDIUM
+7. **🟢 RESOLVED (Proxy): Input Validation**
+   - Impact: API abuse prevented in Proxy
+   - Fix: Added size limits (10MB), message count (500), and format validation
+   - Priority: LOW (Core still needs it)
 
 **Resolved/Improved in v0.4.7:**
 
