@@ -70,10 +70,10 @@ python -c "import uniinfer; print(uniinfer.__version__)"
 
 **1.2.1 Add Rate Limiting**
 
-1. [ ] Install slowapi: `pip install slowapi`
-2. [ ] Add rate limiter to imports: `from slowapi import Limiter`
-3. [ ] Initialize limiter: `limiter = Limiter(key_func=get_remote_address)`
-4. [ ] Add rate limit to `/v1/chat/completions`:
+1. [x] Install slowapi: `pip install slowapi`
+2. [x] Add rate limiter to imports: `from slowapi import Limiter`
+3. [x] Initialize limiter: `limiter = Limiter(key_func=get_remote_address)`
+4. [x] Add rate limit to `/v1/chat/completions`:
    ```python
    @app.post("/v1/chat/completions")
    @limiter.limit("100/minute")  # 100 requests per minute

@@ -17,6 +17,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import StreamingResponse, FileResponse, JSONResponse
 from fastapi import FastAPI, HTTPException, Request, Depends, File, Form, UploadFile, status
+from fastapi.encoders import jsonable_encoder
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
@@ -122,6 +123,22 @@ app.add_middleware(
 
 # --- Middleware for Request Logging and ID ---
 
+MAX_REQUEST_SIZE = 10 * 1024 * 1024
+
+@app.middleware("http")
+async def limit_request_size(request: Request, call_next):
+    content_length = request.headers.get("content-length")
+    # print(f"DEBUG: Middleware Content-Length: {content_length}")
+    if content_length:
+        content_length = int(content_length)
+        if content_length > MAX_REQUEST_SIZE:
+            # print("DEBUG: Request too large")
+            return JSONResponse(
+                status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+                content={"detail": "Request too large"}
+            )
+    return await call_next(request)
+
 
 @app.middleware("http")
 async def log_requests(request: Request, call_next):
@@ -212,6 +229,25 @@ class ChatCompletionRequestInput(BaseModel):
     tools: Optional[List[Dict]] = None
     tool_choice: Optional[Any] = None
     # Add other common OpenAI parameters if needed, e.g., top_p, frequency_penalty
+
+    @validator('messages')
+    def validate_messages_count(cls, v):
+        # print(f"DEBUG: Validating messages count: {len(v)}")
+        if len(v) > 500:
+            raise ValueError('Too many messages. Maximum allowed is 500.')
+        return v
+
+    @validator('model')
+    def validate_model_format(cls, v):
+        if '@' not in v:
+             # Allow system models or special cases if needed, but strict for now based on previous code
+             # Actually existing code allows "provider@model", let's check parse_provider_model usage
+             pass # The endpoint calls parse_provider_model which handles the check.
+             # We can enforce basic format here or leave it to endpoint logic.
+             # Let's enforce basic format to fail fast.
+             if not re.match(r'^[^@]+@[^@]+$', v):
+                 raise ValueError("Invalid model format. Expected 'provider@modelname'.")
+        return v
 
 
 class ChatMessageOutput(BaseModel):
@@ -643,7 +679,7 @@ async def chat_completions(request: Request, request_input: ChatCompletionReques
                 ]
                 # Usage data is not available from uniioai currently
             )
-            return response_data
+            return JSONResponse(content=jsonable_encoder(response_data))
 
     # Catches ValueErrors from uniioai completion functions (e.g., model format)
     except ValueError as e:
