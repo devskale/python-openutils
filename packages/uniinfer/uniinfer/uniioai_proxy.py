@@ -74,7 +74,7 @@ if parent_dir not in sys.path:
     sys.path.insert(0, parent_dir)
 
 try:
-    from uniinfer.uniioai import stream_completion, get_completion, get_provider_api_key, list_providers, list_models_for_provider, get_embeddings, list_embedding_providers, list_embedding_models_for_provider
+    from uniinfer.uniioai import stream_completion, astream_completion, get_completion, aget_completion, get_provider_api_key, list_providers, list_models_for_provider, get_embeddings, list_embedding_providers, list_embedding_models_for_provider, format_chunk_to_openai
     from uniinfer.errors import UniInferError, AuthenticationError, ProviderError, RateLimitError
     from uniinfer.auth import validate_proxy_token, get_optional_proxy_token, verify_provider_access
 except ImportError as e:
@@ -514,6 +514,122 @@ async def stream_response_generator(messages: List[Dict], provider_model: str, t
     yield "data: [DONE]\n\n"
 
 
+# --- Async Stream Response Generator ---
+async def astream_response_generator(messages: List[Dict], provider_model: str, temp: float, max_tok: int, provider_api_key: Optional[str], base_url: Optional[str], tools: Optional[List[Dict]] = None, tool_choice: Optional[Any] = None) -> AsyncGenerator[str, None]:
+    """Generates OpenAI-compatible SSE chunks from uniioai.astream_completion using async."""
+    completion_id = f"chatcmpl-{uuid.uuid4()}"
+    created_time = int(time.time())
+    model_name = provider_model
+
+    first_chunk_data = StreamingChatCompletionChunk(
+        id=completion_id,
+        created=created_time,
+        model=model_name,
+        choices=[StreamingChoice(delta=ChoiceDelta(role="assistant"))]
+    )
+    yield f"data: {first_chunk_data.model_dump_json()}\n\n"
+
+    seen_tool_calls = False
+    sent_finish_reason = False
+
+    try:
+        async for chunk in astream_completion(
+            messages, provider_model, temp, max_tok, provider_api_key=provider_api_key, base_url=base_url, tools=tools, tool_choice=tool_choice
+        ):
+            if isinstance(chunk, dict):
+                json_data = json.dumps(chunk)
+                logger.debug(f"Yielding async chunk (dict): {json_data}")
+                yield f"data: {json_data}\n\n"
+                
+                choice = chunk.get('choices', [{}])[0]
+                if choice.get('finish_reason'):
+                    sent_finish_reason = True
+                delta = choice.get('delta', {})
+                if delta.get('tool_calls'):
+                    seen_tool_calls = True
+            else:
+                chunk_finish_reason = getattr(chunk, 'finish_reason', None)
+
+                if chunk.message:
+                    choice_kwargs = {}
+                    if chunk.message.content:
+                        choice_kwargs['content'] = chunk.message.content
+                    if chunk.message.tool_calls:
+                        choice_kwargs['tool_calls'] = chunk.message.tool_calls
+                        seen_tool_calls = True
+
+                    choice_kwargs_with_delta = {}
+                    if choice_kwargs:
+                        choice_kwargs_with_delta['delta'] = ChoiceDelta(**choice_kwargs)
+                    else:
+                        choice_kwargs_with_delta['delta'] = ChoiceDelta()
+
+                    if chunk_finish_reason:
+                        choice_kwargs_with_delta['finish_reason'] = chunk_finish_reason
+                        sent_finish_reason = True
+
+                    if choice_kwargs or chunk_finish_reason:
+                        chunk_data = StreamingChatCompletionChunk(
+                            id=completion_id,
+                            created=created_time,
+                            model=model_name,
+                            choices=[StreamingChoice(**choice_kwargs_with_delta)]
+                        )
+                        json_data = chunk_data.model_dump_json()
+                        logger.debug(f"Yielding async chunk: {json_data}")
+                        yield f"data: {json_data}\n\n"
+
+        if not sent_finish_reason:
+            finish_reason = "tool_calls" if seen_tool_calls else "stop"
+            logger.info(
+                f"Async stream finished. Fallback finish_reason: {finish_reason}")
+
+            final_chunk_data = StreamingChatCompletionChunk(
+                id=completion_id,
+                created=created_time,
+                model=model_name,
+                choices=[StreamingChoice(
+                    delta=ChoiceDelta(), finish_reason=finish_reason)]
+            )
+            yield f"data: {final_chunk_data.model_dump_json()}\n\n"
+
+    except NameError as e:
+        logger.error(f"NameError during async streaming: {e}")
+        error_chunk = {
+            "error": {
+                "message": f"Stream internal error: {e}",
+                "type": "NameError",
+                "code": None
+            }
+        }
+        yield f"data: {json.dumps(error_chunk)}\n\n"
+    except (UniInferError, ValueError) as e:
+        logger.error(f"Error during async streaming: {e}")
+        status_code = getattr(e, 'status_code', None)
+        message = str(e)
+        if isinstance(e, ProviderError) and e.response_body:
+            message = f"{message} | Provider Response: {e.response_body}"
+
+        error_chunk = {
+            "error": {
+                "message": message,
+                "type": type(e).__name__,
+                "code": status_code
+            }
+        }
+        yield f"data: {json.dumps(error_chunk)}\n\n"
+    except Exception as e:
+        logger.exception(f"Unexpected error during async streaming: {e}")
+        error_chunk = {
+            "error": {
+                "message": f"Unexpected server error: {type(e).__name__}",
+                "type": "internal_server_error",
+                "code": None
+            }
+        }
+        yield f"data: {json.dumps(error_chunk)}\n\n"
+
+
 # --- API Endpoints ---
 
 # --- Add Endpoint to Serve Web Demo HTML ---
@@ -626,9 +742,9 @@ async def chat_completions(request: Request, request_input: ChatCompletionReques
         # --- End API Key Retrieval & Base URL Logic ---
 
         if request_input.stream:
-            # Use the async generator with StreamingResponse
+            # Use async generator with StreamingResponse
             return StreamingResponse(
-                stream_response_generator(
+                astream_response_generator(
                     messages=messages_dict,
                     provider_model=provider_model,
                     temp=request_input.temperature,
@@ -641,9 +757,8 @@ async def chat_completions(request: Request, request_input: ChatCompletionReques
                 media_type="text/event-stream"
             )
         else:
-            # Wrap synchronous get_completion in run_in_threadpool
-            full_content = await run_in_threadpool(
-                get_completion,  # The sync function
+            # Use async aget_completion for non-streaming requests
+            full_content = await aget_completion(
                 messages=messages_dict,
                 provider_model_string=provider_model,
                 temperature=request_input.temperature,
@@ -666,7 +781,7 @@ async def chat_completions(request: Request, request_input: ChatCompletionReques
                 # It's a string
                 content = full_content
 
-            # Format the response according to OpenAI spec
+            # Format response according to OpenAI spec
             finish_reason = "tool_calls" if tool_calls else "stop"
             response_data = NonStreamingChatCompletion(
                 model=provider_model,
@@ -1104,7 +1219,8 @@ async def generate_images(request: Request, request_input: ImageGenerationReques
                 b64 = base64.b64encode(resp.content).decode('utf-8')
                 data_items.append(ImageData(b64_json=b64, url=used_url))
 
-        return ImageGenerationResponse(data=data_items, model=provider_model)
+        response_data = ImageGenerationResponse(data=data_items, model=provider_model)
+        return JSONResponse(content=response_data.model_dump())
 
     except HTTPException:
         raise
@@ -1161,11 +1277,13 @@ async def generate_speech(
             instructions=request_input.instructions
         )
 
-        # Generate speech (run in thread pool to avoid blocking)
-        response = await run_in_threadpool(
-            tts_provider.generate_speech,
-            tts_request
-        )
+        logger.info(f"Generating TTS speech with model: {model_name}, voice: {request_input.voice}, text length: {len(input_text)}")
+
+        # Generate speech using run_in_threadpool to avoid blocking
+        from starlette.concurrency import run_in_threadpool
+        response = await run_in_threadpool(tts_provider.generate_speech, tts_request)
+
+        logger.info(f"TTS speech generated successfully, content length: {len(response.audio_content)} bytes")
 
         # Return audio content
         from fastapi.responses import Response
