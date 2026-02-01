@@ -1,9 +1,11 @@
 """
 Mistral AI provider implementation.
 """
+import asyncio
+import httpx
 import json
 import requests
-from typing import Dict, Any, Iterator, Optional
+from typing import Dict, Any, Iterator, Optional, AsyncIterator
 
 from ..core import ChatProvider, ChatCompletionRequest, ChatCompletionResponse, ChatMessage
 from ..errors import map_provider_error
@@ -268,3 +270,166 @@ class MistralProvider(ChatProvider):
                     except json.JSONDecodeError:
                         # Skip invalid JSON lines
                         continue
+
+    async def acomplete(
+        self,
+        request: ChatCompletionRequest,
+        **provider_specific_kwargs
+    ) -> ChatCompletionResponse:
+        """
+        Make an async chat completion request to Mistral AI.
+
+        Args:
+            request (ChatCompletionRequest): The request to make.
+            **provider_specific_kwargs: Additional Mistral-specific parameters.
+
+        Returns:
+            ChatCompletionResponse: The completion response.
+
+        Raises:
+            Exception: If the request fails.
+        """
+        if self.api_key is None:
+            raise ValueError("Mistral API key is required")
+
+        endpoint = f"{self.base_url}/chat/completions"
+
+        payload = {
+            "model": request.model,
+            "messages": self._flatten_messages(request.messages),
+            "temperature": request.temperature,
+            "stream": False
+        }
+
+        if request.max_tokens is not None:
+            payload["max_tokens"] = request.max_tokens
+
+        if request.tools:
+            payload["tools"] = request.tools
+        if request.tool_choice:
+            payload["tool_choice"] = request.tool_choice
+
+        payload.update(provider_specific_kwargs)
+
+        headers = {
+            "Content-Type": "application/json",
+            "Authorization": f"Bearer {self.api_key}"
+        }
+
+        async with httpx.AsyncClient() as client:
+            response = await client.post(
+                endpoint,
+                headers=headers,
+                json=payload,
+                timeout=60.0
+            )
+
+            if response.status_code != 200:
+                error_msg = f"Mistral API error: {response.status_code} - {response.text}"
+                raise map_provider_error("Mistral", Exception(error_msg), status_code=response.status_code, response_body=response.text)
+
+            response_data = response.json()
+            choice = response_data['choices'][0]
+            message = ChatMessage(
+                role=choice['message']['role'],
+                content=choice['message'].get('content'),
+                tool_calls=choice['message'].get('tool_calls')
+            )
+
+            return ChatCompletionResponse(
+                message=message,
+                provider='mistral',
+                model=response_data.get('model', request.model),
+                usage=response_data.get('usage', {}),
+                raw_response=response_data
+            )
+
+    async def astream_complete(
+        self,
+        request: ChatCompletionRequest,
+        **provider_specific_kwargs
+    ) -> AsyncIterator[ChatCompletionResponse]:
+        """
+        Stream an async chat completion response from Mistral AI.
+
+        Args:
+            request (ChatCompletionRequest): The request to make.
+            **provider_specific_kwargs: Additional Mistral-specific parameters.
+
+        Returns:
+            AsyncIterator[ChatCompletionResponse]: An async iterator of response chunks.
+
+        Raises:
+            Exception: If the request fails.
+        """
+        if self.api_key is None:
+            raise ValueError("Mistral API key is required")
+
+        endpoint = f"{self.base_url}/chat/completions"
+
+        payload = {
+            "model": request.model,
+            "messages": self._flatten_messages(request.messages),
+            "temperature": request.temperature,
+            "stream": True
+        }
+
+        if request.max_tokens is not None:
+            payload["max_tokens"] = request.max_tokens
+
+        if request.tools:
+            payload["tools"] = request.tools
+        if request.tool_choice:
+            payload["tool_choice"] = request.tool_choice
+
+        payload.update(provider_specific_kwargs)
+
+        headers = {
+            "Content-Type": "application/json",
+            "Authorization": f"Bearer {self.api_key}"
+        }
+
+        async with httpx.AsyncClient() as client:
+            async with client.stream(
+                "POST",
+                endpoint,
+                headers=headers,
+                json=payload,
+                timeout=60.0
+            ) as response:
+                if response.status_code != 200:
+                    error_msg = f"Mistral API error: {response.status_code} - {await response.aread()}"
+                    raise map_provider_error("Mistral", Exception(error_msg), status_code=response.status_code, response_body=error_msg)
+
+                async for line in response.aiter_lines():
+                    if line:
+                        try:
+                            if line.startswith('data: '):
+                                line = line[6:]
+
+                            if not line or line == '[DONE]':
+                                continue
+
+                            chunk = json.loads(line)
+
+                            if 'choices' in chunk:
+                                choice = chunk['choices'][0]
+                                role = choice['delta'].get('role', 'assistant')
+                                content = choice['delta'].get('content')
+                                tool_calls = choice['delta'].get('tool_calls')
+
+                                message = ChatMessage(
+                                    role=role,
+                                    content=content,
+                                    tool_calls=tool_calls
+                                )
+
+                                yield ChatCompletionResponse(
+                                    message=message,
+                                    provider='mistral',
+                                    model=chunk.get('model', request.model),
+                                    usage=chunk.get('usage', {}),
+                                    raw_response=chunk
+                                )
+                        except json.JSONDecodeError:
+                            continue

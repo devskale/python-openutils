@@ -1,7 +1,8 @@
 """
 Core classes for the UniInfer package.
 """
-from typing import List, Dict, Any, Iterator, Optional, Union
+import asyncio
+from typing import List, Dict, Any, Iterator, Optional, Union, AsyncIterator
 
 
 class ChatMessage:
@@ -144,8 +145,7 @@ class ChatProvider:
         Returns:
             ChatCompletionResponse: The completion response.
         """
-        raise NotImplementedError(
-            "Providers must implement the complete method")
+        return asyncio.run(self.acomplete(request, **provider_specific_kwargs))
 
     def stream_complete(
         self,
@@ -162,8 +162,56 @@ class ChatProvider:
         Returns:
             Iterator[ChatCompletionResponse]: An iterator of response chunks.
         """
+        # Convert async generator to sync iterator
+        async_gen = self.astream_complete(request, **provider_specific_kwargs)
+        
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        
+        try:
+            while True:
+                try:
+                    yield loop.run_until_complete(async_gen.__anext__())
+                except StopAsyncIteration:
+                    break
+        finally:
+            loop.close()
+
+    async def acomplete(
+        self,
+        request: ChatCompletionRequest,
+        **provider_specific_kwargs
+    ) -> ChatCompletionResponse:
+        """
+        Make an async chat completion request.
+
+        Args:
+            request (ChatCompletionRequest): The request to make.
+            **provider_specific_kwargs: Additional provider-specific parameters.
+
+        Returns:
+            ChatCompletionResponse: The completion response.
+        """
         raise NotImplementedError(
-            "Providers must implement the stream_complete method")
+            "Providers must implement the acomplete method")
+
+    async def astream_complete(
+        self,
+        request: ChatCompletionRequest,
+        **provider_specific_kwargs
+    ) -> AsyncIterator[ChatCompletionResponse]:
+        """
+        Stream an async chat completion response.
+
+        Args:
+            request (ChatCompletionRequest): The request to make.
+            **provider_specific_kwargs: Additional provider-specific parameters.
+
+        Returns:
+            AsyncIterator[ChatCompletionResponse]: An async iterator of response chunks.
+        """
+        raise NotImplementedError(
+            "Providers must implement the astream_complete method")
 
 
 class EmbeddingRequest:
@@ -378,9 +426,33 @@ class TTSProvider:
 
         Returns:
             TTSResponse: The TTS response with audio content.
+
+        Raises:
+            Exception: If the request fails.
+        """
+        import asyncio
+        return asyncio.run(self.agenerate_speech(request, **provider_specific_kwargs))
+
+    async def agenerate_speech(
+        self,
+        request: TTSRequest,
+        **provider_specific_kwargs
+    ) -> TTSResponse:
+        """
+        Generate speech from text asynchronously.
+
+        Args:
+            request (TTSRequest): The request to make.
+            **provider_specific_kwargs: Additional provider-specific parameters.
+
+        Returns:
+            TTSResponse: The TTS response with audio content.
+
+        Raises:
+            Exception: If the request fails.
         """
         raise NotImplementedError(
-            "TTS providers must implement the generate_speech method")
+            "TTS providers must implement the agenerate_speech method")
 
 
 class STTRequest:
@@ -495,6 +567,30 @@ class STTProvider:
 
         Returns:
             STTResponse: The STT response with transcribed text.
+
+        Raises:
+            Exception: If the request fails.
+        """
+        import asyncio
+        return asyncio.run(self.atranscribe(request, **provider_specific_kwargs))
+
+    async def atranscribe(
+        self,
+        request: STTRequest,
+        **provider_specific_kwargs
+    ) -> STTResponse:
+        """
+        Transcribe audio to text asynchronously.
+
+        Args:
+            request (STTRequest): The request to make.
+            **provider_specific_kwargs: Additional provider-specific parameters.
+
+        Returns:
+            STTResponse: The STT response with transcribed text.
+
+        Raises:
+            Exception: If the request fails.
         """
         raise NotImplementedError(
-            "STT providers must implement the transcribe method")
+            "STT providers must implement the atranscribe method")

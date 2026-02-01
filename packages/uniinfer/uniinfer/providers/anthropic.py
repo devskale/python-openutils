@@ -2,8 +2,9 @@
 Anthropic provider implementation.
 """
 import json
+import httpx
 import requests
-from typing import Dict, Any, Iterator, Optional
+from typing import Dict, Any, Iterator, Optional, AsyncIterator
 
 from ..core import ChatProvider, ChatCompletionRequest, ChatCompletionResponse, ChatMessage
 from ..errors import map_provider_error
@@ -266,3 +267,194 @@ class AnthropicProvider(ChatProvider):
                     except json.JSONDecodeError:
                         # Skip invalid JSON lines
                         continue
+
+    async def acomplete(
+        self,
+        request: ChatCompletionRequest,
+        **provider_specific_kwargs
+    ) -> ChatCompletionResponse:
+        """
+        Make an async chat completion request to Anthropic.
+
+        Args:
+            request (ChatCompletionRequest): The request to make.
+            **provider_specific_kwargs: Additional Anthropic-specific parameters.
+
+        Returns:
+            ChatCompletionResponse: The completion response.
+
+        Raises:
+            Exception: If the request fails.
+        """
+        if self.api_key is None:
+            raise ValueError("Anthropic API key is required")
+
+        endpoint = f"{self.base_url}/messages"
+
+        messages = []
+        for msg in request.messages:
+            if msg.role == "system":
+                system_content = msg.content
+                continue
+            else:
+                messages.append({
+                    "role": msg.role,
+                    "content": msg.content
+                })
+
+        payload = {
+            "messages": messages,
+            "model": request.model or "claude-3-sonnet-20240229",
+            "temperature": request.temperature,
+            "stream": False
+        }
+
+        if request.max_tokens is not None:
+            payload["max_tokens"] = request.max_tokens
+
+        if 'system_content' in locals():
+            payload["system"] = system_content
+
+        payload.update(provider_specific_kwargs)
+
+        headers = {
+            "Content-Type": "application/json",
+            "X-Api-Key": self.api_key,
+            "anthropic-version": self.api_version
+        }
+
+        async with httpx.AsyncClient() as client:
+            response = await client.post(
+                endpoint,
+                headers=headers,
+                json=payload,
+                timeout=60.0
+            )
+
+            if response.status_code != 200:
+                error_msg = f"Anthropic API error: {response.status_code} - {response.text}"
+                raise map_provider_error("Anthropic", Exception(error_msg), status_code=response.status_code, response_body=response.text)
+
+            response_data = response.json()
+            content = response_data["content"][0]["text"]
+
+            message = ChatMessage(
+                role="assistant",
+                content=content
+            )
+
+            usage = {
+                "input_tokens": response_data.get("usage", {}).get("input_tokens", 0),
+                "output_tokens": response_data.get("usage", {}).get("output_tokens", 0),
+                "total_tokens": response_data.get("usage", {}).get("input_tokens", 0) +
+                response_data.get("usage", {}).get("output_tokens", 0)
+            }
+
+            return ChatCompletionResponse(
+                message=message,
+                provider='anthropic',
+                model=response_data.get('model', request.model),
+                usage=usage,
+                raw_response=response_data
+            )
+
+    async def astream_complete(
+        self,
+        request: ChatCompletionRequest,
+        **provider_specific_kwargs
+    ) -> AsyncIterator[ChatCompletionResponse]:
+        """
+        Stream an async chat completion response from Anthropic.
+
+        Args:
+            request (ChatCompletionRequest): The request to make.
+            **provider_specific_kwargs: Additional Anthropic-specific parameters.
+
+        Returns:
+            AsyncIterator[ChatCompletionResponse]: An async iterator of response chunks.
+
+        Raises:
+            Exception: If the request fails.
+        """
+        if self.api_key is None:
+            raise ValueError("Anthropic API key is required")
+
+        endpoint = f"{self.base_url}/messages"
+
+        messages = []
+        for msg in request.messages:
+            if msg.role == "system":
+                system_content = msg.content
+                continue
+            else:
+                messages.append({
+                    "role": msg.role,
+                    "content": msg.content
+                })
+
+        payload = {
+            "messages": messages,
+            "model": request.model or "claude-3-sonnet-20240229",
+            "temperature": request.temperature,
+            "stream": True
+        }
+
+        if request.max_tokens is not None:
+            payload["max_tokens"] = request.max_tokens
+
+        if 'system_content' in locals():
+            payload["system"] = system_content
+
+        payload.update(provider_specific_kwargs)
+
+        headers = {
+            "Content-Type": "application/json",
+            "X-Api-Key": self.api_key,
+            "anthropic-version": self.api_version
+        }
+
+        async with httpx.AsyncClient() as client:
+            async with client.stream(
+                "POST",
+                endpoint,
+                headers=headers,
+                json=payload,
+                timeout=60.0
+            ) as response:
+                if response.status_code != 200:
+                    error_msg = f"Anthropic API error: {response.status_code} - {await response.aread()}"
+                    raise map_provider_error("Anthropic", Exception(error_msg), status_code=response.status_code, response_body=error_msg)
+
+                async for line in response.aiter_lines():
+                    if line:
+                        try:
+                            if not line or line == 'data: [DONE]':
+                                continue
+
+                            if line.startswith('data: '):
+                                line = line[6:]
+
+                            event_data = json.loads(line)
+
+                            if event_data.get('type') == 'content_block_delta':
+                                delta = event_data.get('delta', {})
+                                content = delta.get('text', '')
+
+                                message = ChatMessage(
+                                    role="assistant", content=content)
+
+                                usage = {
+                                    "input_tokens": 0,
+                                    "output_tokens": 0,
+                                    "total_tokens": 0
+                                }
+
+                                yield ChatCompletionResponse(
+                                    message=message,
+                                    provider='anthropic',
+                                    model=event_data.get('model', request.model),
+                                    usage=usage,
+                                    raw_response=event_data
+                                )
+                        except json.JSONDecodeError:
+                            continue

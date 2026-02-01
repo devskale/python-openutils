@@ -1,13 +1,14 @@
 """
 OpenAIcompliant TU provider implementation.
 """
+import asyncio
 import json
 import requests
 from requests.exceptions import Timeout, ConnectionError
 import time
 import threading
 import logging
-from typing import Dict, Any, Iterator, Optional
+from typing import Dict, Any, Iterator, Optional, AsyncIterator
 
 from ..core import ChatProvider, ChatCompletionRequest, ChatCompletionResponse, ChatMessage
 from ..errors import map_provider_error, ProviderError
@@ -373,3 +374,48 @@ class TuAIProvider(ChatProvider):
                 raise map_provider_error("TU", e, status_code=500)
         finally:
             self._mark_request_end()
+
+    async def acomplete(
+        self,
+        request: ChatCompletionRequest,
+        **provider_specific_kwargs
+    ) -> ChatCompletionResponse:
+        """
+        Async version of complete() - runs sync version in executor.
+        """
+        loop = asyncio.get_event_loop()
+        return await loop.run_in_executor(
+            None,
+            lambda: self.complete(request, **provider_specific_kwargs)
+        )
+
+    async def astream_complete(
+        self,
+        request: ChatCompletionRequest,
+        **provider_specific_kwargs
+    ) -> AsyncIterator[ChatCompletionResponse]:
+        """
+        Async version of stream_complete() - wraps sync generator.
+        """
+        def sync_gen():
+            return self.stream_complete(request, **provider_specific_kwargs)
+
+        # Create sync generator in thread pool
+        loop = asyncio.get_event_loop()
+        gen = await loop.run_in_executor(None, sync_gen)
+
+        try:
+            while True:
+                # Use a proper wrapper that avoids StopIteration in futures
+                def get_next():
+                    try:
+                        return next(gen), False
+                    except StopIteration:
+                        return None, True
+                
+                chunk, is_done = await loop.run_in_executor(None, get_next)
+                if is_done:
+                    break
+                yield chunk
+        finally:
+            await loop.run_in_executor(None, lambda: gen.close() if gen else None)

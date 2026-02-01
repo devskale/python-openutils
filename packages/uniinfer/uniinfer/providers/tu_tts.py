@@ -1,6 +1,7 @@
 """
 TU TTS provider implementation.
 """
+import httpx
 import requests
 from typing import Optional, List
 
@@ -92,12 +93,22 @@ class TuAITTSProvider(TTSProvider):
         if self.organization:
             headers["TUW-Organization"] = self.organization
 
+        import logging
+        logger_tts = logging.getLogger(__name__)
+        logger_tts.info(f"About to POST to {endpoint}")
+        logger_tts.info(f"Headers: {dict(headers)}")
+        logger_tts.info(f"Payload keys: {list(payload.keys())}")
+        
         response = requests.post(
             endpoint,
             headers=headers,
             json=payload,
-            timeout=120
+            timeout=(30, 120),  # (connect timeout, read timeout)
+            verify=True,
+            stream=False
         )
+        
+        logger_tts.info(f"POST completed with status: {response.status_code}")
 
         # Handle error response
         if response.status_code != 200:
@@ -114,3 +125,15 @@ class TuAITTSProvider(TTSProvider):
             content_type=content_type,
             raw_response=response
         )
+
+    async def agenerate_speech(
+        self,
+        request: TTSRequest,
+        **provider_specific_kwargs
+    ) -> TTSResponse:
+        """
+        Generate speech from text using TU AI asynchronously.
+        Simply delegates to sync generate_speech method.
+        """
+        # Just call the sync version - caller should run in thread pool
+        return self.generate_speech(request, **provider_specific_kwargs)
