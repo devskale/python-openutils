@@ -12,11 +12,11 @@ import base64
 from fastapi.security.http import HTTPAuthorizationCredentials
 from fastapi.security import HTTPBearer  # Import HTTPBearer
 from starlette.concurrency import iterate_in_threadpool, run_in_threadpool
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, validator
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import StreamingResponse, FileResponse
-from fastapi import FastAPI, HTTPException, Request, Depends, File, Form, UploadFile
+from fastapi.responses import StreamingResponse, FileResponse, JSONResponse
+from fastapi import FastAPI, HTTPException, Request, Depends, File, Form, UploadFile, status
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
