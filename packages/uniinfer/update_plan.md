@@ -42,9 +42,9 @@ Based on comprehensive code review findings, **UniInfer is currently NOT PRODUCT
 
 **Steps:**
 
-1. [ ] Determine correct version (likely 0.4.1)
-2. [ ] Update `uniinfer/__init__.py`: Change `__version__ = "0.1.0"`
-3. [ ] Update `setup.py`:
+1.45→1. [x] Determine correct version (v0.4.7)
+46→2. [x] Update `uniinfer/__init__.py`: Change `__version__ = "0.4.7"`
+47→3. [x] Update `setup.py`:
 
 **Files:**
 
@@ -79,13 +79,13 @@ python -c "import uniinfer; print(uniinfer.__version__)"
    @limiter.limit("100/minute")  # 100 requests per minute
    async def chat_completions(request: Request):
    ```
-5. [ ] Add rate limit to `/v1/embeddings`:
+   5.82→5. [x] Add rate limit to `/v1/embeddings`:
    ```python
    @app.post("/v1/embeddings")
    @limiter.limit("200/minute")
    async def embeddings(request: Request):
    ```
-6. [ ] Add rate limit to `/v1/audio/*` endpoints
+   5.88→6. [x] Add rate limit to `/v1/audio/*` endpoints
 
 **Files:**
 
@@ -96,14 +96,16 @@ python -c "import uniinfer; print(uniinfer.__version__)"
 
 **1.2.2 Add Authentication Validation**
 
-1. [ ] Create auth module: `uniinfer/auth.py`
-2. [ ] Implement token validation:
-   ```python
-   def validate_auth_token(token: str) -> tuple[bool, str | None]:
-       # Check Bearer token format
-       # Validate with credgoo if needed
-       # Return (is_valid, provider_name)
-   ```
+1.99→1. [x] Create auth module: `uniinfer/auth.py`
+100→2. [x] Implement token validation:
+
+```python
+def validate_auth_token(token: str) -> tuple[bool, str | None]:
+    # Check Bearer token format
+    # Validate with credgoo if needed
+    # Return (is_valid, provider_name)
+```
+
 3. [ ] Add auth decorator: `require_auth()`
 4. [ ] Apply to all endpoints
 5. [ ] Add error response for invalid auth
@@ -155,11 +157,11 @@ python -c "import uniinfer; print(uniinfer.__version__)"
 
 **1.2.5 Add Logging**
 
-1. [ ] Install python-json-logger: `pip install python-json-logger`
-2. [ ] Configure structured logging
-3. [ ] Add request logging (IP, endpoint, status, duration)
-4. [ ] Add error logging
-5. [ ] Configure log levels
+1. [x] Install python-json-logger: `pip install python-json-logger`
+2. [x] Configure structured logging
+3. [x] Add request logging (IP, endpoint, status, duration)
+4. [x] Add error logging
+5. [x] Configure log levels
 
 **Files:**
 
