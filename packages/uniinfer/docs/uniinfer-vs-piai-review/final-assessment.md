@@ -427,6 +427,6 @@ After a comprehensive code review of two LLM inference libraries:
 
 ---
 
-**Final Score: pi-ai 8.2/10 vs UniInfer 5.3/10**
+**Final Score: pi-ai 8.2/10 vs UniInfer 6.0/10**
 
 **Recommendation: Use pi-ai for production, UniInfer only for prototypes or specialized needs (embeddings/audio).**
