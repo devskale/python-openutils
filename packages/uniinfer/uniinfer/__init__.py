@@ -105,7 +105,15 @@ if HAS_AI21:
 if HAS_GENAI:
     ProviderFactory.register_provider("gemini", GeminiProvider)
 
-__version__ = "0.4.5"
+try:
+    from importlib.metadata import version, PackageNotFoundError
+except ImportError:
+    from importlib_metadata import version, PackageNotFoundError
+
+try:
+    __version__ = version("uniinfer")
+except PackageNotFoundError:
+    __version__ = "unknown"
 
 # Export commonly used functions and classes
 __all__ = [
