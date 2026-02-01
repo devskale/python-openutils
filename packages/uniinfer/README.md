@@ -165,25 +165,25 @@ UniInfer provides a comprehensive command-line interface:
 
 ```bash
 # Basic chat
-uniinfer -p openai -q "Hello, how are you?" -m gpt-4
+uv run uniinfer -p openai -q "Hello, how are you?" -m gpt-4
 
 # Interactive mode
-uniinfer -p anthropic -m claude-3-opus-20240229
+uv run uniinfer -p anthropic -m claude-3-opus-20240229
 
 # List available models
-uniinfer -p openai --list-models
+uv run uniinfer -p openai --list-models
 
 # Embeddings
-uniinfer -p ollama --embed --embed-text "Hello world" --model nomic-embed-text:latest
+uv run uniinfer -p ollama --embed --embed-text "Hello world" --model nomic-embed-text:latest
 
 # Text-to-Speech
-uniinfer -p tu --tts --tts-text "Hello world" --model kokoro
+uv run uniinfer -p tu --tts --tts-text "Hello world" --model kokoro
 
 # Speech-to-Text
-uniinfer -p tu --stt --audio-file speech.mp3 --model whisper-large
+uv run uniinfer -p tu --stt --audio-file speech.mp3 --model whisper-large
 
 # With streaming
-uniinfer -p openai -q "Tell me a story" -m gpt-4 --stream
+uv run uniinfer -p openai -q "Tell me a story" -m gpt-4 --stream
 ```
 
 ## API Server
@@ -192,10 +192,10 @@ UniInfer includes an OpenAI-compatible FastAPI server:
 
 ```bash
 # Install server dependencies
-pip install uniinfer[api]
+uv pip install uniinfer[api]
 
 # Start server
-uvicorn uniinfer.uniioai_proxy:app --host 0.0.0.0 --port 8123
+uv run uvicorn uniinfer.uniioai_proxy:app --host 0.0.0.0 --port 8123
 ```
 
 ### Authentication
@@ -223,6 +223,54 @@ If no token is provided in the header, the server will attempt to use the `CREDG
 - `GET /v1/models` - List available models
 - `POST /v1/audio/speech` - Text-to-Speech
 - `POST /v1/audio/transcriptions` - Speech-to-Text
+
+### Security Features
+
+The API server includes built-in security features for production deployments:
+
+1.  **Rate Limiting**: Protects your API from abuse.
+    - **Chat Completions**: 100 requests/minute (default)
+    - **Embeddings**: 200 requests/minute (default)
+    - **Media Generation**: 50 requests/minute (default)
+    - **Headers**: Responses include `X-RateLimit-Limit`, `X-RateLimit-Remaining`, and `X-RateLimit-Reset` headers.
+    - **Configuration**: Configurable via environment variables.
+
+2.  **Authentication**: Enforces strict token validation.
+    - **Protected Endpoints**: `/v1/chat/completions`, `/v1/embeddings` (except Ollama), `/v1/images/*`, `/v1/audio/*`.
+    - **Public Endpoints**: `/v1/models`, `/webdemo`, `/` (root).
+    - **Ollama Bypass**: Local Ollama instances are accessible without authentication for easier local development.
+
+### How to Setup Security Features
+
+To configure security settings for your deployment:
+
+**1. Configure Rate Limits**
+
+Set the following environment variables to customize rate limits:
+
+```bash
+export UNIINFER_RATE_LIMIT_CHAT="50/minute"
+export UNIINFER_RATE_LIMIT_EMBEDDINGS="100/minute"
+export UNIINFER_RATE_LIMIT_MEDIA="10/minute"
+```
+
+**2. Configure Authentication**
+
+Ensure your clients send the correct Bearer token in the `Authorization` header:
+
+```http
+Authorization: Bearer YOUR_PROVIDER_API_KEY
+# OR for multi-provider access via credgoo:
+Authorization: Bearer YOUR_CREDGOO_TOKEN@YOUR_ENCRYPTION_KEY
+```
+
+**3. Verify Security**
+
+You can verify your security configuration using the included test script:
+
+```bash
+uv run python uniinfer/tests/verify_live_proxy.py
+```
 
 ### Example Client Usage
 
@@ -304,7 +352,7 @@ export ANTHROPIC_API_KEY=your_key_here
 
 ```bash
 # Install the required extra
-pip install uniinfer[anthropic]
+uv pip install uniinfer[anthropic]
 ```
 
 **API key not found**
@@ -332,7 +380,7 @@ request = ChatCompletionRequest(
 
 ```bash
 # List available models for the provider
-uniinfer -p PROVIDER_NAME --list-models
+uv run uniinfer -p PROVIDER_NAME --list-models
 ```
 
 ## Development
@@ -341,21 +389,21 @@ uniinfer -p PROVIDER_NAME --list-models
 
 ```bash
 # Install development dependencies
-pip install -e ".[all]"
+uv pip install -e ".[all]"
 
 # Run tests
-pytest
+uv run pytest
 
 # Run tests with coverage
-pytest --cov=uniinfer --cov-report=term-mit
+uv run pytest --cov=uniinfer --cov-report=term-mit
 ```
 
 ### Code Formatting
 
 ```bash
-black .
-isort .
-ruff check . --fix
+uv run black .
+uv run isort .
+uv run ruff check . --fix
 ```
 
 ## Contributing
@@ -365,8 +413,8 @@ Contributions are welcome! Please follow these steps:
 1. Fork the repository
 2. Create a feature branch (`git checkout -b feature/amazing-feature`)
 3. Add tests for new functionality
-4. Ensure all tests pass (`pytest`)
-5. Format code (`black . && isort . && ruff check . --fix`)
+4. Ensure all tests pass (`uv run pytest`)
+5. Format code (`uv run black . && uv run isort . && uv run ruff check . --fix`)
 6. Commit your changes (`git commit -m 'Add amazing feature'`)
 7. Push to the branch (`git push origin feature/amazing-feature`)
 8. Submit a pull request
