@@ -21,8 +21,8 @@ This is a monorepo containing Python utility packages:
 source packages/credgoo/.venv/bin/activate  # or uniinfer/.venv/bin/activate
 
 # Install in development mode
-cd packages/credgoo && pip install -e .
-cd packages/uniinfer && pip install -e ".[all]"
+cd packages/credgoo && uv pip install -e .
+cd packages/uniinfer && uv pip install -e ".[all]"
 ```
 
 ## Build/Lint/Test Commands
@@ -35,19 +35,19 @@ UniInfer uses pytest. Credgoo has no tests yet.
 cd packages/uniinfer
 
 # Run all tests
-pytest
+uv run pytest
 
 # Run single test file
-pytest uniinfer/tests/test_async_functionality.py
+uv run pytest uniinfer/tests/test_async_functionality.py
 
 # Run specific test with full path
-pytest uniinfer/tests/test_async.py::TestClass::test_method
+uv run pytest uniinfer/tests/test_async.py::TestClass::test_method
 
 # Run specific test function by name
-pytest -k "test_function_name"
+uv run pytest -k "test_function_name"
 
 # Verbose output with coverage
-pytest -v --cov=uniinfer --cov-report=term-mit
+uv run pytest -v --cov=uniinfer --cov-report=term-mit
 ```
 
 ### Code Formatting
@@ -66,7 +66,7 @@ ruff check packages/credgoo/ --fix    # Auto-fix issues
 ```bash
 cd packages/credgoo  # or packages/uniinfer
 python setup.py sdist bdist_wheel
-pip install dist/*.whl
+uv pip install dist/*.whl
 ```
 
 ## Code Style Guidelines
