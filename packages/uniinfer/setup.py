@@ -63,12 +63,13 @@ all_requirements = get_remote_requirements() + [
     "uvicorn[standard]>=0.23.0",
     "pydantic",
     "python-multipart",
+    "slowapi",
     "importlib-metadata; python_version<'3.8'",
 ]
 
 setup(
     name="uniinfer",
-    version="0.4.5",
+    version="0.4.7",
     url="https://github.com/devskale/python-openutils",
     description="Unified Inference API for LLM chat completions across 15+ providers with streaming, fallback strategies, and secure API key management",
     long_description="UniInfer provides a unified interface for LLM inference across 15+ providers including OpenAI, Anthropic, Google Gemini, Mistral, and more. Features include real-time streaming, automatic fallback strategies, secure API key management via credgoo, and OpenAI-compatible proxy server.",

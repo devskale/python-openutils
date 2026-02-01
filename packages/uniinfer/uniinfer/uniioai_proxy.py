@@ -1,3 +1,12 @@
+from logging.handlers import RotatingFileHandler
+import logging
+from typing import List, Optional, Dict, Any, AsyncGenerator, Union, Tuple
+import re
+import subprocess
+import uuid
+import json
+import time
+import sys
 import requests
 import base64
 from fastapi.security.http import HTTPAuthorizationCredentials
@@ -8,16 +17,16 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import StreamingResponse, FileResponse
 from fastapi import FastAPI, HTTPException, Request, Depends, File, Form, UploadFile
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.util import get_remote_address
+from slowapi.errors import RateLimitExceeded
+from slowapi.middleware import SlowAPIMiddleware
 import os
-import sys
-import time
-import json
-import uuid
-import subprocess
-import re
-from typing import List, Optional, Dict, Any, AsyncGenerator, Union, Tuple
-import logging
-from logging.handlers import RotatingFileHandler
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
+
 
 # --- Setup Logging ---
 # Configure root logger to capture logs from all modules (including uniinfer)
@@ -66,6 +75,7 @@ if parent_dir not in sys.path:
 try:
     from uniinfer.uniioai import stream_completion, get_completion, get_provider_api_key, list_providers, list_models_for_provider, get_embeddings, list_embedding_providers, list_embedding_models_for_provider
     from uniinfer.errors import UniInferError, AuthenticationError, ProviderError, RateLimitError
+    from uniinfer.auth import validate_proxy_token, get_optional_proxy_token, verify_provider_access
 except ImportError as e:
     logger.error(f"Error importing from uniinfer.uniioai: {e}")
     logger.error(f"Python path: {sys.path[:3]}")
@@ -77,6 +87,28 @@ app = FastAPI(
     description="OpenAI-compatible API wrapper using UniInfer",
     version="0.1.0",
 )
+
+# --- Rate Limiting Setup ---
+# Enable headers to let clients know their limits
+limiter = Limiter(key_func=get_remote_address, headers_enabled=True)
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+app.add_middleware(SlowAPIMiddleware)
+
+# --- Rate Limit Helpers ---
+
+
+def get_chat_rate_limit():
+    return os.getenv("UNIINFER_RATE_LIMIT_CHAT", "100/minute")
+
+
+def get_embeddings_rate_limit():
+    return os.getenv("UNIINFER_RATE_LIMIT_EMBEDDINGS", "200/minute")
+
+
+def get_media_rate_limit():
+    return os.getenv("UNIINFER_RATE_LIMIT_MEDIA", "50/minute")
+
 
 # --- Add CORS Middleware ---
 # Allow requests from any origin for the web demo
@@ -123,24 +155,7 @@ if os.path.isdir(webdemo_dir):
 # Define the security scheme
 security = HTTPBearer()
 
-# --- Security Dependencies ---
-
-
-async def get_token(credentials: HTTPAuthorizationCredentials = Depends(security)) -> str:
-    """Returns the bearer token string from the Authorization header."""
-    return credentials.credentials
-
-
-async def get_optional_token(request: Request) -> Optional[str]:
-    """
-    Optionally returns the bearer token string if provided, otherwise None.
-    Does not raise an exception if authentication is missing.
-    """
-    try:
-        credentials = await security(request)
-        return credentials.credentials if credentials else None
-    except Exception:
-        return None
+# --- Security Dependencies moved to auth.py ---
 
 
 # --- Model Parsing Helper ---
@@ -526,7 +541,7 @@ async def update_models():
 
 # --- Update /v1/providers to return ProviderList ---
 @app.get("/v1/providers", response_model=ProviderList)
-async def get_providers(api_bearer_token: str = Depends(get_token)):
+async def get_providers(api_bearer_token: str = Depends(validate_proxy_token)):
     """
     OpenAI‐style endpoint to list available providers.
     """
@@ -538,8 +553,8 @@ async def get_providers(api_bearer_token: str = Depends(get_token)):
 
 
 @app.post("/v1/chat/completions")
-# Add the security dependency
-async def chat_completions(request_input: ChatCompletionRequestInput, api_bearer_token: str = Depends(get_token)):
+@limiter.limit(get_chat_rate_limit)
+async def chat_completions(request: Request, request_input: ChatCompletionRequestInput, api_bearer_token: Optional[str] = Depends(get_optional_proxy_token)):
     """
     OpenAI-compatible chat completions endpoint.
     Uses the 'model' field in the format 'provider@modelname'.
@@ -570,13 +585,8 @@ async def chat_completions(request_input: ChatCompletionRequestInput, api_bearer
                 "extra_params", {}).get("base_url")
         logger.debug(f"DEBUG: Using base_url: {base_url}")
 
-        try:
-            provider_api_key = get_provider_api_key(
-                api_bearer_token, provider_name)
-        except (ValueError, AuthenticationError) as e:
-            # Handle errors during key retrieval specifically
-            raise HTTPException(
-                status_code=401, detail=f"API Key Retrieval Failed: {e}")
+        provider_api_key = verify_provider_access(
+            api_bearer_token, provider_name)
         # --- End API Key Retrieval & Base URL Logic ---
 
         if request_input.stream:
@@ -651,6 +661,8 @@ async def chat_completions(request_input: ChatCompletionRequestInput, api_bearer
         if e.response_body:
             detail = f"{detail} | Response: {e.response_body}"
         raise HTTPException(status_code=status_code, detail=detail)
+    except HTTPException:
+        raise
     except ProviderError as e:
         status_code = getattr(e, 'status_code', 500) or 500
         detail = f"Provider Error ({provider_name}): {e}"
@@ -659,6 +671,8 @@ async def chat_completions(request_input: ChatCompletionRequestInput, api_bearer
         raise HTTPException(status_code=status_code, detail=detail)
     except UniInferError as e:  # Catches general uniinfer errors
         raise HTTPException(status_code=500, detail=f"UniInfer Error: {e}")
+    except HTTPException:
+        raise
     except Exception as e:
         # Catch-all for unexpected errors
         logger.exception(
@@ -669,7 +683,8 @@ async def chat_completions(request_input: ChatCompletionRequestInput, api_bearer
 
 # --- Add Embedding Endpoint ---
 @app.post("/v1/embeddings", response_model=EmbeddingResponse)
-async def create_embeddings(request_input: EmbeddingRequest, api_bearer_token: Optional[str] = Depends(get_optional_token)):
+@limiter.limit(get_embeddings_rate_limit)
+async def create_embeddings(request: Request, request_input: EmbeddingRequest, api_bearer_token: Optional[str] = Depends(get_optional_proxy_token)):
     """
     OpenAI-compatible embeddings endpoint.
     Uses the 'model' field in the format 'provider@modelname'.
@@ -690,15 +705,8 @@ async def create_embeddings(request_input: EmbeddingRequest, api_bearer_token: O
                 "extra_params", {}).get("base_url")
         else:
             # For other providers, require authentication
-            if not api_bearer_token:
-                raise HTTPException(
-                    status_code=401, detail="Authentication required for this provider")
-            try:
-                provider_api_key = get_provider_api_key(
-                    api_bearer_token, provider_name)
-            except (ValueError, AuthenticationError) as e:
-                raise HTTPException(
-                    status_code=401, detail=f"API Key Retrieval Failed: {e}")
+            provider_api_key = verify_provider_access(
+                api_bearer_token, provider_name)
             base_url = None
 
         # Get embeddings using the synchronous function in a thread pool
@@ -747,6 +755,8 @@ async def create_embeddings(request_input: EmbeddingRequest, api_bearer_token: O
         raise HTTPException(status_code=status_code, detail=detail)
     except UniInferError as e:
         raise HTTPException(status_code=500, detail=f"UniInfer Error: {e}")
+    except HTTPException:
+        raise
     except Exception as e:
         logger.exception(
             f"Unexpected error in /v1/embeddings: {type(e).__name__}: {e}")
@@ -756,7 +766,7 @@ async def create_embeddings(request_input: EmbeddingRequest, api_bearer_token: O
 
 # --- Change dynamic list models to return ModelList ---
 @app.get("/v1/models/{provider_name}", response_model=ModelList)
-async def dynamic_list_models(provider_name: str, api_bearer_token: str = Depends(get_token)):
+async def dynamic_list_models(provider_name: str, api_bearer_token: str = Depends(validate_proxy_token)):
     """
     List available models for a specific provider, formatted OpenAI‐style.
     """
@@ -788,7 +798,7 @@ async def get_embedding_providers(request: Request):
 
 # --- Add Embedding Models Endpoint ---
 @app.get("/v1/embedding/models/{provider_name}", response_model=ModelList)
-async def dynamic_list_embedding_models(provider_name: str, api_bearer_token: Optional[str] = Depends(get_optional_token)):
+async def dynamic_list_embedding_models(provider_name: str, api_bearer_token: Optional[str] = Depends(get_optional_proxy_token)):
     """
     List available embedding models for a specific provider, formatted OpenAI‐style.
     Authentication optional for Ollama.
@@ -883,7 +893,8 @@ class ImageGenerationResponse(BaseModel):
 
 
 @app.post("/v1/images/generations", response_model=ImageGenerationResponse)
-async def generate_images(request_input: ImageGenerationRequest, api_bearer_token: Optional[str] = Depends(get_optional_token)):
+@limiter.limit(get_media_rate_limit)
+async def generate_images(request: Request, request_input: ImageGenerationRequest, api_bearer_token: Optional[str] = Depends(get_optional_proxy_token)):
     """
     OpenAI-compatible image generations endpoint.
     Accepts provider@model naming and generates images via Pollinations image API.
@@ -1077,7 +1088,9 @@ class TTSRequestModel(BaseModel):
 
 
 @app.post("/v1/audio/speech")
-async def generate_speech(request_input: TTSRequestModel, api_bearer_token: Optional[str] = Depends(get_optional_token)):
+@limiter.limit(get_media_rate_limit)
+async def generate_speech(
+        request: Request, request_input: TTSRequestModel, api_bearer_token: Optional[str] = Depends(get_optional_proxy_token)):
     """
     OpenAI-compatible text-to-speech endpoint.
     Generates audio from text using TTS models.
@@ -1089,13 +1102,7 @@ async def generate_speech(request_input: TTSRequestModel, api_bearer_token: Opti
         provider_name, model_name = parse_provider_model(
             provider_model, allowed_providers=['tu'], task_name="TTS")
 
-        api_key = None
-        if api_bearer_token:
-            try:
-                api_key = get_provider_api_key(api_bearer_token, provider_name)
-            except (ValueError, AuthenticationError):
-                raise HTTPException(
-                    status_code=401, detail="API key retrieval failed")
+        api_key = verify_provider_access(api_bearer_token, provider_name)
 
         if not api_key:
             raise HTTPException(
@@ -1159,14 +1166,16 @@ class STTVerboseResponseModel(BaseModel):
 
 
 @app.post("/v1/audio/transcriptions")
+@limiter.limit(get_media_rate_limit)
 async def transcribe_audio(
+    request: Request,
     file: UploadFile = File(...),
     model: str = Form(...),
     language: Optional[str] = Form(None),
     prompt: Optional[str] = Form(None),
     response_format: Optional[str] = Form("json"),
     temperature: Optional[float] = Form(0.0),
-    api_bearer_token: Optional[str] = Depends(get_optional_token)
+    api_bearer_token: Optional[str] = Depends(get_optional_proxy_token)
 ):
     """
     OpenAI-compatible speech-to-text endpoint.
@@ -1179,13 +1188,7 @@ async def transcribe_audio(
         provider_name, model_name = parse_provider_model(
             provider_model, allowed_providers=['tu'], task_name="STT")
 
-        api_key = None
-        if api_bearer_token:
-            try:
-                api_key = get_provider_api_key(api_bearer_token, provider_name)
-            except (ValueError, AuthenticationError):
-                raise HTTPException(
-                    status_code=401, detail="API key retrieval failed")
+        api_key = verify_provider_access(api_bearer_token, provider_name)
 
         if not api_key:
             raise HTTPException(
