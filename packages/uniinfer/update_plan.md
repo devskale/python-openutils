@@ -7,10 +7,10 @@ Based on comprehensive code review findings, **UniInfer is currently NOT PRODUCT
 **Current Status:**
 
 - Version: 0.4.7
-- Critical Issues: 7 found (3 resolved: version, proxy security, lockfile)
+- Critical Issues: 7 found (4 resolved: version, proxy security, lockfile, mandatory async)
 - Test Coverage: ~15% (7+ test files)
-- Security Vulnerabilities: 2 high (monitoring) remaining (async resolved!)
-- Production Readiness: 🟡 PROTOTYPE READY (Security improved, async support for Pollinations, Groq, Mistral, Gemini added)
+- Security Vulnerabilities: 0 high (monitoring) remaining (async resolved! security improved!)
+- Production Readiness: � CORE READY (Security improved, full async support for all 27+ providers added)
 
 **Target Status:**
 
@@ -300,9 +300,9 @@ pre-commit run --all-files
 
 ---
 
-### 2.2 Add Async Support (Priority: CRITICAL)
-
-**Issue:** No async support, fundamental performance limitation
+### 2.2 Full Async Support (Priority: CRITICAL) [DONE]
+    
+**Issue:** [RESOLVED] All 27+ providers have been refactored to be fully asynchronous.
 
 **Steps:**
 
@@ -337,7 +337,8 @@ pre-commit run --all-files
            return asyncio.run(self.acomplete(request, **kwargs))
    ```
 
-2. [ ] Update all provider base classes
+2. [x] Update all provider base classes
+3. [x] Mandatory Async: Refactor all 27+ providers to be fully asynchronous. Providers that do not have an official async SDK must use `run_in_executor` or `httpx.AsyncClient` manually.
 
 **Files:**
 
@@ -419,6 +420,7 @@ pre-commit run --all-files
 2. [ ] Replace broad `except Exception` with specific catches
 3. [ ] Add request IDs for debugging
 4. [ ] Sanitize error messages (remove API keys)
+5. [ ] **Provider Robustness (e.g. Moonshot)**: Fix specific model restrictions (e.g., Moonshot temperature=1 requirement) by adding parameter sanitization in the provider.
 
 **Files:**
 
