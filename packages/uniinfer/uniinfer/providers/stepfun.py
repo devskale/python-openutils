@@ -1,14 +1,14 @@
 """
 StepFun provider implementation.
 """
-from typing import Dict, Any, Iterator, Optional, List
+from typing import Dict, Any, Iterator, Optional, List, AsyncIterator
 import os
 
 from ..core import ChatProvider, ChatCompletionRequest, ChatCompletionResponse, ChatMessage
-from ..errors import map_provider_error
+from ..errors import map_provider_error, UniInferError
 
 try:
-    from openai import OpenAI
+    from openai import OpenAI, AsyncOpenAI
     HAS_OPENAI = True
 except ImportError:
     HAS_OPENAI = False
@@ -17,8 +17,6 @@ except ImportError:
 class StepFunProvider(ChatProvider):
     """
     Provider for StepFun API (阶跃星辰).
-
-    StepFun is a China-based LLM provider that uses the OpenAI client format.
     """
 
     def __init__(self, api_key: Optional[str] = None, base_url: str = "https://api.stepfun.com/v1", **kwargs):
@@ -39,236 +37,111 @@ class StepFunProvider(ChatProvider):
                 "Install it with: pip install openai"
             )
 
-        # Initialize the OpenAI client for StepFun
-        self.client = OpenAI(
-            api_key=self.api_key or os.environ.get("STEPFUN_API_KEY"),
-            base_url=self.base_url
-        )
+        self.client = OpenAI(api_key=self.api_key or os.environ.get("STEPFUN_API_KEY"), base_url=self.base_url)
+        self.async_client = AsyncOpenAI(api_key=self.api_key or os.environ.get("STEPFUN_API_KEY"), base_url=self.base_url)
+
+    async def aclose(self):
+        """Close the StepFun async client."""
+        if hasattr(self, 'async_client'):
+            await self.async_client.close()
+        await super().aclose()
 
     @classmethod
     def list_models(cls, api_key: Optional[str] = None, base_url: str = "https://api.stepfun.com/v1") -> List[str]:
-        """
-        List available models from StepFun.
-
-        Args:
-            api_key (Optional[str]): The StepFun API key.
-            base_url (str): The base URL for the StepFun API.
-
-        Returns:
-            List[str]: A list of available model names.
-
-        Raises:
-            Exception: If the request fails.
-        """
-        if not HAS_OPENAI:
-            raise ImportError(
-                "The 'openai' package is required to use the StepFun provider. "
-                "Install it with 'pip install openai'"
-            )
-
-        # Try to get API key from credgoo if not provided
+        """List available models from StepFun."""
+        import requests
         if api_key is None:
             try:
                 from credgoo.credgoo import get_api_key
                 api_key = get_api_key("stepfun")
-                if api_key is None:
-                    raise ValueError(
-                        "Failed to retrieve StepFun API key from credgoo")
             except ImportError:
-                raise ValueError(
-                    "StepFun API key is required when credgoo is not available")
+                return ["step-1-8k", "step-1-32k"]
 
-        # If we still don't have an API key, return default models
-        if api_key is None:
-            return [
-                "step-1-8k",
-                "step-1-32k",
-                "step-2-8k",
-                "step-2-32k"
-            ]
-
-        # Initialize a temporary client
-        client = OpenAI(
-            base_url=base_url,
-            api_key=api_key
-        )
+        if not api_key:
+            return ["step-1-8k", "step-1-32k"]
 
         try:
-            # Use the OpenAI client to fetch models from StepFun
-            response = client.models.list()
+            headers = {"Authorization": f"Bearer {api_key}"}
+            response = requests.get(f"{base_url}/models", headers=headers)
+            response.raise_for_status()
+            models_data = response.json()
+            return [model["id"] for model in models_data.get("data", [])]
+        except Exception:
+            return ["step-1-8k", "step-1-32k", "step-2-8k", "step-2-32k"]
 
-            # Extract model IDs from the response
-            models = [model.id for model in response.data]
-
-            return models
-
-        except Exception as e:
-            # Map error
-            status_code = getattr(e, 'status_code', None)
-            response_body = getattr(e, 'response', None)
-            if hasattr(response_body, 'text'):
-                response_body = response_body.text
-            
-            try:
-                mapped_error = map_provider_error("stepfun", e, status_code=status_code, response_body=str(response_body) if response_body else None)
-            except:
-                pass
-
-            # Fallback to default models if API call fails
-            return [
-                "step-1-8k",
-                "step-1-32k",
-                "step-2-8k",
-                "step-2-32k"
-            ]
-
-    def complete(
+    async def acomplete(
         self,
         request: ChatCompletionRequest,
         **provider_specific_kwargs
     ) -> ChatCompletionResponse:
-        """
-        Make a chat completion request to StepFun.
-
-        Args:
-            request (ChatCompletionRequest): The request to make.
-            **provider_specific_kwargs: Additional StepFun-specific parameters.
-
-        Returns:
-            ChatCompletionResponse: The completion response.
-
-        Raises:
-            Exception: If the request fails.
-        """
+        """Make an async chat completion request to StepFun."""
         if self.api_key is None:
             raise ValueError("StepFun API key is required")
 
-        # Prepare messages in the OpenAI format
-        messages = [{"role": msg.role, "content": msg.content}
-                    for msg in request.messages]
-
-        # Prepare parameters
         params = {
-            "model": request.model or "step-1-8k",  # Default model
-            "messages": messages,
+            "model": request.model or "step-1-8k",
+            "messages": [{"role": msg.role, "content": msg.content} for msg in request.messages],
             "temperature": request.temperature,
         }
 
-        # Add max_tokens if provided
         if request.max_tokens is not None:
             params["max_tokens"] = request.max_tokens
 
-        # Add any provider-specific parameters
         params.update(provider_specific_kwargs)
 
         try:
-            # Make the chat completion request
-            completion = self.client.chat.completions.create(**params)
-
-            # Extract the response content
-            message = ChatMessage(
-                role=completion.choices[0].message.role,
-                content=completion.choices[0].message.content
-            )
-
-            # Extract usage information
+            completion = await self.async_client.chat.completions.create(**params)
+            message = ChatMessage(role=completion.choices[0].message.role, content=completion.choices[0].message.content)
             usage = {}
             if hasattr(completion, 'usage'):
-                usage = {
-                    "prompt_tokens": completion.usage.prompt_tokens,
-                    "completion_tokens": completion.usage.completion_tokens,
-                    "total_tokens": completion.usage.total_tokens
-                }
-
-            # Create raw response
-            try:
-                raw_response = completion.model_dump_json()
-            except AttributeError:
-                raw_response = {
-                    "choices": [{"message": message.to_dict()}],
-                    "model": params["model"],
-                    "usage": usage
-                }
+                usage = {"prompt_tokens": completion.usage.prompt_tokens, "completion_tokens": completion.usage.completion_tokens, "total_tokens": completion.usage.total_tokens}
 
             return ChatCompletionResponse(
                 message=message,
                 provider='stepfun',
                 model=params["model"],
                 usage=usage,
-                raw_response=raw_response
+                raw_response=completion.model_dump()
             )
         except Exception as e:
-            status_code = getattr(e, 'status_code', None)
-            response_body = getattr(e, 'response', None)
-            if hasattr(response_body, 'text'):
-                response_body = response_body.text
-            raise map_provider_error("stepfun", e, status_code=status_code, response_body=str(response_body) if response_body else str(e))
+            if isinstance(e, UniInferError):
+                raise
+            raise map_provider_error("stepfun", e)
 
-    def stream_complete(
+    async def astream_complete(
         self,
         request: ChatCompletionRequest,
         **provider_specific_kwargs
-    ) -> Iterator[ChatCompletionResponse]:
-        """
-        Stream a chat completion response from StepFun.
-
-        Args:
-            request (ChatCompletionRequest): The request to make.
-            **provider_specific_kwargs: Additional StepFun-specific parameters.
-
-        Returns:
-            Iterator[ChatCompletionResponse]: An iterator of response chunks.
-
-        Raises:
-            Exception: If the request fails.
-        """
+    ) -> AsyncIterator[ChatCompletionResponse]:
+        """Stream an async chat completion response from StepFun."""
         if self.api_key is None:
             raise ValueError("StepFun API key is required")
 
-        # Prepare messages in the OpenAI format
-        messages = [{"role": msg.role, "content": msg.content}
-                    for msg in request.messages]
-
-        # Prepare parameters
         params = {
-            "model": request.model or "step-1-8k",  # Default model
-            "messages": messages,
+            "model": request.model or "step-1-8k",
+            "messages": [{"role": msg.role, "content": msg.content} for msg in request.messages],
             "temperature": request.temperature,
             "stream": True
         }
 
-        # Add max_tokens if provided
         if request.max_tokens is not None:
             params["max_tokens"] = request.max_tokens
 
-        # Add any provider-specific parameters
         params.update(provider_specific_kwargs)
 
         try:
-            # Make the streaming request
-            stream = self.client.chat.completions.create(**params)
-
-            for chunk in stream:
-                if hasattr(chunk.choices[0], 'delta') and hasattr(chunk.choices[0].delta, 'content'):
+            stream = await self.async_client.chat.completions.create(**params)
+            async for chunk in stream:
+                if chunk.choices and chunk.choices[0].delta.content:
                     content = chunk.choices[0].delta.content
-                    if content:
-                        # Create a message for this chunk
-                        message = ChatMessage(
-                            role="assistant", content=content)
-
-                        # No detailed usage stats in streaming mode
-                        usage = {}
-
-                        yield ChatCompletionResponse(
-                            message=message,
-                            provider='stepfun',
-                            model=params["model"],
-                            usage=usage,
-                            raw_response={"chunk": {"content": content}}
-                        )
+                    yield ChatCompletionResponse(
+                        message=ChatMessage(role="assistant", content=content),
+                        provider='stepfun',
+                        model=params["model"],
+                        usage={},
+                        raw_response=chunk.model_dump()
+                    )
         except Exception as e:
-            status_code = getattr(e, 'status_code', None)
-            response_body = getattr(e, 'response', None)
-            if hasattr(response_body, 'text'):
-                response_body = response_body.text
-            raise map_provider_error("stepfun", e, status_code=status_code, response_body=str(response_body) if response_body else str(e))
+            if isinstance(e, UniInferError):
+                raise
+            raise map_provider_error("stepfun", e)

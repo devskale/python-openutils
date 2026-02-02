@@ -2,7 +2,8 @@
 Core classes for the UniInfer package.
 """
 import asyncio
-from typing import Any, AsyncIterator
+import httpx
+from typing import Any, AsyncIterator, Optional
 from collections.abc import Iterator
 
 
@@ -115,7 +116,19 @@ class ChatProvider:
             **kwargs: Additional provider-specific configuration parameters.
         """
         self.api_key = api_key
+        self._async_client: Optional[httpx.AsyncClient] = None
         # Additional provider-specific configuration can be handled by subclasses
+
+    async def _get_async_client(self) -> httpx.AsyncClient:
+        """Get or create the internal httpx.AsyncClient."""
+        if self._async_client is None or self._async_client.is_closed:
+            self._async_client = httpx.AsyncClient(timeout=60.0)
+        return self._async_client
+
+    async def aclose(self):
+        """Close the internal httpx.AsyncClient if it exists."""
+        if self._async_client and not self._async_client.is_closed:
+            await self._async_client.aclose()
 
     @classmethod
     def list_models(cls, api_key: str | None = None, **kwargs) -> list[str]:
@@ -138,15 +151,14 @@ class ChatProvider:
     ) -> ChatCompletionResponse:
         """
         Make a chat completion request.
-
-        Args:
-            request (ChatCompletionRequest): The request to make.
-            **provider_specific_kwargs: Additional provider-specific parameters.
-
-        Returns:
-            ChatCompletionResponse: The completion response.
         """
-        return asyncio.run(self.acomplete(request, **provider_specific_kwargs))
+        async def run_and_close():
+            try:
+                return await self.acomplete(request, **provider_specific_kwargs)
+            finally:
+                await self.aclose()
+        
+        return asyncio.run(run_and_close())
 
     def stream_complete(
         self,
@@ -155,20 +167,10 @@ class ChatProvider:
     ) -> Iterator[ChatCompletionResponse]:
         """
         Stream a chat completion response.
-
-        Args:
-            request (ChatCompletionRequest): The request to make.
-            **provider_specific_kwargs: Additional provider-specific parameters.
-
-        Returns:
-            Iterator[ChatCompletionResponse]: An iterator of response chunks.
         """
-        # Convert async generator to sync iterator
         async_gen = self.astream_complete(request, **provider_specific_kwargs)
         
         loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
-        
         try:
             while True:
                 try:
@@ -176,6 +178,14 @@ class ChatProvider:
                 except StopAsyncIteration:
                     break
         finally:
+            try:
+                loop.run_until_complete(async_gen.aclose())
+            except:
+                pass
+            try:
+                loop.run_until_complete(self.aclose())
+            except:
+                pass
             loop.close()
 
     async def acomplete(
@@ -289,7 +299,19 @@ class EmbeddingProvider:
             **kwargs: Additional provider-specific configuration parameters.
         """
         self.api_key = api_key
+        self._async_client: Optional[httpx.AsyncClient] = None
         # Additional provider-specific configuration can be handled by subclasses
+
+    async def _get_async_client(self) -> httpx.AsyncClient:
+        """Get or create the internal httpx.AsyncClient."""
+        if self._async_client is None or self._async_client.is_closed:
+            self._async_client = httpx.AsyncClient(timeout=60.0)
+        return self._async_client
+
+    async def aclose(self):
+        """Close the internal httpx.AsyncClient if it exists."""
+        if self._async_client and not self._async_client.is_closed:
+            await self._async_client.aclose()
 
     @classmethod
     def list_models(cls, **kwargs) -> list[str]:
@@ -312,6 +334,22 @@ class EmbeddingProvider:
     ) -> EmbeddingResponse:
         """
         Make an embedding request.
+        """
+        async def run_and_close():
+            try:
+                return await self.aembed(request, **provider_specific_kwargs)
+            finally:
+                await self.aclose()
+        
+        return asyncio.run(run_and_close())
+
+    async def aembed(
+        self,
+        request: EmbeddingRequest,
+        **provider_specific_kwargs
+    ) -> EmbeddingResponse:
+        """
+        Make an async embedding request.
 
         Args:
             request (EmbeddingRequest): The request to make.
@@ -321,7 +359,7 @@ class EmbeddingProvider:
             EmbeddingResponse: The embedding response.
         """
         raise NotImplementedError(
-            "Embedding providers must implement the embed method")
+            "Embedding providers must implement the aembed method")
 
 
 class TTSRequest:
@@ -411,7 +449,18 @@ class TTSProvider:
         Returns:
             list[str]: List of available model names
         """
-        raise NotImplementedError("TTS providers must implement list_models")
+        return []
+
+    async def _get_async_client(self) -> httpx.AsyncClient:
+        """Get or create the internal httpx.AsyncClient."""
+        if not hasattr(self, '_async_client') or self._async_client is None or self._async_client.is_closed:
+            self._async_client = httpx.AsyncClient(timeout=300.0)
+        return self._async_client
+
+    async def aclose(self):
+        """Close the internal httpx.AsyncClient if it exists."""
+        if hasattr(self, '_async_client') and self._async_client and not self._async_client.is_closed:
+            await self._async_client.aclose()
 
     def generate_speech(
         self,
@@ -420,19 +469,14 @@ class TTSProvider:
     ) -> TTSResponse:
         """
         Generate speech from text.
-
-        Args:
-            request (TTSRequest): The request to make.
-            **provider_specific_kwargs: Additional provider-specific parameters.
-
-        Returns:
-            TTSResponse: The TTS response with audio content.
-
-        Raises:
-            Exception: If the request fails.
         """
-        import asyncio
-        return asyncio.run(self.agenerate_speech(request, **provider_specific_kwargs))
+        async def run_and_close():
+            try:
+                return await self.agenerate_speech(request, **provider_specific_kwargs)
+            finally:
+                await self.aclose()
+        
+        return asyncio.run(run_and_close())
 
     async def agenerate_speech(
         self,
@@ -552,7 +596,18 @@ class STTProvider:
         Returns:
             list[str]: List of available model names
         """
-        raise NotImplementedError("STT providers must implement list_models")
+        return []
+
+    async def _get_async_client(self) -> httpx.AsyncClient:
+        """Get or create the internal httpx.AsyncClient."""
+        if not hasattr(self, '_async_client') or self._async_client is None or self._async_client.is_closed:
+            self._async_client = httpx.AsyncClient(timeout=300.0)
+        return self._async_client
+
+    async def aclose(self):
+        """Close the internal httpx.AsyncClient if it exists."""
+        if hasattr(self, '_async_client') and self._async_client and not self._async_client.is_closed:
+            await self._async_client.aclose()
 
     def transcribe(
         self,
@@ -561,19 +616,14 @@ class STTProvider:
     ) -> STTResponse:
         """
         Transcribe audio to text.
-
-        Args:
-            request (STTRequest): The request to make.
-            **provider_specific_kwargs: Additional provider-specific parameters.
-
-        Returns:
-            STTResponse: The STT response with transcribed text.
-
-        Raises:
-            Exception: If the request fails.
         """
-        import asyncio
-        return asyncio.run(self.atranscribe(request, **provider_specific_kwargs))
+        async def run_and_close():
+            try:
+                return await self.atranscribe(request, **provider_specific_kwargs)
+            finally:
+                await self.aclose()
+        
+        return asyncio.run(run_and_close())
 
     async def atranscribe(
         self,

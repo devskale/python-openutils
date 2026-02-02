@@ -11,7 +11,7 @@ from datetime import datetime, timedelta
 
 from ..core import ChatProvider, ChatCompletionRequest, ChatCompletionResponse, ChatMessage
 
-from ..errors import map_provider_error
+from ..errors import map_provider_error, UniInferError
 
 class TUProvider(ChatProvider):
     """TU (Tencent Unbounded) LLM Provider implementation."""
@@ -33,11 +33,7 @@ class TUProvider(ChatProvider):
         self._lock = asyncio.Lock()
 
     async def _get_async_client(self) -> httpx.AsyncClient:
-        """Get or create the async httpx client.
-        
-        Returns:
-            httpx.AsyncClient: The async client instance.
-        """
+        """Get or create the internal httpx.AsyncClient with TU configuration."""
         if self._async_client is None or self._async_client.is_closed:
             self._async_client = httpx.AsyncClient(
                 base_url=self.base_url,
@@ -95,27 +91,17 @@ class TUProvider(ChatProvider):
         return payload
 
     async def acomplete(self, request: ChatCompletionRequest) -> ChatCompletionResponse:
-        """Async completion implementation for TU.
-        
-        Args:
-            request: The ChatCompletionRequest object.
-            
-        Returns:
-            ChatCompletionResponse: The response from the TU API.
-            
-        Raises:
-            UniInferError: If the request fails.
-        """
+        """Async completion implementation for TU."""
         await self._throttle()
         client = await self._get_async_client()
         payload = self._prepare_payload(request)
 
         try:
             response = await client.post("/chat/completions", json=payload)
-            response.raise_for_status()
-            data = response.json()
+            if response.status_code != 200:
+                raise map_provider_error("tu", Exception(f"TU API error: {response.status_code} - {response.text}"), status_code=response.status_code, response_body=response.text)
             
-            # Map OpenAI-compatible response to UniInfer format
+            data = response.json()
             choice = data["choices"][0]
             message_data = choice["message"]
             
@@ -135,67 +121,12 @@ class TUProvider(ChatProvider):
                 finish_reason=choice.get("finish_reason")
             )
         except Exception as e:
+            if isinstance(e, UniInferError):
+                raise
             raise map_provider_error("tu", e)
 
-    def _process_chunk(self, line: str, model_requested: str | None) -> ChatCompletionResponse | None:
-        """Process a single line from the stream.
-        
-        Args:
-            line: The raw line from the API.
-            model_requested: The model that was requested.
-            
-        Returns:
-            ChatCompletionResponse | None: The parsed response chunk, or None if it should be skipped.
-        """
-        if not line.startswith("data: "):
-            return None
-            
-        line = line[6:].strip()
-        if line == "[DONE]" or not line:
-            return None
-            
-        try:
-            data = json.loads(line)
-            if not data.get("choices"):
-                return None
-                
-            choice = data["choices"][0]
-            delta = choice.get("delta", {})
-            
-            # Skip if no content and no tool calls (common in first/last chunks)
-            if not delta.get("content") and not delta.get("tool_calls") and not choice.get("finish_reason"):
-                return None
-
-            message = ChatMessage(
-                role=delta.get("role", "assistant"),
-                content=delta.get("content"),
-                tool_calls=delta.get("tool_calls"),
-                tool_call_id=delta.get("tool_call_id")
-            )
-            
-            return ChatCompletionResponse(
-                message=message,
-                provider="tu",
-                model=data.get("model", model_requested or "qwen-coder-30b"),
-                usage={}, # Usage is usually only in the last chunk or not at all in stream
-                raw_response=data,
-                finish_reason=choice.get("finish_reason")
-            )
-        except json.JSONDecodeError:
-            return None
-
     async def astream_complete(self, request: ChatCompletionRequest) -> AsyncIterator[ChatCompletionResponse]:
-        """Async streaming completion implementation for TU.
-        
-        Args:
-            request: The ChatCompletionRequest object.
-            
-        Yields:
-            ChatCompletionResponse: Chunks of the response from the TU API.
-            
-        Raises:
-            UniInferError: If the request fails.
-        """
+        """Async streaming completion implementation for TU."""
         request.streaming = True
         await self._throttle()
         client = await self._get_async_client()
@@ -203,59 +134,44 @@ class TUProvider(ChatProvider):
 
         try:
             async with client.stream("POST", "/chat/completions", json=payload) as response:
-                response.raise_for_status()
+                if response.status_code != 200:
+                    error_msg = f"TU API error: {response.status_code} - {await response.aread()}"
+                    raise map_provider_error("tu", Exception(error_msg), status_code=response.status_code, response_body=error_msg)
+                
                 async for line in response.aiter_lines():
-                    chunk = self._process_chunk(line, request.model)
-                    if chunk:
-                        yield chunk
+                    if not line or line == 'data: [DONE]' or not line.startswith('data: '):
+                        continue
+                    
+                    try:
+                        data_str = line[6:]
+                        data = json.loads(data_str)
+                        if 'choices' in data and len(data['choices']) > 0:
+                            choice = data['choices'][0]
+                            delta = choice.get('delta', {})
+                            finish_reason = choice.get('finish_reason')
+                            
+                            if not delta.get('content') and not delta.get('tool_calls') and not finish_reason:
+                                continue
+                                
+                            message = ChatMessage(
+                                role=delta.get('role', 'assistant'),
+                                content=delta.get('content'),
+                                tool_calls=delta.get('tool_calls')
+                            )
+                            
+                            yield ChatCompletionResponse(
+                                message=message,
+                                provider="tu",
+                                model=data.get("model", request.model),
+                                usage={},
+                                raw_response=data,
+                                finish_reason=finish_reason
+                            )
+                    except json.JSONDecodeError:
+                        continue
         except Exception as e:
-            raise map_provider_error("tu", e)
-
-    def complete(self, request: ChatCompletionRequest) -> ChatCompletionResponse:
-        """Sync completion wrapper.
-        
-        Args:
-            request: The ChatCompletionRequest object.
-            
-        Returns:
-            ChatCompletionResponse: The response from the TU API.
-        """
-        return asyncio.run(self.acomplete(request))
-
-    def stream_complete(self, request: ChatCompletionRequest) -> Iterator[ChatCompletionResponse]:
-        """Sync streaming completion wrapper.
-        
-        Args:
-            request: The ChatCompletionRequest object.
-            
-        Returns:
-            Iterator[ChatCompletionResponse]: An iterator over response chunks.
-        """
-        import requests
-        request.streaming = True
-        payload = self._prepare_payload(request)
-        
-        headers = {
-            "Authorization": f"Bearer {self.api_key}",
-            "Content-Type": "application/json"
-        }
-        
-        try:
-            with requests.post(
-                f"{self.base_url}/chat/completions",
-                headers=headers,
-                json=payload,
-                stream=True,
-                timeout=60
-            ) as response:
-                response.raise_for_status()
-                for line in response.iter_lines():
-                    if line:
-                        line_str = line.decode('utf-8')
-                        chunk = self._process_chunk(line_str, request.model)
-                        if chunk:
-                            yield chunk
-        except Exception as e:
+            if isinstance(e, UniInferError):
+                raise
             raise map_provider_error("tu", e)
 
     @classmethod

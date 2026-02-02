@@ -8,7 +8,7 @@ import requests
 from typing import Dict, Any, Iterator, Optional, AsyncIterator
 
 from ..core import ChatProvider, ChatCompletionRequest, ChatCompletionResponse, ChatMessage
-from ..errors import map_provider_error
+from ..errors import map_provider_error, UniInferError
 
 
 def _normalize_base_url(base_url: str) -> str:
@@ -96,198 +96,6 @@ class OllamaProvider(ChatProvider):
                 "error listing models",
             ]
 
-    def complete(
-        self,
-        request: ChatCompletionRequest,
-        **provider_specific_kwargs
-    ) -> ChatCompletionResponse:
-        """
-        Make a chat completion request to Ollama.
-
-        Args:
-            request (ChatCompletionRequest): The request to make.
-            **provider_specific_kwargs: Additional Ollama-specific parameters.
-
-        Returns:
-            ChatCompletionResponse: The completion response.
-
-        Raises:
-            Exception: If the request fails.
-        """
-        # Ensure URL normalized (localhost allowed)
-        base_url = _normalize_base_url(self.base_url)
-        endpoint = f"{base_url}/api/chat"
-
-        # Prepare the request payload
-        payload = {
-            "model": request.model or "llama2",  # Default to llama2 if no model specified
-            "messages": [{"role": msg.role, "content": msg.content} for msg in request.messages],
-            "stream": False,
-            "options": {}
-        }
-
-        # Add temperature if provided
-        if request.temperature is not None:
-            payload["options"]["temperature"] = request.temperature
-
-        # Add token limit if provided
-        if request.max_tokens is not None:
-            payload["options"]["num_predict"] = request.max_tokens
-
-        # Add any provider-specific parameters
-        if provider_specific_kwargs:
-            for key, value in provider_specific_kwargs.items():
-                if key == "options" and isinstance(value, dict):
-                    # Merge options dictionaries
-                    payload["options"].update(value)
-                else:
-                    # Add top-level parameters
-                    payload[key] = value
-
-        headers = {
-            "Content-Type": "application/json"
-        }
-        if self.api_key:
-            headers["Authorization"] = f"Bearer {self.api_key}"
-
-        response = requests.post(
-            endpoint,
-            headers=headers,
-            data=json.dumps(payload)
-        )
-
-        # Handle error response
-        if response.status_code != 200:
-            error_msg = f"Ollama API error: {response.status_code} - {response.text}"
-            raise map_provider_error("Ollama", Exception(error_msg), status_code=response.status_code, response_body=response.text)
-
-        # Parse the response
-        response_data = response.json()
-
-        # Extract the message content
-        assistant_message = response_data["message"]
-
-        message = ChatMessage(
-            role=assistant_message.get("role", "assistant"),
-            content=assistant_message.get("content", "")
-        )
-
-        # Construct usage information (Ollama doesn't always provide detailed usage)
-        usage = {
-            "prompt_tokens": response_data.get("prompt_eval_count", 0),
-            "completion_tokens": response_data.get("eval_count", 0),
-            "total_tokens": (
-                response_data.get("prompt_eval_count", 0) +
-                response_data.get("eval_count", 0)
-            )
-        }
-
-        return ChatCompletionResponse(
-            message=message,
-            provider='ollama',
-            model=response_data.get('model', request.model),
-            usage=usage,
-            raw_response=response_data
-        )
-
-    def stream_complete(
-        self,
-        request: ChatCompletionRequest,
-        **provider_specific_kwargs
-    ) -> Iterator[ChatCompletionResponse]:
-        """
-        Stream a chat completion response from Ollama.
-
-        Args:
-            request (ChatCompletionRequest): The request to make.
-            **provider_specific_kwargs: Additional Ollama-specific parameters.
-
-        Returns:
-            Iterator[ChatCompletionResponse]: An iterator of response chunks.
-
-        Raises:
-            Exception: If the request fails.
-        """
-        # Ensure URL normalized (localhost allowed)
-        base_url = _normalize_base_url(self.base_url)
-        endpoint = f"{base_url}/api/chat"
-
-        # Prepare the request payload
-        payload = {
-            "model": request.model or "llama2",  # Default to llama2 if no model specified
-            "messages": [{"role": msg.role, "content": msg.content} for msg in request.messages],
-            "stream": True,
-            "options": {}
-        }
-
-        # Add temperature if provided
-        if request.temperature is not None:
-            payload["options"]["temperature"] = request.temperature
-
-        # Add token limit if provided
-        if request.max_tokens is not None:
-            payload["options"]["num_predict"] = request.max_tokens
-
-        # Add any provider-specific parameters
-        if provider_specific_kwargs:
-            for key, value in provider_specific_kwargs.items():
-                if key == "options" and isinstance(value, dict):
-                    # Merge options dictionaries
-                    payload["options"].update(value)
-                else:
-                    # Add top-level parameters
-                    payload[key] = value
-
-        headers = {
-            "Content-Type": "application/json"
-        }
-        if self.api_key:
-            headers["Authorization"] = f"Bearer {self.api_key}"
-
-        with requests.post(
-            endpoint,
-            headers=headers,
-            data=json.dumps(payload),
-            stream=True
-        ) as response:
-            # Handle error response
-            if response.status_code != 200:
-                error_msg = f"Ollama API error: {response.status_code} - {response.text}"
-                raise map_provider_error("Ollama", Exception(error_msg), status_code=response.status_code, response_body=response.text)
-
-            # Process the streaming response
-            for line in response.iter_lines():
-                if line:
-                    try:
-                        data = json.loads(line.decode('utf-8'))
-
-                        # Check if this is a message or a done event
-                        if "done" in data and data["done"]:
-                            continue
-
-                        # Extract content
-                        content = ""
-                        if "message" in data and "content" in data["message"]:
-                            content = data["message"]["content"]
-
-                        # Create a message for this chunk
-                        message = ChatMessage(
-                            role="assistant", content=content)
-
-                        # Basic usage stats (Ollama stream doesn't have detailed usage per chunk)
-                        usage = {}
-
-                        yield ChatCompletionResponse(
-                            message=message,
-                            provider='ollama',
-                            model=data.get('model', request.model),
-                            usage=usage,
-                            raw_response=data
-                        )
-                    except json.JSONDecodeError:
-                        # Skip invalid JSON lines
-                        continue
-
     async def acomplete(
         self,
         request: ChatCompletionRequest,
@@ -295,16 +103,6 @@ class OllamaProvider(ChatProvider):
     ) -> ChatCompletionResponse:
         """
         Make an async chat completion request to Ollama.
-
-        Args:
-            request (ChatCompletionRequest): The request to make.
-            **provider_specific_kwargs: Additional Ollama-specific parameters.
-
-        Returns:
-            ChatCompletionResponse: The completion response.
-
-        Raises:
-            Exception: If the request fails.
         """
         base_url = _normalize_base_url(self.base_url)
         endpoint = f"{base_url}/api/chat"
@@ -335,7 +133,8 @@ class OllamaProvider(ChatProvider):
         if self.api_key:
             headers["Authorization"] = f"Bearer {self.api_key}"
 
-        async with httpx.AsyncClient() as client:
+        client = await self._get_async_client()
+        try:
             response = await client.post(
                 endpoint,
                 headers=headers,
@@ -371,6 +170,10 @@ class OllamaProvider(ChatProvider):
                 usage=usage,
                 raw_response=response_data
             )
+        except Exception as e:
+            if isinstance(e, UniInferError):
+                raise
+            raise map_provider_error("Ollama", e)
 
     async def astream_complete(
         self,
@@ -379,16 +182,6 @@ class OllamaProvider(ChatProvider):
     ) -> AsyncIterator[ChatCompletionResponse]:
         """
         Stream an async chat completion response from Ollama.
-
-        Args:
-            request (ChatCompletionRequest): The request to make.
-            **provider_specific_kwargs: Additional Ollama-specific parameters.
-
-        Returns:
-            AsyncIterator[ChatCompletionResponse]: An async iterator of response chunks.
-
-        Raises:
-            Exception: If the request fails.
         """
         base_url = _normalize_base_url(self.base_url)
         endpoint = f"{base_url}/api/chat"
@@ -419,7 +212,8 @@ class OllamaProvider(ChatProvider):
         if self.api_key:
             headers["Authorization"] = f"Bearer {self.api_key}"
 
-        async with httpx.AsyncClient() as client:
+        client = await self._get_async_client()
+        try:
             async with client.stream(
                 "POST",
                 endpoint,
@@ -434,7 +228,7 @@ class OllamaProvider(ChatProvider):
                 async for line in response.aiter_lines():
                     if line:
                         try:
-                            data = json.loads(line.decode('utf-8'))
+                            data = json.loads(line)
 
                             if "done" in data and data["done"]:
                                 continue
@@ -446,14 +240,17 @@ class OllamaProvider(ChatProvider):
                             message = ChatMessage(
                                 role="assistant", content=content)
 
-                            usage = {}
-
                             yield ChatCompletionResponse(
                                 message=message,
                                 provider='ollama',
                                 model=data.get('model', request.model),
-                                usage=usage,
+                                usage={},
                                 raw_response=data
                             )
                         except json.JSONDecodeError:
                             continue
+        except Exception as e:
+            if isinstance(e, UniInferError):
+                raise
+            raise map_provider_error("Ollama", e)
+

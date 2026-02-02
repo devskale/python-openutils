@@ -5,10 +5,10 @@ import requests
 from typing import Dict, Any, Iterator, Optional
 
 from ..core import ChatProvider, ChatCompletionRequest, ChatCompletionResponse, ChatMessage
-from ..errors import map_provider_error
+from ..errors import map_provider_error, UniInferError
 
 try:
-    from openai import OpenAI
+    from openai import OpenAI, AsyncOpenAI
     HAS_OPENAI = True
 except ImportError:
     HAS_OPENAI = False
@@ -39,8 +39,12 @@ class BigmodelProvider(ChatProvider):
                 "Install it with: pip install openai"
             )
 
-        # Initialize the OpenAI client for Bigmodel
+        # Initialize the OpenAI clients for Bigmodel
         self.client = OpenAI(
+            api_key=self.api_key,
+            base_url=self.base_url
+        )
+        self.async_client = AsyncOpenAI(
             api_key=self.api_key,
             base_url=self.base_url
         )
@@ -110,58 +114,39 @@ class BigmodelProvider(ChatProvider):
             flattened_messages.append(msg_dict)
         return flattened_messages
 
-    def complete(
+    async def acomplete(
         self,
         request: ChatCompletionRequest,
         **provider_specific_kwargs
     ) -> ChatCompletionResponse:
         """
-        Make a chat completion request to Bigmodel.
-
-        Args:
-            request (ChatCompletionRequest): The request to make.
-            **provider_specific_kwargs: Additional Bigmodel-specific parameters.
-
-        Returns:
-            ChatCompletionResponse: The completion response.
-
-        Raises:
-            Exception: If the request fails.
+        Make an async chat completion request to Bigmodel.
         """
         if self.api_key is None:
             raise ValueError("Bigmodel API key is required")
 
-        # Prepare messages in the OpenAI format
         messages = self._flatten_messages(request.messages)
-
-        # Prepare parameters
         params = {
-            "model": request.model or "glm-4-flash",  # Default model
+            "model": request.model or "glm-4-flash",
             "messages": messages,
             "temperature": request.temperature,
+            "stream": False
         }
 
-        # Add max_tokens if provided
         if request.max_tokens is not None:
             params["max_tokens"] = request.max_tokens
 
-        # Add tools and tool_choice if provided
         if request.tools:
             params["tools"] = request.tools
         if request.tool_choice:
             params["tool_choice"] = request.tool_choice
 
-        # Add any provider-specific parameters
         params.update(provider_specific_kwargs)
 
         try:
-            # Make the chat completion request
-            completion = self.client.chat.completions.create(**params)
-
-            # Extract the response content and tool calls
+            completion = await self.async_client.chat.completions.create(**params)
             response_message = completion.choices[0].message
             
-            # Extract tool calls if present
             tool_calls = None
             if hasattr(response_message, 'tool_calls') and response_message.tool_calls:
                 tool_calls = [
@@ -182,7 +167,6 @@ class BigmodelProvider(ChatProvider):
                 tool_calls=tool_calls
             )
 
-            # Extract usage information
             usage = {}
             if hasattr(completion, 'usage'):
                 usage = {
@@ -191,15 +175,10 @@ class BigmodelProvider(ChatProvider):
                     "total_tokens": completion.usage.total_tokens
                 }
 
-            # Create raw response
             try:
-                raw_response = completion.model_dump_json()
-            except AttributeError:
-                raw_response = {
-                    "choices": [{"message": message.to_dict()}],
-                    "model": params["model"],
-                    "usage": usage
-                }
+                raw_response = completion.model_dump()
+            except Exception:
+                raw_response = str(completion)
 
             return ChatCompletionResponse(
                 message=message,
@@ -209,66 +188,45 @@ class BigmodelProvider(ChatProvider):
                 raw_response=raw_response
             )
         except Exception as e:
-            status_code = getattr(e, 'status_code', None)
-            response_body = getattr(e, 'response', None)
-            if hasattr(response_body, 'text'):
-                response_body = response_body.text
-            raise map_provider_error("Bigmodel", e, status_code=status_code, response_body=str(response_body) if response_body else None)
+            if isinstance(e, UniInferError):
+                raise
+            raise map_provider_error("Bigmodel", e)
 
-    def stream_complete(
+    async def astream_complete(
         self,
         request: ChatCompletionRequest,
         **provider_specific_kwargs
-    ) -> Iterator[ChatCompletionResponse]:
+    ) -> AsyncIterator[ChatCompletionResponse]:
         """
-        Stream a chat completion response from Bigmodel.
-
-        Args:
-            request (ChatCompletionRequest): The request to make.
-            **provider_specific_kwargs: Additional Bigmodel-specific parameters.
-
-        Returns:
-            Iterator[ChatCompletionResponse]: An iterator of response chunks.
-
-        Raises:
-            Exception: If the request fails.
+        Stream an async chat completion response from Bigmodel.
         """
         if self.api_key is None:
             raise ValueError("Bigmodel API key is required")
 
-        # Prepare messages in the OpenAI format
         messages = self._flatten_messages(request.messages)
-
-        # Prepare parameters
         params = {
-            "model": request.model or "glm-4-flash",  # Default model
+            "model": request.model or "glm-4-flash",
             "messages": messages,
             "temperature": request.temperature,
             "stream": True
         }
 
-        # Add max_tokens if provided
         if request.max_tokens is not None:
             params["max_tokens"] = request.max_tokens
 
-        # Add tools and tool_choice if provided
         if request.tools:
             params["tools"] = request.tools
         if request.tool_choice:
             params["tool_choice"] = request.tool_choice
 
-        # Add any provider-specific parameters
         params.update(provider_specific_kwargs)
 
         try:
-            # Make the streaming request
-            stream = self.client.chat.completions.create(**params)
+            stream = await self.async_client.chat.completions.create(**params)
 
-            for chunk in stream:
-                if hasattr(chunk.choices[0], 'delta'):
+            async for chunk in stream:
+                if chunk.choices and hasattr(chunk.choices[0], 'delta'):
                     delta = chunk.choices[0].delta
-                    
-                    # Extract content and tool_calls from delta
                     content = getattr(delta, 'content', None)
                     tool_calls = None
                     
@@ -286,26 +244,19 @@ class BigmodelProvider(ChatProvider):
                         ]
                     
                     if content or tool_calls:
-                        # Create a message for this chunk
                         message = ChatMessage(
                             role="assistant",
                             content=content,
                             tool_calls=tool_calls
                         )
-
-                        # No detailed usage stats in streaming mode
-                        usage = {}
-
                         yield ChatCompletionResponse(
                             message=message,
                             provider='bigmodel',
                             model=params["model"],
-                            usage=usage,
+                            usage={},
                             raw_response={"chunk": {"content": content}}
                         )
         except Exception as e:
-            status_code = getattr(e, 'status_code', None)
-            response_body = getattr(e, 'response', None)
-            if hasattr(response_body, 'text'):
-                response_body = response_body.text
-            raise map_provider_error("Bigmodel", e, status_code=status_code, response_body=str(response_body) if response_body else None)
+            if isinstance(e, UniInferError):
+                raise
+            raise map_provider_error("Bigmodel", e)

@@ -6,10 +6,10 @@ import os
 from typing import Dict, Any, Iterator, Optional, List, AsyncIterator
 
 from ..core import ChatProvider, ChatCompletionRequest, ChatCompletionResponse, ChatMessage
-from ..errors import map_provider_error
+from ..errors import map_provider_error, UniInferError
 
 try:
-    from groq import Groq
+    from groq import Groq, AsyncGroq
     HAS_GROQ = True
 except ImportError:
     HAS_GROQ = False
@@ -42,55 +42,9 @@ class GroqProvider(ChatProvider):
                 "Install it with: pip install groq"
             )
 
-        # Initialize the Groq client
-        # If api_key is None, groq will use GROQ_API_KEY environment variable
+        # Initialize the Groq clients
         self.client = Groq(api_key=self.api_key)
-
-    def complete(
-        self,
-        request: ChatCompletionRequest,
-        **provider_specific_kwargs
-    ) -> ChatCompletionResponse:
-        """
-        Make a chat completion request to Groq (sync wrapper).
-
-        Args:
-            request (ChatCompletionRequest): The request to make.
-            **provider_specific_kwargs: Additional Groq-specific parameters.
-
-        Returns:
-            ChatCompletionResponse: The completion response.
-
-        Raises:
-            Exception: If request fails.
-        """
-        try:
-            loop = asyncio.get_running_loop()
-        except RuntimeError:
-            loop = None
-
-        if loop is None or not loop.is_running():
-            return asyncio.run(self._acomplete_impl(request, **provider_specific_kwargs))
-
-        import concurrent.futures
-        import threading
-        result_container = []
-        exception_container = []
-
-        def run_in_thread():
-            try:
-                result = asyncio.run(self._acomplete_impl(request, **provider_specific_kwargs))
-                result_container.append(result)
-            except Exception as e:
-                exception_container.append(e)
-
-        thread = threading.Thread(target=run_in_thread)
-        thread.start()
-        thread.join()
-
-        if exception_container:
-            raise exception_container[0]
-        return result_container[0]
+        self.async_client = AsyncGroq(api_key=self.api_key)
 
     async def acomplete(
         self,
@@ -99,71 +53,8 @@ class GroqProvider(ChatProvider):
     ) -> ChatCompletionResponse:
         """
         Make an async chat completion request to Groq.
-
-        Args:
-            request (ChatCompletionRequest): The request to make.
-            **provider_specific_kwargs: Additional Groq-specific parameters.
-
-        Returns:
-            ChatCompletionResponse: The completion response.
-
-        Raises:
-            Exception: If request fails.
         """
-        try:
-            loop = asyncio.get_running_loop()
-        except RuntimeError:
-            loop = None
-
-        if loop is None or not loop.is_running():
-            return asyncio.run(self._acomplete_impl(request, **provider_specific_kwargs))
-
-        import concurrent.futures
-        import threading
-        result_container = []
-        exception_container = []
-
-        def run_in_thread():
-            try:
-                result = asyncio.run(self._acomplete_impl(request, **provider_specific_kwargs))
-                result_container.append(result)
-            except Exception as e:
-                exception_container.append(e)
-
-        thread = threading.Thread(target=run_in_thread)
-        thread.start()
-        thread.join()
-
-        if exception_container:
-            raise exception_container[0]
-        return result_container[0]
-
-    async def _acomplete_impl(
-        self,
-        request: ChatCompletionRequest,
-        **provider_specific_kwargs
-    ) -> ChatCompletionResponse:
-        """
-        Internal implementation of async chat completion for Groq.
-        """
-        def _flatten_messages(msgs: List[ChatMessage]) -> List[Dict[str, Any]]:
-            flattened = []
-            for m in msgs:
-                md = m.to_dict()
-                content = md.get("content")
-                if isinstance(content, list):
-                    parts: List[str] = []
-                    for part in content:
-                        if isinstance(part, dict) and part.get("type") == "text":
-                            parts.append(part.get("text", ""))
-                    if parts:
-                        md["content"] = "".join(parts)
-                    else:
-                        md["content"] = "".join(str(p) for p in content)
-                flattened.append(md)
-            return flattened
-
-        messages = _flatten_messages(request.messages)
+        messages = self._flatten_messages(request.messages)
 
         params = {
             "model": request.model or "llama-3.1-8b",
@@ -181,7 +72,7 @@ class GroqProvider(ChatProvider):
         params.update(provider_specific_kwargs)
 
         try:
-            completion = self.client.chat.completions.create(**params)
+            completion = await self.async_client.chat.completions.create(**params)
 
             response_message = completion.choices[0].message
             tool_calls = None
@@ -212,13 +103,9 @@ class GroqProvider(ChatProvider):
                 }
 
             try:
-                raw_response = completion.model_dump_json()
-            except AttributeError:
-                raw_response = {
-                    "model": params["model"],
-                    "choices": [{"message": {"role": message.role, "content": message.content}}],
-                    "usage": usage
-                }
+                raw_response = completion.model_dump()
+            except Exception:
+                raw_response = str(completion)
 
             return ChatCompletionResponse(
                 message=message,
@@ -228,11 +115,9 @@ class GroqProvider(ChatProvider):
                 raw_response=raw_response
             )
         except Exception as e:
-            status_code = getattr(e, 'status_code', None)
-            response_body = getattr(e, 'body', None) or getattr(e, 'response', None)
-            if hasattr(response_body, 'text'):
-                response_body = response_body.text
-            raise map_provider_error("Groq", e, status_code=status_code, response_body=str(response_body) if response_body else None)
+            if isinstance(e, UniInferError):
+                raise
+            raise map_provider_error("Groq", e)
 
     async def astream_complete(
         self,
@@ -241,35 +126,8 @@ class GroqProvider(ChatProvider):
     ) -> AsyncIterator[ChatCompletionResponse]:
         """
         Stream an async chat completion response from Groq.
-
-        Args:
-            request (ChatCompletionRequest): The request to make.
-            **provider_specific_kwargs: Additional Groq-specific parameters.
-
-        Returns:
-            AsyncIterator[ChatCompletionResponse]: An async iterator of response chunks.
-
-        Raises:
-            Exception: If request fails.
         """
-        def _flatten_messages(msgs: List[ChatMessage]) -> List[Dict[str, Any]]:
-            flattened = []
-            for m in msgs:
-                md = m.to_dict()
-                content = md.get("content")
-                if isinstance(content, list):
-                    parts: List[str] = []
-                    for part in content:
-                        if isinstance(part, dict) and part.get("type") == "text":
-                            parts.append(part.get("text", ""))
-                    if parts:
-                        md["content"] = "".join(parts)
-                    else:
-                        md["content"] = "".join(str(p) for p in content)
-                flattened.append(md)
-            return flattened
-
-        messages = _flatten_messages(request.messages)
+        messages = self._flatten_messages(request.messages)
 
         params = {
             "model": request.model or "llama-3.1-8b",
@@ -287,49 +145,60 @@ class GroqProvider(ChatProvider):
         params.update(provider_specific_kwargs)
 
         try:
-            try:
-                loop = asyncio.get_running_loop()
-            except RuntimeError:
-                loop = None
+            stream = await self.async_client.chat.completions.create(**params)
 
-            if loop is None or not loop.is_running():
-                async def _collect_chunks():
-                    chunks = []
-                    for chunk in self.stream_complete(request, **provider_specific_kwargs):
-                        chunks.append(chunk)
-                    return chunks
+            async for chunk in stream:
+                if chunk.choices and hasattr(chunk.choices[0], 'delta'):
+                    delta = chunk.choices[0].delta
+                    content = getattr(delta, 'content', None)
+                    tool_calls = None
+                    if hasattr(delta, 'tool_calls') and delta.tool_calls:
+                        tool_calls = [
+                            {
+                                "id": getattr(tc, 'id', None),
+                                "type": getattr(tc, 'type', 'function'),
+                                "function": {
+                                    "name": tc.function.name if hasattr(tc, 'function') else None,
+                                    "arguments": tc.function.arguments if hasattr(tc, 'function') else None
+                                }
+                            }
+                            for tc in delta.tool_calls
+                        ]
 
-                for chunk in asyncio.run(_collect_chunks()):
-                    yield chunk
-                return
-
-            import concurrent.futures
-            import threading
-            result_container = []
-            exception_container = []
-
-            def run_in_thread():
-                try:
-                    for chunk in self.stream_complete(request, **provider_specific_kwargs):
-                        result_container.append(chunk)
-                except Exception as e:
-                    exception_container.append(e)
-
-            thread = threading.Thread(target=run_in_thread)
-            thread.start()
-            thread.join()
-
-            if exception_container:
-                raise exception_container[0]
-
-            while result_container:
-                yield result_container.pop(0)
+                    if content or tool_calls:
+                        message = ChatMessage(
+                            role="assistant",
+                            content=content,
+                            tool_calls=tool_calls
+                        )
+                        yield ChatCompletionResponse(
+                            message=message,
+                            provider='groq',
+                            model=params["model"],
+                            usage={},
+                            raw_response={"delta": {"content": content, "tool_calls": tool_calls}}
+                        )
         except Exception as e:
-            status_code = getattr(e, 'status_code', None)
-            response_body = getattr(e, 'body', None) or getattr(e, 'response', None)
-            if hasattr(response_body, 'text'):
-                response_body = response_body.text
-            raise map_provider_error("Groq", e, status_code=status_code, response_body=str(response_body) if response_body else None)
+            if isinstance(e, UniInferError):
+                raise
+            raise map_provider_error("Groq", e)
+
+    def _flatten_messages(self, msgs: List[ChatMessage]) -> List[Dict[str, Any]]:
+        flattened = []
+        for m in msgs:
+            md = m.to_dict()
+            content = md.get("content")
+            if isinstance(content, list):
+                parts: List[str] = []
+                for part in content:
+                    if isinstance(part, dict) and part.get("type") == "text":
+                        parts.append(part.get("text", ""))
+                if parts:
+                    md["content"] = "".join(parts)
+                else:
+                    md["content"] = "".join(str(p) for p in content)
+            flattened.append(md)
+        return flattened
 
     @classmethod
     def list_models(cls, api_key: Optional[str] = None) -> List[str]:

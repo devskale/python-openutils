@@ -5,7 +5,7 @@ import os
 from typing import Dict, Any, Iterator, Optional
 
 from ..core import ChatProvider, ChatCompletionRequest, ChatCompletionResponse, ChatMessage
-from ..errors import map_provider_error
+from ..errors import map_provider_error, UniInferError
 
 try:
     import cohere
@@ -41,31 +41,30 @@ class CohereProvider(ChatProvider):
                 "Install it with: pip install cohere"
             )
 
-        # Initialize the Cohere client
+        # Initialize the Cohere clients
         self.client = cohere.ClientV2(api_key=self.api_key)
+        self.async_client = cohere.AsyncClientV2(api_key=self.api_key)
 
-    def complete(
+    async def aclose(self):
+        """Close the Cohere async client."""
+        if hasattr(self, 'async_client'):
+            # The cohere SDK handles closing via __aexit__ or explicit close if available
+            # For now we'll just let it be GC'd if no explicit close is found, 
+            # as typical SDK behavior.
+            pass
+        await super().aclose()
+
+    async def acomplete(
         self,
         request: ChatCompletionRequest,
         **provider_specific_kwargs
     ) -> ChatCompletionResponse:
         """
-        Make a chat completion request to Cohere.
-
-        Args:
-            request (ChatCompletionRequest): The request to make.
-            **provider_specific_kwargs: Additional Cohere-specific parameters.
-
-        Returns:
-            ChatCompletionResponse: The completion response.
-
-        Raises:
-            Exception: If the request fails.
+        Make an async chat completion request to Cohere.
         """
         if self.api_key is None:
             raise ValueError("Cohere API key is required")
 
-        # Convert messages to Cohere format
         cohere_messages = []
         for msg in request.messages:
             cohere_messages.append({
@@ -73,48 +72,32 @@ class CohereProvider(ChatProvider):
                 "content": msg.content
             })
 
-        # Prepare parameters
         params = {
-            "model": request.model or "command-r-plus-08-2024",  # Default model
+            "model": request.model or "command-r-plus-08-2024",
             "messages": cohere_messages,
         }
 
-        # Handle temperature (Cohere uses temperature differently)
         if request.temperature is not None:
             params["temperature"] = request.temperature
 
-        # Add max_tokens if provided
         if request.max_tokens is not None:
             params["max_tokens"] = request.max_tokens
 
-        # Add any provider-specific parameters
         params.update(provider_specific_kwargs)
 
         try:
-            # Make the chat completion request
-            response = self.client.chat(**params)
-
-            # Extract the response content
+            response = await self.async_client.chat(**params)
             content = response.text
 
-            # Create a ChatMessage
             message = ChatMessage(
                 role="assistant",
                 content=content
             )
 
-            # Create usage information
             usage = {
                 "input_tokens": getattr(response, "input_tokens", 0),
                 "output_tokens": getattr(response, "output_tokens", 0),
                 "total_tokens": getattr(response, "input_tokens", 0) + getattr(response, "output_tokens", 0)
-            }
-
-            # Create raw response for debugging
-            raw_response = {
-                "model": params["model"],
-                "text": content,
-                "usage": usage
             }
 
             return ChatCompletionResponse(
@@ -122,17 +105,17 @@ class CohereProvider(ChatProvider):
                 provider='cohere',
                 model=params["model"],
                 usage=usage,
-                raw_response=raw_response
+                raw_response=response
             )
         except Exception as e:
+            if isinstance(e, UniInferError):
+                raise
             status_code = getattr(e, 'status_code', None)
             response_body = str(e)
             if hasattr(e, 'response') and e.response is not None:
-                # Handle cases where response is a requests.Response or direct response object
                 status_code = getattr(e.response, 'status_code', status_code)
                 response_body = getattr(e.response, 'text', response_body)
             elif hasattr(e, 'body') and isinstance(e.body, dict):
-                # Cohere SDK often puts info in .body
                 response_body = str(e.body)
             
             raise map_provider_error("cohere", e, status_code=status_code, response_body=response_body)
@@ -141,19 +124,6 @@ class CohereProvider(ChatProvider):
     def list_models(cls, api_key: Optional[str] = None) -> list:
         """
         List available models from Cohere.
-
-        Args:
-            api_key (Optional[str]): The Cohere API key. If not provided,
-                                     it attempts to retrieve it from the environment
-                                     or credgoo.
-
-        Returns:
-            list: A list of available model names.
-
-        Raises:
-            ImportError: If the cohere package is not installed.
-            ValueError: If no API key is provided or found.
-            Exception: If the API request fails.
         """
         if not HAS_COHERE:
             raise ImportError(
@@ -161,7 +131,6 @@ class CohereProvider(ChatProvider):
                 "Install it with: pip install cohere"
             )
 
-        # Determine the API key to use
         if not api_key:
             api_key = os.getenv("COHERE_API_KEY")
             if not api_key:
@@ -169,66 +138,39 @@ class CohereProvider(ChatProvider):
                     from credgoo.credgoo import get_api_key
                     api_key = get_api_key("cohere")
                 except ImportError:
-                    raise ValueError(
-                        "credgoo not installed. Please provide an API key, set COHERE_API_KEY, or install credgoo.")
-                except Exception as e:
-                    raise ValueError(
-                        f"Failed to get Cohere API key from credgoo: {e}")
-
+                    pass
+        
         if not api_key:
-            raise ValueError(
-                "Cohere API key is required. Provide it directly, set COHERE_API_KEY, or configure credgoo.")
-
-        try:
-            client = cohere.ClientV2(api_key=api_key)
-            response = client.models.list()
-
-            # Extract just the model names
-            return [model.name for model in response.models]
-        except Exception as e:
-            # Log the error for debugging
-            import logging
-            logging.warning(f"Failed to fetch Cohere models: {str(e)}")
-
-            # Attempt to map the error for consistency even if we return a fallback
-            status_code = getattr(e, 'status_code', None)
-            response_body = getattr(e, 'text', str(e)) if hasattr(e, 'response') else str(e)
-            try:
-                map_provider_error("cohere", e, status_code=status_code, response_body=response_body)
-            except:
-                pass
-
-            # Fallback to default models if API call fails
             return [
                 "command",
                 "command-r",
                 "command-r-plus",
-                "command-light",
-                "command-nightly"
+                "command-light"
             ]
 
-    def stream_complete(
+        try:
+            client = cohere.ClientV2(api_key=api_key)
+            response = client.models.list()
+            return [model.name for model in response.models]
+        except Exception:
+            return [
+                "command",
+                "command-r",
+                "command-r-plus",
+                "command-light"
+            ]
+
+    async def astream_complete(
         self,
         request: ChatCompletionRequest,
         **provider_specific_kwargs
-    ) -> Iterator[ChatCompletionResponse]:
+    ) -> AsyncIterator[ChatCompletionResponse]:
         """
-        Stream a chat completion response from Cohere.
-
-        Args:
-            request (ChatCompletionRequest): The request to make.
-            **provider_specific_kwargs: Additional Cohere-specific parameters.
-
-        Returns:
-            Iterator[ChatCompletionResponse]: An iterator of response chunks.
-
-        Raises:
-            Exception: If the request fails.
+        Stream an async chat completion response from Cohere.
         """
         if self.api_key is None:
             raise ValueError("Cohere API key is required")
 
-        # Convert messages to Cohere format
         cohere_messages = []
         for msg in request.messages:
             cohere_messages.append({
@@ -236,58 +178,39 @@ class CohereProvider(ChatProvider):
                 "content": msg.content
             })
 
-        # Prepare parameters
         params = {
-            "model": request.model or "command-r-plus-08-2024",  # Default model
+            "model": request.model or "command-r-plus-08-2024",
             "messages": cohere_messages,
         }
 
-        # Handle temperature (Cohere uses temperature differently)
         if request.temperature is not None:
             params["temperature"] = request.temperature
 
-        # Add max_tokens if provided
         if request.max_tokens is not None:
             params["max_tokens"] = request.max_tokens
 
-        # Add any provider-specific parameters
         params.update(provider_specific_kwargs)
 
         try:
-            # Make the streaming request
-            stream = self.client.chat_stream(**params)
-
-            # Process stream events
-            for event in stream:
+            async for event in await self.async_client.chat_stream(**params):
                 if event.type == "content-delta":
-                    # Extract delta content
                     content = event.delta.message.content.text
-
-                    # Create a message for this chunk
+                    
                     message = ChatMessage(
                         role="assistant",
                         content=content
                     )
 
-                    # No detailed usage stats in streaming mode
-                    usage = {}
-
-                    # Create a simple raw response
-                    raw_response = {
-                        "model": params["model"],
-                        "delta": {
-                            "content": content
-                        }
-                    }
-
                     yield ChatCompletionResponse(
                         message=message,
                         provider='cohere',
                         model=params["model"],
-                        usage=usage,
-                        raw_response=raw_response
+                        usage={},
+                        raw_response=event
                     )
         except Exception as e:
+            if isinstance(e, UniInferError):
+                raise
             status_code = getattr(e, 'status_code', None)
             response_body = str(e)
             if hasattr(e, 'response') and e.response is not None:
