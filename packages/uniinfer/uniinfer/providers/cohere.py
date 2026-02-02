@@ -87,18 +87,30 @@ class CohereProvider(ChatProvider):
 
         try:
             response = await self.async_client.chat(**params)
-            content = response.text
+            
+            # V2 SDK uses response.message.content[0].text
+            content = ""
+            if hasattr(response, "message") and hasattr(response.message, "content"):
+                if isinstance(response.message.content, list) and len(response.message.content) > 0:
+                    content = response.message.content[0].text
+            elif hasattr(response, "text"):
+                content = response.text
 
             message = ChatMessage(
                 role="assistant",
                 content=content
             )
 
-            usage = {
-                "input_tokens": getattr(response, "input_tokens", 0),
-                "output_tokens": getattr(response, "output_tokens", 0),
-                "total_tokens": getattr(response, "input_tokens", 0) + getattr(response, "output_tokens", 0)
-            }
+            # V2 SDK usage is in response.meta.tokens
+            usage = {}
+            if hasattr(response, "meta") and hasattr(response.meta, "tokens"):
+                input_tok = getattr(response.meta.tokens, "input_tokens", 0)
+                output_tok = getattr(response.meta.tokens, "output_tokens", 0)
+                usage = {
+                    "input_tokens": input_tok,
+                    "output_tokens": output_tok,
+                    "total_tokens": input_tok + output_tok
+                }
 
             return ChatCompletionResponse(
                 message=message,
@@ -182,8 +194,9 @@ class CohereProvider(ChatProvider):
         params.update(provider_specific_kwargs)
 
         try:
-            async for event in await self.async_client.chat_stream(**params):
+            async for event in self.async_client.chat_stream(**params):
                 if event.type == "content-delta":
+                    # V2 SDK structure for delta
                     content = event.delta.message.content.text
                     
                     message = ChatMessage(
@@ -198,6 +211,23 @@ class CohereProvider(ChatProvider):
                         usage={},
                         raw_response=event
                     )
+                elif event.type == "message-end":
+                    # Final event with usage info
+                    usage = {}
+                    if hasattr(event, "delta") and hasattr(event.delta, "usage"):
+                        tokens = getattr(event.delta.usage, "tokens", None)
+                        if tokens:
+                            input_tok = getattr(tokens, "input_tokens", 0)
+                            output_tok = getattr(tokens, "output_tokens", 0)
+                            usage = {
+                                "input_tokens": input_tok,
+                                "output_tokens": output_tok,
+                                "total_tokens": input_tok + output_tok
+                            }
+                    
+                    # We can yield a final usage-only chunk if needed, 
+                    # but typically providers handle it at the end of stream.
+                    # For now just log it or keep as state.
         except Exception as e:
             if isinstance(e, UniInferError):
                 raise
