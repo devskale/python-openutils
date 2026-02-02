@@ -45,20 +45,19 @@ class GeminiProvider(ChatProvider):
         # Store any additional configuration
         self.config = kwargs
 
-    async def _get_client(self):
+    def _get_client(self):
         """
-        Get or create async Gemini client.
+        Get or create synchronous Gemini client.
         """
         if self._client is None:
-            self._client = genai.AsyncClient(api_key=self.api_key)
+            self._client = genai.Client(api_key=self.api_key)
         return self._client
 
     async def close(self):
         """
-        Close async client.
+        Close client (no-op for synchronous client).
         """
         if self._client is not None:
-            await self._client.aclose()
             self._client = None
 
     @classmethod
@@ -152,6 +151,8 @@ class GeminiProvider(ChatProvider):
         config = types.GenerateContentConfig(**config_params)
 
         # Prepare content based on non-system messages
+        gemini_tools = None
+
         # For simple queries with just one user message, use a simple string
         if len(messages) == 1 and messages[0].role == "user":
             content = _flatten_text(messages[0].content)
@@ -160,7 +161,6 @@ class GeminiProvider(ChatProvider):
             content = []
 
             # Convert OpenAI tools format to Gemini function declarations
-            gemini_tools = None
             if request.tools:
                 gemini_tools = []
                 for tool in request.tools:
@@ -176,19 +176,142 @@ class GeminiProvider(ChatProvider):
 
         if system_message:
             # Prepend system message to the first user message, or add it as the first message
-            if content and isinstance(content, list) and content and 'role' in content[0] and content[0]['role'] == 'user':
+            if isinstance(content, list) and content and 'role' in content[0] and content[0]['role'] == 'user':
                 if isinstance(content[0]['parts'], list) and 'text' in content[0]['parts'][0]:
                     content[0]['parts'][0]['text'] = f"{system_message}\n{content[0]['parts'][0]['text']}"
                 else:
                     # Fallback if structure is not as expected
                     content.insert(0, {"role": "user", "parts": [
                                     {"text": system_message}]})
+            elif isinstance(content, str):
+                # If content is a string, it means it's a single user message
+                # Convert it to the expected format for list content if we need to add a system message
+                content = [{"role": "user", "parts": [{"text": f"{system_message}\n{content}"}]}]
             else:
-                # If no user message, add system message as user message
+                # If no user message or other format, add system message as user message
+                if not isinstance(content, list):
+                    content = []
                 content.insert(0, {"role": "user", "parts": [
                                 {"text": system_message}]})
 
         return content, config, gemini_tools
+
+    def _acomplete_impl(
+        self,
+        request: ChatCompletionRequest,
+        **provider_specific_kwargs
+    ) -> ChatCompletionResponse:
+        """
+        Internal implementation of synchronous completion for Gemini.
+        """
+        client = self._get_client()
+
+        if self.api_key is None:
+            raise ValueError("Gemini API key is required")
+
+        try:
+            model = request.model or "gemini-1.5-flash"
+
+            content, config, gemini_tools = self._prepare_content_and_config(request)
+
+            api_params = {
+                "model": model,
+                "contents": content if isinstance(content, str) else [content] if isinstance(content, list) else [],
+                "config": config
+            }
+
+            if gemini_tools:
+                from google.genai.types import Tool, FunctionDeclaration
+                tool_declarations = []
+                for func_def in gemini_tools:
+                    tool_declarations.append(
+                        FunctionDeclaration(
+                            name=func_def["name"],
+                            description=func_def.get("description", ""),
+                            parameters=func_def.get("parameters")
+                        )
+                    )
+                api_params["tools"] = [Tool(function_declarations=tool_declarations)]
+
+            api_params.update(provider_specific_kwargs)
+
+            response = client.models.generate_content(**api_params)
+
+            if response.prompt_feedback and response.prompt_feedback.block_reason:
+                raise UniInferError(
+                    f"Gemini content generation blocked. Reason: {response.prompt_feedback.block_reason}. "
+                    f"Safety ratings: {response.prompt_feedback.safety_ratings}"
+                )
+
+            content_text = ""
+            tool_calls = None
+
+            if response.parts:
+                try:
+                    content_text = response.text
+                except ValueError:
+                    all_parts_text_list = []
+                    for part in response.parts:
+                        part_text_content = getattr(part, 'text', None)
+                        if part_text_content:
+                            all_parts_text_list.append(part_text_content)
+
+                    if all_parts_text_list:
+                        content_text = "".join(all_parts_text_list)
+
+                function_calls = []
+                for part in response.parts:
+                    if hasattr(part, 'function_call') and part.function_call:
+                        import json
+                        function_calls.append({
+                            "id": f"call_{part.function_call.name}",
+                            "type": "function",
+                            "function": {
+                                "name": part.function_call.name,
+                                "arguments": json.dumps(dict(part.function_call.args))
+                            }
+                        })
+                if function_calls:
+                    tool_calls = function_calls
+
+            if not content_text and not tool_calls and not (response.prompt_feedback and response.prompt_feedback.block_reason):
+                print(
+                    "Warning: Gemini response has no text content and no explicit block reason."
+                )
+
+            message = ChatMessage(
+                role="assistant",
+                content=content_text if content_text else None,
+                tool_calls=tool_calls
+            )
+
+            usage = {
+                "prompt_tokens": 0,
+                "completion_tokens": 0,
+                "total_tokens": 0
+            }
+
+            return ChatCompletionResponse(
+                message=message,
+                provider='gemini',
+                model=model,
+                usage=usage,
+                raw_response=response
+            )
+
+        except Exception as e:
+            status_code = None
+            response_body = str(e)
+            if hasattr(e, 'response') and hasattr(e.response, 'text'):
+                response_body = e.response.text
+                status_code = e.response.status_code
+            elif hasattr(e, 'status_code'):
+                status_code = e.status_code
+            elif hasattr(e, 'message'):
+                response_body = e.message
+
+            mapped_error = map_provider_error("gemini", e, status_code=status_code, response_body=response_body)
+            raise mapped_error
 
     async def acomplete(
         self,
@@ -208,7 +331,33 @@ class GeminiProvider(ChatProvider):
         Raises:
             Exception: If the request fails.
         """
-        client = await self._get_client()
+        try:
+            loop = asyncio.get_running_loop()
+        except RuntimeError:
+            loop = None
+
+        if loop is None or not loop.is_running():
+            return asyncio.run(self.complete(request, **provider_specific_kwargs))
+
+        import concurrent.futures
+        import threading
+        result_container = []
+        exception_container = []
+
+        def run_in_thread():
+            try:
+                result = self._acomplete_impl(request, **provider_specific_kwargs)
+                result_container.append(result)
+            except Exception as e:
+                exception_container.append(e)
+
+        thread = threading.Thread(target=run_in_thread)
+        thread.start()
+        thread.join()
+
+        if exception_container:
+            raise exception_container[0]
+        return result_container[0]
 
         if self.api_key is None:
             raise ValueError("Gemini API key is required")
@@ -334,44 +483,30 @@ class GeminiProvider(ChatProvider):
             mapped_error = map_provider_error("gemini", e, status_code=status_code, response_body=response_body)
             raise mapped_error
 
-    async def astream_complete(
+    def _stream_complete_impl(
         self,
         request: ChatCompletionRequest,
         **provider_specific_kwargs
-    ) -> AsyncIterator[ChatCompletionResponse]:
+    ) -> Iterator[ChatCompletionResponse]:
         """
-        Stream an async chat completion response from Gemini.
-
-        Args:
-            request (ChatCompletionRequest): The request to make.
-            **provider_specific_kwargs: Additional Gemini-specific parameters.
-
-        Returns:
-            AsyncIterator[ChatCompletionResponse]: An async iterator of response chunks.
-
-        Raises:
-            Exception: If the request fails.
+        Internal implementation of streaming for Gemini.
         """
-        client = await self._get_client()
+        client = self._get_client()
 
         if self.api_key is None:
             raise ValueError("Gemini API key is required")
 
         try:
-            # Get model from request or use a default
             model = request.model or "gemini-1.5-flash"
 
-            # Prepare content and get gemini_tools
             content, config, gemini_tools = self._prepare_content_and_config(request)
 
-            # Prepare API call parameters
             api_params = {
                 "model": model,
                 "contents": content if isinstance(content, str) else [content] if isinstance(content, list) else [],
                 "config": config
             }
 
-            # Add tools to config if provided
             if gemini_tools:
                 from google.genai.types import Tool, FunctionDeclaration
                 tool_declarations = []
@@ -385,21 +520,17 @@ class GeminiProvider(ChatProvider):
                     )
                 api_params["tools"] = [Tool(function_declarations=tool_declarations)]
 
-            # Add additional provider-specific parameters
             api_params.update(provider_specific_kwargs)
 
-            # Stream the response using async client
-            async for chunk in client.models.generate_content_stream(**api_params):
-                # Check for content filtering
+            for chunk in client.models.generate_content_stream(**api_params):
                 if chunk.prompt_feedback and chunk.prompt_feedback.block_reason:
                     raise UniInferError(
                         f"Gemini content generation blocked. Reason: {chunk.prompt_feedback.block_reason}. "
                         f"Safety ratings: {chunk.prompt_feedback.safety_ratings}"
                     )
 
-                # Extract response text
                 content_text = ""
-                
+
                 if chunk.parts:
                     try:
                         content_text = chunk.text
@@ -409,12 +540,11 @@ class GeminiProvider(ChatProvider):
                             part_text_content = getattr(part, 'text', None)
                             if part_text_content:
                                 all_parts_text_list.append(part_text_content)
-                        
+
                         if all_parts_text_list:
                             content_text = "".join(all_parts_text_list)
 
                 if content_text:
-                    # Create a ChatMessage for this chunk
                     message = ChatMessage(
                         role="assistant",
                         content=content_text
@@ -448,6 +578,63 @@ class GeminiProvider(ChatProvider):
             mapped_error = map_provider_error("gemini", e, status_code=status_code, response_body=response_body)
             raise mapped_error
 
+    async def astream_complete(
+        self,
+        request: ChatCompletionRequest,
+        **provider_specific_kwargs
+    ) -> AsyncIterator[ChatCompletionResponse]:
+        """
+        Stream an async chat completion response from Gemini.
+
+        Args:
+            request (ChatCompletionRequest): The request to make.
+            **provider_specific_kwargs: Additional Gemini-specific parameters.
+
+        Returns:
+            AsyncIterator[ChatCompletionResponse]: An async iterator of response chunks.
+
+        Raises:
+            Exception: If the request fails.
+        """
+        try:
+            loop = asyncio.get_running_loop()
+        except RuntimeError:
+            loop = None
+
+        if loop is None or not loop.is_running():
+            async def _collect_chunks():
+                chunks = []
+                for chunk in self._stream_complete_impl(request, **provider_specific_kwargs):
+                    chunks.append(chunk)
+                return chunks
+
+            for chunk in asyncio.run(_collect_chunks()):
+                yield chunk
+            return
+
+        import concurrent.futures
+        import threading
+        result_container = []
+        exception_container = []
+
+        def run_in_thread():
+            try:
+                for chunk in self._stream_complete_impl(request, **provider_specific_kwargs):
+                    result_container.append(chunk)
+            except Exception as e:
+                exception_container.append(e)
+
+        thread = threading.Thread(target=run_in_thread)
+        thread.start()
+        thread.join()
+
+        if exception_container:
+            raise exception_container[0]
+
+        while result_container:
+            yield result_container.pop(0)
+
+
     def complete(
         self,
         request: ChatCompletionRequest,
@@ -472,7 +659,7 @@ class GeminiProvider(ChatProvider):
             loop = None
 
         if loop is None or not loop.is_running():
-            return asyncio.run(self.acomplete(request, **provider_specific_kwargs))
+            return asyncio.run(self._acomplete_impl(request, **provider_specific_kwargs))
 
         import concurrent.futures
         import threading
@@ -481,7 +668,7 @@ class GeminiProvider(ChatProvider):
 
         def run_in_thread():
             try:
-                result = asyncio.run(self.acomplete(request, **provider_specific_kwargs))
+                result = self._acomplete_impl(request, **provider_specific_kwargs)
                 result_container.append(result)
             except Exception as e:
                 exception_container.append(e)
@@ -512,23 +699,13 @@ class GeminiProvider(ChatProvider):
         Raises:
             Exception: If the request fails.
         """
-        async def _async_gen():
-            async for chunk in self.astream_complete(request, **provider_specific_kwargs):
-                yield chunk
-
         try:
             loop = asyncio.get_running_loop()
         except RuntimeError:
             loop = None
 
         if loop is None or not loop.is_running():
-            async def _collect_chunks():
-                chunks = []
-                async for chunk in self.astream_complete(request, **provider_specific_kwargs):
-                    chunks.append(chunk)
-                return chunks
-            
-            for chunk in asyncio.run(_collect_chunks()):
+            for chunk in self._stream_complete_impl(request, **provider_specific_kwargs):
                 yield chunk
             return
 
@@ -539,7 +716,7 @@ class GeminiProvider(ChatProvider):
 
         def run_in_thread():
             try:
-                for chunk in asyncio.run(_async_gen()):
+                for chunk in self._stream_complete_impl(request, **provider_specific_kwargs):
                     result_container.append(chunk)
             except Exception as e:
                 exception_container.append(e)

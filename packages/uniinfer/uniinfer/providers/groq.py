@@ -1,8 +1,9 @@
 """
-Groq provider implementation.
+Groq provider implementation with async support.
 """
+import asyncio
 import os
-from typing import Dict, Any, Iterator, Optional, List
+from typing import Dict, Any, Iterator, Optional, List, AsyncIterator
 
 from ..core import ChatProvider, ChatCompletionRequest, ChatCompletionResponse, ChatMessage
 from ..errors import map_provider_error
@@ -51,7 +52,7 @@ class GroqProvider(ChatProvider):
         **provider_specific_kwargs
     ) -> ChatCompletionResponse:
         """
-        Make a chat completion request to Groq.
+        Make a chat completion request to Groq (sync wrapper).
 
         Args:
             request (ChatCompletionRequest): The request to make.
@@ -61,7 +62,89 @@ class GroqProvider(ChatProvider):
             ChatCompletionResponse: The completion response.
 
         Raises:
-            Exception: If the request fails.
+            Exception: If request fails.
+        """
+        try:
+            loop = asyncio.get_running_loop()
+        except RuntimeError:
+            loop = None
+
+        if loop is None or not loop.is_running():
+            return asyncio.run(self._acomplete_impl(request, **provider_specific_kwargs))
+
+        import concurrent.futures
+        import threading
+        result_container = []
+        exception_container = []
+
+        def run_in_thread():
+            try:
+                result = asyncio.run(self._acomplete_impl(request, **provider_specific_kwargs))
+                result_container.append(result)
+            except Exception as e:
+                exception_container.append(e)
+
+        thread = threading.Thread(target=run_in_thread)
+        thread.start()
+        thread.join()
+
+        if exception_container:
+            raise exception_container[0]
+        return result_container[0]
+
+    async def acomplete(
+        self,
+        request: ChatCompletionRequest,
+        **provider_specific_kwargs
+    ) -> ChatCompletionResponse:
+        """
+        Make an async chat completion request to Groq.
+
+        Args:
+            request (ChatCompletionRequest): The request to make.
+            **provider_specific_kwargs: Additional Groq-specific parameters.
+
+        Returns:
+            ChatCompletionResponse: The completion response.
+
+        Raises:
+            Exception: If request fails.
+        """
+        try:
+            loop = asyncio.get_running_loop()
+        except RuntimeError:
+            loop = None
+
+        if loop is None or not loop.is_running():
+            return asyncio.run(self._acomplete_impl(request, **provider_specific_kwargs))
+
+        import concurrent.futures
+        import threading
+        result_container = []
+        exception_container = []
+
+        def run_in_thread():
+            try:
+                result = asyncio.run(self._acomplete_impl(request, **provider_specific_kwargs))
+                result_container.append(result)
+            except Exception as e:
+                exception_container.append(e)
+
+        thread = threading.Thread(target=run_in_thread)
+        thread.start()
+        thread.join()
+
+        if exception_container:
+            raise exception_container[0]
+        return result_container[0]
+
+    async def _acomplete_impl(
+        self,
+        request: ChatCompletionRequest,
+        **provider_specific_kwargs
+    ) -> ChatCompletionResponse:
+        """
+        Internal implementation of async chat completion for Groq.
         """
         def _flatten_messages(msgs: List[ChatMessage]) -> List[Dict[str, Any]]:
             flattened = []
@@ -82,7 +165,6 @@ class GroqProvider(ChatProvider):
 
         messages = _flatten_messages(request.messages)
 
-        # Prepare parameters
         params = {
             "model": request.model or "llama-3.1-8b",
             "messages": messages,
@@ -99,7 +181,6 @@ class GroqProvider(ChatProvider):
         params.update(provider_specific_kwargs)
 
         try:
-            # Make the chat completion request
             completion = self.client.chat.completions.create(**params)
 
             response_message = completion.choices[0].message
@@ -122,7 +203,6 @@ class GroqProvider(ChatProvider):
                 tool_calls=tool_calls
             )
 
-            # Extract usage information
             usage = {}
             if hasattr(completion, 'usage'):
                 usage = {
@@ -131,11 +211,9 @@ class GroqProvider(ChatProvider):
                     "total_tokens": completion.usage.total_tokens
                 }
 
-            # Create raw response (the groq library might not support model_dump_json())
             try:
                 raw_response = completion.model_dump_json()
             except AttributeError:
-                # Fallback to constructing a simple dict
                 raw_response = {
                     "model": params["model"],
                     "choices": [{"message": {"role": message.role, "content": message.content}}],
@@ -151,7 +229,103 @@ class GroqProvider(ChatProvider):
             )
         except Exception as e:
             status_code = getattr(e, 'status_code', None)
-            # OpenAI-style clients often have 'body' or 'response'
+            response_body = getattr(e, 'body', None) or getattr(e, 'response', None)
+            if hasattr(response_body, 'text'):
+                response_body = response_body.text
+            raise map_provider_error("Groq", e, status_code=status_code, response_body=str(response_body) if response_body else None)
+
+    async def astream_complete(
+        self,
+        request: ChatCompletionRequest,
+        **provider_specific_kwargs
+    ) -> AsyncIterator[ChatCompletionResponse]:
+        """
+        Stream an async chat completion response from Groq.
+
+        Args:
+            request (ChatCompletionRequest): The request to make.
+            **provider_specific_kwargs: Additional Groq-specific parameters.
+
+        Returns:
+            AsyncIterator[ChatCompletionResponse]: An async iterator of response chunks.
+
+        Raises:
+            Exception: If request fails.
+        """
+        def _flatten_messages(msgs: List[ChatMessage]) -> List[Dict[str, Any]]:
+            flattened = []
+            for m in msgs:
+                md = m.to_dict()
+                content = md.get("content")
+                if isinstance(content, list):
+                    parts: List[str] = []
+                    for part in content:
+                        if isinstance(part, dict) and part.get("type") == "text":
+                            parts.append(part.get("text", ""))
+                    if parts:
+                        md["content"] = "".join(parts)
+                    else:
+                        md["content"] = "".join(str(p) for p in content)
+                flattened.append(md)
+            return flattened
+
+        messages = _flatten_messages(request.messages)
+
+        params = {
+            "model": request.model or "llama-3.1-8b",
+            "messages": messages,
+            "temperature": request.temperature,
+            "stream": True,
+        }
+
+        if request.max_tokens is not None:
+            params["max_tokens"] = request.max_tokens
+        if request.tools:
+            params["tools"] = request.tools
+        if request.tool_choice:
+            params["tool_choice"] = request.tool_choice
+        params.update(provider_specific_kwargs)
+
+        try:
+            try:
+                loop = asyncio.get_running_loop()
+            except RuntimeError:
+                loop = None
+
+            if loop is None or not loop.is_running():
+                async def _collect_chunks():
+                    chunks = []
+                    for chunk in self.stream_complete(request, **provider_specific_kwargs):
+                        chunks.append(chunk)
+                    return chunks
+
+                for chunk in asyncio.run(_collect_chunks()):
+                    yield chunk
+                return
+
+            import concurrent.futures
+            import threading
+            result_container = []
+            exception_container = []
+
+            def run_in_thread():
+                try:
+                    for chunk in self.stream_complete(request, **provider_specific_kwargs):
+                        result_container.append(chunk)
+                except Exception as e:
+                    exception_container.append(e)
+
+            thread = threading.Thread(target=run_in_thread)
+            thread.start()
+            thread.join()
+
+            if exception_container:
+                raise exception_container[0]
+
+            while result_container:
+                yield result_container.pop(0)
+        except Exception as e:
+            status_code = getattr(e, 'status_code', None)
             response_body = getattr(e, 'body', None) or getattr(e, 'response', None)
             if hasattr(response_body, 'text'):
                 response_body = response_body.text

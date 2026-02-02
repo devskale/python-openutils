@@ -70,8 +70,8 @@ class TestTUProxySTT:
         client = TestClient(app)
         response = client.post(
             "/v1/audio/transcriptions",
-            files={"file": (BytesIO(audio_content), "test.mp3", "audio/mpeg")},
-            form_data={
+            data={
+                "file": (BytesIO(audio_content), "test.mp3", "audio/mpeg"),
                 "model": "tu@whisper-large"
             }
         )
@@ -130,8 +130,8 @@ class TestTUProxySTT:
         client = TestClient(app)
         response = client.post(
             "/v1/audio/transcriptions",
-            data={"file": (BytesIO(audio_content), "test.mp3", "audio/mpeg")},
-            form_data={
+            data={
+                "file": (BytesIO(audio_content), "test.mp3", "audio/mpeg"),
                 "model": "tu@whisper-large",
                 "language": "en"
             }
@@ -150,8 +150,8 @@ class TestTUProxySTT:
         client = TestClient(app)
         response = client.post(
             "/v1/audio/transcriptions",
-            data={"file": (BytesIO(audio_content), "test.mp3", "audio/mpeg")},
-            form_data={
+            data={
+                "file": (BytesIO(audio_content), "test.mp3", "audio/mpeg"),
                 "model": "tu@whisper-large",
                 "response_format": "json"
             }
@@ -170,8 +170,8 @@ class TestTUProxySTT:
         client = TestClient(app)
         response = client.post(
             "/v1/audio/transcriptions",
-            data={"file": (BytesIO(audio_content), "test.mp3", "audio/mpeg")},
             data={
+                "file": (BytesIO(audio_content), "test.mp3", "audio/mpeg"),
                 "model": "tu@whisper-large",
                 "language": "en"
             }
@@ -190,8 +190,8 @@ class TestTUProxySTT:
         client = TestClient(app)
         response = client.post(
             "/v1/audio/transcriptions",
-            data={"file": (BytesIO(audio_content), "test.mp3", "audio/mpeg")},
             data={
+                "file": (BytesIO(audio_content), "test.mp3", "audio/mpeg"),
                 "model": "tu@whisper-large",
                 "response_format": "json"
             }
@@ -238,15 +238,14 @@ class TestTUProxyErrorHandling:
         client = TestClient(app)
         response = client.post(
             "/v1/audio/transcriptions",
-            data={"file": (BytesIO(audio_content), "test.mp3", "audio/mpeg")},
             data={
+                "file": (BytesIO(audio_content), "test.mp3", "audio/mpeg"),
                 "model": "tu@whisper-large"
             }
         )
 
         # Should get 500 error
         assert response.status_code == 500
-
 
 class TestTUProxyModelParsing:
     """Test model parsing for TU provider."""
@@ -279,15 +278,14 @@ class TestTUProxyModelParsing:
         client = TestClient(app)
         response = client.post(
             "/v1/audio/transcriptions",
-            data={"file": (BytesIO(audio_content), "test.mp3", "audio/mpeg")},
             data={
+                "file": (BytesIO(audio_content), "test.mp3", "audio/mpeg"),
                 "model": "tu@whisper-large"
             }
         )
 
         # Check that parse was called
         mock_parse.assert_called_once_with("tu@whisper-large", allowed_providers=['tu'], task_name="STT")
-
 
 class TestTUProxyRequestValidation:
     """Test request validation for TU provider."""

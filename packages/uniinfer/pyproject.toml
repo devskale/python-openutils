@@ -7,7 +7,7 @@ name = "uniinfer"
 version = "0.4.7"
 description = "Unified Inference API for LLM chat completions across 15+ providers with streaming, fallback strategies, and secure API key management"
 readme = "README.md"
-requires-python = ">=3.7"
+requires-python = ">=3.9"
 license = {text = "MIT License"}
 authors = [
   {name = "Han Woo", email = "dev@skale.dev"}
