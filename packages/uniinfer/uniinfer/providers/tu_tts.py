@@ -94,25 +94,52 @@ class TuAITTSProvider(TTSProvider):
             headers["TUW-Organization"] = self.organization
 
         import logging
+        from requests.exceptions import Timeout, ConnectionError, RequestException
+        
         logger_tts = logging.getLogger(__name__)
         logger_tts.info(f"About to POST to {endpoint}")
         logger_tts.info(f"Headers: {dict(headers)}")
         logger_tts.info(f"Payload keys: {list(payload.keys())}")
         
-        response = requests.post(
-            endpoint,
-            headers=headers,
-            json=payload,
-            timeout=(30, 120),  # (connect timeout, read timeout)
-            verify=True,
-            stream=False
-        )
-        
-        logger_tts.info(f"POST completed with status: {response.status_code}")
+        try:
+            response = requests.post(
+                endpoint,
+                headers=headers,
+                json=payload,
+                timeout=(10, 300),  # (connect timeout, read timeout)
+                verify=True,
+                stream=False
+            )
+            logger_tts.info(f"POST completed with status: {response.status_code}")
+        except Timeout as e:
+            logger_tts.error(f"TU TTS request timed out: {e}")
+            raise map_provider_error(
+                "TU", 
+                Exception("TTS service is currently unavailable or responding too slowly. Please try again later."),
+                status_code=504,
+                response_body=str(e)
+            )
+        except ConnectionError as e:
+            logger_tts.error(f"TU TTS connection error: {e}")
+            raise map_provider_error(
+                "TU",
+                Exception("Unable to connect to TTS service. The service may be down or unreachable."),
+                status_code=503,
+                response_body=str(e)
+            )
+        except RequestException as e:
+            logger_tts.error(f"TU TTS request failed: {e}")
+            raise map_provider_error(
+                "TU",
+                Exception(f"TTS request failed: {str(e)}"),
+                status_code=500,
+                response_body=str(e)
+            )
 
         # Handle error response
         if response.status_code != 200:
             error_msg = f"TU AI API error: {response.status_code} - {response.text}"
+            logger_tts.error(f"TTS error response: {error_msg}")
             raise map_provider_error("TU", Exception(error_msg), status_code=response.status_code, response_body=response.text)
 
         # Determine content type from response
