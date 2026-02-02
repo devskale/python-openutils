@@ -1,6 +1,7 @@
 from logging.handlers import RotatingFileHandler
 import logging
-from typing import List, Optional, Dict, Any, AsyncGenerator, Union, Tuple
+from typing import Any, AsyncGenerator, Optional, List, Dict
+from collections.abc import Iterable
 import re
 import subprocess
 import uuid
@@ -12,7 +13,7 @@ import base64
 from fastapi.security.http import HTTPAuthorizationCredentials
 from fastapi.security import HTTPBearer  # Import HTTPBearer
 from starlette.concurrency import iterate_in_threadpool, run_in_threadpool
-from pydantic import BaseModel, Field, validator
+from pydantic import BaseModel, Field, field_validator
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import StreamingResponse, FileResponse, JSONResponse
@@ -177,7 +178,7 @@ security = HTTPBearer()
 
 # --- Model Parsing Helper ---
 
-def parse_provider_model(provider_model: str, allowed_providers: Optional[List[str]] = None, task_name: Optional[str] = None) -> Tuple[str, str]:
+def parse_provider_model(provider_model: str, allowed_providers: list[str] | None = None, task_name: str | None = None) -> tuple[str, str]:
     """
     Parses 'provider@model' string and optionally validates the provider.
     Raises HTTPException (400) if format is invalid or provider is not allowed.
@@ -214,30 +215,32 @@ def parse_provider_model(provider_model: str, allowed_providers: Optional[List[s
 
 class ChatMessageInput(BaseModel):
     role: str
-    content: Union[str, List[Dict[str, Any]], None] = None
-    tool_calls: Optional[List[Dict]] = None
-    tool_call_id: Optional[str] = None
+    content: str | list[dict[str, Any]] | None = None
+    tool_calls: list[dict] | None = None
+    tool_call_id: str | None = None
 
 
 class ChatCompletionRequestInput(BaseModel):
     model: str  # Expected format: "provider@modelname"
-    messages: List[ChatMessageInput]
-    temperature: Optional[float] = 0.7
-    max_tokens: Optional[int] = 500
-    stream: Optional[bool] = False
-    base_url: Optional[str] = None  # Add base_url field
-    tools: Optional[List[Dict]] = None
-    tool_choice: Optional[Any] = None
+    messages: list[ChatMessageInput]
+    temperature: float | None = 0.7
+    max_tokens: int | None = 500
+    stream: bool | None = False
+    base_url: str | None = None  # Add base_url field
+    tools: list[dict] | None = None
+    tool_choice: Any | None = None
     # Add other common OpenAI parameters if needed, e.g., top_p, frequency_penalty
 
-    @validator('messages')
+    @field_validator('messages')
+    @classmethod
     def validate_messages_count(cls, v):
         # print(f"DEBUG: Validating messages count: {len(v)}")
         if len(v) > 500:
             raise ValueError('Too many messages. Maximum allowed is 500.')
         return v
 
-    @validator('model')
+    @field_validator('model')
+    @classmethod
     def validate_model_format(cls, v):
         if '@' not in v:
              # Allow system models or special cases if needed, but strict for now based on previous code
@@ -252,20 +255,20 @@ class ChatCompletionRequestInput(BaseModel):
 
 class ChatMessageOutput(BaseModel):
     role: str
-    content: Optional[str] = None
-    tool_calls: Optional[List[Dict]] = None
+    content: str | None = None
+    tool_calls: list[dict] | None = None
 
 
 class ChoiceDelta(BaseModel):
-    role: Optional[str] = None
-    content: Optional[str] = None
-    tool_calls: Optional[List[Dict]] = None
+    role: str | None = None
+    content: str | None = None
+    tool_calls: list[dict] | None = None
 
 
 class StreamingChoice(BaseModel):
     index: int = 0
     delta: ChoiceDelta
-    finish_reason: Optional[str] = None
+    finish_reason: str | None = None
 
 
 class StreamingChatCompletionChunk(BaseModel):
@@ -273,7 +276,7 @@ class StreamingChatCompletionChunk(BaseModel):
     object: str = "chat.completion.chunk"
     created: int = Field(default_factory=lambda: int(time.time()))
     model: str
-    choices: List[StreamingChoice]
+    choices: list[StreamingChoice]
 
 
 class NonStreamingChoice(BaseModel):
@@ -287,9 +290,9 @@ class NonStreamingChatCompletion(BaseModel):
     object: str = "chat.completion"
     created: int = Field(default_factory=lambda: int(time.time()))
     model: str
-    choices: List[NonStreamingChoice]
+    choices: list[NonStreamingChoice]
     # uniinfer doesn't provide usage yet
-    usage: Optional[Dict[str, int]] = None
+    usage: dict[str, int] | None = None
 
 
 # --- Models for /v1/models endpoint ---
@@ -303,34 +306,34 @@ class Model(BaseModel):
 
 class ModelList(BaseModel):
     object: str = "list"
-    data: List[Model]
+    data: list[Model]
 
 
 # --- Add ProviderList model for OpenAI‐style list response ---
 class ProviderList(BaseModel):
     object: str = "list"
-    data: List[str]
+    data: list[str]
 
 
 # --- Models for Embedding Endpoint ---
 
 class EmbeddingRequest(BaseModel):
     model: str  # Expected format: "provider@modelname"
-    input: List[str]  # List of texts to embed
-    user: Optional[str] = None  # Optional user identifier
+    input: list[str]  # List of texts to embed
+    user: str | None = None  # Optional user identifier
 
 
 class EmbeddingData(BaseModel):
     object: str = "embedding"
-    embedding: List[float]
+    embedding: list[float]
     index: int
 
 
 class EmbeddingResponse(BaseModel):
     object: str = "list"
-    data: List[EmbeddingData]
+    data: list[EmbeddingData]
     model: str
-    usage: Optional[Dict[str, int]] = None
+    usage: dict[str, int] | None = None
 
 
 # --- Predefined Models ---
@@ -394,7 +397,7 @@ PREDEFINED_MODELS = [
 # --- Helper Functions ---
 
 # Update signature: remove api_bearer_token, add provider_api_key
-async def stream_response_generator(messages: List[Dict], provider_model: str, temp: float, max_tok: int, provider_api_key: Optional[str], base_url: Optional[str], tools: Optional[List[Dict]] = None, tool_choice: Optional[Any] = None) -> AsyncGenerator[str, None]:
+async def stream_response_generator(messages: list[dict], provider_model: str, temp: float, max_tok: int, provider_api_key: str | None, base_url: str | None, tools: list[dict] | None = None, tool_choice: Any | None = None) -> AsyncGenerator[str, None]:
     """Generates OpenAI-compatible SSE chunks from uniioai.stream_completion using a thread pool."""
     completion_id = f"chatcmpl-{uuid.uuid4()}"
     created_time = int(time.time())
@@ -515,7 +518,7 @@ async def stream_response_generator(messages: List[Dict], provider_model: str, t
 
 
 # --- Async Stream Response Generator ---
-async def astream_response_generator(messages: List[Dict], provider_model: str, temp: float, max_tok: int, provider_api_key: Optional[str], base_url: Optional[str], tools: Optional[List[Dict]] = None, tool_choice: Optional[Any] = None) -> AsyncGenerator[str, None]:
+async def astream_response_generator(messages: list[dict], provider_model: str, temp: float, max_tok: int, provider_api_key: str | None, base_url: str | None, tools: list[dict] | None = None, tool_choice: Any | None = None) -> AsyncGenerator[str, None]:
     """Generates OpenAI-compatible SSE chunks from uniioai.astream_completion using async."""
     completion_id = f"chatcmpl-{uuid.uuid4()}"
     created_time = int(time.time())
@@ -706,7 +709,7 @@ async def get_providers(api_bearer_token: str = Depends(validate_proxy_token)):
 
 @app.post("/v1/chat/completions")
 @limiter.limit(get_chat_rate_limit)
-async def chat_completions(request: Request, request_input: ChatCompletionRequestInput, api_bearer_token: Optional[str] = Depends(get_optional_proxy_token)):
+async def chat_completions(request: Request, request_input: ChatCompletionRequestInput, api_bearer_token: str | None = Depends(get_optional_proxy_token)):
     """
     OpenAI-compatible chat completions endpoint.
     Uses the 'model' field in the format 'provider@modelname'.
@@ -835,7 +838,7 @@ async def chat_completions(request: Request, request_input: ChatCompletionReques
 # --- Add Embedding Endpoint ---
 @app.post("/v1/embeddings", response_model=EmbeddingResponse)
 @limiter.limit(get_embeddings_rate_limit)
-async def create_embeddings(request: Request, request_input: EmbeddingRequest, api_bearer_token: Optional[str] = Depends(get_optional_proxy_token)):
+async def create_embeddings(request: Request, request_input: EmbeddingRequest, api_bearer_token: str | None = Depends(get_optional_proxy_token)):
     """
     OpenAI-compatible embeddings endpoint.
     Uses the 'model' field in the format 'provider@modelname'.

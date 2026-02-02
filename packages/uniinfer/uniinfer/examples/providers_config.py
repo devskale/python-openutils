@@ -129,7 +129,7 @@ PROVIDER_CONFIGS = {
     },
     'tu': {
         'name': 'tu',
-        'default_model': 'deepseek-r1',
+        'default_model': 'qwen-coder-30b',
         'needs_api_key': True,
     },
     'pollinations': {

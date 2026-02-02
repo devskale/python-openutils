@@ -3,7 +3,7 @@ TU embedding provider implementation.
 """
 import json
 import requests
-from typing import List, Dict, Any, Optional
+from typing import Any
 
 from ..core import EmbeddingProvider, EmbeddingRequest, EmbeddingResponse
 from ..errors import map_provider_error
@@ -18,7 +18,7 @@ class TuAIEmbeddingProvider(EmbeddingProvider):
 
     BASE_URL = "https://aqueduct.ai.datalab.tuwien.ac.at/v1"
 
-    def __init__(self, api_key: Optional[str] = None, organization: Optional[str] = None):
+    def __init__(self, api_key: str | None = None, organization: str | None = None):
         """
         Initialize the TU AI embedding provider.
 
@@ -30,7 +30,7 @@ class TuAIEmbeddingProvider(EmbeddingProvider):
         self.organization = organization
 
     @classmethod
-    def list_models(cls, api_key: Optional[str] = None) -> List[str]:
+    def list_models(cls, api_key: str | None = None, **kwargs) -> list[str]:
         """
         List available models from TU AI using the API.
 

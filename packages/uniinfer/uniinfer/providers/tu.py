@@ -1,421 +1,291 @@
 """
-OpenAIcompliant TU provider implementation.
+OpenAI-compliant TU provider implementation.
 """
-import asyncio
+from typing import Any, AsyncIterator
+from collections.abc import Iterator
+import httpx
 import json
-import requests
-from requests.exceptions import Timeout, ConnectionError
-import time
-import threading
-import logging
-from typing import Dict, Any, Iterator, Optional, AsyncIterator
+import os
+import asyncio
+from datetime import datetime, timedelta
 
 from ..core import ChatProvider, ChatCompletionRequest, ChatCompletionResponse, ChatMessage
-from ..errors import map_provider_error, ProviderError
 
-logger = logging.getLogger(__name__)
+from ..errors import map_provider_error
 
+class TUProvider(ChatProvider):
+    """TU (Tencent Unbounded) LLM Provider implementation."""
 
-class TuAIProvider(ChatProvider):
-    """
-    Provider for OpenAI API.
-    """
-
-    BASE_URL = "https://aqueduct.ai.datalab.tuwien.ac.at/v1"
-
-    # Throttling state
-    _last_request_end_time = 0.0
-    _lock = threading.Lock()
-    _min_gap = 1.5  # 1.5 seconds gap between end of one call and start of next
-
-    def __init__(self, api_key: Optional[str] = None, organization: Optional[str] = None):
-        """
-        Initialize the OpenAI provider.
-
+    def __init__(self, api_key: str | None = None, base_url: str | None = None):
+        """Initialize the TU provider.
+        
         Args:
-            api_key (Optional[str]): The OpenAI API key.
-            organization (Optional[str]): The OpenAI organization ID.
+            api_key: The API key for TU. Defaults to TU_API_KEY env var.
+            base_url: The base URL for the API.
         """
-        super().__init__(api_key)
-        self.organization = organization
+        self.api_key = api_key or os.getenv("TU_API_KEY")
+        self.base_url = base_url or "https://aqueduct.ai.datalab.tuwien.ac.at/v1"
+        self._async_client: httpx.AsyncClient | None = None
+        
+        # Throttling state
+        self._last_request_time: datetime | None = None
+        self._min_request_interval = timedelta(milliseconds=200) # 5 requests per second limit
+        self._lock = asyncio.Lock()
 
-    @classmethod
-    def _throttle(cls):
-        """Enforce rate limiting: wait until (last_end_time + min_gap) <= current_time."""
-        with cls._lock:
-            current_time = time.time()
-            # Calculate when we can safely start the next request
-            next_allowed_start = cls._last_request_end_time + cls._min_gap
-
-            if current_time < next_allowed_start:
-                sleep_time = next_allowed_start - current_time
-                logger.debug(
-                    f"Throttling request. Sleeping for {sleep_time:.4f}s")
-                time.sleep(sleep_time)
-
-            # Note: We update _last_request_end_time AFTER the request finishes,
-            # but here we don't know when it finishes.
-            # To be safe and simple, we can update it to current_time (start of this request)
-            # but the requirement is "gap between end of message and next message".
-            # So we need to update _last_request_end_time at the END of complete() and stream_complete().
-
-    @classmethod
-    def _mark_request_end(cls):
-        """Mark the end time of a request."""
-        with cls._lock:
-            cls._last_request_end_time = time.time()
-
-    @classmethod
-    def list_models(cls, api_key: Optional[str] = None) -> list:
-        """
-        List available models from OpenAI using the API.
-
+    async def _get_async_client(self) -> httpx.AsyncClient:
+        """Get or create the async httpx client.
+        
         Returns:
-            list: A list of available model IDs.
+            httpx.AsyncClient: The async client instance.
         """
-        cls._throttle()
+        if self._async_client is None or self._async_client.is_closed:
+            self._async_client = httpx.AsyncClient(
+                base_url=self.base_url,
+                headers={
+                    "Authorization": f"Bearer {self.api_key}",
+                    "Content-Type": "application/json"
+                },
+                timeout=httpx.Timeout(60.0, connect=10.0)
+            )
+        return self._async_client
 
-        if not api_key:
-            raise ValueError("API key is required to list models")
-        url = f"{cls.BASE_URL}/models"
-        headers = {
-            "Authorization": f"Bearer {api_key}",
+    async def _throttle(self) -> None:
+        """Simple async throttling to respect rate limits."""
+        async with self._lock:
+            if self._last_request_time is not None:
+                elapsed = datetime.now() - self._last_request_time
+                if elapsed < self._min_request_interval:
+                    wait_time = (self._min_request_interval - elapsed).total_seconds()
+                    await asyncio.sleep(wait_time)
+            self._last_request_time = datetime.now()
+
+    def _prepare_payload(self, request: ChatCompletionRequest) -> dict[str, Any]:
+        """Prepare the request payload for the TU API.
+        
+        Args:
+            request: The ChatCompletionRequest object.
+            
+        Returns:
+            dict[str, Any]: The payload for the API request.
+        """
+        messages = []
+        for m in request.messages:
+            msg = {"role": m.role, "content": m.content}
+            if m.tool_calls:
+                msg["tool_calls"] = m.tool_calls
+            if m.tool_call_id:
+                msg["tool_call_id"] = m.tool_call_id
+            messages.append(msg)
+
+        payload = {
+            "model": request.model or "qwen-coder-30b",
+            "messages": messages,
+            "temperature": request.temperature,
+            "stream": request.streaming
         }
-        response = requests.get(url, headers=headers)
-        if response.status_code != 200:
-            raise map_provider_error("TU", Exception(
-                f"OpenAI API error: {response.status_code} - {response.text}"), status_code=response.status_code, response_body=response.text)
-
-        data = response.json()
-        return [model["id"] for model in data.get("data", [])]
-
-    def _flatten_messages(self, messages: list) -> list:
-        """
-        Process messages. Flatten text-only lists if needed, but preserve image/multimodal content.
-        """
-        processed_messages = []
-        for msg in messages:
-            msg_dict = msg.to_dict()
-            content = msg_dict.get("content")
-
-            if isinstance(content, list):
-                # Check if it contains any non-text types (like image_url)
-                has_non_text = any(
-                    isinstance(part, dict) and part.get("type") != "text"
-                    for part in content
-                )
-
-                if has_non_text:
-                    # Preserve structure for VLMs (Vision Language Models)
-                    pass
-                else:
-                    # Flatten text-only lists
-                    text_parts = []
-                    for part in content:
-                        if isinstance(part, dict) and part.get("type") == "text":
-                            text_parts.append(part.get("text", ""))
-
-                    # If we found text parts, join them
-                    if text_parts:
-                        msg_dict["content"] = "".join(text_parts)
-
-            processed_messages.append(msg_dict)
-        return processed_messages
-
-    def complete(
-        self,
-        request: ChatCompletionRequest,
-        **provider_specific_kwargs
-    ) -> ChatCompletionResponse:
-        """
-        Make a chat completion request to OpenAI.
-
-        Args:
-            request (ChatCompletionRequest): The request to make.
-            **provider_specific_kwargs: Additional OpenAI-specific parameters.
-
-        Returns:
-            ChatCompletionResponse: The completion response.
-
-        Raises:
-            Exception: If the request fails.
-        """
-        self._throttle()
-
-        try:
-            logger.info(
-                f"Starting complete request for model: {request.model}")
-            if self.api_key is None:
-                raise ValueError("OpenAI API key is required")
-
-            endpoint = f"{self.BASE_URL}/chat/completions"
-
-            # Prepare the request payload
-            payload = {
-                # Default model if none specified
-                "model": request.model or "openai/RedHatAI/DeepSeek-R1-0528-quantized.w4a16",
-                "messages": self._flatten_messages(request.messages),
-                "temperature": request.temperature,
-            }
-
-            # Add max_tokens if provided
-            if request.max_tokens is not None:
-                payload["max_tokens"] = request.max_tokens
-
-            # Add tools and tool_choice if provided
-            if request.tools:
-                payload["tools"] = request.tools
+        
+        if request.max_tokens:
+            payload["max_tokens"] = request.max_tokens
+            
+        if request.tools:
+            payload["tools"] = request.tools
             if request.tool_choice:
                 payload["tool_choice"] = request.tool_choice
+                
+        return payload
 
-            # Add any provider-specific parameters (like functions, tools, etc.)
-            payload.update(provider_specific_kwargs)
+    async def acomplete(self, request: ChatCompletionRequest) -> ChatCompletionResponse:
+        """Async completion implementation for TU.
+        
+        Args:
+            request: The ChatCompletionRequest object.
+            
+        Returns:
+            ChatCompletionResponse: The response from the TU API.
+            
+        Raises:
+            UniInferError: If the request fails.
+        """
+        await self._throttle()
+        client = await self._get_async_client()
+        payload = self._prepare_payload(request)
 
-            headers = {
-                "Content-Type": "application/json",
-                "Authorization": f"Bearer {self.api_key}"
-            }
-
-            # Add organization header if provided
-            if self.organization:
-                headers["TUW-Organization"] = self.organization
-
-            try:
-                logger.debug(f"Sending POST request to {endpoint}")
-                start_time = time.time()
-                response = requests.post(
-                    endpoint,
-                    headers=headers,
-                    data=json.dumps(payload),
-                    timeout=300  # Increase timeout to 300s
-                )
-                duration = time.time() - start_time
-                logger.info(
-                    f"Request finished in {duration:.2f}s with status {response.status_code}")
-            except Timeout as e:
-                logger.error(f"Request timed out after 300s: {e}")
-                raise map_provider_error("TU", e, status_code=408)
-            except ConnectionError as e:
-                logger.error(f"Connection error: {e}")
-                raise map_provider_error("TU", e, status_code=503)
-            except requests.exceptions.RequestException as e:
-                logger.error(f"Request exception: {e}")
-                raise map_provider_error("TU", e, status_code=500)
-
-            # Handle error response
-            if response.status_code != 200:
-                error_msg = f"TU API error: {response.status_code} - {response.text}"
-                raise map_provider_error("TU", Exception(
-                    error_msg), status_code=response.status_code, response_body=response.text)
-
-            # Parse the response
-            response_data = response.json()
-            choice = response_data['choices'][0]
+        try:
+            response = await client.post("/chat/completions", json=payload)
+            response.raise_for_status()
+            data = response.json()
+            
+            # Map OpenAI-compatible response to UniInfer format
+            choice = data["choices"][0]
+            message_data = choice["message"]
+            
             message = ChatMessage(
-                role=choice['message']['role'],
-                content=choice['message'].get('content'),
-                tool_calls=choice['message'].get('tool_calls')
+                role=message_data["role"],
+                content=message_data.get("content"),
+                tool_calls=message_data.get("tool_calls"),
+                tool_call_id=message_data.get("tool_call_id")
             )
-
+            
             return ChatCompletionResponse(
                 message=message,
-                provider='tu',
-                model=response_data.get('model', request.model),
-                usage=response_data.get('usage', {}),
-                raw_response=response_data
+                provider="tu",
+                model=data.get("model", request.model or "qwen-coder-30b"),
+                usage=data.get("usage", {}),
+                raw_response=data,
+                finish_reason=choice.get("finish_reason")
             )
-        finally:
-            self._mark_request_end()
+        except Exception as e:
+            raise map_provider_error("tu", e)
 
-    def stream_complete(
-        self,
-        request: ChatCompletionRequest,
-        **provider_specific_kwargs
-    ) -> Iterator[ChatCompletionResponse]:
-        """
-        Stream a chat completion response from OpenAI.
-
+    def _process_chunk(self, line: str, model_requested: str | None) -> ChatCompletionResponse | None:
+        """Process a single line from the stream.
+        
         Args:
-            request (ChatCompletionRequest): The request to make.
-            **provider_specific_kwargs: Additional OpenAI-specific parameters.
-
+            line: The raw line from the API.
+            model_requested: The model that was requested.
+            
         Returns:
-            Iterator[ChatCompletionResponse]: An iterator of response chunks.
-
-        Raises:
-            Exception: If the request fails.
+            ChatCompletionResponse | None: The parsed response chunk, or None if it should be skipped.
         """
-        self._throttle()
-
+        if not line.startswith("data: "):
+            return None
+            
+        line = line[6:].strip()
+        if line == "[DONE]" or not line:
+            return None
+            
         try:
-            logger.info(
-                f"Starting stream_complete request for model: {request.model}")
-            if self.api_key is None:
-                raise ValueError("OpenAI API key is required")
-
-            endpoint = f"{self.BASE_URL}/chat/completions"
-
-            # Prepare the request payload
-            payload = {
-                "model": request.model or "openai/RedHatAI/DeepSeek-R1-0528-quantized.w4a16",
-                "messages": self._flatten_messages(request.messages),
-                "temperature": request.temperature,
-                "stream": True
-            }
-
-            # Add max_tokens if provided
-            if request.max_tokens is not None:
-                payload["max_tokens"] = request.max_tokens
-
-            # Add tools and tool_choice if provided
-            if request.tools:
-                payload["tools"] = request.tools
-            if request.tool_choice:
-                payload["tool_choice"] = request.tool_choice
-
-            # Add any provider-specific parameters
-            payload.update(provider_specific_kwargs)
-
-            headers = {
-                "Content-Type": "application/json",
-                "Authorization": f"Bearer {self.api_key}"
-            }
-
-            # Add organization header if provided
-            if self.organization:
-                headers["TUW-Organization"] = self.organization
-
-            try:
-                logger.debug(f"Sending streaming POST request to {endpoint}")
-                start_time = time.time()
-                with requests.post(
-                    endpoint,
-                    headers=headers,
-                    data=json.dumps(payload),
-                    stream=True,
-                    timeout=300  # Increase timeout to 300s
-                ) as response:
-                    duration = time.time() - start_time
-                    logger.info(
-                        f"Stream request connection established in {duration:.2f}s with status {response.status_code}")
-
-                    # Handle error response
-                    if response.status_code != 200:
-                        error_text = response.text
-                        if "504 Gateway Time-out" in error_text:
-                            error_msg = f"TU API error: {response.status_code} - Gateway Timeout (Model may be overloaded)"
-                        else:
-                            error_msg = f"TU API error: {response.status_code} - {error_text}"
-                        raise map_provider_error("TU", Exception(
-                            error_msg), status_code=response.status_code, response_body=error_text)
-
-                    # Process the streaming response
-                    for line in response.iter_lines():
-                        if line:
-                            # Parse the JSON data from the stream
-                            try:
-                                line = line.decode('utf-8')
-
-                                # Skip empty lines, data: [DONE], or invalid lines
-                                if not line or line == 'data: [DONE]' or not line.startswith('data: '):
-                                    continue
-
-                                # Parse the data portion
-                                data_str = line[6:]  # Remove 'data: ' prefix
-                                data = json.loads(data_str)
-
-                                if len(data['choices']) > 0:
-                                    choice = data['choices'][0]
-
-                                    # Skip if neither content nor tool_calls present
-                                    if 'delta' not in choice:
-                                        continue
-                                    delta = choice['delta']
-                                    if not delta.get('content') and not delta.get('tool_calls'):
-                                        continue
-
-                                    # Get content and tool_calls from delta
-                                    content = choice['delta'].get('content')
-                                    tool_calls = choice['delta'].get(
-                                        'tool_calls')
-
-                                    # Create a message for this chunk
-                                    message = ChatMessage(
-                                        role=choice['delta'].get(
-                                            'role', 'assistant'),
-                                        content=content,
-                                        tool_calls=tool_calls
-                                    )
-
-                                    # Usage stats typically not provided in stream chunks
-                                    usage = {}
-
-                                    yield ChatCompletionResponse(
-                                        message=message,
-                                        provider='tu',
-                                        model=data.get('model', request.model),
-                                        usage=usage,
-                                        raw_response=data
-                                    )
-                            except json.JSONDecodeError:
-                                # Skip invalid JSON lines
-                                continue
-                            except Exception as e:
-                                # Skip other errors in individual chunks
-                                continue
-            except Timeout as e:
-                logger.error(f"Stream request timed out after 300s: {e}")
-                raise map_provider_error("TU", e, status_code=408)
-            except ConnectionError as e:
-                logger.error(f"Stream connection error: {e}")
-                raise map_provider_error("TU", e, status_code=503)
-            except requests.exceptions.RequestException as e:
-                logger.error(f"Stream request exception: {e}")
-                raise map_provider_error("TU", e, status_code=500)
-        finally:
-            self._mark_request_end()
-
-    async def acomplete(
-        self,
-        request: ChatCompletionRequest,
-        **provider_specific_kwargs
-    ) -> ChatCompletionResponse:
-        """
-        Async version of complete() - runs sync version in executor.
-        """
-        loop = asyncio.get_event_loop()
-        return await loop.run_in_executor(
-            None,
-            lambda: self.complete(request, **provider_specific_kwargs)
-        )
-
-    async def astream_complete(
-        self,
-        request: ChatCompletionRequest,
-        **provider_specific_kwargs
-    ) -> AsyncIterator[ChatCompletionResponse]:
-        """
-        Async version of stream_complete() - wraps sync generator.
-        """
-        def sync_gen():
-            return self.stream_complete(request, **provider_specific_kwargs)
-
-        # Create sync generator in thread pool
-        loop = asyncio.get_event_loop()
-        gen = await loop.run_in_executor(None, sync_gen)
-
-        try:
-            while True:
-                # Use a proper wrapper that avoids StopIteration in futures
-                def get_next():
-                    try:
-                        return next(gen), False
-                    except StopIteration:
-                        return None, True
+            data = json.loads(line)
+            if not data.get("choices"):
+                return None
                 
-                chunk, is_done = await loop.run_in_executor(None, get_next)
-                if is_done:
-                    break
-                yield chunk
-        finally:
-            await loop.run_in_executor(None, lambda: gen.close() if gen else None)
+            choice = data["choices"][0]
+            delta = choice.get("delta", {})
+            
+            # Skip if no content and no tool calls (common in first/last chunks)
+            if not delta.get("content") and not delta.get("tool_calls") and not choice.get("finish_reason"):
+                return None
+
+            message = ChatMessage(
+                role=delta.get("role", "assistant"),
+                content=delta.get("content"),
+                tool_calls=delta.get("tool_calls"),
+                tool_call_id=delta.get("tool_call_id")
+            )
+            
+            return ChatCompletionResponse(
+                message=message,
+                provider="tu",
+                model=data.get("model", model_requested or "qwen-coder-30b"),
+                usage={}, # Usage is usually only in the last chunk or not at all in stream
+                raw_response=data,
+                finish_reason=choice.get("finish_reason")
+            )
+        except json.JSONDecodeError:
+            return None
+
+    async def astream_complete(self, request: ChatCompletionRequest) -> AsyncIterator[ChatCompletionResponse]:
+        """Async streaming completion implementation for TU.
+        
+        Args:
+            request: The ChatCompletionRequest object.
+            
+        Yields:
+            ChatCompletionResponse: Chunks of the response from the TU API.
+            
+        Raises:
+            UniInferError: If the request fails.
+        """
+        request.streaming = True
+        await self._throttle()
+        client = await self._get_async_client()
+        payload = self._prepare_payload(request)
+
+        try:
+            async with client.stream("POST", "/chat/completions", json=payload) as response:
+                response.raise_for_status()
+                async for line in response.aiter_lines():
+                    chunk = self._process_chunk(line, request.model)
+                    if chunk:
+                        yield chunk
+        except Exception as e:
+            raise map_provider_error("tu", e)
+
+    def complete(self, request: ChatCompletionRequest) -> ChatCompletionResponse:
+        """Sync completion wrapper.
+        
+        Args:
+            request: The ChatCompletionRequest object.
+            
+        Returns:
+            ChatCompletionResponse: The response from the TU API.
+        """
+        return asyncio.run(self.acomplete(request))
+
+    def stream_complete(self, request: ChatCompletionRequest) -> Iterator[ChatCompletionResponse]:
+        """Sync streaming completion wrapper.
+        
+        Args:
+            request: The ChatCompletionRequest object.
+            
+        Returns:
+            Iterator[ChatCompletionResponse]: An iterator over response chunks.
+        """
+        import requests
+        request.streaming = True
+        payload = self._prepare_payload(request)
+        
+        headers = {
+            "Authorization": f"Bearer {self.api_key}",
+            "Content-Type": "application/json"
+        }
+        
+        try:
+            with requests.post(
+                f"{self.base_url}/chat/completions",
+                headers=headers,
+                json=payload,
+                stream=True,
+                timeout=60
+            ) as response:
+                response.raise_for_status()
+                for line in response.iter_lines():
+                    if line:
+                        line_str = line.decode('utf-8')
+                        chunk = self._process_chunk(line_str, request.model)
+                        if chunk:
+                            yield chunk
+        except Exception as e:
+            raise map_provider_error("tu", e)
+
+    @classmethod
+    def list_models(cls, api_key: str | None = None, **kwargs) -> list[str]:
+        """List available models for TU.
+        
+        Args:
+            api_key: API key if needed for listing models.
+            **kwargs: Additional parameters (e.g. base_url).
+            
+        Returns:
+            list[str]: A list of model identifiers.
+        """
+        api_key = api_key or os.getenv("TU_API_KEY")
+        base_url = kwargs.get("base_url") or "https://aqueduct.ai.datalab.tuwien.ac.at/v1"
+        
+        if not api_key:
+            return []
+            
+        try:
+            import requests
+            response = requests.get(
+                f"{base_url}/models",
+                headers={"Authorization": f"Bearer {api_key}"},
+                timeout=10
+            )
+            if response.status_code == 200:
+                data = response.json()
+                return [model["id"] for model in data.get("data", [])]
+        except Exception:
+            pass
+            
+        return []

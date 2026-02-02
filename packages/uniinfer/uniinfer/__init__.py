@@ -18,7 +18,7 @@ from .providers import (
     OllamaProvider, OllamaEmbeddingProvider, OpenRouterProvider, ArliAIProvider,
     InternLMProvider, StepFunProvider, SambanovaProvider,
     UpstageProvider, NGCProvider, CloudflareProvider, ChutesProvider,
-    PollinationsProvider, BigmodelProvider, TuAIProvider, TuAIEmbeddingProvider,
+    PollinationsProvider, BigmodelProvider, TUProvider, TuAIEmbeddingProvider,
     TuAITTSProvider, TuAISTTProvider
 )
 from .errors import (
@@ -80,7 +80,7 @@ ProviderFactory.register_provider("cloudflare", CloudflareProvider)
 ProviderFactory.register_provider("chutes", ChutesProvider)
 ProviderFactory.register_provider("pollinations", PollinationsProvider)
 ProviderFactory.register_provider("bigmodel", BigmodelProvider)
-ProviderFactory.register_provider("tu", TuAIProvider)
+ProviderFactory.register_provider("tu", TUProvider)
 
 # Register embedding providers
 EmbeddingProviderFactory.register_provider("ollama", OllamaEmbeddingProvider)
