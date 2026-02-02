@@ -340,9 +340,46 @@ export ANTHROPIC_API_KEY=your_key_here
 | Bigmodel                                             | GLM-4                      | -                      | ✅        |
 | [Tu AI](https://github.com/TU-Wien-dataLAB/aqueduct) | Various                    | -                      | ✅        |
 | Chutes                                               | Various                    | -                      | ✅        |
-| Pollinations                                         | Free OpenAI-compatible     | -                      | ✅        |
-| StepFun                                              | Various                    | -                      | ✅        |
-| InternLM                                             | InternLM 2.5               | -                      | ✅        |
+| [Pollinations](https://pollinations.ai/)             | 30+ models (GPT, Claude, Gemini, etc.) | -                      | ✅        |
+
+### Pollinations Support
+
+Pollinations.ai provides access to 30+ generative AI models (OpenAI GPT-5, Anthropic Claude 4.5, Google Gemini 3, Mistral, etc.) via a unified OpenAI-compatible API.
+
+- **GitHub**: [https://github.com/pollinations/pollinations/](https://github.com/pollinations/pollinations/)
+- **Documentation**: [https://pollinations.ai/docs](https://pollinations.ai/docs)
+- **API Reference**: [https://enter.pollinations.ai/api/docs](https://enter.pollinations.ai/api/docs)
+- **Get API Key**: [https://enter.pollinations.ai](https://enter.pollinations.ai)
+
+**Authentication Required**: Pollinations requires an API key (Secret Keys for server-side, Publishable Keys for client-side with rate limits). Keys are available at [enter.pollinations.ai](https://enter.pollinations.ai).
+
+**Async Support**: ✅ Pollinations provider supports both sync and async operations (`complete()`, `stream_complete()`, `acomplete()`, `astream_complete()`).
+
+```python
+# Example usage
+from uniinfer import PollinationsProvider, ChatMessage, ChatCompletionRequest
+
+provider = PollinationsProvider(api_key="your-pollinations-api-key")
+
+# Sync completion
+request = ChatCompletionRequest(
+    messages=[ChatMessage(role="user", content="Hello!")],
+    model="openai"
+)
+response = provider.complete(request)
+print(response.message.content)
+
+# Async completion
+import asyncio
+async def async_example():
+    async for chunk in provider.astream_complete(request):
+        print(chunk.message.content, end="", flush=True)
+asyncio.run(async_example())
+
+# List available models
+models = PollinationsProvider.list_models()
+print(f"Available models: {len(models)}")
+```
 
 ## Troubleshooting
 
