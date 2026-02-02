@@ -1029,6 +1029,56 @@ if __name__ == "__main__":
 # --- Models for Image Generation Endpoint ---
 
 
+# --- Image Models Endpoint ---
+@app.get("/v1/image/models/{provider_name}", response_model=ModelList)
+async def list_image_models(provider_name: str, api_bearer_token: Optional[str] = Depends(get_optional_proxy_token)):
+    """
+    List available image generation models for a specific provider.
+    Dynamically fetches from Pollinations API or returns known TU models.
+    """
+    try:
+        models = []
+        
+        if provider_name == "pollinations":
+            # Fetch models dynamically from Pollinations API
+            try:
+                async with httpx.AsyncClient() as client:
+                    resp = await client.get("https://gen.pollinations.ai/image/models", timeout=10)
+                    resp.raise_for_status()
+                    pollinations_models = resp.json()
+                    
+                    # Filter to only image output models (exclude video models)
+                    for model in pollinations_models:
+                        if "image" in model.get("output_modalities", []):
+                            models.append(model["name"])
+                    
+                    logger.info(f"Fetched {len(models)} image models from Pollinations")
+            except Exception as e:
+                logger.error(f"Failed to fetch Pollinations models: {e}, using fallback list")
+                # Fallback to known models
+                models = ["turbo", "flux", "kontext", "nanobanana", "gptimage", "zimage", "klein"]
+        
+        elif provider_name == "tu":
+            # TU/Aqueduct models - these are known models
+            # You can extend this list based on what's available in your Aqueduct instance
+            models = ["flux-schnell", "flux-dev", "dall-e-3", "stable-diffusion-xl"]
+        
+        else:
+            raise HTTPException(
+                status_code=400, 
+                detail=f"Image generation not supported for provider '{provider_name}'. Supported providers: pollinations, tu"
+            )
+        
+        model_objs = [Model(id=m) for m in models]
+        return ModelList(data=model_objs)
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.exception(f"Error listing image models for {provider_name}: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to list image models: {str(e)}")
+
+
 class ImageGenerationRequest(BaseModel):
     model: str
     prompt: str
@@ -1158,13 +1208,20 @@ async def generate_images(request: Request, request_input: ImageGenerationReques
 
                 # Pollinations provider - existing logic
                 else:
-                    # Enforce known image models; default to turbo when unknown
-                    allowed_models = {"turbo", "flux", "gptimage"}
+                    # Supported Pollinations models (as of 2026)
+                    # See: https://gen.pollinations.ai/image/models
+                    allowed_models = {
+                        "turbo", "flux", "kontext", "nanobanana", "nanobanana-pro",
+                        "seedream", "seedream-pro", "gptimage", "gptimage-large",
+                        "zimage", "klein", "klein-large"
+                    }
                     if model_name not in allowed_models:
+                        logger.warning(f"Unknown Pollinations model '{model_name}', defaulting to 'turbo'")
                         model_name = "turbo"
 
                     encoded_prompt = urllib.parse.quote(prompt)
-                    base_url = "https://image.pollinations.ai/prompt"
+                    # Updated to use the current Pollinations API endpoint
+                    base_url = "https://gen.pollinations.ai/image"
 
                     for i in range(n):
                         this_seed = seed if seed is not None else int(time.time()) + i
