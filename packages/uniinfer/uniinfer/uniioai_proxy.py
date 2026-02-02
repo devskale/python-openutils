@@ -18,7 +18,7 @@ from starlette.concurrency import iterate_in_threadpool, run_in_threadpool
 from pydantic import BaseModel, Field, field_validator
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import StreamingResponse, FileResponse, JSONResponse
+from fastapi.responses import StreamingResponse, FileResponse, JSONResponse, Response
 from fastapi import FastAPI, HTTPException, Request, Depends, File, Form, UploadFile, status
 from fastapi.encoders import jsonable_encoder
 from slowapi import Limiter, _rate_limit_exceeded_handler
@@ -1312,9 +1312,8 @@ class TTSRequestModel(BaseModel):
 
 
 @app.post("/v1/audio/speech")
-@limiter.limit(get_media_rate_limit)
 async def generate_speech(
-        request: Request, request_input: TTSRequestModel, api_bearer_token: Optional[str] = Depends(get_optional_proxy_token)):
+    request: Request, request_input: TTSRequestModel, api_bearer_token: Optional[str] = Depends(get_optional_proxy_token)):
     """
     OpenAI-compatible text-to-speech endpoint.
     Generates audio from text using TTS models.
@@ -1351,14 +1350,12 @@ async def generate_speech(
 
         logger.info(f"Generating TTS speech with model: {model_name}, voice: {request_input.voice}, text length: {len(input_text)}")
 
-        # Generate speech using run_in_threadpool to avoid blocking
-        from starlette.concurrency import run_in_threadpool
-        response = await run_in_threadpool(tts_provider.generate_speech, tts_request)
+        # Generate speech using async method directly
+        response = await tts_provider.agenerate_speech(tts_request)
 
         logger.info(f"TTS speech generated successfully, content length: {len(response.audio_content)} bytes")
 
         # Return audio content
-        from fastapi.responses import Response
         return Response(
             content=response.audio_content,
             media_type=response.content_type
@@ -1392,7 +1389,6 @@ class STTVerboseResponseModel(BaseModel):
 
 
 @app.post("/v1/audio/transcriptions")
-@limiter.limit(get_media_rate_limit)
 async def transcribe_audio(
     request: Request,
     file: UploadFile = File(...),
@@ -1440,9 +1436,8 @@ async def transcribe_audio(
             temperature=temperature or 0.0
         )
 
-        # Transcribe audio (run in thread pool to avoid blocking)
-        response = await run_in_threadpool(
-            stt_provider.transcribe,
+        # Transcribe audio using async method directly
+        response = await stt_provider.atranscribe(
             stt_request
         )
 
