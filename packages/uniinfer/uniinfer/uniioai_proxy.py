@@ -8,8 +8,10 @@ import uuid
 import json
 import time
 import sys
+import urllib.parse
 import requests
 import base64
+import httpx
 from fastapi.security.http import HTTPAuthorizationCredentials
 from fastapi.security import HTTPBearer  # Import HTTPBearer
 from starlette.concurrency import iterate_in_threadpool, run_in_threadpool
@@ -1081,153 +1083,136 @@ async def generate_images(request: Request, request_input: ImageGenerationReques
 
         data_items: List[ImageData] = []
 
-        # TU provider (Aqueduct) - uses OpenAI-compatible API
-        if provider_name == 'tu':
-            # Fallback to env var if no key provided in request
-            if not api_key:
-                api_key = os.environ.get("TU_API_KEY")
+        async with httpx.AsyncClient() as client:
+            # TU provider (Aqueduct) - uses OpenAI-compatible API
+            if provider_name == 'tu':
+                # Fallback to env var if no key provided in request
+                if not api_key:
+                    api_key = os.environ.get("TU_API_KEY")
 
-            if not api_key:
-                raise HTTPException(
-                    status_code=401, detail="API key required for TU provider")
+                if not api_key:
+                    raise HTTPException(
+                        status_code=401, detail="API key required for TU provider")
 
-            tu_base_url = "https://aqueduct.ai.datalab.tuwien.ac.at/v1"
-            tu_endpoint = f"{tu_base_url}/images/generations"
+                tu_base_url = "https://aqueduct.ai.datalab.tuwien.ac.at/v1"
+                tu_endpoint = f"{tu_base_url}/images/generations"
 
-            headers = {
-                "Content-Type": "application/json",
-                "Authorization": f"Bearer {api_key}"
-            }
+                headers = {
+                    "Content-Type": "application/json",
+                    "Authorization": f"Bearer {api_key}"
+                }
 
-            payload = {
-                "model": model_name,
-                "prompt": prompt,
-                "n": n,
-                "size": size
-            }
+                payload = {
+                    "model": model_name,
+                    "prompt": prompt,
+                    "n": n,
+                    "size": size
+                }
 
-            try:
-                resp = requests.post(
-                    tu_endpoint, headers=headers, json=payload, timeout=120)
-                resp.raise_for_status()
-                tu_data = resp.json()
-
-                # Process TU response (OpenAI-compatible format)
-                for item in tu_data.get("data", []):
-                    # TU may return b64_json or url
-                    b64_json = item.get("b64_json")
-                    url = item.get("url")
-
-                    if b64_json:
-                        data_items.append(
-                            ImageData(b64_json=b64_json, url=url))
-                    elif url:
-                        # If only URL is provided, fetch and encode
-                        try:
-                            img_resp = requests.get(url, timeout=60)
-                            img_resp.raise_for_status()
-                            b64 = base64.b64encode(
-                                img_resp.content).decode('utf-8')
-                            data_items.append(ImageData(b64_json=b64, url=url))
-                        except requests.exceptions.RequestException as e:
-                            raise HTTPException(
-                                status_code=502, detail=f"Failed to fetch image from TU URL: {e}")
-
-            except requests.exceptions.HTTPError as e:
-                raise HTTPException(status_code=e.response.status_code if e.response else 500,
-                                    detail=f"TU API error: {e.response.text if e.response else str(e)}")
-            except requests.exceptions.RequestException as e:
-                raise HTTPException(
-                    status_code=502, detail=f"TU API request failed: {str(e)}")
-
-        # Pollinations provider - existing logic
-        else:
-            # Enforce known image models; default to turbo when unknown
-            allowed_models = {"turbo", "flux", "gptimage"}
-            if model_name not in allowed_models:
-                model_name = "turbo"
-
-            encoded_prompt = requests.utils.quote(prompt)
-            base_url = "https://image.pollinations.ai/prompt"
-
-            for i in range(n):
-                this_seed = seed if seed is not None else int(time.time()) + i
-                url_primary = f"{base_url}/{encoded_prompt}?model={model_name}&width={width}&height={height}&seed={this_seed}"
-                url_fallback = f"{base_url}/{encoded_prompt}?width={width}&height={height}&seed={this_seed}"
-                headers = {"Accept": "image/jpeg", "User-Agent": "UniIOAI/0.1"}
-                if api_key:
-                    headers["Authorization"] = f"Bearer {api_key}"
-                used_url = url_primary
-                ok = False
                 try:
-                    resp = requests.get(
-                        url_primary, headers=headers, timeout=60)
-                    if resp.status_code == 200:
-                        ok = True
-                    else:
-                        used_url = url_fallback
-                        resp_fb = requests.get(
-                            url_fallback, headers=headers, timeout=60)
-                        resp = resp_fb
-                        if resp.status_code == 200:
-                            ok = True
-                except requests.exceptions.RequestException:
-                    used_url = url_fallback
+                    resp = await client.post(
+                        tu_endpoint, headers=headers, json=payload, timeout=120)
+                    resp.raise_for_status()
+                    tu_data = resp.json()
+
+                    # Process TU response (OpenAI-compatible format)
+                    for item in tu_data.get("data", []):
+                        # TU may return b64_json or url
+                        b64_json = item.get("b64_json")
+                        url = item.get("url")
+
+                        if b64_json:
+                            data_items.append(
+                                ImageData(b64_json=b64_json, url=url))
+                        elif url:
+                            # If only URL is provided, fetch and encode
+                            try:
+                                img_resp = await client.get(url, timeout=60)
+                                img_resp.raise_for_status()
+                                b64 = base64.b64encode(
+                                    img_resp.content).decode('utf-8')
+                                data_items.append(
+                                    ImageData(b64_json=b64, url=url))
+                            except httpx.HTTPError as e:
+                                raise HTTPException(
+                                    status_code=502, detail=f"Failed to fetch image from TU URL: {e}")
+
+                except httpx.HTTPStatusError as e:
+                    raise HTTPException(status_code=e.response.status_code if e.response else 500,
+                                        detail=f"TU API error: {e.response.text if e.response else str(e)}")
+                except httpx.RequestError as e:
+                    raise HTTPException(
+                        status_code=502, detail=f"TU API request failed: {str(e)}")
+
+            # Pollinations provider - existing logic
+            else:
+                # Enforce known image models; default to turbo when unknown
+                allowed_models = {"turbo", "flux", "gptimage"}
+                if model_name not in allowed_models:
+                    model_name = "turbo"
+
+                encoded_prompt = urllib.parse.quote(prompt)
+                base_url = "https://image.pollinations.ai/prompt"
+
+                for i in range(n):
+                    this_seed = seed if seed is not None else int(time.time()) + i
+                    url_primary = f"{base_url}/{encoded_prompt}?model={model_name}&width={width}&height={height}&seed={this_seed}"
+                    url_fallback = f"{base_url}/{encoded_prompt}?width={width}&height={height}&seed={this_seed}"
+                    headers = {"Accept": "image/jpeg", "User-Agent": "UniIOAI/0.1"}
+                    if api_key:
+                        headers["Authorization"] = f"Bearer {api_key}"
+                    
+                    used_url = url_primary
+                    ok = False
                     try:
-                        resp = requests.get(
-                            url_fallback, headers=headers, timeout=60)
+                        resp = await client.get(url_primary, headers=headers, timeout=60)
                         if resp.status_code == 200:
-                            ok = True
-                    except requests.exceptions.RequestException:
-                        ok = False
-                if not ok:
-                    turbo_primary = f"{base_url}/{encoded_prompt}?model=turbo&width={width}&height={height}&seed={this_seed}"
-                    turbo_fallback = f"{base_url}/{encoded_prompt}?width={width}&height={height}&seed={this_seed}"
-                    try:
-                        rtp = requests.get(
-                            turbo_primary, headers=headers, timeout=60)
-                        if rtp.status_code == 200:
-                            used_url = turbo_primary
-                            resp = rtp
                             ok = True
                         else:
-                            rtf = requests.get(
-                                turbo_fallback, headers=headers, timeout=60)
-                            if rtf.status_code == 200:
-                                used_url = turbo_fallback
-                                resp = rtf
+                            used_url = url_fallback
+                            resp_fb = await client.get(url_fallback, headers=headers, timeout=60)
+                            resp = resp_fb
+                            if resp.status_code == 200:
                                 ok = True
-                    except requests.exceptions.RequestException:
-                        ok = False
-                    if not ok:
-                        primary_status = None
-                        fallback_status = None
+                    except httpx.RequestError:
+                        used_url = url_fallback
                         try:
-                            r1 = requests.get(
-                                url_primary, headers=headers, timeout=10)
-                            primary_status = r1.status_code
-                            r2 = requests.get(
-                                url_fallback, headers=headers, timeout=10)
-                            fallback_status = r2.status_code
-                        except Exception:
-                            pass
-                        detail = {
-                            "message": "Pollinations image error",
-                            "primary_url": url_primary,
-                            "primary_status": primary_status,
-                            "fallback_url": url_fallback,
-                            "fallback_status": fallback_status,
-                        }
-                        raise HTTPException(status_code=502, detail=detail)
-                b64 = base64.b64encode(resp.content).decode('utf-8')
-                data_items.append(ImageData(b64_json=b64, url=used_url))
-
-        response_data = ImageGenerationResponse(data=data_items, model=provider_model)
-        return JSONResponse(content=response_data.model_dump())
+                            resp = await client.get(url_fallback, headers=headers, timeout=60)
+                            if resp.status_code == 200:
+                                ok = True
+                        except httpx.RequestError:
+                            ok = False
+                    
+                    if not ok:
+                        # Fallback to turbo models
+                        turbo_primary = f"{base_url}/{encoded_prompt}?model=turbo&width={width}&height={height}&seed={this_seed}"
+                        turbo_fallback = f"{base_url}/{encoded_prompt}?width={width}&height={height}&seed={this_seed}"
+                        try:
+                            rtp = await client.get(turbo_primary, headers=headers, timeout=60)
+                            if rtp.status_code == 200:
+                                used_url = turbo_primary
+                                resp = rtp
+                                ok = True
+                            else:
+                                rtf = await client.get(turbo_fallback, headers=headers, timeout=60)
+                                if rtf.status_code == 200:
+                                    used_url = turbo_fallback
+                                    resp = rtf
+                                    ok = True
+                        except httpx.RequestError:
+                            ok = False
+                    
+                    if ok and resp:
+                        b64 = base64.b64encode(resp.content).decode('utf-8')
+                        data_items.append(ImageData(b64_json=b64, url=used_url))
+                    else:
+                        raise HTTPException(status_code=500, detail="Failed to generate image from Pollinations")
+        return ImageGenerationResponse(data=data_items, model=provider_model)
 
     except HTTPException:
         raise
     except Exception as e:
+        logger.exception(f"Error in generate_images: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 

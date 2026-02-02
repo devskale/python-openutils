@@ -7,7 +7,7 @@ import httpx
 from typing import Iterator, Optional, AsyncIterator
 
 from ..core import ChatProvider, ChatCompletionRequest, ChatCompletionResponse, ChatMessage
-from ..errors import map_provider_error
+from ..errors import map_provider_error, UniInferError
 
 
 class OpenAIProvider(ChatProvider):
@@ -82,47 +82,34 @@ class OpenAIProvider(ChatProvider):
             flattened_messages.append(msg_dict)
         return flattened_messages
 
-    def complete(
+    async def acomplete(
         self,
         request: ChatCompletionRequest,
         **provider_specific_kwargs
     ) -> ChatCompletionResponse:
         """
-        Make a chat completion request to OpenAI.
-
-        Args:
-            request (ChatCompletionRequest): The request to make.
-            **provider_specific_kwargs: Additional OpenAI-specific parameters.
-
-        Returns:
-            ChatCompletionResponse: The completion response.
-
-        Raises:
-            Exception: If the request fails.
+        Make an async chat completion request to OpenAI.
         """
         if self.api_key is None:
             raise ValueError("OpenAI API key is required")
 
         endpoint = f"{self.base_url}/chat/completions"
 
-        # Prepare the request payload
         payload = {
-            "model": request.model or "gpt-3.5-turbo",  # Default model if none specified
+            "model": request.model or "gpt-3.5-turbo",
             "messages": self._flatten_messages(request.messages),
             "temperature": request.temperature,
+            "stream": False
         }
 
-        # Add max_tokens if provided
         if request.max_tokens is not None:
             payload["max_tokens"] = request.max_tokens
 
-        # Add tools and tool_choice if provided
         if request.tools:
             payload["tools"] = request.tools
         if request.tool_choice:
             payload["tool_choice"] = request.tool_choice
 
-        # Add any provider-specific parameters (like functions, tools, etc.)
         payload.update(provider_specific_kwargs)
 
         headers = {
@@ -130,24 +117,22 @@ class OpenAIProvider(ChatProvider):
             "Authorization": f"Bearer {self.api_key}"
         }
 
-        # Add organization header if provided
         if self.organization:
             headers["OpenAI-Organization"] = self.organization
 
+        client = await self._get_async_client()
         try:
-            response = requests.post(
+            response = await client.post(
                 endpoint,
                 headers=headers,
-                data=json.dumps(payload)
+                json=payload,
+                timeout=60.0
             )
 
-            # Handle error response
             if response.status_code != 200:
                 error_msg = f"OpenAI API error: {response.status_code} - {response.text}"
-                raise map_provider_error("OpenAI", Exception(
-                    error_msg), status_code=response.status_code, response_body=response.text)
+                raise map_provider_error("OpenAI", Exception(error_msg), status_code=response.status_code, response_body=response.text)
 
-            # Parse the response
             response_data = response.json()
             choice = response_data['choices'][0]
             message = ChatMessage(
@@ -165,223 +150,9 @@ class OpenAIProvider(ChatProvider):
                 finish_reason=choice.get('finish_reason')
             )
         except Exception as e:
-            status_code = getattr(e.response, 'status_code', None) if hasattr(
-                e, 'response') else None
-            response_body = getattr(e.response, 'text', None) if hasattr(
-                e, 'response') else str(e)
-            raise map_provider_error(
-                "OpenAI", e, status_code=status_code, response_body=response_body)
-
-    def stream_complete(
-        self,
-        request: ChatCompletionRequest,
-        **provider_specific_kwargs
-    ) -> Iterator[ChatCompletionResponse]:
-        """
-        Stream a chat completion response from OpenAI.
-
-        Args:
-            request (ChatCompletionRequest): The request to make.
-            **provider_specific_kwargs: Additional OpenAI-specific parameters.
-
-        Returns:
-            Iterator[ChatCompletionResponse]: An iterator of response chunks.
-
-        Raises:
-            Exception: If the request fails.
-        """
-        if self.api_key is None:
-            raise ValueError("OpenAI API key is required")
-
-        endpoint = f"{self.base_url}/chat/completions"
-
-        # Prepare the request payload
-        payload = {
-            "model": request.model or "gpt-3.5-turbo",
-            "messages": self._flatten_messages(request.messages),
-            "temperature": request.temperature,
-            "stream": True
-        }
-
-        # Add max_tokens if provided
-        if request.max_tokens is not None:
-            payload["max_tokens"] = request.max_tokens
-
-        # Add tools and tool_choice if provided
-        if request.tools:
-            payload["tools"] = request.tools
-        if request.tool_choice:
-            payload["tool_choice"] = request.tool_choice
-
-        # Add any provider-specific parameters
-        payload.update(provider_specific_kwargs)
-
-        headers = {
-            "Content-Type": "application/json",
-            "Authorization": f"Bearer {self.api_key}"
-        }
-
-        # Add organization header if provided
-        if self.organization:
-            headers["OpenAI-Organization"] = self.organization
-
-        try:
-            with requests.post(
-                endpoint,
-                headers=headers,
-                data=json.dumps(payload),
-                stream=True
-            ) as response:
-                # Handle error response
-                if response.status_code != 200:
-                    error_msg = f"OpenAI API error: {response.status_code} - {response.text}"
-                    raise map_provider_error("OpenAI", Exception(
-                        error_msg), status_code=response.status_code, response_body=response.text)
-
-                # Process the streaming response
-                for line in response.iter_lines():
-                    if line:
-                        # Parse the JSON data from the stream
-                        try:
-                            line = line.decode('utf-8')
-
-                            # Skip empty lines, data: [DONE], or invalid lines
-                            if not line or line == 'data: [DONE]' or not line.startswith('data: '):
-                                continue
-
-                            # Parse the data portion
-                            data_str = line[6:]  # Remove 'data: ' prefix
-                            data = json.loads(data_str)
-
-                            if len(data['choices']) > 0:
-                                choice = data['choices'][0]
-                                finish_reason = choice.get('finish_reason')
-                                delta = choice.get('delta', {})
-
-                                # Skip if neither content nor tool_calls present AND no finish_reason
-                                if not delta.get('content') and not delta.get('tool_calls') and not finish_reason:
-                                    continue
-
-                                # Get content and tool_calls from delta
-                                content = delta.get('content')
-                                tool_calls = delta.get('tool_calls')
-
-                                # Create a message for this chunk
-                                message = ChatMessage(
-                                    role=delta.get('role', 'assistant'),
-                                    content=content,
-                                    tool_calls=tool_calls
-                                )
-
-                                # Usage stats typically not provided in stream chunks
-                                usage = {}
-
-                                yield ChatCompletionResponse(
-                                    message=message,
-                                    provider='openai',
-                                    model=data.get('model', request.model),
-                                    usage=usage,
-                                    raw_response=data,
-                                    finish_reason=finish_reason
-                                )
-                        except json.JSONDecodeError:
-                            # Skip invalid JSON lines
-                            continue
-                        except Exception:
-                            # Skip other errors in individual chunks
-                            continue
-        except Exception as e:
-            status_code = getattr(e.response, 'status_code', None) if hasattr(
-                e, 'response') else None
-            response_body = getattr(e.response, 'text', None) if hasattr(
-                e, 'response') else str(e)
-            raise map_provider_error(
-                "OpenAI", e, status_code=status_code, response_body=response_body)
-
-    async def acomplete(
-        self,
-        request: ChatCompletionRequest,
-        **provider_specific_kwargs
-    ) -> ChatCompletionResponse:
-        """
-        Make an async chat completion request to OpenAI.
-
-        Args:
-            request (ChatCompletionRequest): The request to make.
-            **provider_specific_kwargs: Additional OpenAI-specific parameters.
-
-        Returns:
-            ChatCompletionResponse: The completion response.
-
-        Raises:
-            Exception: If the request fails.
-        """
-        if self.api_key is None:
-            raise ValueError("OpenAI API key is required")
-
-        endpoint = f"{self.base_url}/chat/completions"
-
-        payload = {
-            "model": request.model or "gpt-3.5-turbo",
-            "messages": self._flatten_messages(request.messages),
-            "temperature": request.temperature,
-        }
-
-        if request.max_tokens is not None:
-            payload["max_tokens"] = request.max_tokens
-
-        if request.tools:
-            payload["tools"] = request.tools
-        if request.tool_choice:
-            payload["tool_choice"] = request.tool_choice
-
-        payload.update(provider_specific_kwargs)
-
-        headers = {
-            "Content-Type": "application/json",
-            "Authorization": f"Bearer {self.api_key}"
-        }
-
-        if self.organization:
-            headers["OpenAI-Organization"] = self.organization
-
-        async with httpx.AsyncClient() as client:
-            try:
-                response = await client.post(
-                    endpoint,
-                    headers=headers,
-                    json=payload,
-                    timeout=60.0
-                )
-
-                if response.status_code != 200:
-                    error_msg = f"OpenAI API error: {response.status_code} - {response.text}"
-                    raise map_provider_error("OpenAI", Exception(
-                        error_msg), status_code=response.status_code, response_body=response.text)
-
-                response_data = response.json()
-                choice = response_data['choices'][0]
-                message = ChatMessage(
-                    role=choice['message']['role'],
-                    content=choice['message'].get('content'),
-                    tool_calls=choice['message'].get('tool_calls')
-                )
-
-                return ChatCompletionResponse(
-                    message=message,
-                    provider='openai',
-                    model=response_data.get('model', request.model),
-                    usage=response_data.get('usage', {}),
-                    raw_response=response_data,
-                    finish_reason=choice.get('finish_reason')
-                )
-            except Exception as e:
-                status_code = getattr(e.response, 'status_code', None) if hasattr(
-                    e, 'response') else None
-                response_body = getattr(e.response, 'text', None) if hasattr(
-                    e, 'response') else str(e)
-                raise map_provider_error(
-                    "OpenAI", e, status_code=status_code, response_body=response_body)
+            if isinstance(e, UniInferError):
+                raise
+            raise map_provider_error("OpenAI", e)
 
     async def astream_complete(
         self,
@@ -390,16 +161,6 @@ class OpenAIProvider(ChatProvider):
     ) -> AsyncIterator[ChatCompletionResponse]:
         """
         Stream an async chat completion response from OpenAI.
-
-        Args:
-            request (ChatCompletionRequest): The request to make.
-            **provider_specific_kwargs: Additional OpenAI-specific parameters.
-
-        Returns:
-            AsyncIterator[ChatCompletionResponse]: An async iterator of response chunks.
-
-        Raises:
-            Exception: If the request fails.
         """
         if self.api_key is None:
             raise ValueError("OpenAI API key is required")
@@ -431,64 +192,53 @@ class OpenAIProvider(ChatProvider):
         if self.organization:
             headers["OpenAI-Organization"] = self.organization
 
-        async with httpx.AsyncClient() as client:
-            try:
-                async with client.stream(
-                    "POST",
-                    endpoint,
-                    headers=headers,
-                    json=payload,
-                    timeout=60.0
-                ) as response:
-                    if response.status_code != 200:
-                        error_msg = f"OpenAI API error: {response.status_code} - {await response.aread()}"
-                        raise map_provider_error("OpenAI", Exception(
-                            error_msg), status_code=response.status_code, response_body=error_msg)
+        client = await self._get_async_client()
+        try:
+            async with client.stream(
+                "POST",
+                endpoint,
+                headers=headers,
+                json=payload,
+                timeout=60.0
+            ) as response:
+                if response.status_code != 200:
+                    error_msg = f"OpenAI API error: {response.status_code} - {await response.aread()}"
+                    raise map_provider_error("OpenAI", Exception(error_msg), status_code=response.status_code, response_body=error_msg)
 
-                    async for line in response.aiter_lines():
-                        if line:
-                            try:
-                                if not line or line == 'data: [DONE]' or not line.startswith('data: '):
+                async for line in response.aiter_lines():
+                    if line:
+                        try:
+                            if not line or line == 'data: [DONE]' or not line.startswith('data: '):
+                                continue
+
+                            data_str = line[6:]
+                            data = json.loads(data_str)
+
+                            if len(data['choices']) > 0:
+                                choice = data['choices'][0]
+                                finish_reason = choice.get('finish_reason')
+                                delta = choice.get('delta', {})
+
+                                if not delta.get('content') and not delta.get('tool_calls') and not finish_reason:
                                     continue
 
-                                data_str = line[6:]  # Remove 'data: ' prefix
-                                data = json.loads(data_str)
+                                message = ChatMessage(
+                                    role=delta.get('role', 'assistant'),
+                                    content=delta.get('content'),
+                                    tool_calls=delta.get('tool_calls')
+                                )
 
-                                if len(data['choices']) > 0:
-                                    choice = data['choices'][0]
-                                    finish_reason = choice.get('finish_reason')
-                                    delta = choice.get('delta', {})
-
-                                    if not delta.get('content') and not delta.get('tool_calls') and not finish_reason:
-                                        continue
-
-                                    content = delta.get('content')
-                                    tool_calls = delta.get('tool_calls')
-
-                                    message = ChatMessage(
-                                        role=delta.get('role', 'assistant'),
-                                        content=content,
-                                        tool_calls=tool_calls
-                                    )
-
-                                    usage = {}
-
-                                    yield ChatCompletionResponse(
-                                        message=message,
-                                        provider='openai',
-                                        model=data.get('model', request.model),
-                                        usage=usage,
-                                        raw_response=data,
-                                        finish_reason=finish_reason
-                                    )
-                            except json.JSONDecodeError:
-                                continue
-                            except Exception:
-                                continue
-            except Exception as e:
-                status_code = getattr(e.response, 'status_code', None) if hasattr(
-                    e, 'response') else None
-                response_body = getattr(e.response, 'text', None) if hasattr(
-                    e, 'response') else str(e)
-                raise map_provider_error(
-                    "OpenAI", e, status_code=status_code, response_body=response_body)
+                                yield ChatCompletionResponse(
+                                    message=message,
+                                    provider='openai',
+                                    model=data.get('model', request.model),
+                                    usage={},
+                                    raw_response=data,
+                                    finish_reason=finish_reason
+                                )
+                        except json.JSONDecodeError:
+                            continue
+        except Exception as e:
+            if isinstance(e, UniInferError):
+                raise
+            raise map_provider_error("OpenAI", e)

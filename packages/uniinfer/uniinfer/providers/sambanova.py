@@ -5,7 +5,7 @@ from typing import Dict, Any, Iterator, Optional, List
 import os
 
 from ..core import ChatProvider, ChatCompletionRequest, ChatCompletionResponse, ChatMessage
-from ..errors import map_provider_error
+from ..errors import map_provider_error, UniInferError
 
 try:
     import openai
@@ -40,11 +40,21 @@ class SambanovaProvider(ChatProvider):
                 "Install it with: pip install openai"
             )
 
-        # Initialize the OpenAI client for SambaNova
+        # Initialize the OpenAI clients for SambaNova
         self.client = openai.OpenAI(
             api_key=self.api_key or os.environ.get("SAMBANOVA_API_KEY"),
             base_url=self.base_url
         )
+        self.async_client = openai.AsyncOpenAI(
+            api_key=self.api_key or os.environ.get("SAMBANOVA_API_KEY"),
+            base_url=self.base_url
+        )
+
+    async def aclose(self):
+        """Close the SambaNova async client."""
+        if hasattr(self, 'async_client'):
+            await self.async_client.close()
+        await super().aclose()
 
     @classmethod
     def list_models(cls) -> List[str]:
@@ -61,25 +71,14 @@ class SambanovaProvider(ChatProvider):
             "sambastudio-70b"
         ]
 
-    def complete(
+    async def acomplete(
         self,
         request: ChatCompletionRequest,
         **provider_specific_kwargs
     ) -> ChatCompletionResponse:
         """
-        Make a chat completion request to SambaNova.
-
-        Args:
-            request (ChatCompletionRequest): The request to make.
-            **provider_specific_kwargs: Additional SambaNova-specific parameters.
-
-        Returns:
-            ChatCompletionResponse: The completion response.
-
-        Raises:
-            Exception: If the request fails.
+        Make an async chat completion request to SambaNova.
         """
-        # Format messages for SambaNova - using standard format as in the test code
         def _flatten_messages(msgs: List[ChatMessage]) -> List[Dict[str, Any]]:
             out = []
             for m in msgs:
@@ -96,35 +95,27 @@ class SambanovaProvider(ChatProvider):
 
         messages = _flatten_messages(request.messages)
 
-        # Prepare parameters
         params = {
-            "model": request.model or "Meta-Llama-3.1-8B-Instruct",  # Updated default model
+            "model": request.model or "Meta-Llama-3.1-8B-Instruct",
             "messages": messages,
             "temperature": request.temperature,
         }
 
-        # Add max_tokens if provided
         if request.max_tokens is not None:
             params["max_tokens"] = request.max_tokens
 
-        # Add tools and tool_choice if provided
         if request.tools:
             params["tools"] = request.tools
         if request.tool_choice:
             params["tool_choice"] = request.tool_choice
 
-        # Add any provider-specific parameters
         params.update(provider_specific_kwargs)
 
         try:
-            # Make the chat completion request
-            completion = self.client.chat.completions.create(**params)
-
-            # Extract the response content
+            completion = await self.async_client.chat.completions.create(**params)
             content = ""
             raw_content = completion.choices[0].message.content
 
-            # Handle different content formats
             if isinstance(raw_content, list):
                 for item in raw_content:
                     if isinstance(item, dict) and item.get("type") == "text":
@@ -134,32 +125,25 @@ class SambanovaProvider(ChatProvider):
             else:
                 content = raw_content
 
-            # Extract tool calls if present (OpenAI-compatible)
             tool_calls = None
-            try:
-                tc = getattr(completion.choices[0].message, 'tool_calls', None)
-                if tc:
-                    tool_calls = []
-                    for t in tc:
-                        func_name = None
-                        func_args = None
-                        try:
-                            func = getattr(t, 'function', None)
-                            if func:
-                                func_name = getattr(func, 'name', None)
-                                func_args = getattr(func, 'arguments', None)
-                        except Exception:
-                            pass
-                        tool_calls.append({
-                            "id": getattr(t, 'id', None),
-                            "type": getattr(t, 'type', 'function'),
-                            "function": {
-                                "name": func_name,
-                                "arguments": func_args
-                            }
-                        })
-            except Exception:
-                tool_calls = None
+            tc = getattr(completion.choices[0].message, 'tool_calls', None)
+            if tc:
+                tool_calls = []
+                for t in tc:
+                    func_name = None
+                    func_args = None
+                    func = getattr(t, 'function', None)
+                    if func:
+                        func_name = getattr(func, 'name', None)
+                        func_args = getattr(func, 'arguments', None)
+                    tool_calls.append({
+                        "id": getattr(t, 'id', None),
+                        "type": getattr(t, 'type', 'function'),
+                        "function": {
+                            "name": func_name,
+                            "arguments": func_args
+                        }
+                    })
 
             message = ChatMessage(
                 role=completion.choices[0].message.role,
@@ -167,7 +151,6 @@ class SambanovaProvider(ChatProvider):
                 tool_calls=tool_calls
             )
 
-            # Extract usage information
             usage = {}
             if hasattr(completion, 'usage'):
                 usage = {
@@ -176,30 +159,22 @@ class SambanovaProvider(ChatProvider):
                     "total_tokens": completion.usage.total_tokens
                 }
 
-            # Create raw response
-            try:
-                raw_response = completion.model_dump_json()
-            except AttributeError:
-                # Fallback to a simple dict
-                raw_response = {
-                    "choices": [{"message": {"role": message.role, "content": message.content}}],
-                    "model": params["model"],
-                    "usage": usage
-                }
-
             return ChatCompletionResponse(
                 message=message,
                 provider='sambanova',
                 model=params["model"],
                 usage=usage,
-                raw_response=raw_response
+                raw_response=completion.model_dump()
             )
         except Exception as e:
+            if isinstance(e, UniInferError):
+                raise
             status_code = getattr(e, 'status_code', None)
-            response_body = getattr(e, 'response', None)
-            if hasattr(response_body, 'text'):
-                response_body = response_body.text
-            raise map_provider_error("sambanova", e, status_code=status_code, response_body=str(response_body) if response_body else str(e))
+            response_body = str(e)
+            if hasattr(e, 'response') and e.response is not None:
+                if hasattr(e.response, 'text'):
+                    response_body = e.response.text
+            raise map_provider_error("sambanova", e, status_code=status_code, response_body=response_body)
 
     @classmethod
     def list_models(cls, api_key: Optional[str] = None, base_url: str = "https://api.sambanova.ai/v1") -> List[str]:
@@ -282,25 +257,14 @@ class SambanovaProvider(ChatProvider):
                 "sambastudio-70b"
             ]
 
-    def stream_complete(
+    async def astream_complete(
         self,
         request: ChatCompletionRequest,
         **provider_specific_kwargs
-    ) -> Iterator[ChatCompletionResponse]:
+    ) -> AsyncIterator[ChatCompletionResponse]:
         """
-        Stream a chat completion response from SambaNova.
-
-        Args:
-            request (ChatCompletionRequest): The request to make.
-            **provider_specific_kwargs: Additional SambaNova-specific parameters.
-
-        Returns:
-            Iterator[ChatCompletionResponse]: An iterator of response chunks.
-
-        Raises:
-            Exception: If the request fails.
+        Stream an async chat completion response from SambaNova.
         """
-        # Format messages for SambaNova - using standard format as in the test code
         def _flatten_messages(msgs: List[ChatMessage]) -> List[Dict[str, Any]]:
             out = []
             for m in msgs:
@@ -317,95 +281,69 @@ class SambanovaProvider(ChatProvider):
 
         messages = _flatten_messages(request.messages)
 
-        # Prepare parameters
         params = {
-            "model": request.model or "Meta-Llama-3.1-8B-Instruct",  # Updated default model
+            "model": request.model or "Meta-Llama-3.1-8B-Instruct",
             "messages": messages,
             "temperature": request.temperature,
             "stream": True
         }
 
-        # Add max_tokens if provided
         if request.max_tokens is not None:
             params["max_tokens"] = request.max_tokens
 
-        # Add tools and tool_choice if provided
         if request.tools:
             params["tools"] = request.tools
         if request.tool_choice:
             params["tool_choice"] = request.tool_choice
 
-        # Add any provider-specific parameters
         params.update(provider_specific_kwargs)
 
         try:
-            # Make the streaming request
-            stream = self.client.chat.completions.create(**params)
+            stream = await self.async_client.chat.completions.create(**params)
 
-            for chunk in stream:
-                # Extract content/tool_calls from the chunk
+            async for chunk in stream:
                 content = ""
                 chunk_tool_calls = None
 
-                # The way to access content might differ based on the chunk structure
-                try:
-                    if hasattr(chunk.choices[0], 'delta'):
-                        delta = chunk.choices[0].delta
+                if len(chunk.choices) > 0:
+                    delta = chunk.choices[0].delta
+                    content = getattr(delta, "content", "") or ""
+                    
+                    tc = getattr(delta, "tool_calls", None)
+                    if tc:
+                        chunk_tool_calls = []
+                        for t in tc:
+                            func_name = None
+                            func_args = None
+                            func = getattr(t, "function", None)
+                            if func:
+                                func_name = getattr(func, "name", None)
+                                func_args = getattr(func, "arguments", None)
+                            chunk_tool_calls.append({
+                                "id": getattr(t, "id", None),
+                                "type": getattr(t, "type", "function"),
+                                "function": {
+                                    "name": func_name,
+                                    "arguments": func_args
+                                }
+                            })
 
-                        # Check if content is available in delta
-                        if hasattr(delta, 'content'):
-                            content = delta.content or ""
-                        try:
-                            if hasattr(delta, 'tool_calls') and delta.tool_calls:
-                                chunk_tool_calls = []
-                                for t in delta.tool_calls:
-                                    func_name = None
-                                    func_args = None
-                                    try:
-                                        func = getattr(t, 'function', None)
-                                        if func:
-                                            func_name = getattr(func, 'name', None)
-                                            func_args = getattr(func, 'arguments', None)
-                                    except Exception:
-                                        pass
-                                    chunk_tool_calls.append({
-                                        "id": getattr(t, 'id', None),
-                                        "type": getattr(t, 'type', 'function'),
-                                        "function": {
-                                            "name": func_name,
-                                            "arguments": func_args
-                                        }
-                                    })
-                        except Exception:
-                            chunk_tool_calls = None
-                except Exception:
-                    # If there was an error accessing the content, try alternate methods
-                    try:
-                        # Try to get content directly from choices
-                        content = chunk.choices[0].text
-                    except:
-                        pass
-
-                # Skip empty chunks that have neither content nor tool_calls
                 if not content and not chunk_tool_calls:
                     continue
 
-                # Create a message for this chunk
-                message = ChatMessage(role="assistant", content=content if content else None, tool_calls=chunk_tool_calls)
-
-                # No usage stats in streaming mode
-                usage = {}
-
                 yield ChatCompletionResponse(
-                    message=message,
+                    message=ChatMessage(role="assistant", content=content if content else None, tool_calls=chunk_tool_calls),
                     provider='sambanova',
                     model=params["model"],
-                    usage=usage,
-                    raw_response={"delta": {"content": content}}
+                    usage={},
+                    raw_response=chunk.model_dump()
                 )
         except Exception as e:
+            if isinstance(e, UniInferError):
+                raise
             status_code = getattr(e, 'status_code', None)
-            response_body = getattr(e, 'response', None)
-            if hasattr(response_body, 'text'):
-                response_body = response_body.text
-            raise map_provider_error("sambanova", e, status_code=status_code, response_body=str(response_body) if response_body else str(e))
+            response_body = str(e)
+            if hasattr(e, 'response') and e.response is not None:
+                if hasattr(e.response, 'text'):
+                    response_body = e.response.text
+            raise map_provider_error("sambanova", e, status_code=status_code, response_body=response_body)

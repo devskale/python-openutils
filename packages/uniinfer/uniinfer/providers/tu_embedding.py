@@ -2,11 +2,10 @@
 TU embedding provider implementation.
 """
 import json
-import requests
-from typing import Any
+from typing import Any, Optional
 
 from ..core import EmbeddingProvider, EmbeddingRequest, EmbeddingResponse
-from ..errors import map_provider_error
+from ..errors import map_provider_error, UniInferError
 
 
 class TuAIEmbeddingProvider(EmbeddingProvider):
@@ -31,100 +30,65 @@ class TuAIEmbeddingProvider(EmbeddingProvider):
 
     @classmethod
     def list_models(cls, api_key: str | None = None, **kwargs) -> list[str]:
-        """
-        List available models from TU AI using the API.
-
-        Returns:
-            List[str]: A list of available model IDs.
-        """
+        """List available models from TU AI using the API."""
+        import requests
         if not api_key:
-            raise ValueError("API key is required to list models")
+            return ["e5-mistral-7b"]
+        
         url = f"{cls.BASE_URL}/models"
-        headers = {
-            "Authorization": f"Bearer {api_key}",
-        }
-        response = requests.get(url, headers=headers)
-        if response.status_code != 200:
-            raise map_provider_error("TU", Exception(f"TU AI API error: {response.status_code} - {response.text}"), status_code=response.status_code, response_body=response.text)
+        headers = {"Authorization": f"Bearer {api_key}"}
+        try:
+            response = requests.get(url, headers=headers)
+            if response.status_code == 200:
+                data = response.json()
+                return [model["id"] for model in data.get("data", [])]
+        except Exception:
+            pass
+        return ["e5-mistral-7b"]
 
-        data = response.json()
-        return [model["id"] for model in data.get("data", [])]
-
-    def embed(
+    async def aembed(
         self,
         request: EmbeddingRequest,
         **provider_specific_kwargs
     ) -> EmbeddingResponse:
-        """
-        Make an embedding request to TU AI.
-
-        Args:
-            request (EmbeddingRequest): The request to make.
-            **provider_specific_kwargs: Additional TU AI-specific parameters.
-
-        Returns:
-            EmbeddingResponse: The embedding response.
-
-        Raises:
-            Exception: If the request fails.
-        """
+        """Make an async embedding request to TU AI."""
         if self.api_key is None:
             raise ValueError("TU AI API key is required")
 
+        client = await self._get_async_client()
         endpoint = f"{self.BASE_URL}/embeddings"
 
-        # Prepare the request payload
         payload = {
-            "model": request.model or "e5-mistral-7b",  # Default embedding model
+            "model": request.model or "e5-mistral-7b",
             "input": request.input
         }
-
-        # Add any provider-specific parameters
         payload.update(provider_specific_kwargs)
 
         headers = {
             "Content-Type": "application/json",
             "Authorization": f"Bearer {self.api_key}"
         }
-
-        # Add organization header if provided
         if self.organization:
             headers["TUW-Organization"] = self.organization
 
-        response = requests.post(
-            endpoint,
-            headers=headers,
-            data=json.dumps(payload)
-        )
+        try:
+            response = await client.post(endpoint, headers=headers, json=payload, timeout=60.0)
+            if response.status_code != 200:
+                raise map_provider_error("TU", Exception(response.text), status_code=response.status_code, response_body=response.text)
+            
+            resp_data = response.json()
+            embeddings_data = resp_data.get("data", [])
+            data = [{"object": "embedding", "embedding": item["embedding"], "index": item["index"]} for item in embeddings_data]
 
-        # Handle error response
-        if response.status_code != 200:
-            error_msg = f"TU AI API error: {response.status_code} - {response.text}"
-            raise map_provider_error("TU", Exception(error_msg), status_code=response.status_code, response_body=response.text)
-
-        # Parse the response
-        response_data = response.json()
-
-        # Extract the embeddings
-        embeddings_data = response_data.get("data", [])
-
-        # Create data entries
-        data = []
-        for item in embeddings_data:
-            data.append({
-                "object": "embedding",
-                "embedding": item["embedding"],
-                "index": item["index"]
-            })
-
-        # Construct usage information
-        usage = response_data.get("usage", {})
-
-        return EmbeddingResponse(
-            object="list",
-            data=data,
-            model=response_data.get('model', request.model),
-            usage=usage,
-            provider='tu',
-            raw_response=response_data
-        )
+            return EmbeddingResponse(
+                object="list",
+                data=data,
+                model=resp_data.get('model', request.model),
+                usage=resp_data.get("usage", {}),
+                provider='tu',
+                raw_response=resp_data
+            )
+        except Exception as e:
+            if isinstance(e, UniInferError):
+                raise
+            raise map_provider_error("TU", e)

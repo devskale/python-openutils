@@ -2,11 +2,10 @@
 TU TTS provider implementation.
 """
 import httpx
-import requests
-from typing import Any
+from typing import Any, Optional
 
 from ..core import TTSProvider, TTSRequest, TTSResponse
-from ..errors import map_provider_error
+from ..errors import map_provider_error, UniInferError
 
 
 class TuAITTSProvider(TTSProvider):
@@ -31,136 +30,54 @@ class TuAITTSProvider(TTSProvider):
 
     @classmethod
     def list_models(cls, api_key: str | None = None, **kwargs) -> list[str]:
-        """
-        List available TTS models from TU AI.
-
-        Returns:
-            List[str]: A list of available TTS model IDs.
-        """
-        # TU AI supports these TTS models according to the documentation
+        """List available TTS models from TU AI."""
         return ["kokoro", "piper-thorsten"]
-
-    def generate_speech(
-        self,
-        request: TTSRequest,
-        **provider_specific_kwargs
-    ) -> TTSResponse:
-        """
-        Generate speech from text using TU AI.
-
-        Args:
-            request (TTSRequest): The request to make.
-            **provider_specific_kwargs: Additional TU AI-specific parameters.
-
-        Returns:
-            TTSResponse: The TTS response with audio content.
-
-        Raises:
-            Exception: If the request fails.
-        """
-        if self.api_key is None:
-            raise ValueError("TU AI API key is required")
-
-        endpoint = f"{self.BASE_URL}/audio/speech"
-
-        # Prepare the request payload
-        payload = {
-            "model": request.model or "kokoro",  # Default TTS model
-            "input": request.input,
-            "response_format": request.response_format or "mp3",
-            "speed": request.speed or 1.0
-        }
-
-        # Add optional parameters
-        if request.voice:
-            payload["voice"] = request.voice
-        else:
-            # Set default voice if not provided, as it is required by the API
-            payload["voice"] = "af_alloy"
-            
-        if request.instructions:
-            payload["instructions"] = request.instructions
-
-        # Add any provider-specific parameters
-        payload.update(provider_specific_kwargs)
-
-        headers = {
-            "Content-Type": "application/json",
-            "Authorization": f"Bearer {self.api_key}"
-        }
-
-        # Add organization header if provided
-        if self.organization:
-            headers["TUW-Organization"] = self.organization
-
-        import logging
-        from requests.exceptions import Timeout, ConnectionError, RequestException
-        
-        logger_tts = logging.getLogger(__name__)
-        logger_tts.info(f"About to POST to {endpoint}")
-        logger_tts.info(f"Headers: {dict(headers)}")
-        logger_tts.info(f"Payload keys: {list(payload.keys())}")
-        
-        try:
-            response = requests.post(
-                endpoint,
-                headers=headers,
-                json=payload,
-                timeout=(10, 300),  # (connect timeout, read timeout)
-                verify=True,
-                stream=False
-            )
-            logger_tts.info(f"POST completed with status: {response.status_code}")
-        except Timeout as e:
-            logger_tts.error(f"TU TTS request timed out: {e}")
-            raise map_provider_error(
-                "TU", 
-                Exception("TTS service is currently unavailable or responding too slowly. Please try again later."),
-                status_code=504,
-                response_body=str(e)
-            )
-        except ConnectionError as e:
-            logger_tts.error(f"TU TTS connection error: {e}")
-            raise map_provider_error(
-                "TU",
-                Exception("Unable to connect to TTS service. The service may be down or unreachable."),
-                status_code=503,
-                response_body=str(e)
-            )
-        except RequestException as e:
-            logger_tts.error(f"TU TTS request failed: {e}")
-            raise map_provider_error(
-                "TU",
-                Exception(f"TTS request failed: {str(e)}"),
-                status_code=500,
-                response_body=str(e)
-            )
-
-        # Handle error response
-        if response.status_code != 200:
-            error_msg = f"TU AI API error: {response.status_code} - {response.text}"
-            logger_tts.error(f"TTS error response: {error_msg}")
-            raise map_provider_error("TU", Exception(error_msg), status_code=response.status_code, response_body=response.text)
-
-        # Determine content type from response
-        content_type = response.headers.get("Content-Type", "audio/mpeg")
-
-        return TTSResponse(
-            audio_content=response.content,
-            model=request.model or "kokoro",
-            provider='tu',
-            content_type=content_type,
-            raw_response=response
-        )
 
     async def agenerate_speech(
         self,
         request: TTSRequest,
         **provider_specific_kwargs
     ) -> TTSResponse:
-        """
-        Generate speech from text using TU AI asynchronously.
-        Simply delegates to sync generate_speech method.
-        """
-        # Just call the sync version - caller should run in thread pool
-        return self.generate_speech(request, **provider_specific_kwargs)
+        """Generate speech from text using TU AI asynchronously."""
+        if self.api_key is None:
+            raise ValueError("TU AI API key is required")
+
+        client = await self._get_async_client()
+        endpoint = f"{self.BASE_URL}/audio/speech"
+
+        payload = {
+            "model": request.model or "kokoro",
+            "input": request.input,
+            "response_format": request.response_format or "mp3",
+            "speed": request.speed or 1.0,
+            "voice": request.voice or "af_alloy"
+        }
+        if request.instructions:
+            payload["instructions"] = request.instructions
+
+        payload.update(provider_specific_kwargs)
+
+        headers = {
+            "Content-Type": "application/json",
+            "Authorization": f"Bearer {self.api_key}"
+        }
+        if self.organization:
+            headers["TUW-Organization"] = self.organization
+
+        try:
+            response = await client.post(endpoint, headers=headers, json=payload, timeout=300.0)
+            if response.status_code != 200:
+                raise map_provider_error("TU", Exception(response.text), status_code=response.status_code, response_body=response.text)
+            
+            content_type = response.headers.get("Content-Type", "audio/mpeg")
+            return TTSResponse(
+                audio_content=response.content,
+                model=request.model or "kokoro",
+                provider='tu',
+                content_type=content_type,
+                raw_response=response
+            )
+        except Exception as e:
+            if isinstance(e, UniInferError):
+                raise
+            raise map_provider_error("TU", e)

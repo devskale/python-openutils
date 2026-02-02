@@ -53,12 +53,15 @@ class GeminiProvider(ChatProvider):
             self._client = genai.Client(api_key=self.api_key)
         return self._client
 
-    async def close(self):
+    async def aclose(self):
         """
-        Close client (no-op for synchronous client).
+        Close the Gemini client.
         """
         if self._client is not None:
+            # The new google-genai Client doesn't have an explicit close for sync, 
+            # but we can clear our reference. Async client is accessed via aio.
             self._client = None
+        await super().aclose()
 
     @classmethod
     def list_models(cls, api_key: Optional[str] = None) -> list:
@@ -390,10 +393,13 @@ class GeminiProvider(ChatProvider):
                     )
 
                 content_text = ""
+                tool_calls = None
+                
                 if chunk.parts:
                     try:
                         content_text = chunk.text
                     except ValueError:
+                        # Handle chunks that don't have text (e.g. function calls)
                         all_parts_text_list = []
                         for part in chunk.parts:
                             part_text_content = getattr(part, 'text', None)
@@ -402,8 +408,27 @@ class GeminiProvider(ChatProvider):
                         if all_parts_text_list:
                             content_text = "".join(all_parts_text_list)
 
-                if content_text:
-                    message = ChatMessage(role="assistant", content=content_text)
+                    # Extract function calls if present
+                    function_calls = []
+                    for part in chunk.parts:
+                        if hasattr(part, 'function_call') and part.function_call:
+                            function_calls.append({
+                                "id": f"call_{part.function_call.name}",
+                                "type": "function",
+                                "function": {
+                                    "name": part.function_call.name,
+                                    "arguments": json.dumps(dict(part.function_call.args))
+                                }
+                            })
+                    if function_calls:
+                        tool_calls = function_calls
+
+                if content_text or tool_calls:
+                    message = ChatMessage(
+                        role="assistant", 
+                        content=content_text if content_text else None,
+                        tool_calls=tool_calls
+                    )
                     usage = {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0}
                     yield ChatCompletionResponse(
                         message=message,
@@ -414,84 +439,8 @@ class GeminiProvider(ChatProvider):
                     )
 
         except Exception as e:
-            status_code = getattr(e, 'status_code', None)
-            response_body = str(e)
-            if hasattr(e, 'response') and hasattr(e.response, 'text'):
-                response_body = e.response.text
-                status_code = e.response.status_code
-            elif hasattr(e, 'message'):
-                response_body = e.message
-
-            mapped_error = map_provider_error("gemini", e, status_code=status_code, response_body=response_body)
-            raise mapped_error
-
-
-    def complete(
-        self,
-        request: ChatCompletionRequest,
-        **provider_specific_kwargs
-    ) -> ChatCompletionResponse:
-        """Make a chat completion request to Gemini."""
-        try:
-            loop = asyncio.get_running_loop()
-        except RuntimeError:
-            loop = None
-
-        if loop is None or not loop.is_running():
-            return self._complete_impl(request, **provider_specific_kwargs)
-
-        import concurrent.futures
-        with concurrent.futures.ThreadPoolExecutor() as executor:
-            return executor.submit(self._complete_impl, request, **provider_specific_kwargs).result()
-
-    def stream_complete(
-        self,
-        request: ChatCompletionRequest,
-        **provider_specific_kwargs
-    ) -> Iterator[ChatCompletionResponse]:
-        """Stream a chat completion response from Gemini."""
-        client = self._get_client()
-
-        if self.api_key is None:
-            raise ValueError("Gemini API key is required")
-
-        try:
-            content, config, gemini_tools = self._prepare_content_and_config(request)
-            api_params = self._prepare_api_params(request, content, config, gemini_tools, **provider_specific_kwargs)
-
-            model = api_params['model']
-            for chunk in client.models.generate_content_stream(**api_params):
-                if chunk.prompt_feedback and chunk.prompt_feedback.block_reason:
-                    raise UniInferError(
-                        f"Gemini content generation blocked. Reason: {chunk.prompt_feedback.block_reason}. "
-                        f"Safety ratings: {chunk.prompt_feedback.safety_ratings}"
-                    )
-
-                content_text = ""
-                if chunk.parts:
-                    try:
-                        content_text = chunk.text
-                    except ValueError:
-                        all_parts_text_list = []
-                        for part in chunk.parts:
-                            part_text_content = getattr(part, 'text', None)
-                            if part_text_content:
-                                all_parts_text_list.append(part_text_content)
-                        if all_parts_text_list:
-                            content_text = "".join(all_parts_text_list)
-
-                if content_text:
-                    message = ChatMessage(role="assistant", content=content_text)
-                    usage = {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0}
-                    yield ChatCompletionResponse(
-                        message=message,
-                        provider='gemini',
-                        model=model,
-                        usage=usage,
-                        raw_response=chunk
-                    )
-
-        except Exception as e:
+            if isinstance(e, UniInferError):
+                raise
             status_code = getattr(e, 'status_code', None)
             response_body = str(e)
             if hasattr(e, 'response') and hasattr(e.response, 'text'):
