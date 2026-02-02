@@ -54,10 +54,10 @@ class MoonshotProvider(ChatProvider):
                 from credgoo.credgoo import get_api_key
                 api_key = get_api_key("moonshot")
             except ImportError:
-                return ["moonshot-v1-8k"]
+                return []
 
         if not api_key:
-            return ["moonshot-v1-8k"]
+            return []
 
         try:
             headers = {"Authorization": f"Bearer {api_key}"}
@@ -66,7 +66,7 @@ class MoonshotProvider(ChatProvider):
             models_data = response.json()
             return [model["id"] for model in models_data.get("data", [])]
         except Exception:
-            return ["moonshot-v1-8k", "moonshot-v1-32k", "moonshot-v1-128k"]
+            return []
 
     async def acomplete(
         self,

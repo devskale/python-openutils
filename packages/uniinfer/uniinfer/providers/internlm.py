@@ -51,7 +51,7 @@ class InternLMProvider(ChatProvider):
             from credgoo.credgoo import get_api_key
             api_key = get_api_key("internlm")
             if not api_key:
-                return ["internlm3-latest"]
+                return []
 
         try:
             headers = {"Authorization": f"Bearer {api_key}"}
@@ -59,7 +59,7 @@ class InternLMProvider(ChatProvider):
             response.raise_for_status()
             return [model["id"] for model in response.json().get("data", [])]
         except Exception:
-            return ["internlm3-latest"]
+            return []
 
     async def acomplete(
         self,

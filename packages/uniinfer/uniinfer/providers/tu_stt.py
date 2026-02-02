@@ -32,7 +32,7 @@ class TuAISTTProvider(STTProvider):
     @classmethod
     def list_models(cls, api_key: str | None = None, **kwargs) -> list[str]:
         """List available STT models from TU AI."""
-        return ["whisper-large", "whisper-1"]
+        return []
 
     async def atranscribe(
         self,

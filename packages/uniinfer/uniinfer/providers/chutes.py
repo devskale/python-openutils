@@ -37,10 +37,10 @@ class ChutesProvider(ChatProvider):
                 from credgoo.credgoo import get_api_key
                 api_key = get_api_key('chutes')
             except ImportError:
-                return ["deepseek-ai/DeepSeek-V3"]
+                return []
 
         if not api_key:
-            return ["deepseek-ai/DeepSeek-V3"]
+            return []
 
         try:
             headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
@@ -49,7 +49,7 @@ class ChutesProvider(ChatProvider):
             models = response.json().get('data', [])
             return [model['id'] for model in models]
         except Exception:
-            return ["deepseek-ai/DeepSeek-V3", "deepseek-ai/DeepSeek-R1"]
+            return []
 
     def _flatten_messages(self, messages: list) -> list:
         """Flatten message content if it's a list of text objects."""

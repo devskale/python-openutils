@@ -33,7 +33,7 @@ class TuAIEmbeddingProvider(EmbeddingProvider):
         """List available models from TU AI using the API."""
         import requests
         if not api_key:
-            return ["e5-mistral-7b"]
+            return []
         
         url = f"{cls.BASE_URL}/models"
         headers = {"Authorization": f"Bearer {api_key}"}
@@ -44,7 +44,7 @@ class TuAIEmbeddingProvider(EmbeddingProvider):
                 return [model["id"] for model in data.get("data", [])]
         except Exception:
             pass
-        return ["e5-mistral-7b"]
+        return []
 
     async def aembed(
         self,
