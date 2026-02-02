@@ -26,7 +26,7 @@ except ImportError:
     HAS_GENAI = False
 
 try:
-    from .tu import TuAIProvider
+    from .tu import TUProvider
     from .tu_embedding import TuAIEmbeddingProvider
     from .tu_tts import TuAITTSProvider
     from .tu_stt import TuAISTTProvider
@@ -83,7 +83,7 @@ __all__ = [
     'ChutesProvider',
     'PollinationsProvider',
     'BigmodelProvider',
-    'TuAIProvider',
+    'TUProvider',
     'TuAIEmbeddingProvider',
     'TuAITTSProvider',
     'TuAISTTProvider',

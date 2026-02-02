@@ -6,7 +6,8 @@ import os
 import logging
 import time
 import uuid
-from typing import Optional, List, Dict, Any, AsyncGenerator, Coroutine  # Import Optional, List, Dict, Any, AsyncGenerator, Coroutine
+from typing import Any, AsyncGenerator, Coroutine
+from collections.abc import Iterator
 import random  # Import random
 
 from uniinfer import ProviderFactory, ChatMessage, ChatCompletionRequest, ChatCompletionResponse
@@ -33,7 +34,7 @@ logger.debug(f".env file found and loaded: {found_dotenv}")
 # --- Helper Function for API Key Retrieval ---
 
 # Rename to make it public
-def get_provider_api_key(api_bearer_token: str, provider_name: str) -> Optional[str]:
+def get_provider_api_key(api_bearer_token: str, provider_name: str) -> str | None:
     """
     Determines the provider API key based on the input token format.
 
@@ -106,7 +107,16 @@ def get_provider_api_key(api_bearer_token: str, provider_name: str) -> Optional[
 # --- Main Completion Functions ---
 
 # Update signature: remove api_bearer_token, add provider_api_key
-def stream_completion(messages, provider_model_string, temperature=0.7, max_tokens=None, provider_api_key: Optional[str] = None, base_url: Optional[str] = None, tools: Optional[List[Dict]] = None, tool_choice: Optional[Any] = None):
+def stream_completion(
+    messages: list[dict],
+    provider_model_string: str,
+    temperature: float = 0.7,
+    max_tokens: int | None = None,
+    provider_api_key: str | None = None,
+    base_url: str | None = None,
+    tools: list[dict] | None = None,
+    tool_choice: Any | None = None,
+) -> Iterator[ChatCompletionResponse]:
     """
     Initiates a streaming chat completion request via uniinfer.
 
@@ -184,7 +194,16 @@ def stream_completion(messages, provider_model_string, temperature=0.7, max_toke
 
 
 # Update signature: remove api_bearer_token, add provider_api_key
-def get_completion(messages, provider_model_string, temperature=0.7, max_tokens=None, provider_api_key: Optional[str] = None, base_url: Optional[str] = None, tools: Optional[List[Dict]] = None, tool_choice: Optional[Any] = None) -> Any:
+def get_completion(
+    messages: list[dict],
+    provider_model_string: str,
+    temperature: float = 0.7,
+    max_tokens: int | None = None,
+    provider_api_key: str | None = None,
+    base_url: str | None = None,
+    tools: list[dict] | None = None,
+    tool_choice: Any | None = None,
+) -> Any:
     """
     Initiates a non-streaming chat completion request via uniinfer.
 
@@ -276,7 +295,12 @@ def get_completion(messages, provider_model_string, temperature=0.7, max_tokens=
 
 # --- Embedding Functions ---
 
-def get_embeddings(input_texts: List[str], provider_model_string: str, provider_api_key: Optional[str] = None, base_url: Optional[str] = None) -> Dict[str, Any]:
+def get_embeddings(
+    input_texts: list[str],
+    provider_model_string: str,
+    provider_api_key: str | None = None,
+    base_url: str | None = None,
+) -> dict[str, Any]:
     """
     Initiates an embedding request via uniinfer.
 
@@ -344,7 +368,7 @@ def get_embeddings(input_texts: List[str], provider_model_string: str, provider_
 
 
 # --- New Helper to List Embedding Providers ---
-def list_embedding_providers() -> List[str]:
+def list_embedding_providers() -> list[str]:
     """
     Return the names of all available embedding providers.
     """
@@ -352,7 +376,9 @@ def list_embedding_providers() -> List[str]:
 
 
 # --- New Helper to List Embedding Models for a Provider ---
-def list_embedding_models_for_provider(provider_name: str, api_bearer_token: str) -> List[str]:
+def list_embedding_models_for_provider(
+    provider_name: str, api_bearer_token: str
+) -> list[str]:
     """
     Return available embedding model names for the given provider, using the bearer token.
     For Ollama, api_bearer_token can be empty or None.
@@ -373,7 +399,7 @@ def list_embedding_models_for_provider(provider_name: str, api_bearer_token: str
 
 
 # --- New Helper to List Providers ---
-def list_providers() -> List[str]:
+def list_providers() -> list[str]:
     """
     Return the names of all available providers.
     """
@@ -381,7 +407,7 @@ def list_providers() -> List[str]:
 
 
 # --- New Helper to List Models for a Provider ---
-def list_models_for_provider(provider_name: str, api_bearer_token: str) -> List[str]:
+def list_models_for_provider(provider_name: str, api_bearer_token: str) -> list[str]:
     """
     Return available model names for the given provider, using the bearer token.
     """

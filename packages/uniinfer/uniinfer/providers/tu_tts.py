@@ -3,7 +3,7 @@ TU TTS provider implementation.
 """
 import httpx
 import requests
-from typing import Optional, List
+from typing import Any
 
 from ..core import TTSProvider, TTSRequest, TTSResponse
 from ..errors import map_provider_error
@@ -18,7 +18,7 @@ class TuAITTSProvider(TTSProvider):
 
     BASE_URL = "https://aqueduct.ai.datalab.tuwien.ac.at/v1"
 
-    def __init__(self, api_key: Optional[str] = None, organization: Optional[str] = None):
+    def __init__(self, api_key: str | None = None, organization: str | None = None):
         """
         Initialize the TU AI TTS provider.
 
@@ -30,7 +30,7 @@ class TuAITTSProvider(TTSProvider):
         self.organization = organization
 
     @classmethod
-    def list_models(cls, api_key: Optional[str] = None, **kwargs) -> List[str]:
+    def list_models(cls, api_key: str | None = None, **kwargs) -> list[str]:
         """
         List available TTS models from TU AI.
 
