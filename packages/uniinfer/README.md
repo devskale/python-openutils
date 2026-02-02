@@ -326,6 +326,50 @@ export ANTHROPIC_API_KEY=your_key_here
 | Mistral                                              | Mistral Large/Small        | mistral-embed          | ✅        |
 | Google Gemini                                        | Gemini Pro/Flash           | text-embedding-004     | ✅        |
 | Ollama                                               | Llama2, Mistral, etc.      | nomic-embed-text, jina | ✅        |
+
+### Gemini Async Support
+
+**Async Support**: ✅ Gemini provider supports both sync and async operations (`complete()`, `stream_complete()`, `acomplete()`, `astream_complete()`).
+
+**Native Async**: Uses `genai.AsyncClient` which is natively async for optimal performance.
+
+```python
+# Example usage
+from uniinfer import GeminiProvider, ChatMessage, ChatCompletionRequest
+import asyncio
+
+provider = GeminiProvider(api_key="your-gemini-api-key")
+
+# Async completion
+async def async_example():
+    request = ChatCompletionRequest(
+        messages=[ChatMessage(role="user", content="Hello!")],
+        model="gemini-1.5-flash"
+    )
+    response = await provider.acomplete(request)
+    print(response.message.content)
+    await provider.close()
+
+# Async streaming
+async def async_stream_example():
+    request = ChatCompletionRequest(
+        messages=[ChatMessage(role="user", content="Tell me a story")],
+        model="gemini-1.5-flash"
+    )
+    async for chunk in provider.astream_complete(request):
+        print(chunk.message.content, end="", flush=True)
+    await provider.close()
+
+# Run async examples
+asyncio.run(async_example())
+asyncio.run(async_stream_example())
+
+# List available models
+models = GeminiProvider.list_models()
+print(f"Available models: {len(models)}")
+for i, model in enumerate(models):
+    print(f"  {i+1}. {model.get('id')}")
+```
 | OpenRouter                                           | 60+ models                 | Various                | ✅        |
 | HuggingFace                                          | Llama, Mistral             | sentence-transformers  | ✅        |
 | Cohere                                               | Command R+                 | embed-english-v3.0     | ✅        |

@@ -7,6 +7,7 @@ from uniinfer.providers.openai import OpenAIProvider
 from uniinfer.providers.anthropic import AnthropicProvider
 from uniinfer.providers.mistral import MistralProvider
 from uniinfer.providers.ollama import OllamaProvider
+from uniinfer.providers.gemini import GeminiProvider
 from uniinfer.providers.pollinations import PollinationsProvider
 
 
@@ -147,6 +148,34 @@ class TestPollinationsAsync:
         """Test that astream_complete is an async generator function."""
         import inspect
         provider = PollinationsProvider(api_key="test-key")
+        assert inspect.isasyncgenfunction(provider.astream_complete)
+
+
+class TestGeminiAsync:
+    """Test async methods for Gemini provider."""
+
+    def test_acomplete_method_exists(self):
+        """Test that acomplete method exists."""
+        provider = GeminiProvider(api_key="test-key")
+        assert hasattr(provider, 'acomplete')
+        assert callable(provider.acomplete)
+
+    def test_astream_complete_method_exists(self):
+        """Test that astream_complete method exists."""
+        provider = GeminiProvider(api_key="test-key")
+        assert hasattr(provider, 'astream_complete')
+        assert callable(provider.astream_complete)
+
+    def test_acomplete_is_async(self):
+        """Test that acomplete is a coroutine function."""
+        import inspect
+        provider = GeminiProvider(api_key="test-key")
+        assert inspect.iscoroutinefunction(provider.acomplete)
+
+    def test_astream_complete_is_async_generator(self):
+        """Test that astream_complete is an async generator function."""
+        import inspect
+        provider = GeminiProvider(api_key="test-key")
         assert inspect.isasyncgenfunction(provider.astream_complete)
 
 
