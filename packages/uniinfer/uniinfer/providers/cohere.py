@@ -141,24 +141,14 @@ class CohereProvider(ChatProvider):
                     pass
         
         if not api_key:
-            return [
-                "command",
-                "command-r",
-                "command-r-plus",
-                "command-light"
-            ]
+            return []
 
         try:
             client = cohere.ClientV2(api_key=api_key)
             response = client.models.list()
             return [model.name for model in response.models]
         except Exception:
-            return [
-                "command",
-                "command-r",
-                "command-r-plus",
-                "command-light"
-            ]
+            return []
 
     async def astream_complete(
         self,

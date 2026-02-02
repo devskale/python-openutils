@@ -31,7 +31,7 @@ class TuAITTSProvider(TTSProvider):
     @classmethod
     def list_models(cls, api_key: str | None = None, **kwargs) -> list[str]:
         """List available TTS models from TU AI."""
-        return ["kokoro", "piper-thorsten"]
+        return []
 
     async def agenerate_speech(
         self,

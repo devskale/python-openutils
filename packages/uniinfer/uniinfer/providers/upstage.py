@@ -55,10 +55,10 @@ class UpstageProvider(ChatProvider):
                 from credgoo.credgoo import get_api_key
                 api_key = get_api_key("upstage")
             except ImportError:
-                return ["solar-1-mini", "solar-pro"]
+                return []
 
         if not api_key:
-            return ["solar-1-mini", "solar-pro"]
+            return []
 
         try:
             headers = {"Authorization": f"Bearer {api_key}"}
@@ -67,7 +67,7 @@ class UpstageProvider(ChatProvider):
             models_data = response.json()
             return [model["id"] for model in models_data.get("data", [])]
         except Exception:
-            return ["solar-1-mini", "solar-1", "solar-pro"]
+            return []
 
     async def acomplete(
         self,

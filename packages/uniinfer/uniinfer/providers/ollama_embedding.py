@@ -43,7 +43,7 @@ class OllamaEmbeddingProvider(EmbeddingProvider):
             data = response.json()
             return [model["name"] for model in data.get("models", [])]
         except Exception:
-            return ["nomic-embed-text"]
+            return []
 
     async def aembed(
         self,

@@ -24,6 +24,12 @@ class TUProvider(ChatProvider):
             base_url: The base URL for the API.
         """
         self.api_key = api_key or os.getenv("TU_API_KEY")
+        if not self.api_key:
+            try:
+                from credgoo.credgoo import get_api_key
+                self.api_key = get_api_key("tu")
+            except (ImportError, Exception):
+                pass
         self.base_url = base_url or "https://aqueduct.ai.datalab.tuwien.ac.at/v1"
         self._async_client: httpx.AsyncClient | None = None
         
@@ -185,12 +191,21 @@ class TUProvider(ChatProvider):
         Returns:
             list[str]: A list of model identifiers.
         """
-        api_key = api_key or os.getenv("TU_API_KEY")
-        base_url = kwargs.get("base_url") or "https://aqueduct.ai.datalab.tuwien.ac.at/v1"
+        if not api_key:
+            api_key = os.getenv("TU_API_KEY")
+        
+        if not api_key:
+            try:
+                from credgoo.credgoo import get_api_key
+                api_key = get_api_key("tu")
+            except (ImportError, Exception):
+                pass
         
         if not api_key:
             return []
             
+        base_url = kwargs.get("base_url") or "https://aqueduct.ai.datalab.tuwien.ac.at/v1"
+        
         try:
             import requests
             response = requests.get(

@@ -57,10 +57,10 @@ class NGCProvider(ChatProvider):
                 from credgoo.credgoo import get_api_key
                 api_key = get_api_key("ngc")
             except ImportError:
-                return ["nvidia/llama-3.1-405b-instruct"]
+                return []
 
         if not api_key:
-            return ["nvidia/llama-3.1-405b-instruct"]
+            return []
 
         try:
             headers = {"Authorization": f"Bearer {api_key}"}
@@ -69,7 +69,7 @@ class NGCProvider(ChatProvider):
             models_data = response.json()
             return [model["id"] for model in models_data.get("data", [])]
         except Exception:
-            return ["nvidia/llama-3.1-405b-instruct", "nvidia/llama-3.1-70b-instruct"]
+            return []
 
     async def acomplete(
         self,

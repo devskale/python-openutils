@@ -52,7 +52,7 @@ class AI21Provider(ChatProvider):
     @staticmethod
     def list_models(api_key: Optional[str] = None) -> list[str]:
         """List available AI21 models."""
-        return ["jamba-1.6-mini", "jamba-1.6-large"]
+        return []
 
     async def acomplete(
         self,

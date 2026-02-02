@@ -55,10 +55,10 @@ class StepFunProvider(ChatProvider):
                 from credgoo.credgoo import get_api_key
                 api_key = get_api_key("stepfun")
             except ImportError:
-                return ["step-1-8k", "step-1-32k"]
+                return []
 
         if not api_key:
-            return ["step-1-8k", "step-1-32k"]
+            return []
 
         try:
             headers = {"Authorization": f"Bearer {api_key}"}
@@ -67,7 +67,7 @@ class StepFunProvider(ChatProvider):
             models_data = response.json()
             return [model["id"] for model in models_data.get("data", [])]
         except Exception:
-            return ["step-1-8k", "step-1-32k", "step-2-8k", "step-2-32k"]
+            return []
 
     async def acomplete(
         self,
