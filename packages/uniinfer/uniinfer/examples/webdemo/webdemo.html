@@ -24,6 +24,40 @@
           <button id="mode-audio" class="mode-btn">Audio</button>
         </div>
 
+        <div
+          id="chat-stats"
+          style="
+            display: none;
+            align-items: center;
+            gap: 12px;
+            font-size: 0.85rem;
+            color: #666;
+            background: #f5f5f5;
+            padding: 6px 12px;
+            border-radius: 20px;
+            margin-right: 12px;
+          ">
+          <span id="stats-text">0 turns • 0 tokens</span>
+          <button
+            id="clear-chat-btn"
+            title="Clear Chat History"
+            style="
+              background: none;
+              border: none;
+              font-size: 1rem;
+              cursor: pointer;
+              padding: 0;
+              line-height: 1;
+              color: #999;
+              display: flex;
+              align-items: center;
+            "
+            onmouseover="this.style.color = '#ff4444'"
+            onmouseout="this.style.color = '#999'">
+            ❌
+          </button>
+        </div>
+
         <button id="settings-button" title="Settings">⚙️</button>
       </header>
 
@@ -427,7 +461,80 @@
       window.uniinferStore = {
         providers: [],
         models: [],
+        chatHistory: [],
       };
+
+      // --- History Helpers ---
+      function saveChatHistory() {
+        localStorage.setItem(
+          "uniinfer_chat_history",
+          JSON.stringify(window.uniinferStore.chatHistory),
+        );
+      }
+
+      function loadChatHistory() {
+        console.log("Loading chat history...");
+        const saved = localStorage.getItem("uniinfer_chat_history");
+        if (saved) {
+          try {
+            const history = JSON.parse(saved);
+            console.log("Found history:", history.length, "items");
+            window.uniinferStore.chatHistory = history;
+            if (window.uniinferStore.chatHistory.length > 0) {
+              chatContainer.innerHTML = ""; // Clear initial system message
+              window.uniinferStore.chatHistory.forEach((msg) => {
+                let content = msg.content;
+                if (Array.isArray(content)) {
+                  const textItem = content.find((i) => i.type === "text");
+                  content = textItem ? textItem.text : "[Image]";
+                }
+                addMessage(content, msg.role);
+              });
+              updateChatStats();
+            }
+          } catch (e) {
+            console.error("Failed to load chat history:", e);
+          }
+        } else {
+          console.log("No saved chat history found.");
+        }
+      }
+
+      // --- Cookie Helpers ---
+      function setCookie(name, value, hours) {
+        let expires = "";
+        if (hours) {
+          const date = new Date();
+          date.setTime(date.getTime() + hours * 60 * 60 * 1000);
+          expires = "; expires=" + date.toUTCString();
+        }
+        document.cookie = name + "=" + (value || "") + expires + "; path=/";
+      }
+
+      function getCookie(name) {
+        const nameEQ = name + "=";
+        const ca = document.cookie.split(";");
+        for (let i = 0; i < ca.length; i++) {
+          let c = ca[i];
+          while (c.charAt(0) === " ") c = c.substring(1, c.length);
+          if (c.indexOf(nameEQ) === 0)
+            return c.substring(nameEQ.length, c.length);
+        }
+        return null;
+      }
+
+      // Load API key from cookie or localStorage
+      const savedKeyCookie = getCookie("uniinfer_api_key");
+      const savedKeyLocal = localStorage.getItem("uniinfer_api_key");
+
+      console.log("Cookie Key:", savedKeyCookie ? "Found" : "Missing");
+      console.log("Local Key:", savedKeyLocal ? "Found" : "Missing");
+
+      if (savedKeyCookie && savedKeyCookie.trim()) {
+        window.uniinferConfig.apiKey = savedKeyCookie.trim();
+      } else if (savedKeyLocal && savedKeyLocal.trim()) {
+        window.uniinferConfig.apiKey = savedKeyLocal.trim();
+      }
 
       // --- Settings/config modal logic ---
       const settingsButton = document.getElementById("settings-button");
@@ -456,7 +563,13 @@
       });
       settingsSave.addEventListener("click", () => {
         window.uniinferConfig.apiBaseUrl = settingsApiBaseUrl.value.trim();
-        window.uniinferConfig.apiKey = settingsApiKey.value.trim();
+        const newKey = settingsApiKey.value.trim();
+        window.uniinferConfig.apiKey = newKey;
+
+        // Save to cookie (48 hours) and localStorage (backup)
+        setCookie("uniinfer_api_key", newKey, 48);
+        localStorage.setItem("uniinfer_api_key", newKey);
+
         window.uniinferConfig.maxTokens =
           parseInt(settingsMaxTokens.value) || 4000;
         closeSettings();
@@ -488,7 +601,33 @@
       const imageSection = document.getElementById("image-area");
       const audioSection = document.getElementById("audio-area");
 
+      const chatStats = document.getElementById("chat-stats");
+      const statsText = document.getElementById("stats-text");
+
       let currentAbortController = null;
+
+      function updateChatStats() {
+        const history = window.uniinferStore.chatHistory || [];
+        const turns = history.length;
+
+        // Simple token estimation: ~4 chars per token
+        let totalChars = 0;
+        history.forEach((msg) => {
+          if (typeof msg.content === "string") {
+            totalChars += msg.content.length;
+          } else if (Array.isArray(msg.content)) {
+            msg.content.forEach((part) => {
+              if (part.type === "text") totalChars += part.text.length;
+              // Rough estimate for images
+              if (part.type === "image_url") totalChars += 1000;
+            });
+          }
+        });
+        const tokens = Math.ceil(totalChars / 4);
+
+        statsText.textContent = `${turns} msgs • ~${tokens} toks`;
+        chatStats.style.display = "flex";
+      }
 
       function setMode(mode) {
         [modeChatBtn, modeImageBtn, modeAudioBtn].forEach((b) =>
@@ -637,6 +776,13 @@
         }
 
         addMessage(message, "user");
+        // Update history
+        window.uniinferStore.chatHistory.push({
+          role: "user",
+          content: apiMessageContent,
+        });
+        saveChatHistory();
+
         messageInput.value = "";
         messageInput.style.height = "auto";
 
@@ -646,6 +792,8 @@
         const assistantDiv = addMessage("...", "assistant");
         currentAbortController = new AbortController();
 
+        let fullResponse = "";
+
         try {
           const response = await fetch(
             `${window.uniinferConfig.apiBaseUrl}/v1/chat/completions`,
@@ -654,7 +802,7 @@
               headers: getHeaders(),
               body: JSON.stringify({
                 model: `${provider}@${model}`,
-                messages: [{ role: "user", content: apiMessageContent }],
+                messages: window.uniinferStore.chatHistory,
                 stream: true,
                 max_tokens: window.uniinferConfig.maxTokens || 4000,
               }),
@@ -664,7 +812,6 @@
 
           const reader = response.body.getReader();
           const decoder = new TextDecoder();
-          let rawText = "";
 
           while (true) {
             const { done, value } = await reader.read();
@@ -682,13 +829,22 @@
               try {
                 const data = JSON.parse(dataStr);
                 const delta = data.choices?.[0]?.delta?.content || "";
-                rawText += delta;
-                assistantDiv.innerHTML = marked.parse(rawText);
+                fullResponse += delta;
+                assistantDiv.innerHTML = marked.parse(fullResponse);
                 chatContainer.scrollTop = chatContainer.scrollHeight;
               } catch (e) {
                 console.error("Parse error", e);
               }
             }
+          }
+
+          // Save assistant response to history
+          if (fullResponse) {
+            window.uniinferStore.chatHistory.push({
+              role: "assistant",
+              content: fullResponse,
+            });
+            saveChatHistory();
           }
         } catch (e) {
           if (e.name !== "AbortError") {
@@ -763,6 +919,22 @@
           messageInput.focus();
         });
       });
+
+      // Clear Chat Listener
+      document
+        .getElementById("clear-chat-btn")
+        .addEventListener("click", () => {
+          window.uniinferStore.chatHistory = [];
+          localStorage.removeItem("uniinfer_chat_history");
+          chatContainer.innerHTML = "";
+          addMessage(
+            "Select a provider and model to start chatting.",
+            "system",
+          );
+          updateChatStats();
+        });
+
+      // Load history on init (moved to end)
 
       // --- PNG Metadata Helpers ---
       const crcTable = [];
@@ -1064,6 +1236,7 @@
       });
 
       // Init
+      loadChatHistory();
       loadProviders();
       updateImageModels();
       updateVoices();
