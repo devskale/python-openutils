@@ -64,8 +64,12 @@ def map_provider_error(provider_name: str, original_error: Exception, status_cod
         return TimeoutError(f"{provider_name} timeout error: {str(original_error)}", status_code, response_body)
     
     # Invalid request errors
-    if status_code == 400 or any(term in error_message for term in ["invalid", "validation", "bad request", "400"]):
+    if status_code == 400 or any(term in error_message for term in ["invalid", "validation", "bad request", "400", "not supported", "not a chat model", "not found"]):
         return InvalidRequestError(f"{provider_name} invalid request: {str(original_error)}", status_code, response_body)
     
+    # Internal routing or library bugs
+    if any(term in error_message for term in ["stopiteration", "runtimeerror", "coroutine raised", "stopiteration"]):
+         return UniInferError(f"{provider_name} library or routing error: {str(original_error)}")
+
     # Default to generic provider error
     return ProviderError(f"{provider_name} error: {str(original_error)}", status_code, response_body)
