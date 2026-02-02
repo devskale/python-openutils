@@ -319,30 +319,30 @@ export ANTHROPIC_API_KEY=your_key_here
 
 ## Supported Providers
 
-| Provider      | Chat Models                | Embedding Models       | Streaming |
-| ------------- | -------------------------- | ---------------------- | --------- |
-| OpenAI        | GPT-4, GPT-3.5             | text-embedding-ada-002 | ✅        |
-| Anthropic     | Claude 3 Opus/Sonnet/Haiku | -                      | ✅        |
-| Mistral       | Mistral Large/Small        | mistral-embed          | ✅        |
-| Google Gemini | Gemini Pro/Flash           | text-embedding-004     | ✅        |
-| Ollama        | Llama2, Mistral, etc.      | nomic-embed-text, jina | ✅        |
-| OpenRouter    | 60+ models                 | Various                | ✅        |
-| HuggingFace   | Llama, Mistral             | sentence-transformers  | ✅        |
-| Cohere        | Command R+                 | embed-english-v3.0     | ✅        |
-| Groq          | Llama 3.1                  | -                      | ✅        |
-| AI21          | Jamba 1.5                  | -                      | ✅        |
-| Moonshot      | Kimi                       | -                      | ✅        |
-| Arli AI       | Qwen 2.5, Llama 3.1        | -                      | ✅        |
-| Sambanova     | Llama 3.1                  | -                      | ✅        |
-| Upstage       | Solar                      | -                      | ✅        |
-| NGC           | Llama 3.1                  | -                      | ✅        |
-| Cloudflare    | Llama 3.1                  | -                      | ✅        |
-| Bigmodel      | GLM-4                      | -                      | ✅        |
-| Tu AI         | Various                    | -                      | ✅        |
-| Chutes        | Various                    | -                      | ✅        |
-| Pollinations  | Free OpenAI-compatible     | -                      | ✅        |
-| StepFun       | Various                    | -                      | ✅        |
-| InternLM      | InternLM 2.5               | -                      | ✅        |
+| Provider                                             | Chat Models                | Embedding Models       | Streaming |
+| ---------------------------------------------------- | -------------------------- | ---------------------- | --------- |
+| OpenAI                                               | GPT-4, GPT-3.5             | text-embedding-ada-002 | ✅        |
+| Anthropic                                            | Claude 3 Opus/Sonnet/Haiku | -                      | ✅        |
+| Mistral                                              | Mistral Large/Small        | mistral-embed          | ✅        |
+| Google Gemini                                        | Gemini Pro/Flash           | text-embedding-004     | ✅        |
+| Ollama                                               | Llama2, Mistral, etc.      | nomic-embed-text, jina | ✅        |
+| OpenRouter                                           | 60+ models                 | Various                | ✅        |
+| HuggingFace                                          | Llama, Mistral             | sentence-transformers  | ✅        |
+| Cohere                                               | Command R+                 | embed-english-v3.0     | ✅        |
+| Groq                                                 | Llama 3.1                  | -                      | ✅        |
+| AI21                                                 | Jamba 1.5                  | -                      | ✅        |
+| Moonshot                                             | Kimi                       | -                      | ✅        |
+| Arli AI                                              | Qwen 2.5, Llama 3.1        | -                      | ✅        |
+| Sambanova                                            | Llama 3.1                  | -                      | ✅        |
+| Upstage                                              | Solar                      | -                      | ✅        |
+| NGC                                                  | Llama 3.1                  | -                      | ✅        |
+| Cloudflare                                           | Llama 3.1                  | -                      | ✅        |
+| Bigmodel                                             | GLM-4                      | -                      | ✅        |
+| [Tu AI](https://github.com/TU-Wien-dataLAB/aqueduct) | Various                    | -                      | ✅        |
+| Chutes                                               | Various                    | -                      | ✅        |
+| Pollinations                                         | Free OpenAI-compatible     | -                      | ✅        |
+| StepFun                                              | Various                    | -                      | ✅        |
+| InternLM                                             | InternLM 2.5               | -                      | ✅        |
 
 ## Troubleshooting
 
