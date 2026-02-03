@@ -14,7 +14,7 @@ from .core import (
 from .factory import ProviderFactory
 from .embedding_factory import EmbeddingProviderFactory
 from .providers import (
-    MistralProvider, AnthropicProvider, OpenAIProvider,
+    MistralProvider, AnthropicProvider, OpenAIProvider, OpenAITTSProvider,
     OllamaProvider, OllamaEmbeddingProvider, OpenRouterProvider, ArliAIProvider,
     InternLMProvider, StepFunProvider, SambanovaProvider,
     UpstageProvider, NGCProvider, CloudflareProvider, ChutesProvider,
@@ -134,6 +134,7 @@ __all__ = [
     'MistralProvider',
     'AnthropicProvider',
     'OpenAIProvider',
+    'OpenAITTSProvider',
     'HuggingFaceProvider',
     'CohereProvider',
     'MoonshotProvider',
