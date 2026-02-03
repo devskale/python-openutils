@@ -293,6 +293,8 @@
             <select id="tts-model" style="width: 100%">
               <option value="tu@kokoro">tu@kokoro</option>
               <option value="tu@piper-thorsten">tu@piper-thorsten</option>
+              <option value="openai@tts-1">openai@tts-1</option>
+              <option value="openai@tts-1-hd">openai@tts-1-hd</option>
             </select>
           </div>
 
@@ -1174,13 +1176,14 @@
 
     async function updateVoices() {
       const voices = ttsModel.value.includes("kokoro")
-        ? ["af_heart", "af_bella", "af_nicole"]
-        : ["thorsten"];
+        ? ["af_heart", "af_bella", "af_nicole", "thorsten"]
+        : ["alloy", "echo", "fable", "onyx", "nova", "shimmer"];
       ttsVoice.innerHTML = voices
         .map((v) => `<option value="${v}">${v}</option>`)
         .join("");
     }
     ttsModel.addEventListener("change", updateVoices);
+    updateVoices();
 
     ttsGenerateBtn.addEventListener("click", async () => {
       const text = ttsInput.value.trim();

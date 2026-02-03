@@ -4,6 +4,7 @@ Provider implementations for different LLM services.
 from .mistral import MistralProvider
 from .anthropic import AnthropicProvider
 from .openai import OpenAIProvider
+from .openai_tts import OpenAITTSProvider
 from .ollama import OllamaProvider
 from .ollama_embedding import OllamaEmbeddingProvider
 from .openrouter import OpenRouterProvider
@@ -70,6 +71,7 @@ __all__ = [
     'MistralProvider',
     'AnthropicProvider',
     'OpenAIProvider',
+    'OpenAITTSProvider',
     'OllamaProvider',
     'OllamaEmbeddingProvider',
     'OpenRouterProvider',
