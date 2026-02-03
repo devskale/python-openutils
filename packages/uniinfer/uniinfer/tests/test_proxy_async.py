@@ -3,7 +3,6 @@ Simple tests for uniioai_proxy async functionality.
 """
 import pytest
 from unittest.mock import patch
-from uniinfer import ChatCompletionResponse, ChatMessage
 
 
 def test_aget_completion_imports():
@@ -120,7 +119,6 @@ def test_proxy_imports():
 
 def test_proxy_has_async_endpoints():
     """Test that proxy has async support in imports."""
-    from uniinfer import uniioai_proxy
 
     # Check that async functions are available in uniioai
     from uniinfer.uniioai import aget_completion, astream_completion
@@ -194,10 +192,9 @@ class TestProxyAsyncIntegration:
     @patch('uniinfer.uniioai.ProviderFactory.get_provider')
     def test_async_completes_non_streaming_integration(self, mock_get_provider):
         """Test async non-streaming integration."""
-        from uniinfer.uniioai_proxy import app, chat_completions, aget_completion
+        from uniinfer.uniioai_proxy import app
         from uniinfer.core import ChatCompletionResponse, ChatMessage
         from fastapi.testclient import TestClient
-        from uniinfer.providers.openai import OpenAIProvider
 
         # Create mock provider
         mock_provider = mock_get_provider.return_value
@@ -231,10 +228,9 @@ class TestProxyAsyncIntegration:
     @patch('uniinfer.uniioai.ProviderFactory.get_provider')
     def test_async_completes_streaming_integration(self, mock_get_provider):
         """Test async streaming integration."""
-        from uniinfer.uniioai_proxy import app, chat_completions, astream_completion
+        from uniinfer.uniioai_proxy import app
         from uniinfer.core import ChatCompletionResponse, ChatMessage
         from fastapi.testclient import TestClient
-        from uniinfer.providers.openai import OpenAIProvider
 
         # Create mock provider
         mock_provider = mock_get_provider.return_value

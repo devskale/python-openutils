@@ -3,8 +3,7 @@ OpenAI provider implementation.
 """
 import json
 import requests
-import httpx
-from typing import Iterator, Optional, AsyncIterator
+from typing import Optional, AsyncIterator
 
 from ..core import ChatProvider, ChatCompletionRequest, ChatCompletionResponse, ChatMessage
 from ..errors import map_provider_error, UniInferError

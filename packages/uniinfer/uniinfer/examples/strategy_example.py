@@ -1,24 +1,18 @@
 """
 Example demonstrating the built-in strategies.
 """
-import sys
 import os
+import sys  # noqa: E402
 
-# Add the parent directory to the Python path to make the uniinfer package importable
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+# Add the parent directory to the Python path to make the uniinfer package importable  # noqa: E402
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))  # noqa: E402
 
-try:
-    from credgoo import get_api_key
-    HAS_CREDGOO = True
-except ImportError:
-    HAS_CREDGOO = False
-    print("credgoo not found, you'll need to provide API keys manually")
+from credgoo import get_api_key  # noqa: F401, E402
 
-from uniinfer import (
-    ChatMessage, ChatCompletionRequest, ProviderFactory,
-    FallbackStrategy, CostBasedStrategy
-)
-from uniinfer.errors import ProviderError
+from uniinfer import (  # noqa: E402
+    ChatMessage, ChatCompletionRequest, FallbackStrategy, CostBasedStrategy
+)  # noqa: E402
+from uniinfer.errors import ProviderError  # noqa: E402
 
 
 def main():

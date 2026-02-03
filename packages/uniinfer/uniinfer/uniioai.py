@@ -1,12 +1,11 @@
 """
 A OpenAI compliance wrapper for LLM APIs using uniinfer, supporting streaming and non-streaming.
 """
-import asyncio
 import os
 import logging
 import time
 import uuid
-from typing import Any, AsyncGenerator, Coroutine
+from typing import Any, AsyncGenerator, Dict, List, Optional
 from collections.abc import Iterator
 import random  # Import random
 

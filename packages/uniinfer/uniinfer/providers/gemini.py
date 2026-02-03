@@ -1,12 +1,11 @@
 """
 Google Gemini provider implementation with async support.
 """
-import asyncio
 import json
-from typing import Dict, Any, Iterator, Optional, List, AsyncIterator
+from typing import Dict, Any, Optional, List, AsyncIterator
 
 from ..core import ChatProvider, ChatCompletionRequest, ChatCompletionResponse, ChatMessage
-from ..errors import AuthenticationError, map_provider_error, UniInferError
+from ..errors import map_provider_error, UniInferError
 
 # Try to import google-genai package (latest recommended package)
 # Note: Install with 'pip install google-genai' if not available

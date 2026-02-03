@@ -611,10 +611,21 @@
         }
       } catch (e) {
         console.error(e);
-        addMessage(
-          "Could not connect to UniInfer API. Check settings.",
-          "error",
-        );
+        const errorDiv = document.createElement("div");
+        errorDiv.className = "message error-message";
+        let errorDetail = e.message;
+        if (e.response) {
+          errorDetail = `Status ${e.response.status}: ${e.response.statusText || e.message}`;
+        }
+        errorDiv.innerHTML = `
+          <div class="error-title">
+            <span>⚠️</span>
+            <span>Connection Error</span>
+          </div>
+          <div class="error-detail">${errorDetail}</div>
+        `;
+        chatContainer.innerHTML = "";
+        chatContainer.appendChild(errorDiv);
       }
     }
 
@@ -732,6 +743,30 @@
 
             try {
               const data = JSON.parse(dataStr);
+              
+              // Check if this is an error chunk from streaming
+              if (data.error) {
+                // Remove loading indicator and show error
+                assistantDiv.remove();
+                
+                const errorDiv = document.createElement("div");
+                errorDiv.className = "message error-message";
+                errorDiv.innerHTML = `
+                  <div class="error-title">
+                    <span>⚠️</span>
+                    <span>Error ${data.error.code || ''}</span>
+                  </div>
+                  <div class="error-detail">${data.error.message || JSON.stringify(data.error)}</div>
+                `;
+                chatContainer.appendChild(errorDiv);
+                chatContainer.scrollTo({
+                  top: chatContainer.scrollHeight,
+                  behavior: "smooth",
+                });
+                return; // Stop processing
+              }
+              
+              // Normal response chunk
               const delta = data.choices?.[0]?.delta?.content || "";
               fullResponse += delta;
               assistantDiv.innerHTML = marked.parse(fullResponse);
@@ -752,7 +787,55 @@
         }
       } catch (e) {
         if (e.name !== "AbortError") {
-          addMessage(`Error: ${e.message}`, "error");
+          // Remove loading indicator
+          assistantDiv.remove();
+          
+          // Create detailed error message
+          let errorTitle = "Error";
+          let errorDetail = e.message;
+          
+          // Try to extract more info from the error
+          if (e.response) {
+            errorTitle = `Error ${e.response.status}`;
+            errorDetail = e.response.statusText || e.message;
+            
+            // Try to get response body for more details
+            try {
+              const text = await e.response.text();
+              if (text) {
+                // Try to parse as JSON for structured errors
+                try {
+                  const json = JSON.parse(text);
+                  if (json.error && json.error.message) {
+                    errorDetail = json.error.message;
+                  } else if (json.detail) {
+                    errorDetail = json.detail;
+                  } else if (typeof json === 'string') {
+                    errorDetail = json;
+                  }
+                } catch {
+                  // Not JSON, use as-is
+                  errorDetail = text.substring(0, 500);
+                }
+              }
+            } catch {}
+          }
+          
+          // Create error message element
+          const errorDiv = document.createElement("div");
+          errorDiv.className = "message error-message";
+          errorDiv.innerHTML = `
+            <div class="error-title">
+              <span>⚠️</span>
+              <span>${errorTitle}</span>
+            </div>
+            <div class="error-detail">${errorDetail}</div>
+          `;
+          chatContainer.appendChild(errorDiv);
+          chatContainer.scrollTo({
+            top: chatContainer.scrollHeight,
+            behavior: "smooth",
+          });
         }
       } finally {
         sendButton.style.display = "flex";
@@ -1047,9 +1130,35 @@
 
             imageResults.prepend(card);
           }
+        } else if (!resp.ok) {
+          // Show error response
+          let errorDetail = "";
+          try {
+            const errorData = await resp.json();
+            errorDetail = errorData.error?.message || errorData.detail || JSON.stringify(errorData);
+          } catch {
+            errorDetail = await resp.text();
+          }
+          status.innerHTML = `
+            <div class="error-status">
+              <div class="error-title">
+                <span>⚠️</span>
+                <span>Error ${resp.status}</span>
+              </div>
+              <div class="error-detail">${errorDetail || resp.statusText}</div>
+            </div>
+          `;
         }
       } catch (e) {
-        console.error(e);
+        status.innerHTML = `
+          <div class="error-status">
+            <div class="error-title">
+              <span>⚠️</span>
+              <span>Error</span>
+            </div>
+            <div class="error-detail">${e.message}</div>
+          </div>
+        `;
       } finally {
         generateImgBtn.disabled = false;
         status.innerHTML = "";
@@ -1102,7 +1211,28 @@
         audio.style.width = "100%";
         ttsResult.prepend(audio);
       } catch (e) {
-        console.error(e);
+        const statusEl = document.getElementById("tts-status");
+        let errorDetail = e.message;
+        
+        if (e.response) {
+          try {
+            const text = await e.response.text();
+            const json = JSON.parse(text);
+            errorDetail = json.error?.message || json.detail || text.substring(0, 200);
+          } catch {
+            errorDetail = e.response.statusText || e.message;
+          }
+        }
+        
+        statusEl.innerHTML = `
+          <div class="error-status">
+            <div class="error-title">
+              <span>⚠️</span>
+              <span>Error ${e.response?.status || ''}</span>
+            </div>
+            <div class="error-detail">${errorDetail}</div>
+          </div>
+        `;
       } finally {
         ttsGenerateBtn.disabled = false;
         document.getElementById("tts-status").innerHTML = "";
@@ -1145,7 +1275,28 @@
         const data = await resp.json();
         sttResult.innerHTML = `<div style="font-weight:600; margin-bottom:8px; font-size:0.7rem; color:#888;">Transcription:</div>${data.text || "No text found"}`;
       } catch (e) {
-        console.error(e);
+        const statusEl = document.getElementById("stt-status");
+        let errorDetail = e.message;
+        
+        if (e.response) {
+          try {
+            const text = await e.response.text();
+            const json = JSON.parse(text);
+            errorDetail = json.error?.message || json.detail || text.substring(0, 200);
+          } catch {
+            errorDetail = e.response.statusText || e.message;
+          }
+        }
+        
+        statusEl.innerHTML = `
+          <div class="error-status">
+            <div class="error-title">
+              <span>⚠️</span>
+              <span>Error ${e.response?.status || ''}</span>
+            </div>
+            <div class="error-detail">${errorDetail}</div>
+          </div>
+        `;
       } finally {
         sttTranscribeBtn.disabled = false;
         document.getElementById("stt-status").innerHTML = "";

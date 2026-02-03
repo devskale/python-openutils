@@ -2,7 +2,6 @@
 Tests for TuAIProvider async and tool support.
 """
 import pytest
-import json
 import httpx
 from unittest.mock import patch, MagicMock, AsyncMock
 from uniinfer import ChatMessage, ChatCompletionRequest, ChatCompletionResponse
@@ -126,7 +125,6 @@ class TestTUProviderAsync:
     async def test_throttle(self, provider):
         """Test async throttling."""
         from datetime import datetime, timedelta
-        import asyncio
         
         # Set last request time to now
         provider._last_request_time = datetime.now()

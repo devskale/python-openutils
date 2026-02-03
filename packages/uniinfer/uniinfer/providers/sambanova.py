@@ -1,7 +1,7 @@
 """
 SambaNova provider implementation.
 """
-from typing import Dict, Any, Iterator, Optional, List
+from typing import Any, AsyncIterator, Dict, List, Optional
 import os
 
 from ..core import ChatProvider, ChatCompletionRequest, ChatCompletionResponse, ChatMessage
@@ -55,21 +55,6 @@ class SambanovaProvider(ChatProvider):
         if hasattr(self, 'async_client'):
             await self.async_client.close()
         await super().aclose()
-
-    @classmethod
-    def list_models(cls) -> List[str]:
-        """
-        List available models from SambaNova API.
-
-        Returns:
-            List[str]: List of available model names
-        """
-        return [
-            "sambastudio-7b",
-            "sambastudio-13b",
-            "sambastudio-20b",
-            "sambastudio-70b"
-        ]
 
     async def acomplete(
         self,
@@ -243,9 +228,9 @@ class SambanovaProvider(ChatProvider):
             
             # Map the error
             try:
-                mapped_error = map_provider_error("sambanova", e, status_code=status_code, response_body=str(response_body) if response_body else None)
-            except:
-                mapped_error = e
+                map_provider_error("sambanova", e, status_code=status_code, response_body=str(response_body) if response_body else None)
+            except Exception:
+                pass
 
             # Fallback to default models if API call fails
             print(f"Warning: Failed to fetch SambaNova models: {str(e)}")

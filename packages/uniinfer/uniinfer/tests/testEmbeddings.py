@@ -132,14 +132,14 @@ def test_detailed_response(client: OpenAI, model: str, text: str) -> Optional[di
         # Check for usage/token information
         usage = response_dict.get('usage')
         if usage:
-            print(f"  Usage found:")
+            print("  Usage found:")
             print(f"    Prompt tokens: {usage.get('prompt_tokens', 'N/A')}")
             print(f"    Total tokens: {usage.get('total_tokens', 'N/A')}")
             if 'completion_tokens' in usage:
                 print(
                     f"    Completion tokens: {usage.get('completion_tokens')}")
         else:
-            print(f"  Usage: None (no token count available)")
+            print("  Usage: None (no token count available)")
 
         return response_dict
 

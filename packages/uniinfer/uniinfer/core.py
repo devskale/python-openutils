@@ -180,11 +180,11 @@ class ChatProvider:
         finally:
             try:
                 loop.run_until_complete(async_gen.aclose())
-            except:
+            except Exception:
                 pass
             try:
                 loop.run_until_complete(self.aclose())
-            except:
+            except Exception:
                 pass
             loop.close()
 

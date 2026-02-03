@@ -3,9 +3,8 @@ Pollinations provider implementation.
 
 Pollinations is a unified API to access multiple AI models from different providers.
 """
-from typing import Optional, Iterator, AsyncIterator, List
+from typing import Optional, AsyncIterator
 import json
-import httpx
 
 from ..core import ChatProvider, ChatCompletionRequest, ChatCompletionResponse, ChatMessage
 from ..errors import map_provider_error, UniInferError

@@ -1,6 +1,5 @@
-import os
 import logging
-from typing import Optional, Tuple
+from typing import Optional
 from fastapi import HTTPException, Depends
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from .uniioai import get_provider_api_key
@@ -74,6 +73,6 @@ def verify_provider_access(token: str, provider_name: str) -> str:
     except (ValueError, AuthenticationError) as e:
         logger.error(f"Authentication failed for {provider_name}: {e}")
         raise HTTPException(status_code=401, detail=str(e))
-    except Exception as e:
+    except Exception:
         logger.exception(f"Unexpected error during authentication for {provider_name}")
         raise HTTPException(status_code=500, detail="Internal authentication error")

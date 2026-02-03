@@ -2,14 +2,12 @@
 Comprehensive tests for refactored async provider logic.
 """
 import pytest
-import asyncio
 import json
 from unittest.mock import MagicMock, AsyncMock, patch
-from uniinfer import ChatMessage, ChatCompletionRequest, ChatCompletionResponse
+from uniinfer import ChatMessage, ChatCompletionRequest
 from uniinfer.providers.openai import OpenAIProvider
 from uniinfer.providers.groq import GroqProvider
 from uniinfer.providers.sambanova import SambanovaProvider
-from uniinfer.providers.internlm import InternLMProvider
 from uniinfer.providers.moonshot import MoonshotProvider
 from uniinfer.providers.stepfun import StepFunProvider
 from uniinfer.providers.upstage import UpstageProvider

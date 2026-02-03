@@ -1,8 +1,6 @@
 
-import os
 import sys
 import json
-import time
 from openai import OpenAI
 from dotenv import load_dotenv
 
@@ -31,7 +29,7 @@ def test_model_compliance(client, model):
     print(f"{'='*50}")
 
     # 1. Test Non-Streaming Chat Completion
-    print(f"\n[1] Testing Non-Streaming Chat Completion...")
+    print("\n[1] Testing Non-Streaming Chat Completion...")
     try:
         response = client.chat.completions.create(
             model=model,
@@ -52,7 +50,7 @@ def test_model_compliance(client, model):
         print(f"  ❌ Non-Streaming Test Failed: {e}")
 
     # 2. Test Streaming Chat Completion
-    print(f"\n[2] Testing Streaming Chat Completion...")
+    print("\n[2] Testing Streaming Chat Completion...")
     try:
         stream = client.chat.completions.create(
             model=model,
@@ -84,7 +82,7 @@ def test_model_compliance(client, model):
 
     # 3. Test Tool Calling (if supported)
     # We will assume these models support tools for the sake of the compliance check
-    print(f"\n[3] Testing Tool Calling (Weather Function)...")
+    print("\n[3] Testing Tool Calling (Weather Function)...")
     tools = [
         {
             "type": "function",
@@ -138,7 +136,7 @@ def test_model_compliance(client, model):
         print(f"  ❌ Tool Calling Test Failed: {e}")
 
     # 4. Test Max Tokens
-    print(f"\n[4] Testing Max Tokens (max_tokens=5)...")
+    print("\n[4] Testing Max Tokens (max_tokens=5)...")
     try:
         response = client.chat.completions.create(
             model=model,

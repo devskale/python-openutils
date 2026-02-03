@@ -1,7 +1,6 @@
 """
 Tests for uniioai_proxy with TU provider.
 """
-import pytest
 from fastapi.testclient import TestClient
 from unittest.mock import patch, MagicMock
 from io import BytesIO
@@ -121,7 +120,7 @@ class TestTUProxySTT:
         assert response.status_code in [200, 401, 500]
 
     @patch('uniinfer.uniioai_proxy.TuAISTTProvider')
-    def test_stt_endpoint_with_language(self, mock_stt_class):
+    def test_stt_endpoint_with_language_v3(self, mock_stt_class):  # noqa: F811
         """Test STT endpoint with language parameter."""
         from uniinfer.uniioai_proxy import app
 
@@ -141,7 +140,7 @@ class TestTUProxySTT:
         assert response.status_code in [200, 401, 500]
 
     @patch('uniinfer.uniioai_proxy.TuAISTTProvider')
-    def test_stt_endpoint_with_format(self, mock_stt_class):
+    def test_stt_endpoint_with_format_v3(self, mock_stt_class):  # noqa: F811
         """Test STT endpoint with format parameter."""
         from uniinfer.uniioai_proxy import app
 
@@ -161,7 +160,7 @@ class TestTUProxySTT:
         assert response.status_code in [200, 401, 500]
 
     @patch('uniinfer.uniioai_proxy.TuAISTTProvider')
-    def test_stt_endpoint_with_language(self, mock_stt_class):
+    def test_stt_endpoint_with_language_v2(self, mock_stt_class):  # noqa: F811
         """Test STT endpoint with language parameter."""
         from uniinfer.uniioai_proxy import app
 
@@ -181,7 +180,7 @@ class TestTUProxySTT:
         assert response.status_code in [200, 401, 500]
 
     @patch('uniinfer.uniioai_proxy.TuAISTTProvider')
-    def test_stt_endpoint_with_format(self, mock_stt_class):
+    def test_stt_endpoint_with_format_v2(self, mock_stt_class):  # noqa: F811
         """Test STT endpoint with format parameter."""
         from uniinfer.uniioai_proxy import app
 
@@ -258,7 +257,7 @@ class TestTUProxyModelParsing:
         mock_parse.return_value = ("tu", "model-name")
 
         client = TestClient(app)
-        response = client.post("/v1/audio/speech", json={
+        _response = client.post("/v1/audio/speech", json={
             "model": "tu@kokoro",
             "input": "Test"
         })
@@ -276,7 +275,7 @@ class TestTUProxyModelParsing:
         mock_parse.return_value = ("tu", "model-name")
 
         client = TestClient(app)
-        response = client.post(
+        _response = client.post(
             "/v1/audio/transcriptions",
             data={
                 "file": (BytesIO(audio_content), "test.mp3", "audio/mpeg"),
@@ -342,7 +341,7 @@ class TestTUProxyRequestValidation:
         # Should get 422 validation error
         assert response.status_code in [422, 400]
 
-    def test_tts_missing_model(self):
+    def test_tts_missing_model_v2(self):  # noqa: F811
         """Test TTS with missing model."""
         from uniinfer.uniioai_proxy import app
 
@@ -354,7 +353,7 @@ class TestTUProxyRequestValidation:
         # Should get 422 validation error
         assert response.status_code in [422, 400]
 
-    def test_stt_missing_file(self):
+    def test_stt_missing_file_v2(self):  # noqa: F811
         """Test STT with missing file."""
         from uniinfer.uniioai_proxy import app
 
@@ -367,7 +366,7 @@ class TestTUProxyRequestValidation:
         # Should get 422 validation error
         assert response.status_code in [422, 400]
 
-    def test_stt_missing_model(self):
+    def test_stt_missing_model_v2(self):  # noqa: F811
         """Test STT with missing model."""
         from uniinfer.uniioai_proxy import app
 

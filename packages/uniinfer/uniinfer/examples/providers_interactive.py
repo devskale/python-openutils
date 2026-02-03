@@ -4,15 +4,9 @@ Interactive example to select a provider and ask a question with streaming outpu
 This script uses the inquirer library for interactive prompts.
 """
 from uniinfer import ChatMessage, ChatCompletionRequest, ProviderFactory
-from providers_config import get_all_providers, get_provider_config, add_provider
-import sys
-import os
+from providers_config import get_all_providers, get_provider_config
 import inquirer
 import time
-from providers_config import (
-    HAS_HUGGINGFACE, HAS_COHERE, HAS_MOONSHOT, HAS_OPENAI,
-    HAS_GROQ, HAS_AI21, HAS_GENAI
-)
 
 try:
     from credgoo import get_api_key

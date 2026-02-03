@@ -1,7 +1,6 @@
 """
 Simple validation tests for TU TTS/STT async implementations.
 """
-import pytest
 from uniinfer.providers.tu_tts import TuAITTSProvider
 from uniinfer.providers.tu_stt import TuAISTTProvider
 from uniinfer import TTSRequest, TTSResponse, STTRequest, STTResponse
