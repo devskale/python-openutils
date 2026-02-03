@@ -5,7 +5,7 @@ OpenRouter is a unified API to access multiple AI models from different provider
 """
 import json
 import requests
-from typing import Dict, Any, Iterator, Optional
+from typing import AsyncIterator, Optional
 
 from ..core import ChatProvider, ChatCompletionRequest, ChatCompletionResponse, ChatMessage
 from ..errors import map_provider_error, UniInferError

@@ -2,7 +2,6 @@
 OpenAI-compliant TU provider implementation.
 """
 from typing import Any, AsyncIterator
-from collections.abc import Iterator
 import httpx
 import json
 import os
@@ -12,9 +11,14 @@ from datetime import datetime, timedelta
 from ..core import ChatProvider, ChatCompletionRequest, ChatCompletionResponse, ChatMessage
 
 from ..errors import map_provider_error, UniInferError
+from ..logging_utils import log_raw_response
 
 class TUProvider(ChatProvider):
     """TU (Tencent Unbounded) LLM Provider implementation."""
+
+    _global_last_request_time: datetime | None = None
+    _global_lock = asyncio.Lock()
+    _min_request_interval = timedelta(seconds=2)
 
     def __init__(self, api_key: str | None = None, base_url: str | None = None):
         """Initialize the TU provider.
@@ -33,11 +37,6 @@ class TUProvider(ChatProvider):
         self.base_url = base_url or "https://aqueduct.ai.datalab.tuwien.ac.at/v1"
         self._async_client: httpx.AsyncClient | None = None
         
-        # Throttling state
-        self._last_request_time: datetime | None = None
-        self._min_request_interval = timedelta(milliseconds=200) # 5 requests per second limit
-        self._lock = asyncio.Lock()
-
     async def _get_async_client(self) -> httpx.AsyncClient:
         """Get or create the internal httpx.AsyncClient with TU configuration."""
         if self._async_client is None or self._async_client.is_closed:
@@ -53,13 +52,14 @@ class TUProvider(ChatProvider):
 
     async def _throttle(self) -> None:
         """Simple async throttling to respect rate limits."""
-        async with self._lock:
-            if self._last_request_time is not None:
-                elapsed = datetime.now() - self._last_request_time
-                if elapsed < self._min_request_interval:
-                    wait_time = (self._min_request_interval - elapsed).total_seconds()
+        cls = type(self)
+        async with cls._global_lock:
+            if cls._global_last_request_time is not None:
+                elapsed = datetime.now() - cls._global_last_request_time
+                if elapsed < cls._min_request_interval:
+                    wait_time = (cls._min_request_interval - elapsed).total_seconds()
                     await asyncio.sleep(wait_time)
-            self._last_request_time = datetime.now()
+            cls._global_last_request_time = datetime.now()
 
     def _prepare_payload(self, request: ChatCompletionRequest) -> dict[str, Any]:
         """Prepare the request payload for the TU API.
@@ -105,8 +105,23 @@ class TUProvider(ChatProvider):
         try:
             response = await client.post("/chat/completions", json=payload)
             if response.status_code != 200:
+                log_raw_response(
+                    provider="tu",
+                    operation="chat.completions",
+                    raw_response={
+                        "status_code": response.status_code,
+                        "body": response.text,
+                    },
+                    log_file=os.path.join(os.getcwd(), "logs", "tu_raw_chat.log"),
+                )
                 raise map_provider_error("tu", Exception(f"TU API error: {response.status_code} - {response.text}"), status_code=response.status_code, response_body=response.text)
             
+            log_raw_response(
+                provider="tu",
+                operation="chat.completions",
+                raw_response=response.text,
+                log_file=os.path.join(os.getcwd(), "logs", "tu_raw_chat.log"),
+            )
             data = response.json()
             choice = data["choices"][0]
             message_data = choice["message"]
@@ -141,12 +156,32 @@ class TUProvider(ChatProvider):
         try:
             async with client.stream("POST", "/chat/completions", json=payload) as response:
                 if response.status_code != 200:
-                    error_msg = f"TU API error: {response.status_code} - {await response.aread()}"
+                    error_body = await response.aread()
+                    log_raw_response(
+                        provider="tu",
+                        operation="chat.completions.stream",
+                        raw_response={
+                            "status_code": response.status_code,
+                            "body": error_body.decode("utf-8", errors="replace"),
+                        },
+                        log_file=os.path.join(os.getcwd(), "logs", "tu_raw_chat.log"),
+                    )
+                    error_msg = f"TU API error: {response.status_code} - {error_body}"
                     raise map_provider_error("tu", Exception(error_msg), status_code=response.status_code, response_body=error_msg)
                 
                 async for line in response.aiter_lines():
-                    if not line or line == 'data: [DONE]' or not line.startswith('data: '):
+                    if not line:
                         continue
+                    if line.strip() == 'data: [DONE]':
+                        break
+                    if not line.startswith('data: '):
+                        continue
+                    log_raw_response(
+                        provider="tu",
+                        operation="chat.completions.stream",
+                        raw_response={"line": line},
+                        log_file=os.path.join(os.getcwd(), "logs", "tu_raw_chat.log"),
+                    )
                     
                     try:
                         data_str = line[6:]

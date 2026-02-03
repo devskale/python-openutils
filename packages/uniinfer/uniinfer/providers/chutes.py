@@ -4,7 +4,7 @@ Chutes provider implementation.
 Chutes is a unified API to access multiple AI models from different providers.
 """
 import json
-from typing import Dict, Any, Iterator, Optional, AsyncIterator
+from typing import Optional, AsyncIterator
 
 from ..core import ChatProvider, ChatCompletionRequest, ChatCompletionResponse, ChatMessage
 from ..errors import map_provider_error, UniInferError
@@ -44,7 +44,7 @@ class ChutesProvider(ChatProvider):
 
         try:
             headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
-            response = requests.get(f"https://llm.chutes.ai/v1/models", headers=headers)
+            response = requests.get("https://llm.chutes.ai/v1/models", headers=headers)
             response.raise_for_status()
             models = response.json().get('data', [])
             return [model['id'] for model in models]

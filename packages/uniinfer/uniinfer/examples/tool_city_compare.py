@@ -53,13 +53,13 @@ def send_tool_result(proxy, token, model, city, tc, fake):
 def score(fake):
     s = fake.lower()
     sc = 0
-    if "sunshine" in s: sc += 2
-    if "blue skies" in s: sc += 1
-    if "typhoon" in s: sc -= 3
-    if "blizzard" in s: sc -= 2
-    if "monsoon" in s: sc -= 2
-    if "rain" in s: sc -= 1
-    if "ice" in s: sc -= 1
+    if "sunshine" in s: sc += 2  # noqa: E701
+    if "blue skies" in s: sc += 1  # noqa: E701
+    if "typhoon" in s: sc -= 3  # noqa: E701
+    if "blizzard" in s: sc -= 2  # noqa: E701
+    if "monsoon" in s: sc -= 2  # noqa: E701
+    if "rain" in s: sc -= 1  # noqa: E701
+    if "ice" in s: sc -= 1  # noqa: E701
     return sc
 
 def main():

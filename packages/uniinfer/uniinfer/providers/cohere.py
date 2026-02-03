@@ -2,7 +2,7 @@
 Cohere provider implementation.
 """
 import os
-from typing import Dict, Any, Iterator, Optional
+from typing import AsyncIterator, Optional
 
 from ..core import ChatProvider, ChatCompletionRequest, ChatCompletionResponse, ChatMessage
 from ..errors import map_provider_error, UniInferError
@@ -213,13 +213,13 @@ class CohereProvider(ChatProvider):
                     )
                 elif event.type == "message-end":
                     # Final event with usage info
-                    usage = {}
+                    _usage = {}
                     if hasattr(event, "delta") and hasattr(event.delta, "usage"):
                         tokens = getattr(event.delta.usage, "tokens", None)
                         if tokens:
                             input_tok = getattr(tokens, "input_tokens", 0)
                             output_tok = getattr(tokens, "output_tokens", 0)
-                            usage = {
+                            _usage = {
                                 "input_tokens": input_tok,
                                 "output_tokens": output_tok,
                                 "total_tokens": input_tok + output_tok

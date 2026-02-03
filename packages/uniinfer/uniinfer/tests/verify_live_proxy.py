@@ -73,7 +73,7 @@ def run_verification():
         if "X-RateLimit-Limit" in resp.headers:
              print(f"✅ Rate limit headers present: Limit={resp.headers.get('X-RateLimit-Limit')}")
         else:
-             print(f"⚠️ Rate limit headers NOT in 401 response. This might be normal depending on middleware order.")
+             print("⚠️ Rate limit headers NOT in 401 response. This might be normal depending on middleware order.")
              # Let's try to hit the limit with invalid auth? 
              # If auth is a dependency, it runs before the main handler but AFTER middleware?
              # slowapi is a decorator on the path operation function.
@@ -96,7 +96,7 @@ def run_verification():
         if resp.status_code == 401:
              detail = resp.json().get('detail', '')
              if "Ollama authentication error" in detail or "Ollama API error" in detail:
-                 print(f"✅ Ollama bypassed proxy auth (Provider returned 401, which confirms bypass)")
+                 print("✅ Ollama bypassed proxy auth (Provider returned 401, which confirms bypass)")
              else:
                  print(f"❌ Ollama check failed! Received Proxy 401. Detail: {detail}")
                  sys.exit(1)
@@ -108,7 +108,7 @@ def run_verification():
         # We set limit to 5/minute.
         # We already sent 1 request in Check 4.
         # Let's send 10 more.
-        limit_hit = False
+        limit_hit = False  # noqa: F841
         for i in range(10):
             resp = requests.post(
                 f"{base_url}/v1/chat/completions",
@@ -118,7 +118,7 @@ def run_verification():
                 }
             )
             if resp.status_code == 429:
-                limit_hit = True
+                _limit_hit = True
                 print(f"✅ Rate limit hit on request #{i+2}")
                 # Check headers on the 429 response
                 if "X-RateLimit-Limit" in resp.headers:

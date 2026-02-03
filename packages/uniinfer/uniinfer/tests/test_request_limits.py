@@ -1,8 +1,8 @@
 
 import pytest
 from fastapi.testclient import TestClient
-from unittest.mock import patch, MagicMock
-from uniinfer.uniioai_proxy import app, ChatCompletionRequestInput
+from unittest.mock import patch
+from uniinfer.uniioai_proxy import app
 
 client = TestClient(app)
 

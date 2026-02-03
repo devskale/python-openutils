@@ -1,18 +1,16 @@
 from logging.handlers import RotatingFileHandler
 import logging
 from typing import Any, AsyncGenerator, Optional, List, Dict
-from collections.abc import Iterable
 import re
 import subprocess
 import uuid
 import json
 import time
 import sys
+import asyncio
 import urllib.parse
-import requests
 import base64
 import httpx
-from fastapi.security.http import HTTPAuthorizationCredentials
 from fastapi.security import HTTPBearer  # Import HTTPBearer
 from starlette.concurrency import iterate_in_threadpool, run_in_threadpool
 from pydantic import BaseModel, Field, field_validator
@@ -77,7 +75,7 @@ if parent_dir not in sys.path:
     sys.path.insert(0, parent_dir)
 
 try:
-    from uniinfer.uniioai import stream_completion, astream_completion, get_completion, aget_completion, get_provider_api_key, list_providers, list_models_for_provider, get_embeddings, list_embedding_providers, list_embedding_models_for_provider, format_chunk_to_openai
+    from uniinfer.uniioai import stream_completion, astream_completion, aget_completion, get_provider_api_key, list_providers, list_models_for_provider, get_embeddings, list_embedding_providers, list_embedding_models_for_provider
     from uniinfer.errors import UniInferError, AuthenticationError, ProviderError, RateLimitError
     from uniinfer.auth import validate_proxy_token, get_optional_proxy_token, verify_provider_access
 except ImportError as e:
@@ -520,11 +518,20 @@ async def stream_response_generator(messages: list[dict], provider_model: str, t
 
 
 # --- Async Stream Response Generator ---
-async def astream_response_generator(messages: list[dict], provider_model: str, temp: float, max_tok: int, provider_api_key: str | None, base_url: str | None, tools: list[dict] | None = None, tool_choice: Any | None = None) -> AsyncGenerator[str, None]:
+async def astream_response_generator(messages: list[dict], provider_model: str, temp: float, max_tok: int, provider_api_key: str | None, base_url: str | None, tools: list[dict] | None = None, tool_choice: Any | None = None, request_id: str | None = None) -> AsyncGenerator[str, None]:
     """Generates OpenAI-compatible SSE chunks from uniioai.astream_completion using async."""
     completion_id = f"chatcmpl-{uuid.uuid4()}"
     created_time = int(time.time())
     model_name = provider_model
+
+    stream_label = f"[{request_id}] " if request_id else ""
+    logger.info(f"{stream_label}Async stream start for {model_name}")
+    chunk_count = 0
+    heartbeat_count = 0
+    last_yield_time = time.monotonic()
+    idle_warning_threshold = 10.0
+    heartbeat_interval = float(os.getenv("UNIINFER_STREAM_HEARTBEAT", "5"))
+    idle_timeout = float(os.getenv("UNIINFER_STREAM_IDLE_TIMEOUT", "30"))
 
     first_chunk_data = StreamingChatCompletionChunk(
         id=completion_id,
@@ -538,13 +545,47 @@ async def astream_response_generator(messages: list[dict], provider_model: str, 
     sent_finish_reason = False
 
     try:
-        async for chunk in astream_completion(
+        async_iter = astream_completion(
             messages, provider_model, temp, max_tok, provider_api_key=provider_api_key, base_url=base_url, tools=tools, tool_choice=tool_choice
-        ):
+        ).__aiter__()
+        while True:
+            try:
+                chunk = await asyncio.wait_for(async_iter.__anext__(), timeout=heartbeat_interval)
+            except asyncio.TimeoutError:
+                now = time.monotonic()
+                idle_for = now - last_yield_time
+                if idle_for >= idle_timeout:
+                    logger.warning(
+                        f"{stream_label}Async stream idle timeout after {idle_for:.2f}s for {model_name}")
+                    error_chunk = {
+                        "error": {
+                            "message": f"Stream idle timeout after {idle_for:.2f}s",
+                            "type": "stream_timeout",
+                            "code": None
+                        }
+                    }
+                    yield f"data: {json.dumps(error_chunk)}\n\n"
+                    sent_finish_reason = True
+                    break
+
+                heartbeat_count += 1
+                logger.debug(
+                    f"{stream_label}Async stream heartbeat {heartbeat_count} for {model_name} (idle {idle_for:.2f}s)")
+                yield ": keep-alive\n\n"
+                continue
+            except StopAsyncIteration:
+                break
+
             if isinstance(chunk, dict):
                 json_data = json.dumps(chunk)
                 logger.debug(f"Yielding async chunk (dict): {json_data}")
                 yield f"data: {json_data}\n\n"
+                chunk_count += 1
+                now = time.monotonic()
+                if now - last_yield_time > idle_warning_threshold:
+                    logger.warning(
+                        f"{stream_label}Async stream idle gap {now - last_yield_time:.2f}s for {model_name}")
+                last_yield_time = now
                 
                 choice = chunk.get('choices', [{}])[0]
                 if choice.get('finish_reason'):
@@ -583,6 +624,12 @@ async def astream_response_generator(messages: list[dict], provider_model: str, 
                         json_data = chunk_data.model_dump_json()
                         logger.debug(f"Yielding async chunk: {json_data}")
                         yield f"data: {json_data}\n\n"
+                        chunk_count += 1
+                        now = time.monotonic()
+                        if now - last_yield_time > idle_warning_threshold:
+                            logger.warning(
+                                f"{stream_label}Async stream idle gap {now - last_yield_time:.2f}s for {model_name}")
+                        last_yield_time = now
 
         if not sent_finish_reason:
             finish_reason = "tool_calls" if seen_tool_calls else "stop"
@@ -597,6 +644,8 @@ async def astream_response_generator(messages: list[dict], provider_model: str, 
                     delta=ChoiceDelta(), finish_reason=finish_reason)]
             )
             yield f"data: {final_chunk_data.model_dump_json()}\n\n"
+            chunk_count += 1
+            sent_finish_reason = True
 
     except NameError as e:
         logger.error(f"NameError during async streaming: {e}")
@@ -633,6 +682,12 @@ async def astream_response_generator(messages: list[dict], provider_model: str, 
             }
         }
         yield f"data: {json.dumps(error_chunk)}\n\n"
+
+    logger.info(
+        f"{stream_label}Async stream end for {model_name} (chunks={chunk_count}, heartbeats={heartbeat_count}, finish_sent={sent_finish_reason})")
+    logger.info(f"{stream_label}Async stream sending [DONE] for {model_name}")
+
+    yield "data: [DONE]\n\n"
 
 
 # --- API Endpoints ---
@@ -757,9 +812,15 @@ async def chat_completions(request: Request, request_input: ChatCompletionReques
                     provider_api_key=provider_api_key,  # Pass retrieved key
                     base_url=base_url,  # Pass potentially modified base_url
                     tools=request_input.tools,
-                    tool_choice=request_input.tool_choice
+                    tool_choice=request_input.tool_choice,
+                    request_id=getattr(request.state, "request_id", None)
                 ),
-                media_type="text/event-stream"
+                media_type="text/event-stream",
+                headers={
+                    "Cache-Control": "no-cache",
+                    "X-Accel-Buffering": "no",
+                    "Connection": "keep-alive",
+                },
             )
         else:
             # Use async aget_completion for non-streaming requests

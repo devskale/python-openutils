@@ -2,7 +2,9 @@
 Bigmodel provider implementation.
 """
 import requests
-from typing import Dict, Any, Iterator, Optional
+import json
+import httpx
+from typing import AsyncIterator, Optional
 
 from ..core import ChatProvider, ChatCompletionRequest, ChatCompletionResponse, ChatMessage
 from ..errors import map_provider_error, UniInferError
@@ -21,7 +23,7 @@ class BigmodelProvider(ChatProvider):
     Bigmodel AI is a China-based LLM provider that uses the OpenAI client format.
     """
 
-    def __init__(self, api_key: Optional[str] = None, base_url: str = "https://open.bigmodel.cn/api/paas/v4/", **kwargs):
+    def __init__(self, api_key: Optional[str] = None, base_url: str = "https://api.z.ai/api/paas/v4/", **kwargs): 
         """
         Initialize the Bigmodel provider.
 
@@ -33,24 +35,22 @@ class BigmodelProvider(ChatProvider):
         super().__init__(api_key)
         self.base_url = base_url
 
-        if not HAS_OPENAI:
-            raise ImportError(
-                "openai package is required for the Bigmodel. "
-                "Install it with: pip install openai"
+        # Initialize OpenAI clients if available; otherwise fall back to HTTP calls
+        if HAS_OPENAI:
+            self.client = OpenAI(
+                api_key=self.api_key,
+                base_url=self.base_url
             )
-
-        # Initialize the OpenAI clients for Bigmodel
-        self.client = OpenAI(
-            api_key=self.api_key,
-            base_url=self.base_url
-        )
-        self.async_client = AsyncOpenAI(
-            api_key=self.api_key,
-            base_url=self.base_url
-        )
+            self.async_client = AsyncOpenAI(
+                api_key=self.api_key,
+                base_url=self.base_url
+            )
+        else:
+            self.client = None
+            self.async_client = None
 
     @classmethod
-    def list_models(cls, api_key: Optional[str] = None, base_url: str = "https://open.bigmodel.cn/api/paas/v4/") -> list:
+    def list_models(cls, api_key: Optional[str] = None, base_url: str = "https://api.z.ai/api/paas/v4/") -> list:
         """
         List available models from Bigmodel AI using the API.
         Ensures that glm-4-flash and glm-4.5-flash are always included.
@@ -70,7 +70,7 @@ class BigmodelProvider(ChatProvider):
             raise ValueError("API key is required to list models")
         
         # Define guaranteed models that should always be available
-        guaranteed_models = ["glm-4-flash", "glm-4.5-flash"]
+        guaranteed_models = ["glm-4.7", "glm-4-flash", "glm-4.5-flash"]
         
         url = f"{base_url.rstrip('/')}/models"
         headers = {
@@ -127,7 +127,7 @@ class BigmodelProvider(ChatProvider):
 
         messages = self._flatten_messages(request.messages)
         params = {
-            "model": request.model or "glm-4-flash",
+            "model": request.model or "glm-4.7",
             "messages": messages,
             "temperature": request.temperature,
             "stream": False
@@ -142,50 +142,40 @@ class BigmodelProvider(ChatProvider):
             params["tool_choice"] = request.tool_choice
 
         params.update(provider_specific_kwargs)
+        url = f"{self.base_url.rstrip('/')}/chat/completions"
+        headers = {
+            "Authorization": f"Bearer {self.api_key}",
+            "Content-Type": "application/json",
+        }
 
         try:
-            completion = await self.async_client.chat.completions.create(**params)
-            response_message = completion.choices[0].message
-            
+            async with httpx.AsyncClient(timeout=60.0) as client:
+                resp = await client.post(url, json=params, headers=headers)
+                resp.raise_for_status()
+                data = resp.json()
+
+            # Parse the returned message structure to `ChatMessage`
+            choice = data.get("choices", [])[0]
+            response_message = choice.get("message", {})
+
             tool_calls = None
-            if hasattr(response_message, 'tool_calls') and response_message.tool_calls:
-                tool_calls = [
-                    {
-                        "id": tc.id,
-                        "type": tc.type,
-                        "function": {
-                            "name": tc.function.name,
-                            "arguments": tc.function.arguments
-                        }
-                    }
-                    for tc in response_message.tool_calls
-                ]
-            
+            if response_message.get("tool_calls"):
+                tool_calls = response_message.get("tool_calls")
+
             message = ChatMessage(
-                role=response_message.role,
-                content=response_message.content,
-                tool_calls=tool_calls
+                role=response_message.get("role", "assistant"),
+                content=response_message.get("content") or response_message.get("text") or None,
+                tool_calls=tool_calls,
             )
 
-            usage = {}
-            if hasattr(completion, 'usage'):
-                usage = {
-                    "prompt_tokens": completion.usage.prompt_tokens,
-                    "completion_tokens": completion.usage.completion_tokens,
-                    "total_tokens": completion.usage.total_tokens
-                }
-
-            try:
-                raw_response = completion.model_dump()
-            except Exception:
-                raw_response = str(completion)
+            usage = data.get("usage", {}) or {}
 
             return ChatCompletionResponse(
                 message=message,
                 provider='bigmodel',
                 model=params["model"],
                 usage=usage,
-                raw_response=raw_response
+                raw_response=data,
             )
         except Exception as e:
             if isinstance(e, UniInferError):
@@ -205,7 +195,7 @@ class BigmodelProvider(ChatProvider):
 
         messages = self._flatten_messages(request.messages)
         params = {
-            "model": request.model or "glm-4-flash",
+            "model": request.model or "glm-4.7",
             "messages": messages,
             "temperature": request.temperature,
             "stream": True
@@ -220,42 +210,46 @@ class BigmodelProvider(ChatProvider):
             params["tool_choice"] = request.tool_choice
 
         params.update(provider_specific_kwargs)
+        url = f"{self.base_url.rstrip('/')}/chat/completions"
+        headers = {
+            "Authorization": f"Bearer {self.api_key}",
+            "Content-Type": "application/json",
+        }
 
         try:
-            stream = await self.async_client.chat.completions.create(**params)
+            async with httpx.AsyncClient(timeout=None) as client:
+                async with client.stream("POST", url, json=params, headers=headers) as resp:
+                    resp.raise_for_status()
+                    async for line in resp.aiter_lines():
+                        if not line:
+                            continue
+                        # Handle SSE-style "data: ..." lines or raw JSON per-line
+                        payload = line
+                        if line.startswith("data:"):
+                            payload = line.split("data:", 1)[1].strip()
+                        if payload == "[DONE]":
+                            break
+                        try:
+                            chunk = json.loads(payload)
+                        except Exception:
+                            continue
 
-            async for chunk in stream:
-                if chunk.choices and hasattr(chunk.choices[0], 'delta'):
-                    delta = chunk.choices[0].delta
-                    content = getattr(delta, 'content', None)
-                    tool_calls = None
-                    
-                    if hasattr(delta, 'tool_calls') and delta.tool_calls:
-                        tool_calls = [
-                            {
-                                "id": getattr(tc, 'id', None),
-                                "type": getattr(tc, 'type', 'function'),
-                                "function": {
-                                    "name": tc.function.name if hasattr(tc, 'function') else None,
-                                    "arguments": tc.function.arguments if hasattr(tc, 'function') else None
-                                }
-                            }
-                            for tc in delta.tool_calls
-                        ]
-                    
-                    if content or tool_calls:
-                        message = ChatMessage(
-                            role="assistant",
-                            content=content,
-                            tool_calls=tool_calls
-                        )
-                        yield ChatCompletionResponse(
-                            message=message,
-                            provider='bigmodel',
-                            model=params["model"],
-                            usage={},
-                            raw_response={"chunk": {"content": content}}
-                        )
+                        choices = chunk.get("choices", [])
+                        if not choices:
+                            continue
+                        delta = choices[0].get("delta", {})
+                        content = delta.get("content")
+                        tool_calls = delta.get("tool_calls") or None
+
+                        if content is not None or tool_calls is not None:
+                            message = ChatMessage(role="assistant", content=content, tool_calls=tool_calls)
+                            yield ChatCompletionResponse(
+                                message=message,
+                                provider='bigmodel',
+                                model=params["model"],
+                                usage={},
+                                raw_response=chunk,
+                            )
         except Exception as e:
             if isinstance(e, UniInferError):
                 raise

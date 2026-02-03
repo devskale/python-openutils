@@ -1,7 +1,6 @@
 """
 Groq provider implementation with async support.
 """
-import asyncio
 import os
 from typing import Dict, Any, Iterator, Optional, List, AsyncIterator
 

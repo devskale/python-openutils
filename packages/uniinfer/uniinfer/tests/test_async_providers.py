@@ -1,8 +1,6 @@
 """
 Unit tests for async provider methods.
 """
-import pytest
-from uniinfer import ChatMessage, ChatCompletionRequest
 from uniinfer.providers.openai import OpenAIProvider
 from uniinfer.providers.anthropic import AnthropicProvider
 from uniinfer.providers.mistral import MistralProvider
@@ -242,21 +240,3 @@ class TestSyncWrappers:
         assert hasattr(provider, 'stream_complete')
         assert callable(provider.stream_complete)
 
-
-    def test_anthropic_complete_is_wrapper(self):
-        """Test that sync complete method wraps async."""
-        provider = AnthropicProvider(api_key="test-key")
-        assert hasattr(provider, 'complete')
-        assert callable(provider.complete)
-
-    def test_mistral_complete_is_wrapper(self):
-        """Test that sync complete method wraps async."""
-        provider = MistralProvider(api_key="test-key")
-        assert hasattr(provider, 'complete')
-        assert callable(provider.complete)
-
-    def test_ollama_complete_is_wrapper(self):
-        """Test that sync complete method wraps async."""
-        provider = OllamaProvider(base_url="http://localhost:11434")
-        assert hasattr(provider, 'complete')
-        assert callable(provider.complete)

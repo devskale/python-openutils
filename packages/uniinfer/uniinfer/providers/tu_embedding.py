@@ -1,8 +1,6 @@
 """
 TU embedding provider implementation.
 """
-import json
-from typing import Any, Optional
 
 from ..core import EmbeddingProvider, EmbeddingRequest, EmbeddingResponse
 from ..errors import map_provider_error, UniInferError

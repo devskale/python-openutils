@@ -20,7 +20,7 @@ from .bigmodel import BigmodelProvider
 
 # Import providers with optional dependencies
 try:
-    from .gemini import GeminiProvider
+    from .gemini import GeminiProvider  # noqa: F401
     HAS_GENAI = True
 except ImportError:
     HAS_GENAI = False
@@ -36,31 +36,31 @@ except ImportError:
 
 # Import other providers with optional dependencies
 try:
-    from .huggingface import HuggingFaceProvider
+    from .huggingface import HuggingFaceProvider  # noqa: F401
     HAS_HUGGINGFACE = True
 except ImportError:
     HAS_HUGGINGFACE = False
 
 try:
-    from .cohere import CohereProvider
+    from .cohere import CohereProvider  # noqa: F401
     HAS_COHERE = True
 except ImportError:
     HAS_COHERE = False
 
 try:
-    from .moonshot import MoonshotProvider
+    from .moonshot import MoonshotProvider  # noqa: F401
     HAS_MOONSHOT = True
 except ImportError:
     HAS_MOONSHOT = False
 
 try:
-    from .groq import GroqProvider
+    from .groq import GroqProvider  # noqa: F401
     HAS_GROQ = True
 except ImportError:
     HAS_GROQ = False
 
 try:
-    from .ai21 import AI21Provider
+    from .ai21 import AI21Provider  # noqa: F401
     HAS_AI21 = True
 except ImportError:
     HAS_AI21 = False

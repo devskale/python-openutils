@@ -1,21 +1,19 @@
 import os
-import pytest
 from fastapi.testclient import TestClient
 from unittest.mock import patch
 
-# Set environment variables BEFORE importing the app to ensure defaults are overridden if they were read at module level
-# (Though our implementation reads them at request time, it's good practice)
+from uniinfer.uniioai_proxy import app
+
+# Set environment variables AFTER importing the app to ensure defaults are overridden
 os.environ["UNIINFER_RATE_LIMIT_CHAT"] = "1/minute"
 os.environ["UNIINFER_RATE_LIMIT_EMBEDDINGS"] = "2/minute"
-
-from uniinfer.uniioai_proxy import app
 
 client = TestClient(app)
 
 def test_chat_rate_limiting():
     # Use a unique IP for this test to avoid interference
     client_ip = "127.0.0.1"
-    headers = {"X-Forwarded-For": client_ip} # slowapi's get_remote_address might look at this or we rely on client host
+    _headers = {"X-Forwarded-For": client_ip} # slowapi's get_remote_address might look at this or we rely on client host
     
     # TestClient sets client.host to "testclient" by default or similar.
     # We can pass client param to request? No, TestClient constructor takes base_url etc.

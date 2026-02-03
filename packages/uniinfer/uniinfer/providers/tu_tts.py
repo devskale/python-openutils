@@ -1,8 +1,6 @@
 """
 TU TTS provider implementation.
 """
-import httpx
-from typing import Any, Optional
 
 from ..core import TTSProvider, TTSRequest, TTSResponse
 from ..errors import map_provider_error, UniInferError

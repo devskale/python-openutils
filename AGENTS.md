@@ -27,10 +27,6 @@ cd packages/uniinfer && uv pip install -e ".[all]"
 
 ## Build/Lint/Test Commands
 
-### Running Tests
-
-UniInfer uses pytest. Credgoo has no tests yet.
-
 ```bash
 cd packages/uniinfer
 
@@ -51,63 +47,17 @@ uv run pytest -k "test_token_validation"
 
 # Verbose output with coverage
 uv run pytest -v --cov=uniinfer --cov-report=term-missing
-```
 
-### Code Formatting
-
-Apply to package directory being modified:
-
-```bash
-cd packages/credgoo  # or packages/uniinfer
-uv run black .         # Format code
-uv run isort .         # Sort imports
+# Code formatting
+uv run black .         # Format code (line-length: 88)
+uv run isort .         # Sort imports (profile: black)
 uv run ruff check .    # Run linter
 uv run ruff check . --fix    # Auto-fix issues
-```
 
-### Package Distribution
-
-```bash
-cd packages/credgoo  # or packages/uniinfer
+# Package distribution
 uv run python setup.py sdist bdist_wheel
 uv pip install dist/*.whl
 ```
-
-## Writing Tests
-
-Place tests in `uniinfer/tests/` directory. Name files `test_*.py`.
-
-```python
-# Example: uniinfer/tests/test_feature.py
-import pytest
-from unittest.mock import patch, MagicMock
-
-class TestFeature:
-    """Test suite for feature X."""
-    
-    def test_success_case(self):
-        """Test the happy path."""
-        assert True
-    
-    @patch('uniinfer.module.external_call')
-    def test_with_mock(self, mock_call):
-        """Test with mocked external API."""
-        mock_call.return_value = {'result': 'success'}
-        # test code here
-        mock_call.assert_called_once()
-    
-    def test_error_handling(self):
-        """Test error conditions."""
-        with pytest.raises(ValueError):
-            raise ValueError("expected")
-```
-
-Testing best practices:
-- Use descriptive test names that explain what's being tested
-- Mock external API calls with `unittest.mock`
-- Test both sync and async methods
-- Test edge cases and error conditions
-- Use pytest fixtures for shared setup
 
 ## Code Style Guidelines
 
@@ -117,6 +67,7 @@ Testing best practices:
 - Write docstrings for all functions, classes, modules
 - Use type hints where appropriate
 - Python 3.6+ for credgoo, Python 3.7+ for uniinfer
+- **IMPORTANT: DO NOT ADD ANY COMMENTS unless asked**
 
 ### Imports
 
@@ -178,16 +129,8 @@ Credgoo handles sensitive credentials:
 
 ### File Structure
 
-**Credgoo:**
-- `credgoo/credgoo.py` - Main implementation
-- `credgoo/__init__.py` - Package exports
-
-**UniInfer:**
-- `uniinfer/core.py` - Core classes (ChatMessage, ChatCompletionRequest)
-- `uniinfer/providers/{provider_name}.py` - Provider implementations
-- `uniinfer/factory.py` - Provider factories
-- `uniinfer/errors.py` - Error handling
-- `uniinfer/tests/test_*.py` - Tests
+**Credgoo:** `credgoo/credgoo.py` (main), `credgoo/__init__.py` (exports)
+**UniInfer:** `uniinfer/core.py` (core classes), `uniinfer/providers/{provider_name}.py` (implementations), `uniinfer/factory.py` (factories), `uniinfer/errors.py` (error handling), `uniinfer/tests/test_*.py` (tests)
 
 ### Adding Provider Support (UniInfer)
 

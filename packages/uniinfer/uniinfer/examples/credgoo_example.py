@@ -13,18 +13,18 @@ Requirements:
 """
 import sys
 import os
-from typing import Optional, List
+from typing import Optional
 
 # Add the parent directory to the Python path to make the uniinfer package importable
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))  # noqa: E402
 
-# Import uniinfer components
-from uniinfer import (
+# Import uniinfer components  # noqa: E402
+from uniinfer import (  # noqa: E402
     ChatMessage, 
     ChatCompletionRequest, 
     ProviderFactory,
     ChatProvider
-)
+)  # noqa: E402
 
 # Try to import credgoo for API key management
 try:

@@ -5,7 +5,6 @@ Assumes the proxy is running on localhost:8000.
 import pytest
 import httpx
 import json
-import asyncio
 
 BASE_URL = "http://localhost:8123/v1"
 HEADERS = {"Authorization": "Bearer test23@test34"}

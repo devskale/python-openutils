@@ -1,10 +1,10 @@
 """
 HuggingFace Inference provider implementation.
 """
-from typing import Dict, Any, Iterator, Optional, List, AsyncIterator
+from typing import Any, Optional, List, AsyncIterator
 
 from ..core import ChatProvider, ChatCompletionRequest, ChatCompletionResponse, ChatMessage
-from ..errors import AuthenticationError, map_provider_error, UniInferError
+from ..errors import map_provider_error, UniInferError
 
 try:
     from huggingface_hub import InferenceClient, AsyncInferenceClient, HfApi

@@ -5,7 +5,6 @@ from uniinfer import (
     ChatMessage,
     ChatCompletionRequest,
     ProviderFactory,
-    ChatProvider,
     EmbeddingRequest,
     EmbeddingProviderFactory
 )
@@ -100,7 +99,7 @@ def main():
     credgoo_encryption_token = args.encryption_key or os.getenv(
         'CREDGOO_ENCRYPTION_KEY')
     credgoo_api_token = args.bearer_token or os.getenv('CREDGOO_BEARER_TOKEN')
-    bearer_token = f"{credgoo_api_token}@{credgoo_encryption_token}" if credgoo_api_token and credgoo_encryption_token else None
+    _bearer_token = f"{credgoo_api_token}@{credgoo_encryption_token}" if credgoo_api_token and credgoo_encryption_token else None
 
 #    if not credgoo_api_token or not credgoo_encryption_token:
 #        print("Error: CREDGOO_ENCRYPTION_KEY or CREDGOO_BEARER_TOKEN not found.")
@@ -328,9 +327,9 @@ def main():
                     os.makedirs(output_dir, exist_ok=True)
             else:
                 # Generate filename from text
-                safe_text = "".join(c if c.isalnum() or c in (
+                _safe_text = "".join(c if c.isalnum() or c in (
                     ' ', '-', '_') else '_' for c in tts_text)[:50]
-                output_path = f"cli_test.mp3"
+                output_path = "cli_test.mp3"
 
             # Save the audio
             with open(output_path, 'wb') as f:
@@ -401,7 +400,7 @@ def main():
             # Transcribe audio
             response = stt_provider.transcribe(stt_request)
 
-            print(f"\n=== Transcription ===")
+            print("\n=== Transcription ===")
             print(f"Text: {response.text}")
             print(f"\nModel: {response.model}")
             if response.language:

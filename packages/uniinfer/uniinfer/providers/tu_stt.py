@@ -1,9 +1,7 @@
 """
 TU STT provider implementation.
 """
-import httpx
 import os
-from typing import Any, Optional
 
 from ..core import STTProvider, STTRequest, STTResponse
 from ..errors import map_provider_error, UniInferError

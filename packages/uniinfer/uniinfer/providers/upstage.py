@@ -1,7 +1,7 @@
 """
 Upstage provider implementation.
 """
-from typing import Dict, Any, Iterator, Optional, List, AsyncIterator
+from typing import Optional, List, AsyncIterator
 import os
 
 from ..core import ChatProvider, ChatCompletionRequest, ChatCompletionResponse, ChatMessage
