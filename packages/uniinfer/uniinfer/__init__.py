@@ -7,7 +7,9 @@ LLM inference providers.
 
 from .core import (
     ChatMessage, ChatCompletionRequest, ChatCompletionResponse, ChatProvider,
-    EmbeddingRequest, EmbeddingResponse, EmbeddingProvider
+    EmbeddingRequest, EmbeddingResponse, EmbeddingProvider,
+    TTSRequest, TTSResponse, TTSProvider,
+    STTRequest, STTResponse, STTProvider
 )
 from .factory import ProviderFactory
 from .embedding_factory import EmbeddingProviderFactory
@@ -16,7 +18,8 @@ from .providers import (
     OllamaProvider, OllamaEmbeddingProvider, OpenRouterProvider, ArliAIProvider,
     InternLMProvider, StepFunProvider, SambanovaProvider,
     UpstageProvider, NGCProvider, CloudflareProvider, ChutesProvider,
-    PollinationsProvider, BigmodelProvider, TUProvider, TuAIEmbeddingProvider
+    PollinationsProvider, BigmodelProvider, TUProvider, TuAIEmbeddingProvider,
+    TuAITTSProvider, TuAISTTProvider
 )
 from .errors import (
     UniInferError, ProviderError, AuthenticationError,
@@ -122,6 +125,12 @@ __all__ = [
     'EmbeddingResponse',
     'EmbeddingProvider',
     'EmbeddingProviderFactory',
+    'TTSRequest',
+    'TTSResponse',
+    'TTSProvider',
+    'STTRequest',
+    'STTResponse',
+    'STTProvider',
     'MistralProvider',
     'AnthropicProvider',
     'OpenAIProvider',
@@ -149,6 +158,8 @@ __all__ = [
     'BigmodelProvider',
     'TuAIProvider',
     'TuAIEmbeddingProvider',
+    'TuAITTSProvider',
+    'TuAISTTProvider',
     'UniInferError',
     'ProviderError',
     'AuthenticationError',
