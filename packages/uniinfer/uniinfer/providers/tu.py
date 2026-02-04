@@ -2,6 +2,7 @@
 OpenAI-compliant TU provider implementation.
 """
 from typing import Any, AsyncIterator
+from collections.abc import Iterator
 import httpx
 import json
 import os

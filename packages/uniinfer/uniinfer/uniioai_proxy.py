@@ -1,6 +1,7 @@
 from logging.handlers import RotatingFileHandler
 import logging
 from typing import Any, AsyncGenerator, Optional, List, Dict
+from collections.abc import Iterable
 import re
 import subprocess
 import uuid
@@ -9,8 +10,10 @@ import time
 import sys
 import asyncio
 import urllib.parse
+import requests
 import base64
 import httpx
+from fastapi.security.http import HTTPAuthorizationCredentials
 from fastapi.security import HTTPBearer  # Import HTTPBearer
 from starlette.concurrency import iterate_in_threadpool, run_in_threadpool
 from pydantic import BaseModel, Field, field_validator
@@ -75,7 +78,7 @@ if parent_dir not in sys.path:
     sys.path.insert(0, parent_dir)
 
 try:
-    from uniinfer.uniioai import stream_completion, astream_completion, aget_completion, get_provider_api_key, list_providers, list_models_for_provider, get_embeddings, list_embedding_providers, list_embedding_models_for_provider
+    from uniinfer.uniioai import stream_completion, astream_completion, get_completion, aget_completion, get_provider_api_key, list_providers, list_models_for_provider, get_embeddings, list_embedding_providers, list_embedding_models_for_provider, format_chunk_to_openai
     from uniinfer.errors import UniInferError, AuthenticationError, ProviderError, RateLimitError
     from uniinfer.auth import validate_proxy_token, get_optional_proxy_token, verify_provider_access
 except ImportError as e:
