@@ -71,24 +71,25 @@ async def test_groq_provider_acomplete(chat_request):
 @pytest.mark.asyncio
 async def test_sambanova_provider_acomplete(chat_request):
     provider = SambanovaProvider(api_key="test-key")
-    
-    mock_response = MagicMock()
-    mock_response.choices = [MagicMock()]
-    mock_response.choices[0].message.role = "assistant"
-    mock_response.choices[0].message.content = "Samba response"
-    mock_response.usage.prompt_tokens = 10
-    mock_response.usage.completion_tokens = 5
-    mock_response.usage.total_tokens = 15
-    mock_response.model_dump.return_value = {"id": "test-res"}
 
-    with patch.object(provider.async_client.chat.completions, 'create', new_callable=AsyncMock) as mock_create:
-        mock_create.return_value = mock_response
-        
+    mock_response = MagicMock()
+    mock_response.status_code = 200
+    mock_response.json.return_value = {
+        "choices": [{"message": {"role": "assistant", "content": "Samba response"}}],
+        "usage": {"total_tokens": 15},
+        "model": "test-model"
+    }
+
+    mock_client = AsyncMock()
+    mock_client.post.return_value = mock_response
+
+    with patch.object(provider, '_get_async_client', new_callable=AsyncMock) as mock_get_client:
+        mock_get_client.return_value = mock_client
+
         response = await provider.acomplete(chat_request)
-        
+
         assert response.message.content == "Samba response"
         assert response.provider == "sambanova"
-        mock_create.assert_called_once()
 
 @pytest.mark.asyncio
 async def test_moonshot_provider_acomplete(chat_request):
