@@ -7,7 +7,7 @@ def main():
     # Add CLI arguments here in the future
     parser.add_argument("-v", "--version", action="version",
                         version="uniinfer 0.1.4")  # Example argument
-    args = parser.parse_args()
+    parser.parse_args()
 
     print("Uniinfer CLI - Add functionality here.")
     # Replace example_main() with actual CLI logic based on args

@@ -2,11 +2,10 @@
 ArliAI provider implementation.
 """
 import json
-import requests
-from typing import Dict, Any, Iterator, Optional
+from typing import Optional, AsyncIterator
 
 from ..core import ChatProvider, ChatCompletionRequest, ChatCompletionResponse, ChatMessage
-from ..errors import map_provider_error, ProviderError
+from ..errors import map_provider_error, UniInferError
 
 
 class ArliAIProvider(ChatProvider):
@@ -50,6 +49,7 @@ class ArliAIProvider(ChatProvider):
         }
 
         try:
+            import requests
             response = requests.get(endpoint, headers=headers)
 
             if response.status_code != 200:
@@ -63,39 +63,26 @@ class ArliAIProvider(ChatProvider):
             response_body = getattr(e.response, 'text', None) if hasattr(e, 'response') else None
             raise map_provider_error("ArliAI", e, status_code=status_code, response_body=response_body)
 
-    def complete(
+    async def acomplete(
         self,
         request: ChatCompletionRequest,
         **provider_specific_kwargs
     ) -> ChatCompletionResponse:
         """
-        Make a chat completion request to ArliAI.
-
-        Args:
-            request (ChatCompletionRequest): The request to make.
-            **provider_specific_kwargs: Additional ArliAI-specific parameters.
-
-        Returns:
-            ChatCompletionResponse: The completion response.
-
-        Raises:
-            Exception: If the request fails.
+        Make an async chat completion request to ArliAI.
         """
         if self.api_key is None:
             raise ValueError("ArliAI API key is required")
 
         endpoint = f"{self.base_url}/chat/completions"
 
-        # Prepare the request payload
         payload = {
-            # Default model if none specified
             "model": request.model or "Mistral-Nemo-12B-Instruct-2407",
             "messages": [{"role": msg.role, "content": msg.content} for msg in request.messages],
             "temperature": request.temperature,
             "stream": False
         }
 
-        # Add max_tokens if provided
         if request.max_tokens is not None:
             payload["max_tokens"] = request.max_tokens
 
@@ -107,7 +94,6 @@ class ArliAIProvider(ChatProvider):
         if "top_k" not in provider_specific_kwargs:
             payload["top_k"] = 40
 
-        # Add any provider-specific parameters
         payload.update(provider_specific_kwargs)
 
         headers = {
@@ -115,22 +101,20 @@ class ArliAIProvider(ChatProvider):
             "Authorization": f"Bearer {self.api_key}"
         }
 
+        client = await self._get_async_client()
         try:
-            response = requests.post(
+            response = await client.post(
                 endpoint,
                 headers=headers,
-                data=json.dumps(payload)
+                json=payload,
+                timeout=60.0
             )
 
-            # Handle error response
             if response.status_code != 200:
                 error_msg = f"ArliAI API error: {response.status_code} - {response.text}"
                 raise map_provider_error("ArliAI", Exception(error_msg), status_code=response.status_code, response_body=response.text)
 
-            # Parse the response
             response_data = response.json()
-
-            # Extract the message content from choices
             choice = response_data.get("choices", [{}])[0]
             message_data = choice.get("message", {})
 
@@ -139,7 +123,6 @@ class ArliAIProvider(ChatProvider):
                 content=message_data.get("content", "")
             )
 
-            # Extract usage information
             usage = response_data.get("usage", {})
 
             return ChatCompletionResponse(
@@ -150,34 +133,23 @@ class ArliAIProvider(ChatProvider):
                 raw_response=response_data
             )
         except Exception as e:
-            status_code = getattr(e.response, 'status_code', None) if hasattr(e, 'response') else None
-            response_body = getattr(e.response, 'text', None) if hasattr(e, 'response') else None
-            raise map_provider_error("ArliAI", e, status_code=status_code, response_body=response_body)
+            if isinstance(e, UniInferError):
+                raise
+            raise map_provider_error("ArliAI", e)
 
-    def stream_complete(
+    async def astream_complete(
         self,
         request: ChatCompletionRequest,
         **provider_specific_kwargs
-    ) -> Iterator[ChatCompletionResponse]:
+    ) -> AsyncIterator[ChatCompletionResponse]:
         """
-        Stream a chat completion response from ArliAI.
-
-        Args:
-            request (ChatCompletionRequest): The request to make.
-            **provider_specific_kwargs: Additional ArliAI-specific parameters.
-
-        Returns:
-            Iterator[ChatCompletionResponse]: An iterator of response chunks.
-
-        Raises:
-            Exception: If the request fails.
+        Stream an async chat completion response from ArliAI.
         """
         if self.api_key is None:
             raise ValueError("ArliAI API key is required")
 
         endpoint = f"{self.base_url}/chat/completions"
 
-        # Prepare the request payload
         payload = {
             "model": request.model or "Mistral-Nemo-12B-Instruct-2407",
             "messages": [{"role": msg.role, "content": msg.content} for msg in request.messages],
@@ -185,13 +157,11 @@ class ArliAIProvider(ChatProvider):
             "stream": True
         }
 
-        # Add max_tokens if provided
         if request.max_tokens is not None:
             payload["max_tokens"] = request.max_tokens
         else:
             payload["max_tokens"] = 1024
 
-        # ArliAI default parameters
         if "repetition_penalty" not in provider_specific_kwargs:
             payload["repetition_penalty"] = 1.1
         if "top_p" not in provider_specific_kwargs:
@@ -199,7 +169,6 @@ class ArliAIProvider(ChatProvider):
         if "top_k" not in provider_specific_kwargs:
             payload["top_k"] = 40
 
-        # Add any provider-specific parameters
         payload.update(provider_specific_kwargs)
 
         headers = {
@@ -207,42 +176,34 @@ class ArliAIProvider(ChatProvider):
             "Authorization": f"Bearer {self.api_key}"
         }
 
+        client = await self._get_async_client()
         try:
-            with requests.post(
+            async with client.stream(
+                "POST",
                 endpoint,
                 headers=headers,
-                data=json.dumps(payload),
-                stream=True
+                json=payload,
+                timeout=60.0
             ) as response:
-                # Handle error response
                 if response.status_code != 200:
-                    error_msg = f"ArliAI API error: {response.status_code} - {response.text}"
-                    raise map_provider_error("ArliAI", Exception(error_msg), status_code=response.status_code, response_body=response.text)
+                    error_msg = f"ArliAI API error: {response.status_code} - {await response.aread()}"
+                    raise map_provider_error("ArliAI", Exception(error_msg), status_code=response.status_code, response_body=error_msg)
 
-                # Process the streaming response
-                for line in response.iter_lines():
+                async for line in response.aiter_lines():
                     if line:
-                        # Parse the JSON data from the stream
                         try:
-                            line = line.decode('utf-8')
-
-                            # Skip empty lines or '[DONE]'
                             if not line or line == 'data: [DONE]':
                                 continue
 
-                            # Remove 'data: ' prefix if present
                             if line.startswith('data: '):
                                 line = line[6:]
 
                             data = json.loads(line)
 
-                            # Skip if no choices or deltas
                             if 'choices' not in data or not data['choices']:
                                 continue
 
                             choice = data['choices'][0]
-
-                            # Handle different streaming formats (delta or message)
                             content = ""
                             role = "assistant"
 
@@ -255,27 +216,20 @@ class ArliAIProvider(ChatProvider):
                                 content = message.get('content', '')
                                 role = message.get('role', 'assistant')
 
-                            # Skip empty content
                             if not content:
                                 continue
 
-                            # Create a message for this chunk
                             message = ChatMessage(role=role, content=content)
-
-                            # Usage stats typically not provided in stream chunks
-                            usage = {}
-
                             yield ChatCompletionResponse(
                                 message=message,
                                 provider='arli',
                                 model=data.get('model', request.model),
-                                usage=usage,
+                                usage={},
                                 raw_response=data
                             )
                         except json.JSONDecodeError:
-                            # Skip invalid JSON lines
                             continue
         except Exception as e:
-            status_code = getattr(e.response, 'status_code', None) if hasattr(e, 'response') else None
-            response_body = getattr(e.response, 'text', None) if hasattr(e, 'response') else None
-            raise map_provider_error("ArliAI", e, status_code=status_code, response_body=response_body)
+            if isinstance(e, UniInferError):
+                raise
+            raise map_provider_error("ArliAI", e)

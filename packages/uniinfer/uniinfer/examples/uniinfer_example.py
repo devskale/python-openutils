@@ -4,8 +4,7 @@ from uniinfer.examples.providers_config import PROVIDER_CONFIGS
 from uniinfer import (
     ChatMessage,
     ChatCompletionRequest,
-    ProviderFactory,
-    ChatProvider
+    ProviderFactory
 )
 from credgoo import get_api_key
 import argparse
@@ -56,7 +55,7 @@ def main():
     credgoo_encryption_token = args.encryption_key or os.getenv(
         'CREDGOO_ENCRYPTION_KEY')
     credgoo_api_token = args.bearer_token or os.getenv('CREDGOO_BEARER_TOKEN')
-    bearer_token = f"{credgoo_api_token}@{credgoo_encryption_token}" if credgoo_api_token and credgoo_encryption_token else None
+    _bearer_token = f"{credgoo_api_token}@{credgoo_encryption_token}" if credgoo_api_token and credgoo_encryption_token else None
 
 #    if not credgoo_api_token or not credgoo_encryption_token:
 #        print("Error: CREDGOO_ENCRYPTION_KEY or CREDGOO_BEARER_TOKEN not found.")

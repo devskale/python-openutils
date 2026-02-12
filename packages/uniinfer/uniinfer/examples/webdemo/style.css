@@ -299,6 +299,55 @@ select:disabled {
   background: #fef2f2;
   padding: 8px 16px;
   border-radius: var(--radius-md);
+  border: 1px solid #fecaca;
+}
+
+.error-message .error-detail {
+  font-size: 0.75rem;
+  color: #991b1b;
+  margin-top: 4px;
+  font-family: var(--font-mono);
+  word-break: break-all;
+  max-height: 100px;
+  overflow-y: auto;
+}
+
+.error-message .error-close {
+  float: right;
+  cursor: pointer;
+  margin-left: 12px;
+  opacity: 0.6;
+}
+
+.error-message .error-close:hover {
+  opacity: 1;
+}
+
+/* Error status styles */
+.error-status {
+  color: #dc2626;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  padding: 8px 12px;
+  border-radius: var(--radius-md);
+  font-size: 0.85rem;
+  margin-top: 8px;
+}
+
+.error-status .error-title {
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.error-status .error-detail {
+  font-size: 0.75rem;
+  color: #991b1b;
+  margin-top: 4px;
+  font-family: var(--font-mono);
+  white-space: pre-wrap;
+  word-break: break-all;
 }
 
 /* Input Area - Floating Pill */
@@ -684,4 +733,12 @@ select:disabled {
   .message {
     max-width: 90%;
   }
+}
+
+/* Error display helpers for webdemo */
+.error-title {
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 6px;
 }

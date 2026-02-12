@@ -165,67 +165,49 @@ for chunk in provider.stream_complete(request):
 To add support for a new LLM provider:
 
 1. Create a new file in `uniinfer/providers/` (e.g., `newprovider.py`)
-2. Implement the provider class, inheriting from `ChatProvider`
+2. For OpenAI-compatible APIs, inherit from `OpenAICompatibleChatProvider`
 3. Register the provider in `uniinfer/__init__.py`
 
-Here's a template for a new provider:
+Here's a minimal template for a new OpenAI-compatible provider:
 
 ```python
-from typing import Dict, Any, Iterator, Optional
-from ..core import ChatProvider, ChatCompletionRequest, ChatCompletionResponse, ChatMessage
+from typing import Optional
+import requests
 from ..errors import map_provider_error
+from .openai_compatible import OpenAICompatibleChatProvider
 
-class NewProvider(ChatProvider):
-    """Provider for NewLLM API."""
+class NewProvider(OpenAICompatibleChatProvider):
+    BASE_URL = "https://api.newprovider.com/v1"
+    PROVIDER_ID = "newprovider"
+    ERROR_PROVIDER_NAME = "NewProvider"
+    DEFAULT_MODEL = "newprovider-default-model"
 
     def __init__(self, api_key: Optional[str] = None, **kwargs):
-        super().__init__(api_key)
-        # Initialize any client libraries or connection details
-        # self.client = SomeClient(api_key=self.api_key)
+        super().__init__(api_key=api_key, base_url=self.BASE_URL, **kwargs)
 
-    def complete(self, request: ChatCompletionRequest, **provider_specific_kwargs) -> ChatCompletionResponse:
-        try:
-            # 1. Prepare messages for your API
-            # 2. Make the API call
-            # 3. Process the response
-            # 4. Return a ChatCompletionResponse object
+    def _get_extra_headers(self) -> dict[str, str]:
+        return {"X-Client": "uniinfer"}
 
-            message = ChatMessage(
-                role="assistant",
-                content="Response from API"
+    def _get_default_payload_params(self, stream: bool) -> dict[str, float]:
+        return {"top_p": 0.9}
+
+    @classmethod
+    def list_models(cls, api_key: Optional[str] = None) -> list[str]:
+        if not api_key:
+            raise ValueError("API key is required to list models")
+        response = requests.get(
+            f"{cls.BASE_URL}/models",
+            headers={"Authorization": f"Bearer {api_key}"},
+            timeout=10,
+        )
+        if response.status_code != 200:
+            raise map_provider_error(
+                "NewProvider",
+                Exception(response.text),
+                status_code=response.status_code,
+                response_body=response.text,
             )
-
-            return ChatCompletionResponse(
-                message=message,
-                provider='newprovider',
-                model=request.model,
-                usage={},  # Token usage if available
-                raw_response={}  # The raw API response
-            )
-        except Exception as e:
-            # Map the error to a standardized format
-            mapped_error = map_provider_error("newprovider", e)
-            raise mapped_error
-
-    def stream_complete(self, request: ChatCompletionRequest, **provider_specific_kwargs) -> Iterator[ChatCompletionResponse]:
-        try:
-            # 1. Prepare messages for your API
-            # 2. Make the streaming API call
-            # 3. Process the streaming response
-            # 4. Yield ChatCompletionResponse objects for each chunk
-
-            # Example implementation:
-            yield ChatCompletionResponse(
-                message=ChatMessage(role="assistant", content="Streamed chunk"),
-                provider='newprovider',
-                model=request.model,
-                usage={},
-                raw_response={}
-            )
-        except Exception as e:
-            # Map the error to a standardized format
-            mapped_error = map_provider_error("newprovider", e)
-            raise mapped_error
+        return [m["id"] for m in response.json().get("data", [])]
 ```
 
 ## Error Handling

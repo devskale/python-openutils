@@ -4,6 +4,7 @@ Provider implementations for different LLM services.
 from .mistral import MistralProvider
 from .anthropic import AnthropicProvider
 from .openai import OpenAIProvider
+from .openai_tts import OpenAITTSProvider
 from .ollama import OllamaProvider
 from .ollama_embedding import OllamaEmbeddingProvider
 from .openrouter import OpenRouterProvider
@@ -16,17 +17,17 @@ from .ngc import NGCProvider
 from .cloudflare import CloudflareProvider
 from .chutes import ChutesProvider
 from .pollinations import PollinationsProvider
-from .bigmodel import BigmodelProvider
+from .bigmodel import ZAIProvider, ZAICodeProvider
 
 # Import providers with optional dependencies
 try:
-    from .gemini import GeminiProvider
+    from .gemini import GeminiProvider  # noqa: F401
     HAS_GENAI = True
 except ImportError:
     HAS_GENAI = False
 
 try:
-    from .tu import TuAIProvider
+    from .tu import TUProvider
     from .tu_embedding import TuAIEmbeddingProvider
     from .tu_tts import TuAITTSProvider
     from .tu_stt import TuAISTTProvider
@@ -36,31 +37,31 @@ except ImportError:
 
 # Import other providers with optional dependencies
 try:
-    from .huggingface import HuggingFaceProvider
+    from .huggingface import HuggingFaceProvider  # noqa: F401
     HAS_HUGGINGFACE = True
 except ImportError:
     HAS_HUGGINGFACE = False
 
 try:
-    from .cohere import CohereProvider
+    from .cohere import CohereProvider  # noqa: F401
     HAS_COHERE = True
 except ImportError:
     HAS_COHERE = False
 
 try:
-    from .moonshot import MoonshotProvider
+    from .moonshot import MoonshotProvider  # noqa: F401
     HAS_MOONSHOT = True
 except ImportError:
     HAS_MOONSHOT = False
 
 try:
-    from .groq import GroqProvider
+    from .groq import GroqProvider  # noqa: F401
     HAS_GROQ = True
 except ImportError:
     HAS_GROQ = False
 
 try:
-    from .ai21 import AI21Provider
+    from .ai21 import AI21Provider  # noqa: F401
     HAS_AI21 = True
 except ImportError:
     HAS_AI21 = False
@@ -70,6 +71,7 @@ __all__ = [
     'MistralProvider',
     'AnthropicProvider',
     'OpenAIProvider',
+    'OpenAITTSProvider',
     'OllamaProvider',
     'OllamaEmbeddingProvider',
     'OpenRouterProvider',
@@ -82,8 +84,9 @@ __all__ = [
     'CloudflareProvider',
     'ChutesProvider',
     'PollinationsProvider',
-    'BigmodelProvider',
-    'TuAIProvider',
+    'ZAIProvider',
+    'ZAICodeProvider',
+    'TUProvider',
     'TuAIEmbeddingProvider',
     'TuAITTSProvider',
     'TuAISTTProvider',
