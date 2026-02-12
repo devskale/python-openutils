@@ -120,10 +120,7 @@ request = ChatCompletionRequest(
     messages=[ChatMessage(role="user", content="Hello")],
     model="gpt-4",
     temperature=0.7,      # 0.0-2.0, higher = more creative
-    max_tokens=1000,      # Maximum tokens to generate
-    top_p=1.0,           # 0.0-1.0, nucleus sampling
-    presence_penalty=0.0, # -2.0 to 2.0
-    frequency_penalty=0.0 # -2.0 to 2.0
+    max_tokens=1000       # Maximum tokens to generate
 )
 ```
 
@@ -140,23 +137,20 @@ print(response.model)                 # Model used
 ### Fallback Strategies
 
 ```python
-from uniinfer import ProviderFactory, FallbackStrategy, ChatMessage, ChatCompletionRequest
+from uniinfer import FallbackStrategy, ChatMessage, ChatCompletionRequest
 
 # Create fallback strategy
 strategy = FallbackStrategy(
-    providers=["openai", "anthropic", "ollama"],
-    models=["gpt-4", "claude-3-opus-20240229", "llama2"]
+    provider_names=["openai", "anthropic", "ollama"]
 )
-
-# Get provider with fallback
-provider = ProviderFactory.get_provider_with_strategy(strategy)
 
 request = ChatCompletionRequest(
     messages=[ChatMessage(role="user", content="Hello")],
     model="gpt-4"
 )
 
-response = provider.complete(request)
+response, provider_name = strategy.complete(request)
+print(provider_name, response.message.content)
 ```
 
 ## CLI Usage
