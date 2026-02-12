@@ -42,7 +42,6 @@ class ArliAIProvider(ChatProvider):
         if not api_key:
             raise ValueError("API key is required to list models")
 
-        endpoint = "https://api.arliai.com/v1/models"
         headers = {
             "Content-Type": "application/json",
             "Authorization": f"Bearer {api_key}"
@@ -50,14 +49,34 @@ class ArliAIProvider(ChatProvider):
 
         try:
             import requests
-            response = requests.get(endpoint, headers=headers)
+            endpoints = [
+                "https://api.arliai.com/v1/models/textgen-models",
+                "https://api.arliai.com/v1/models",
+            ]
+            last_error = None
+            for endpoint in endpoints:
+                response = requests.get(endpoint, headers=headers, timeout=30)
+                if response.status_code != 200:
+                    last_error = map_provider_error(
+                        "ArliAI",
+                        Exception(f"ArliAI API error: {response.status_code} - {response.text}"),
+                        status_code=response.status_code,
+                        response_body=response.text,
+                    )
+                    continue
 
-            if response.status_code != 200:
-                raise map_provider_error("ArliAI", Exception(f"ArliAI API error: {response.status_code} - {response.text}"), status_code=response.status_code, response_body=response.text)
+                models_data = response.json()
+                if isinstance(models_data, list):
+                    return [m.get("id") or m.get("name") for m in models_data if isinstance(m, dict) and (m.get("id") or m.get("name"))]
 
-            models_data = response.json()
-            return [model["id"] for model in models_data.get("data", [])
-                    if model["id"] and model["id"][0].isalpha()]
+                data = models_data.get("data", models_data)
+                if isinstance(data, list):
+                    return [m.get("id") or m.get("name") for m in data if isinstance(m, dict) and (m.get("id") or m.get("name"))]
+                return []
+
+            if last_error:
+                raise last_error
+            return []
         except Exception as e:
             status_code = getattr(e.response, 'status_code', None) if hasattr(e, 'response') else None
             response_body = getattr(e.response, 'text', None) if hasattr(e, 'response') else None

@@ -14,7 +14,7 @@ from .core import (
 from .factory import ProviderFactory
 from .embedding_factory import EmbeddingProviderFactory
 from .providers import (
-    MistralProvider, AnthropicProvider, OpenAIProvider, OpenAITTSProvider,
+    MistralProvider, AnthropicProvider, MiniMaxProvider, OpenAIProvider, OpenAITTSProvider,
     OllamaProvider, OllamaEmbeddingProvider, OpenRouterProvider, ArliAIProvider,
     InternLMProvider, StepFunProvider, SambanovaProvider,
     UpstageProvider, NGCProvider, CloudflareProvider, ChutesProvider,
@@ -67,6 +67,7 @@ except ImportError:
 # Register built-in providers
 ProviderFactory.register_provider("mistral", MistralProvider)
 ProviderFactory.register_provider("anthropic", AnthropicProvider)
+ProviderFactory.register_provider("minimax", MiniMaxProvider)
 ProviderFactory.register_provider("openai", OpenAIProvider)
 ProviderFactory.register_provider("ollama", OllamaProvider)
 ProviderFactory.register_provider("openrouter", OpenRouterProvider)
@@ -134,6 +135,7 @@ __all__ = [
     'STTProvider',
     'MistralProvider',
     'AnthropicProvider',
+    'MiniMaxProvider',
     'OpenAIProvider',
     'OpenAITTSProvider',
     'ChutesProvider',
