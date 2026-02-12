@@ -17,7 +17,7 @@ from .ngc import NGCProvider
 from .cloudflare import CloudflareProvider
 from .chutes import ChutesProvider
 from .pollinations import PollinationsProvider
-from .bigmodel import BigmodelProvider, ZAIProvider, ZAICodingProvider
+from .bigmodel import ZAIProvider, ZAICodeProvider
 
 # Import providers with optional dependencies
 try:
@@ -84,9 +84,8 @@ __all__ = [
     'CloudflareProvider',
     'ChutesProvider',
     'PollinationsProvider',
-    'BigmodelProvider',
     'ZAIProvider',
-    'ZAICodingProvider',
+    'ZAICodeProvider',
     'TUProvider',
     'TuAIEmbeddingProvider',
     'TuAITTSProvider',

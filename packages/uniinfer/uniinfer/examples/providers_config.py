@@ -122,18 +122,13 @@ PROVIDER_CONFIGS = {
         'default_model': 'deepseek-ai/DeepSeek-V3-0324',
         'needs_api_key': True,
     },
-    'bigmodel': {
-        'name': 'Bigmodel',
-        'default_model': 'glm-4-flash',
-        'needs_api_key': True,
-    },
     'zai': {
         'name': 'Z.ai',
         'default_model': 'glm-4.7',
         'needs_api_key': True,
     },
-    'zai-coding': {
-        'name': 'Z.ai Coding',
+    'zai-code': {
+        'name': 'Z.ai Code',
         'default_model': 'glm-4.5',
         'needs_api_key': True,
     },

@@ -29,10 +29,7 @@ found_dotenv = load_dotenv(dotenv_path=dotenv_path,
 
 
 def _resolve_credgoo_service(provider: str) -> str:
-    aliases = {
-        "zai-coding": "zai-code",
-    }
-    return aliases.get(provider, provider)
+    return provider
 
 
 def main():
