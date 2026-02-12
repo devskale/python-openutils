@@ -156,10 +156,9 @@ def test_chat_message_input_validation():
     assert msg.role == "user"
     assert msg.content == "Hello"
 
-    # Too many messages should raise error
+    # Missing required fields should raise error
     with pytest.raises(ValidationError):
         ChatMessageInput(
-            role="user",
             content="Test"
         )
 
@@ -189,8 +188,9 @@ def test_chat_completion_request_input_validation():
 class TestProxyAsyncIntegration:
     """Integration tests for proxy async functionality."""
 
+    @patch('uniinfer.uniioai_proxy.verify_provider_access', return_value='test-key')
     @patch('uniinfer.uniioai.ProviderFactory.get_provider')
-    def test_async_completes_non_streaming_integration(self, mock_get_provider):
+    def test_async_completes_non_streaming_integration(self, mock_get_provider, _mock_verify_provider_access):
         """Test async non-streaming integration."""
         from uniinfer.uniioai_proxy import app
         from uniinfer.core import ChatCompletionResponse, ChatMessage
@@ -219,14 +219,15 @@ class TestProxyAsyncIntegration:
             "model": "openai@gpt-3.5-turbo",
             "messages": [{"role": "user", "content": "Test"}],
             "stream": False
-        })
+        }, headers={"Authorization": "Bearer test-token"})
 
         assert response.status_code == 200
         data = response.json()
         assert data["choices"][0]["message"]["content"] == "Hello!"
 
+    @patch('uniinfer.uniioai_proxy.verify_provider_access', return_value='test-key')
     @patch('uniinfer.uniioai.ProviderFactory.get_provider')
-    def test_async_completes_streaming_integration(self, mock_get_provider):
+    def test_async_completes_streaming_integration(self, mock_get_provider, _mock_verify_provider_access):
         """Test async streaming integration."""
         from uniinfer.uniioai_proxy import app
         from uniinfer.core import ChatCompletionResponse, ChatMessage
@@ -255,32 +256,32 @@ class TestProxyAsyncIntegration:
             "model": "openai@gpt-3.5-turbo",
             "messages": [{"role": "user", "content": "Test"}],
             "stream": True
-        })
+        }, headers={"Authorization": "Bearer test-token"})
 
         assert response.status_code == 200
 
         # Check streaming response
         content = response.content
-        assert "data: " in content
-        assert "[DONE]" in content
+        assert b"data: " in content
+        assert b"[DONE]" in content
 
 
 class TestProxyMiddleware:
     """Test proxy middleware functionality."""
 
-    def test_request_size_middleware_exists():
+    def test_request_size_middleware_exists(self):
         """Test that request size middleware exists."""
         from uniinfer.uniioai_proxy import limit_request_size
 
         assert callable(limit_request_size)
 
-    def test_log_requests_middleware_exists():
+    def test_log_requests_middleware_exists(self):
         """Test that request logging middleware exists."""
         from uniinfer.uniioai_proxy import log_requests
 
         assert callable(log_requests)
 
-    def test_cors_middleware_configured():
+    def test_cors_middleware_configured(self):
         """Test that CORS middleware is configured."""
         from uniinfer.uniioai_proxy import app
 
@@ -295,19 +296,19 @@ class TestProxyMiddleware:
 class TestProxyEndpoints:
     """Test proxy endpoints."""
 
-    def test_chat_completions_endpoint_exists():
+    def test_chat_completions_endpoint_exists(self):
         """Test that chat completions endpoint exists."""
         from uniinfer.uniioai_proxy import chat_completions
 
         assert hasattr(chat_completions, "__call__")
 
-    def test_models_endpoint_exists():
+    def test_models_endpoint_exists(self):
         """Test that models endpoint exists."""
         from uniinfer.uniioai_proxy import list_models
 
         assert hasattr(list_models, "__call__")
 
-    def test_webdemo_endpoint_exists():
+    def test_webdemo_endpoint_exists(self):
         """Test that web demo endpoint exists."""
         from uniinfer.uniioai_proxy import get_web_demo
 
