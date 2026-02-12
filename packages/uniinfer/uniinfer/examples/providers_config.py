@@ -65,6 +65,11 @@ PROVIDER_CONFIGS = {
         'default_model': 'claude-3-sonnet-20240229',
         'needs_api_key': True,
     },
+    'minimax': {
+        'name': 'MiniMax',
+        'default_model': 'MiniMax-M2.1',
+        'needs_api_key': True,
+    },
     'openai': {
         'name': 'OpenAI',
         'default_model': 'gpt-3.5-turbo',

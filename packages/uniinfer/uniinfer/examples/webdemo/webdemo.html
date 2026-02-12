@@ -9,6 +9,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/dompurify@3.2.6/dist/purify.min.js"></script>
   <link rel="stylesheet" href="/webdemo/style.css" />
 </head>
 
@@ -76,6 +77,16 @@
         <div class="form-group">
           <label for="settings-api-key">API Key</label>
           <input type="password" id="settings-api-key" placeholder="Enter your key" />
+        </div>
+
+        <div class="form-group" style="margin-top: -8px">
+          <label style="display: flex; align-items: center; gap: 8px; text-transform: none; letter-spacing: 0; font-family: inherit; font-size: 0.85rem; color: #374151;">
+            <input type="checkbox" id="settings-remember-key" />
+            Remember API key on this device
+          </label>
+          <div style="font-size: 0.75rem; color: #b45309; margin-top: 6px;">
+            Warning: Stored browser keys can be read by scripts running on this page.
+          </div>
         </div>
 
         <div class="form-group">
@@ -369,6 +380,8 @@
       models: [],
       chatHistory: [],
     };
+    const HISTORY_MAX_MESSAGES = 30;
+    const HISTORY_MAX_CHARS = 24000;
 
     // --- History Helpers ---
     function saveChatHistory() {
@@ -376,6 +389,36 @@
         "uniinfer_chat_history",
         JSON.stringify(window.uniinferStore.chatHistory),
       );
+    }
+
+    function estimateMessageChars(message) {
+      if (!message) return 0;
+      const content = message.content;
+      if (typeof content === "string") return content.length;
+      if (Array.isArray(content)) {
+        return content.reduce((acc, part) => {
+          if (!part) return acc;
+          if (part.type === "text") return acc + String(part.text || "").length;
+          if (part.type === "image_url") return acc + 1000;
+          return acc;
+        }, 0);
+      }
+      return 0;
+    }
+
+    function truncateChatHistory() {
+      let history = Array.isArray(window.uniinferStore.chatHistory)
+        ? [...window.uniinferStore.chatHistory]
+        : [];
+      if (history.length > HISTORY_MAX_MESSAGES) {
+        history = history.slice(history.length - HISTORY_MAX_MESSAGES);
+      }
+      let totalChars = history.reduce((acc, msg) => acc + estimateMessageChars(msg), 0);
+      while (history.length > 1 && totalChars > HISTORY_MAX_CHARS) {
+        const removed = history.shift();
+        totalChars -= estimateMessageChars(removed);
+      }
+      window.uniinferStore.chatHistory = history;
     }
 
     function loadChatHistory() {
@@ -386,6 +429,8 @@
           const history = JSON.parse(saved);
           console.log("Found history:", history.length, "items");
           window.uniinferStore.chatHistory = history;
+          truncateChatHistory();
+          saveChatHistory();
           if (window.uniinferStore.chatHistory.length > 0) {
             chatContainer.innerHTML = ""; // Clear initial system message
             window.uniinferStore.chatHistory.forEach((msg) => {
@@ -406,7 +451,6 @@
       }
     }
 
-    // --- Cookie Helpers ---
     function setCookie(name, value, hours) {
       let expires = "";
       if (hours) {
@@ -429,17 +473,18 @@
       return null;
     }
 
-    // Load API key from cookie or localStorage
+    const rememberApiKey = localStorage.getItem("uniinfer_remember_api_key") === "1";
     const savedKeyCookie = getCookie("uniinfer_api_key");
     const savedKeyLocal = localStorage.getItem("uniinfer_api_key");
 
-    console.log("Cookie Key:", savedKeyCookie ? "Found" : "Missing");
-    console.log("Local Key:", savedKeyLocal ? "Found" : "Missing");
-
-    if (savedKeyCookie && savedKeyCookie.trim()) {
-      window.uniinferConfig.apiKey = savedKeyCookie.trim();
-    } else if (savedKeyLocal && savedKeyLocal.trim()) {
-      window.uniinferConfig.apiKey = savedKeyLocal.trim();
+    if (rememberApiKey) {
+      if (savedKeyLocal && savedKeyLocal.trim()) {
+        window.uniinferConfig.apiKey = savedKeyLocal.trim();
+      } else if (savedKeyCookie && savedKeyCookie.trim()) {
+        window.uniinferConfig.apiKey = savedKeyCookie.trim();
+      }
+    } else {
+      setCookie("uniinfer_api_key", "", -1);
     }
 
     // --- Settings/config modal logic ---
@@ -449,6 +494,7 @@
       "settings-api-base-url",
     );
     const settingsApiKey = document.getElementById("settings-api-key");
+    const settingsRememberKey = document.getElementById("settings-remember-key");
     const settingsMaxTokens = document.getElementById("settings-max-tokens");
     const settingsSave = document.getElementById("settings-save");
     const settingsCancel = document.getElementById("settings-cancel");
@@ -456,6 +502,8 @@
     function openSettings() {
       settingsApiBaseUrl.value = window.uniinferConfig.apiBaseUrl;
       settingsApiKey.value = window.uniinferConfig.apiKey;
+      settingsRememberKey.checked =
+        localStorage.getItem("uniinfer_remember_api_key") === "1";
       settingsMaxTokens.value = window.uniinferConfig.maxTokens || 4000;
       settingsModal.style.display = "flex";
     }
@@ -471,10 +519,18 @@
       window.uniinferConfig.apiBaseUrl = settingsApiBaseUrl.value.trim();
       const newKey = settingsApiKey.value.trim();
       window.uniinferConfig.apiKey = newKey;
-
-      // Save to cookie (48 hours) and localStorage (backup)
-      setCookie("uniinfer_api_key", newKey, 48);
-      localStorage.setItem("uniinfer_api_key", newKey);
+      const shouldRememberKey = settingsRememberKey.checked;
+      localStorage.setItem(
+        "uniinfer_remember_api_key",
+        shouldRememberKey ? "1" : "0",
+      );
+      if (shouldRememberKey) {
+        localStorage.setItem("uniinfer_api_key", newKey);
+        setCookie("uniinfer_api_key", newKey, 48);
+      } else {
+        localStorage.removeItem("uniinfer_api_key");
+        setCookie("uniinfer_api_key", "", -1);
+      }
 
       window.uniinferConfig.maxTokens =
         parseInt(settingsMaxTokens.value) || 4000;
@@ -511,6 +567,37 @@
     const statsText = document.getElementById("stats-text");
 
     let currentAbortController = null;
+
+    function escapeHtml(value) {
+      const text = value == null ? "" : String(value);
+      return text
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#39;");
+    }
+
+    function sanitizeHtml(html) {
+      if (window.DOMPurify) {
+        return window.DOMPurify.sanitize(html);
+      }
+      return escapeHtml(html);
+    }
+
+    function renderMarkdown(content) {
+      const raw = marked.parse(content || "");
+      return sanitizeHtml(raw);
+    }
+
+    function safeImageUrl(url) {
+      const value = (url || "").trim();
+      if (!value) return "";
+      if (value.startsWith("data:image/")) return value;
+      if (value.startsWith("https://")) return value;
+      if (value.startsWith("http://")) return value;
+      return "";
+    }
 
     function updateChatStats() {
       const history = window.uniinferStore.chatHistory || [];
@@ -583,17 +670,60 @@
       };
     }
 
+    async function parseErrorBody(response) {
+      const text = await response.text();
+      if (!text) return response.statusText || `HTTP ${response.status}`;
+      try {
+        const data = JSON.parse(text);
+        return (
+          data?.error?.message ||
+          data?.detail ||
+          data?.message ||
+          text.substring(0, 500)
+        );
+      } catch {
+        return text.substring(0, 500);
+      }
+    }
+
+    async function apiFetch(path, options = {}) {
+      const {
+        method = "GET",
+        headers = {},
+        body,
+        signal,
+        allowHttpErrors = false,
+      } = options;
+      const isAbsolute =
+        path.startsWith("http://") || path.startsWith("https://");
+      const url = isAbsolute
+        ? path
+        : `${window.uniinferConfig.apiBaseUrl}${path}`;
+      const init = { method, headers: { ...headers }, signal };
+      if (body !== undefined) init.body = body;
+      const response = await fetch(url, init);
+      if (!response.ok && !allowHttpErrors) {
+        const detail = await parseErrorBody(response);
+        const error = new Error(detail || `HTTP ${response.status}`);
+        error.status = response.status;
+        error.statusText = response.statusText;
+        error.detail = detail;
+        throw error;
+      }
+      return response;
+    }
+
+    async function apiFetchJson(path, options = {}) {
+      const response = await apiFetch(path, options);
+      return response.json();
+    }
+
     // Load providers into dropdown
     async function loadProviders() {
       try {
-        const response = await fetch(
-          `${window.uniinferConfig.apiBaseUrl}/v1/providers`,
-          {
-            headers: getHeaders(),
-          },
-        );
-        if (!response.ok) throw new Error("Failed to load providers");
-        const payload = await response.json();
+        const payload = await apiFetchJson("/v1/providers", {
+          headers: getHeaders(),
+        });
         const providers = Array.isArray(payload.data) ? payload.data : [];
         window.uniinferStore.providers = providers;
 
@@ -607,24 +737,29 @@
         });
         providerSelect.disabled = false;
 
-        if (providers.includes("bigmodel")) {
-          providerSelect.value = "bigmodel";
-          await loadModels("bigmodel");
+        if (providers.includes("zai")) {
+          providerSelect.value = "zai";
+          await loadModels("zai");
+        } else if (providers.includes("zai-code")) {
+          providerSelect.value = "zai-code";
+          await loadModels("zai-code");
+        } else if (providers.length > 0) {
+          providerSelect.value = providers[0];
+          await loadModels(providers[0]);
         }
       } catch (e) {
         console.error(e);
         const errorDiv = document.createElement("div");
         errorDiv.className = "message error-message";
-        let errorDetail = e.message;
-        if (e.response) {
-          errorDetail = `Status ${e.response.status}: ${e.response.statusText || e.message}`;
-        }
+        const errorDetail = e.status
+          ? `Status ${e.status}: ${e.detail || e.statusText || e.message}`
+          : e.message;
         errorDiv.innerHTML = `
           <div class="error-title">
             <span>⚠️</span>
             <span>Connection Error</span>
           </div>
-          <div class="error-detail">${errorDetail}</div>
+          <div class="error-detail">${escapeHtml(errorDetail)}</div>
         `;
         chatContainer.innerHTML = "";
         chatContainer.appendChild(errorDiv);
@@ -634,14 +769,9 @@
     // Load models for provider
     async function loadModels(provider) {
       try {
-        const response = await fetch(
-          `${window.uniinferConfig.apiBaseUrl}/v1/models/${provider}`,
-          {
-            headers: getHeaders(),
-          },
-        );
-        if (!response.ok) throw new Error("Failed to load models");
-        const data = await response.json();
+        const data = await apiFetchJson(`/v1/models/${provider}`, {
+          headers: getHeaders(),
+        });
         window.uniinferStore.models = data.data.map((m) => m.id);
 
         modelSelect.innerHTML = "";
@@ -663,7 +793,7 @@
       const messageDiv = document.createElement("div");
       messageDiv.className = `message ${role}-message`;
       if (role === "assistant") {
-        messageDiv.innerHTML = marked.parse(content);
+        messageDiv.innerHTML = renderMarkdown(content);
       } else {
         messageDiv.textContent = content;
       }
@@ -698,6 +828,7 @@
         role: "user",
         content: apiMessageContent,
       });
+      truncateChatHistory();
       saveChatHistory();
 
       messageInput.value = "";
@@ -712,20 +843,20 @@
       let fullResponse = "";
 
       try {
-        const response = await fetch(
-          `${window.uniinferConfig.apiBaseUrl}/v1/chat/completions`,
-          {
-            method: "POST",
-            headers: getHeaders(),
-            body: JSON.stringify({
-              model: `${provider}@${model}`,
-              messages: window.uniinferStore.chatHistory,
-              stream: true,
-              max_tokens: window.uniinferConfig.maxTokens || 4000,
-            }),
-            signal: currentAbortController.signal,
-          },
-        );
+        const response = await apiFetch("/v1/chat/completions", {
+          method: "POST",
+          headers: getHeaders(),
+          body: JSON.stringify({
+            model: `${provider}@${model}`,
+            messages: window.uniinferStore.chatHistory,
+            stream: true,
+            max_tokens: window.uniinferConfig.maxTokens || 4000,
+          }),
+          signal: currentAbortController.signal,
+        });
+        if (!response.body) {
+          throw new Error("Empty streaming response body");
+        }
 
         const reader = response.body.getReader();
         const decoder = new TextDecoder();
@@ -758,7 +889,7 @@
                     <span>⚠️</span>
                     <span>Error ${data.error.code || ''}</span>
                   </div>
-                  <div class="error-detail">${data.error.message || JSON.stringify(data.error)}</div>
+                  <div class="error-detail">${escapeHtml(data.error.message || JSON.stringify(data.error))}</div>
                 `;
                 chatContainer.appendChild(errorDiv);
                 chatContainer.scrollTo({
@@ -771,7 +902,7 @@
               // Normal response chunk
               const delta = data.choices?.[0]?.delta?.content || "";
               fullResponse += delta;
-              assistantDiv.innerHTML = marked.parse(fullResponse);
+              assistantDiv.innerHTML = renderMarkdown(fullResponse);
               chatContainer.scrollTop = chatContainer.scrollHeight;
             } catch (e) {
               console.error("Parse error", e);
@@ -785,6 +916,7 @@
             role: "assistant",
             content: fullResponse,
           });
+          truncateChatHistory();
           saveChatHistory();
         }
       } catch (e) {
@@ -792,35 +924,11 @@
           // Remove loading indicator
           assistantDiv.remove();
           
-          // Create detailed error message
           let errorTitle = "Error";
-          let errorDetail = e.message;
-          
-          // Try to extract more info from the error
-          if (e.response) {
-            errorTitle = `Error ${e.response.status}`;
-            errorDetail = e.response.statusText || e.message;
-            
-            // Try to get response body for more details
-            try {
-              const text = await e.response.text();
-              if (text) {
-                // Try to parse as JSON for structured errors
-                try {
-                  const json = JSON.parse(text);
-                  if (json.error && json.error.message) {
-                    errorDetail = json.error.message;
-                  } else if (json.detail) {
-                    errorDetail = json.detail;
-                  } else if (typeof json === 'string') {
-                    errorDetail = json;
-                  }
-                } catch {
-                  // Not JSON, use as-is
-                  errorDetail = text.substring(0, 500);
-                }
-              }
-            } catch {}
+          let errorDetail = e.detail || e.message;
+          if (e.status) {
+            errorTitle = `Error ${e.status}`;
+            errorDetail = e.detail || e.statusText || e.message;
           }
           
           // Create error message element
@@ -831,7 +939,7 @@
               <span>⚠️</span>
               <span>${errorTitle}</span>
             </div>
-            <div class="error-detail">${errorDetail}</div>
+            <div class="error-detail">${escapeHtml(errorDetail)}</div>
           `;
           chatContainer.appendChild(errorDiv);
           chatContainer.scrollTo({
@@ -997,18 +1105,16 @@
     async function updateImageModels() {
       const prov = imageProvider.value;
       try {
-        const resp = await fetch(
-          `${window.uniinferConfig.apiBaseUrl}/v1/image/models/${prov}`,
-          { headers: getHeaders() },
-        );
-        if (!resp.ok) {
-          console.error("Failed to fetch image models:", await resp.text());
-          return;
-        }
-        const json = await resp.json();
-        imageModel.innerHTML = json.data
-          .map((m) => `<option value="${m.id}">${m.id}</option>`)
-          .join("");
+        const json = await apiFetchJson(`/v1/image/models/${prov}`, {
+          headers: getHeaders(),
+        });
+        imageModel.innerHTML = "";
+        (json.data || []).forEach((m) => {
+          const option = document.createElement("option");
+          option.value = m.id;
+          option.textContent = m.id;
+          imageModel.appendChild(option);
+        });
       } catch (error) {
         console.error("Error fetching image models:", error);
       }
@@ -1027,18 +1133,15 @@
       status.innerHTML = '<div class="spinner"></div> Generating...';
 
       try {
-        const resp = await fetch(
-          `${window.uniinferConfig.apiBaseUrl}/v1/images/generations`,
-          {
-            method: "POST",
-            headers: getHeaders(),
-            body: JSON.stringify({
-              model: fullModelId,
-              prompt,
-              size: document.getElementById("image-size").value,
-            }),
-          },
-        );
+        const resp = await apiFetch("/v1/images/generations", {
+          method: "POST",
+          headers: getHeaders(),
+          body: JSON.stringify({
+            model: fullModelId,
+            prompt,
+            size: document.getElementById("image-size").value,
+          }),
+        });
         const data = await resp.json();
         const item = data.data?.[0];
 
@@ -1050,6 +1153,7 @@
             const prefix = isJpeg ? "data:image/jpeg;base64," : "data:image/png;base64,";
             imgSrc = prefix + item.b64_json;
           }
+          imgSrc = safeImageUrl(imgSrc);
 
           if (imgSrc) {
             const card = document.createElement("div");
@@ -1059,7 +1163,7 @@
             card.style.boxShadow = "0 4px 12px rgba(0,0,0,0.1)";
             card.innerHTML = `
                 <div style="position: relative;">
-                  <img src="${imgSrc}" style="width:100%; border-radius:12px;" />
+                  <img src="${escapeHtml(imgSrc)}" style="width:100%; border-radius:12px;" />
                   <button class="download-btn" style="
                       position: absolute;
                       bottom: 12px;
@@ -1086,7 +1190,7 @@
                       </svg>
                   </button>
                 </div>
-                <div style="padding:12px; font-size:0.8rem; color:#666;">${prompt}</div>`;
+                <div style="padding:12px; font-size:0.8rem; color:#666;">${escapeHtml(prompt)}</div>`;
 
             const btn = card.querySelector(".download-btn");
             btn.addEventListener("click", async () => {
@@ -1132,33 +1236,27 @@
 
             imageResults.prepend(card);
           }
-        } else if (!resp.ok) {
-          // Show error response
-          let errorDetail = "";
-          try {
-            const errorData = await resp.json();
-            errorDetail = errorData.error?.message || errorData.detail || JSON.stringify(errorData);
-          } catch {
-            errorDetail = await resp.text();
-          }
+        } else {
           status.innerHTML = `
             <div class="error-status">
               <div class="error-title">
                 <span>⚠️</span>
-                <span>Error ${resp.status}</span>
+                <span>Error</span>
               </div>
-              <div class="error-detail">${errorDetail || resp.statusText}</div>
+              <div class="error-detail">No image generated</div>
             </div>
           `;
         }
       } catch (e) {
+        const title = e.status ? `Error ${e.status}` : "Error";
+        const detail = e.detail || e.statusText || e.message;
         status.innerHTML = `
           <div class="error-status">
             <div class="error-title">
               <span>⚠️</span>
-              <span>Error</span>
+              <span>${title}</span>
             </div>
-            <div class="error-detail">${e.message}</div>
+            <div class="error-detail">${escapeHtml(detail)}</div>
           </div>
         `;
       } finally {
@@ -1194,18 +1292,15 @@
         '<div class="spinner"></div> Creating audio...';
 
       try {
-        const resp = await fetch(
-          `${window.uniinferConfig.apiBaseUrl}/v1/audio/speech`,
-          {
-            method: "POST",
-            headers: getHeaders(),
-            body: JSON.stringify({
-              model: ttsModel.value,
-              input: text,
-              voice: ttsVoice.value,
-            }),
-          },
-        );
+        const resp = await apiFetch("/v1/audio/speech", {
+          method: "POST",
+          headers: getHeaders(),
+          body: JSON.stringify({
+            model: ttsModel.value,
+            input: text,
+            voice: ttsVoice.value,
+          }),
+        });
         const blob = await resp.blob();
         const url = URL.createObjectURL(blob);
         const audio = document.createElement("audio");
@@ -1215,25 +1310,15 @@
         ttsResult.prepend(audio);
       } catch (e) {
         const statusEl = document.getElementById("tts-status");
-        let errorDetail = e.message;
-        
-        if (e.response) {
-          try {
-            const text = await e.response.text();
-            const json = JSON.parse(text);
-            errorDetail = json.error?.message || json.detail || text.substring(0, 200);
-          } catch {
-            errorDetail = e.response.statusText || e.message;
-          }
-        }
+        const errorDetail = e.detail || e.statusText || e.message;
         
         statusEl.innerHTML = `
           <div class="error-status">
             <div class="error-title">
               <span>⚠️</span>
-              <span>Error ${e.response?.status || ''}</span>
+              <span>Error ${e.status || ""}</span>
             </div>
-            <div class="error-detail">${errorDetail}</div>
+            <div class="error-detail">${escapeHtml(errorDetail)}</div>
           </div>
         `;
       } finally {
@@ -1265,39 +1350,26 @@
         formData.append("file", file);
         formData.append("model", document.getElementById("stt-model").value);
 
-        const resp = await fetch(
-          `${window.uniinferConfig.apiBaseUrl}/v1/audio/transcriptions`,
-          {
-            method: "POST",
-            headers: {
-              Authorization: `Bearer ${window.uniinferConfig.apiKey}`,
-            },
-            body: formData,
+        const resp = await apiFetch("/v1/audio/transcriptions", {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${window.uniinferConfig.apiKey}`,
           },
-        );
+          body: formData,
+        });
         const data = await resp.json();
-        sttResult.innerHTML = `<div style="font-weight:600; margin-bottom:8px; font-size:0.7rem; color:#888;">Transcription:</div>${data.text || "No text found"}`;
+        sttResult.innerHTML = `<div style="font-weight:600; margin-bottom:8px; font-size:0.7rem; color:#888;">Transcription:</div>${escapeHtml(data.text || "No text found")}`;
       } catch (e) {
         const statusEl = document.getElementById("stt-status");
-        let errorDetail = e.message;
-        
-        if (e.response) {
-          try {
-            const text = await e.response.text();
-            const json = JSON.parse(text);
-            errorDetail = json.error?.message || json.detail || text.substring(0, 200);
-          } catch {
-            errorDetail = e.response.statusText || e.message;
-          }
-        }
+        const errorDetail = e.detail || e.statusText || e.message;
         
         statusEl.innerHTML = `
           <div class="error-status">
             <div class="error-title">
               <span>⚠️</span>
-              <span>Error ${e.response?.status || ''}</span>
+              <span>Error ${e.status || ""}</span>
             </div>
-            <div class="error-detail">${errorDetail}</div>
+            <div class="error-detail">${escapeHtml(errorDetail)}</div>
           </div>
         `;
       } finally {
