@@ -3,6 +3,7 @@ Provider implementations for different LLM services.
 """
 from .mistral import MistralProvider
 from .anthropic import AnthropicProvider
+from .minimax import MiniMaxProvider
 from .openai import OpenAIProvider
 from .openai_tts import OpenAITTSProvider
 from .ollama import OllamaProvider
@@ -70,6 +71,7 @@ except ImportError:
 __all__ = [
     'MistralProvider',
     'AnthropicProvider',
+    'MiniMaxProvider',
     'OpenAIProvider',
     'OpenAITTSProvider',
     'OllamaProvider',

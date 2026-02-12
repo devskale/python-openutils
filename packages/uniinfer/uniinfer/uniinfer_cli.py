@@ -436,11 +436,15 @@ def main():
 
     # Initialize the provider factory
     # for that i need credgoo api token and credgoo encryption key
-    uni = ProviderFactory().get_provider(
-        name=provider,
-        api_key=retrieved_api_key,
-        **({} if provider not in ['cloudflare', 'ollama'] else PROVIDER_CONFIGS[provider].get('extra_params', {}))
-    )
+    try:
+        uni = ProviderFactory().get_provider(
+            name=provider,
+            api_key=retrieved_api_key,
+            **({} if provider not in ['cloudflare', 'ollama'] else PROVIDER_CONFIGS[provider].get('extra_params', {}))
+        )
+    except Exception as e:
+        print(f"Error initializing provider {provider}: {e}")
+        return
 
     # Handle embedding requests
     if args.embed:
@@ -607,17 +611,22 @@ def main():
     first_token_time = None
 
     print("\n=== Response ===\n")
-    for chunk in uni.stream_complete(request):
-        content = chunk.message.content
-        if content:  # Only count non-empty content
-            if first_token_time is None:
-                first_token_time = time.time()
-            # Estimate token count (rough approximation: 4 chars = 1 token)
-            token_count += len(content) / 4
-            print(content, end="", flush=True)
-            response_text += content
-        if hasattr(chunk.message, 'tool_calls') and chunk.message.tool_calls:
-            print(f"\nTool call: {chunk.message.tool_calls}", flush=True)
+    try:
+        for chunk in uni.stream_complete(request):
+            content = chunk.message.content
+            if content:
+                if first_token_time is None:
+                    first_token_time = time.time()
+                token_count += len(content) / 4
+                print(content, end="", flush=True)
+                response_text += content
+            if hasattr(chunk.message, 'tool_calls') and chunk.message.tool_calls:
+                print(f"\nTool call: {chunk.message.tool_calls}", flush=True)
+    except Exception as e:
+        if response_text:
+            print()
+        print(f"[!] Request failed: {e}")
+        return
 
     end_time = time.time()
 
