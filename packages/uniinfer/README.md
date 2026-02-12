@@ -499,11 +499,12 @@ Contributions are welcome! Please follow these steps:
 To add a new provider:
 
 1. Create a new file in `uniinfer/providers/`
-2. Inherit from the appropriate provider base class (`ChatProvider`, `EmbeddingProvider`, etc.)
-3. Implement required methods (`complete()`, `stream_complete()`, `list_models()`)
-4. Register the provider in `uniinfer/__init__.py`
-5. Add provider-specific dependencies to `setup.py`
-6. Add tests in `uniinfer/tests/`
+2. For OpenAI-compatible chat APIs, inherit from `OpenAICompatibleChatProvider`
+3. Set provider constants (`BASE_URL`, `PROVIDER_ID`, `ERROR_PROVIDER_NAME`, `DEFAULT_MODEL`)
+4. Implement only provider-specific pieces (`list_models()`, extra headers, default params)
+5. Register the provider in `uniinfer/__init__.py`
+6. Add provider-specific dependencies to `setup.py`
+7. Add tests in `uniinfer/tests/`
 
 See [AGENTS.md](AGENTS.md) for detailed development guidelines.
 
