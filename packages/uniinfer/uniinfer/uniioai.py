@@ -31,10 +31,7 @@ logger.debug(f".env file found and loaded: {found_dotenv}")
 
 
 def _resolve_credgoo_service(provider_name: str) -> str:
-    aliases = {
-        "zai-coding": "zai-code",
-    }
-    return aliases.get(provider_name, provider_name)
+    return provider_name
 
 
 # --- Helper Function for API Key Retrieval ---

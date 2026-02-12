@@ -37,6 +37,7 @@ dependencies = [
     "python-multipart",
     "slowapi",
     "httpx",
+    "zai-sdk>=0.2.2",
     "importlib-metadata; python_version<'3.8'",
     "credgoo @ git+https://github.com/devskale/python-openutils.git#subdirectory=packages/credgoo"
 ]
