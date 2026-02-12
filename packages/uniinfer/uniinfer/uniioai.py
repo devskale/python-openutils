@@ -30,6 +30,13 @@ logger.debug(f"Attempted to load .env from: {dotenv_path}")
 logger.debug(f".env file found and loaded: {found_dotenv}")
 
 
+def _resolve_credgoo_service(provider_name: str) -> str:
+    aliases = {
+        "zai-coding": "zai-code",
+    }
+    return aliases.get(provider_name, provider_name)
+
+
 # --- Helper Function for API Key Retrieval ---
 
 # Rename to make it public
@@ -67,8 +74,9 @@ def get_provider_api_key(api_bearer_token: str, provider_name: str) -> str | Non
             if not credgoo_bearer or not credgoo_encryption:
                 raise ValueError(
                     "Invalid combined credgoo token format. Both parts are required.")
+            credgoo_service = _resolve_credgoo_service(provider_name)
             provider_api_key = get_api_key(
-                service=provider_name,
+                service=credgoo_service,
                 encryption_key=credgoo_encryption,
                 bearer_token=credgoo_bearer,
             )

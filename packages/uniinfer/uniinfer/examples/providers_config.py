@@ -127,6 +127,16 @@ PROVIDER_CONFIGS = {
         'default_model': 'glm-4-flash',
         'needs_api_key': True,
     },
+    'zai': {
+        'name': 'Z.ai',
+        'default_model': 'glm-4.7',
+        'needs_api_key': True,
+    },
+    'zai-coding': {
+        'name': 'Z.ai Coding',
+        'default_model': 'glm-4.5',
+        'needs_api_key': True,
+    },
     'tu': {
         'name': 'tu',
         'default_model': 'qwen-coder-30b',

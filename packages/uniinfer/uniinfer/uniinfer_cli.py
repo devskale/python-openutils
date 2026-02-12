@@ -28,6 +28,13 @@ found_dotenv = load_dotenv(dotenv_path=dotenv_path,
 # print(f"DEBUG: .env file found and loaded: {found_dotenv}")  # Debug print
 
 
+def _resolve_credgoo_service(provider: str) -> str:
+    aliases = {
+        "zai-coding": "zai-code",
+    }
+    return aliases.get(provider, provider)
+
+
 def main():
     # Initialize argument parser
     parser = argparse.ArgumentParser(description='UniInfer example script')
@@ -106,8 +113,9 @@ def main():
 #        print("Please provide them either via command-line arguments (--encryption-key, --bearer-token) or environment variables.")
 #        return
     provider = args.provider
+    credgoo_service = _resolve_credgoo_service(provider)
     retrieved_api_key = get_api_key(
-        service=provider,
+        service=credgoo_service,
         encryption_key=credgoo_encryption_token,
         bearer_token=credgoo_api_token,)
 
@@ -115,9 +123,10 @@ def main():
         providers = ProviderFactory.list_providers()
         for provider in providers:
             try:
+                credgoo_service = _resolve_credgoo_service(provider)
                 provider_class = ProviderFactory.get_provider_class(provider)
                 retrieved_api_key = get_api_key(
-                    service=provider,
+                    service=credgoo_service,
                     encryption_key=credgoo_encryption_token,
                     bearer_token=credgoo_api_token,)
                 # models = ProviderFactory.list_models(
@@ -184,7 +193,7 @@ def main():
         try:
             # Get API key using credgoo
             api_key = get_api_key(
-                service=provider,
+                service=credgoo_service,
                 encryption_key=credgoo_encryption_token,
                 bearer_token=credgoo_api_token
             )
@@ -294,7 +303,7 @@ def main():
 
             # Get API key using credgoo
             api_key = get_api_key(
-                service=provider,
+                service=credgoo_service,
                 encryption_key=credgoo_encryption_token,
                 bearer_token=credgoo_api_token
             )
@@ -377,7 +386,7 @@ def main():
 
             # Get API key using credgoo
             api_key = get_api_key(
-                service=provider,
+                service=credgoo_service,
                 encryption_key=credgoo_encryption_token,
                 bearer_token=credgoo_api_token
             )
