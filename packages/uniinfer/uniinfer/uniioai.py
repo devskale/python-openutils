@@ -3,7 +3,10 @@ A OpenAI compliance wrapper for LLM APIs using uniinfer, supporting streaming an
 """
 import os
 import logging
-from typing import Optional, List, Dict, Any  # Import Optional, List, Dict, Any
+import time
+import uuid
+from typing import Any, AsyncGenerator, Dict, List, Optional
+from collections.abc import Iterator
 import random  # Import random
 
 from uniinfer import ProviderFactory, ChatMessage, ChatCompletionRequest, ChatCompletionResponse
@@ -12,7 +15,7 @@ from uniinfer.errors import UniInferError, AuthenticationError
 from dotenv import load_dotenv
 from credgoo import get_api_key
 from uniinfer.examples.providers_config import PROVIDER_CONFIGS  # added
-# Import the helper functions
+# Import helper functions
 from uniinfer.json_utils import update_models, update_model_accessed
 
 logger = logging.getLogger(__name__)
@@ -27,10 +30,14 @@ logger.debug(f"Attempted to load .env from: {dotenv_path}")
 logger.debug(f".env file found and loaded: {found_dotenv}")
 
 
+def _resolve_credgoo_service(provider_name: str) -> str:
+    return provider_name
+
+
 # --- Helper Function for API Key Retrieval ---
 
 # Rename to make it public
-def get_provider_api_key(api_bearer_token: str, provider_name: str) -> Optional[str]:
+def get_provider_api_key(api_bearer_token: str, provider_name: str) -> str | None:
     """
     Determines the provider API key based on the input token format.
 
@@ -64,8 +71,9 @@ def get_provider_api_key(api_bearer_token: str, provider_name: str) -> Optional[
             if not credgoo_bearer or not credgoo_encryption:
                 raise ValueError(
                     "Invalid combined credgoo token format. Both parts are required.")
+            credgoo_service = _resolve_credgoo_service(provider_name)
             provider_api_key = get_api_key(
-                service=provider_name,
+                service=credgoo_service,
                 encryption_key=credgoo_encryption,
                 bearer_token=credgoo_bearer,
             )
@@ -103,7 +111,16 @@ def get_provider_api_key(api_bearer_token: str, provider_name: str) -> Optional[
 # --- Main Completion Functions ---
 
 # Update signature: remove api_bearer_token, add provider_api_key
-def stream_completion(messages, provider_model_string, temperature=0.7, max_tokens=None, provider_api_key: Optional[str] = None, base_url: Optional[str] = None, tools: Optional[List[Dict]] = None, tool_choice: Optional[Any] = None):
+def stream_completion(
+    messages: list[dict],
+    provider_model_string: str,
+    temperature: float = 0.7,
+    max_tokens: int | None = None,
+    provider_api_key: str | None = None,
+    base_url: str | None = None,
+    tools: list[dict] | None = None,
+    tool_choice: Any | None = None,
+) -> Iterator[ChatCompletionResponse]:
     """
     Initiates a streaming chat completion request via uniinfer.
 
@@ -181,7 +198,16 @@ def stream_completion(messages, provider_model_string, temperature=0.7, max_toke
 
 
 # Update signature: remove api_bearer_token, add provider_api_key
-def get_completion(messages, provider_model_string, temperature=0.7, max_tokens=None, provider_api_key: Optional[str] = None, base_url: Optional[str] = None, tools: Optional[List[Dict]] = None, tool_choice: Optional[Any] = None) -> Any:
+def get_completion(
+    messages: list[dict],
+    provider_model_string: str,
+    temperature: float = 0.7,
+    max_tokens: int | None = None,
+    provider_api_key: str | None = None,
+    base_url: str | None = None,
+    tools: list[dict] | None = None,
+    tool_choice: Any | None = None,
+) -> Any:
     """
     Initiates a non-streaming chat completion request via uniinfer.
 
@@ -273,7 +299,12 @@ def get_completion(messages, provider_model_string, temperature=0.7, max_tokens=
 
 # --- Embedding Functions ---
 
-def get_embeddings(input_texts: List[str], provider_model_string: str, provider_api_key: Optional[str] = None, base_url: Optional[str] = None) -> Dict[str, Any]:
+def get_embeddings(
+    input_texts: list[str],
+    provider_model_string: str,
+    provider_api_key: str | None = None,
+    base_url: str | None = None,
+) -> dict[str, Any]:
     """
     Initiates an embedding request via uniinfer.
 
@@ -341,7 +372,7 @@ def get_embeddings(input_texts: List[str], provider_model_string: str, provider_
 
 
 # --- New Helper to List Embedding Providers ---
-def list_embedding_providers() -> List[str]:
+def list_embedding_providers() -> list[str]:
     """
     Return the names of all available embedding providers.
     """
@@ -349,7 +380,9 @@ def list_embedding_providers() -> List[str]:
 
 
 # --- New Helper to List Embedding Models for a Provider ---
-def list_embedding_models_for_provider(provider_name: str, api_bearer_token: str) -> List[str]:
+def list_embedding_models_for_provider(
+    provider_name: str, api_bearer_token: str
+) -> list[str]:
     """
     Return available embedding model names for the given provider, using the bearer token.
     For Ollama, api_bearer_token can be empty or None.
@@ -370,7 +403,7 @@ def list_embedding_models_for_provider(provider_name: str, api_bearer_token: str
 
 
 # --- New Helper to List Providers ---
-def list_providers() -> List[str]:
+def list_providers() -> list[str]:
     """
     Return the names of all available providers.
     """
@@ -378,7 +411,7 @@ def list_providers() -> List[str]:
 
 
 # --- New Helper to List Models for a Provider ---
-def list_models_for_provider(provider_name: str, api_bearer_token: str) -> List[str]:
+def list_models_for_provider(provider_name: str, api_bearer_token: str) -> list[str]:
     """
     Return available model names for the given provider, using the bearer token.
     """
@@ -492,3 +525,201 @@ if __name__ == "__main__":
         print(f"\nFATAL ERROR during API key retrieval: {e}")
     except Exception as e:
         print(f"\nUNEXPECTED FATAL ERROR during setup/key retrieval: {e}")
+
+
+# --- Async Helper Functions ---
+
+async def aget_completion(messages, provider_model_string, temperature=0.7, max_tokens=None, provider_api_key: Optional[str] = None, base_url: Optional[str] = None, tools: Optional[List[Dict]] = None, tool_choice: Optional[Any] = None) -> Any:
+    """
+    Async version of get_completion.
+
+    Initiates a non-streaming chat completion request via uniinfer using async.
+
+    Args:
+        messages (list[dict]): A list of message dictionaries.
+        provider_model_string (str): Combined provider and model name, e.g., "openai@gpt-4".
+        temperature (float): The sampling temperature.
+        max_tokens (int): The maximum number of tokens to generate.
+        provider_api_key (str, optional): The pre-retrieved API key for provider. Defaults to None.
+        base_url (str, optional): The base URL for the provider's API (e.g., for Ollama). Defaults to None.
+        tools (list[dict], optional): List of tools available to the model.
+        tool_choice (any, optional): Tool choice preference.
+
+    Returns:
+        Any: The complete generated content or response object.
+
+    Raises:
+        ValueError: If provider_model_string format is invalid.
+        UniInferError: If there's an issue with the provider or request.
+    """
+    try:
+        if '@' not in provider_model_string:
+            raise ValueError(
+                "Invalid provider_model_string format. Expected 'provider@modelname'.")
+        provider_name, model_name = provider_model_string.split('@', 1)
+
+        if not provider_name or not model_name:
+            raise ValueError(
+                "Invalid provider_model_string format. Provider or model name is empty.")
+
+        provider_kwargs = {'api_key': provider_api_key}
+        if base_url:
+            provider_kwargs['base_url'] = base_url
+        if provider_name in ['cloudflare']:
+            extra = PROVIDER_CONFIGS.get(
+                provider_name, {}).get('extra_params', {})
+            provider_kwargs.update(extra)
+
+        provider = ProviderFactory.get_provider(
+            provider_name,
+            **provider_kwargs
+        )
+
+        uniinfer_messages = [ChatMessage(**msg) for msg in messages]
+
+        request = ChatCompletionRequest(
+            messages=uniinfer_messages,
+            model=model_name,
+            temperature=temperature,
+            max_tokens=max_tokens,
+            streaming=False,
+            tools=tools,
+            tool_choice=tool_choice
+        )
+
+        logger.info(
+            f"Requesting async non-streaming response from {provider_name} ({model_name})")
+        response: ChatCompletionResponse = await provider.acomplete(request)
+        logger.info("Async response received")
+
+        if response.message:
+            update_model_accessed(model_name, provider_name)
+            if response.message.tool_calls:
+                return response.message
+            elif response.message.content:
+                return response.message.content
+            else:
+                logger.warning(
+                    "Received empty content and no tool calls in async response.")
+                return ""
+        else:
+            logger.warning("Async response has no message field")
+            return ""
+
+    except (UniInferError, ValueError) as e:
+        logger.error(f"Error during async completion: {e}")
+        raise
+    except Exception as e:
+        logger.error(f"Unexpected error during async completion: {e}")
+        raise UniInferError(f"Unexpected error: {e}")
+
+
+async def astream_completion(messages, provider_model_string, temperature=0.7, max_tokens=None, provider_api_key: Optional[str] = None, base_url: Optional[str] = None, tools: Optional[List[Dict]] = None, tool_choice: Optional[Any] = None) -> AsyncGenerator[Dict[str, Any], None]:
+    """
+    Async version of stream_completion.
+
+    Initiates a streaming chat completion request via uniinfer using async.
+
+    Args:
+        messages (list[dict]): A list of message dictionaries.
+        provider_model_string (str): Combined provider and model name, e.g., "openai@gpt-4".
+        temperature (float): The sampling temperature.
+        max_tokens (int): The maximum number of tokens to generate.
+        provider_api_key (str, optional): The pre-retrieved API key for provider. Defaults to None.
+        base_url (str, optional): The base URL for the provider's API (e.g., for Ollama). Defaults to None.
+        tools (list[dict], optional): List of tools available to the model.
+        tool_choice (any, optional): Tool choice preference.
+
+    Yields:
+        Dict[str, Any]: Streaming response chunks in OpenAI-compatible format.
+
+    Raises:
+        ValueError: If provider_model_string format is invalid.
+        UniInferError: If there's an issue with the provider or request.
+    """
+    try:
+        if '@' not in provider_model_string:
+            raise ValueError(
+                "Invalid provider_model_string format. Expected 'provider@modelname'.")
+        provider_name, model_name = provider_model_string.split('@', 1)
+
+        if not provider_name or not model_name:
+            raise ValueError(
+                "Invalid provider_model_string format. Provider or model name is empty.")
+
+        provider_kwargs = {'api_key': provider_api_key}
+        if base_url:
+            provider_kwargs['base_url'] = base_url
+        if provider_name in ['cloudflare']:
+            extra = PROVIDER_CONFIGS.get(
+                provider_name, {}).get('extra_params', {})
+            provider_kwargs.update(extra)
+
+        provider = ProviderFactory.get_provider(
+            provider_name,
+            **provider_kwargs
+        )
+
+        uniinfer_messages = [ChatMessage(**msg) for msg in messages]
+
+        request = ChatCompletionRequest(
+            messages=uniinfer_messages,
+            model=model_name,
+            temperature=temperature,
+            max_tokens=max_tokens,
+            streaming=True,
+            tools=tools,
+            tool_choice=tool_choice
+        )
+
+        logger.info(
+            f"Requesting async streaming response from {provider_name} ({model_name})")
+
+        first_chunk = True
+        async for response in provider.astream_complete(request):
+            if first_chunk:
+                update_model_accessed(model_name, provider_name)
+                first_chunk = False
+
+            yield format_chunk_to_openai(response, provider_model_string)
+
+    except (UniInferError, ValueError) as e:
+        logger.error(f"Error during async streaming: {e}")
+        raise
+    except Exception as e:
+        logger.error(f"Unexpected error during async streaming: {e}")
+        raise UniInferError(f"Unexpected error: {e}")
+
+
+def format_chunk_to_openai(response: ChatCompletionResponse, provider_model_string: str) -> Dict[str, Any]:
+    """
+    Format a uniinfer ChatCompletionResponse chunk into OpenAI-compatible format.
+
+    Args:
+        response (ChatCompletionResponse): The response from the provider.
+        provider_model_string (str): The combined provider@model string.
+
+    Returns:
+        Dict[str, Any]: OpenAI-compatible chunk dictionary.
+    """
+    chunk_data = {
+        "id": f"chatcmpl-{uuid.uuid4()}",
+        "object": "chat.completion.chunk",
+        "created": int(time.time()),
+        "model": provider_model_string,
+        "choices": []
+    }
+
+    delta = {}
+    if response.message:
+        if response.message.content:
+            delta["content"] = response.message.content
+        if response.message.tool_calls:
+            delta["tool_calls"] = response.message.tool_calls
+
+    choice_data = {"index": 0, "delta": delta}
+    if hasattr(response, 'finish_reason') and response.finish_reason:
+        choice_data["finish_reason"] = response.finish_reason
+
+    chunk_data["choices"] = [choice_data]
+    return chunk_data

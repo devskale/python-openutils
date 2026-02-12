@@ -1,13 +1,13 @@
 """
-Google Gemini provider implementation.
+Google Gemini provider implementation with async support.
 """
 import json
-from typing import Dict, Any, Iterator, Optional, List
+from typing import Dict, Any, Optional, List, AsyncIterator
 
 from ..core import ChatProvider, ChatCompletionRequest, ChatCompletionResponse, ChatMessage
-from ..errors import AuthenticationError, map_provider_error, UniInferError
+from ..errors import map_provider_error, UniInferError
 
-# Try to import the google-genai package (latest recommended package)
+# Try to import google-genai package (latest recommended package)
 # Note: Install with 'pip install google-genai' if not available
 try:
     from google import genai
@@ -19,18 +19,21 @@ except ImportError:
 
 class GeminiProvider(ChatProvider):
     """
-    Provider for Google Gemini API.
+    Provider for Google Gemini API with async support.
+    
+    Uses the modern google-genai SDK which is natively async.
     """
 
     def __init__(self, api_key: Optional[str] = None, **kwargs):
         """
-        Initialize the Gemini provider.
+        Initialize Gemini provider.
 
         Args:
             api_key (Optional[str]): The Gemini API key.
             **kwargs: Additional provider-specific configuration parameters.
         """
         super().__init__(api_key)
+        self._client = None
 
         if not HAS_GENAI:
             raise ImportError(
@@ -38,11 +41,70 @@ class GeminiProvider(ChatProvider):
                 "Install it with 'pip install google-genai'"
             )
 
-        # Create the Gemini client using the new client-based approach
-        self.client = genai.Client(api_key=self.api_key)
-
-        # Save any additional configuration
+        # Store any additional configuration
         self.config = kwargs
+
+    def _get_client(self):
+        """
+        Get or create synchronous Gemini client.
+        """
+        if self._client is None:
+            self._client = genai.Client(api_key=self.api_key)
+        return self._client
+
+    async def aclose(self):
+        """
+        Close the Gemini client.
+        """
+        if self._client is not None:
+            # The new google-genai Client doesn't have an explicit close for sync, 
+            # but we can clear our reference. Async client is accessed via aio.
+            self._client = None
+        await super().aclose()
+
+    @classmethod
+    def list_models(cls, api_key: Optional[str] = None) -> list:
+        """
+        List available models from Gemini.
+
+        Args:
+            api_key (Optional[str]): The Gemini API key. If not provided,
+                                     it attempts to retrieve it using credgoo.
+
+        Returns:
+            list: A list of available model IDs.
+
+        Raises:
+            ValueError: If no API key is provided or found.
+            Exception: If the API request fails.
+        """
+        # Retrieve API key if not provided
+        if not api_key:
+            try:
+                from credgoo.credgoo import get_api_key
+                api_key = get_api_key('gemini')
+            except (ImportError, Exception):
+                pass
+
+        if not api_key:
+            raise ValueError("Gemini API key is required for listing models")
+
+        try:
+            # Create synchronous client for list_models
+            client = genai.Client(api_key=api_key)
+            models = []
+            
+            # Query the actual API for available models
+            for model in client.models.list():
+                if hasattr(model, 'name'):
+                    models.append(model.name)
+            
+            return models
+
+        except Exception as e:
+            status_code = getattr(e, 'status_code', None)
+            response_body = str(e)
+            raise map_provider_error("Gemini", e, status_code=status_code, response_body=response_body)
 
     def _prepare_content_and_config(self, request: ChatCompletionRequest) -> tuple:
         """
@@ -52,7 +114,7 @@ class GeminiProvider(ChatProvider):
             request (ChatCompletionRequest): The request to prepare for.
 
         Returns:
-            tuple: (content, config, tools) for the Gemini API.
+            tuple: (content, config, tools) for Gemini API.
         """
         # Extract all messages
         messages = request.messages
@@ -87,10 +149,12 @@ class GeminiProvider(ChatProvider):
         if request.max_tokens is not None:
             config_params["max_output_tokens"] = request.max_tokens
 
-        # Create the config object using the new types structure
+        # Create a config object using new types structure
         config = types.GenerateContentConfig(**config_params)
 
-        # Prepare the content based on non-system messages
+        # Prepare content based on non-system messages
+        gemini_tools = None
+
         # For simple queries with just one user message, use a simple string
         if len(messages) == 1 and messages[0].role == "user":
             content = _flatten_text(messages[0].content)
@@ -99,360 +163,254 @@ class GeminiProvider(ChatProvider):
             content = []
             for msg in messages:
                 if msg.role == "system":
-                    # System messages handled in config
                     continue
-                elif msg.role == "user":
-                    content.append(
-                        {"role": "user", "parts": [{"text": _flatten_text(msg.content)}]})
-                elif msg.role == "assistant":
-                    # Handle assistant messages with tool_calls
-                    parts = []
-                    if msg.content:
-                        flat = _flatten_text(msg.content)
-                        if flat:
-                            parts.append({"text": flat})
-                    if msg.tool_calls:
-                        # Convert OpenAI tool_calls to Gemini function_call format
-                        for tool_call in msg.tool_calls:
-                            if tool_call.get('type') == 'function':
-                                func = tool_call.get('function', {})
-                                parts.append({
-                                    "function_call": {
-                                        "name": func.get('name'),
-                                        "args": json.loads(func.get('arguments', '{}'))
-                                    }
-                                })
-                    content.append({"role": "model", "parts": parts})
-                elif msg.role == "tool":
-                    # Handle tool response messages
-                    content.append({
-                        "role": "function",
-                        "parts": [{
-                            "function_response": {
-                                "name": msg.tool_call_id,  # Use tool_call_id as name
-                                "response": {"content": msg.content}
-                            }
-                        }]
-                    })
+                
+                role = "user" if msg.role == "user" else "model"
+                content.append({
+                    "role": role,
+                    "parts": [{"text": _flatten_text(msg.content)}]
+                })
+
+            # Convert OpenAI tools format to Gemini function declarations
+            if request.tools:
+                gemini_tools = []
+                for tool in request.tools:
+                    if tool.get('type') == 'function':
+                        func = tool.get('function', {})
+                        gemini_func = {
+                            "name": func.get('name'),
+                            "description": func.get('description', ''),
+                        }
+                        if 'parameters' in func:
+                            gemini_func["parameters"] = func['parameters']
+                        gemini_tools.append(gemini_func)
 
         if system_message:
             # Prepend system message to the first user message, or add it as the first message
-            if content and content[0]['role'] == 'user':
-                if isinstance(content[0]['parts'], list) and content[0]['parts'] and 'text' in content[0]['parts'][0]:
-                    content[0]['parts'][0]['text'] = f"{system_message}\n\n{content[0]['parts'][0]['text']}"
+            if isinstance(content, list) and content and 'role' in content[0] and content[0]['role'] == 'user':
+                if isinstance(content[0]['parts'], list) and 'text' in content[0]['parts'][0]:
+                    content[0]['parts'][0]['text'] = f"{system_message}\n{content[0]['parts'][0]['text']}"
                 else:
                     # Fallback if structure is not as expected
                     content.insert(0, {"role": "user", "parts": [
-                                   {"text": system_message}]})
+                                    {"text": system_message}]})
+            elif isinstance(content, str):
+                # If content is a string, it means it's a single user message
+                # Convert it to the expected format for list content if we need to add a system message
+                content = [{"role": "user", "parts": [{"text": f"{system_message}\n{content}"}]}]
             else:
-                # if no user message, add system message as user message
+                # If no user message or other format, add system message as user message
+                if not isinstance(content, list):
+                    content = []
                 content.insert(0, {"role": "user", "parts": [
-                               {"text": system_message}]})
-
-        # Convert OpenAI tools format to Gemini function declarations
-        gemini_tools = None
-        if request.tools:
-            gemini_tools = []
-            for tool in request.tools:
-                if tool.get('type') == 'function':
-                    func = tool.get('function', {})
-                    gemini_func = {
-                        "name": func.get('name'),
-                        "description": func.get('description', ''),
-                    }
-                    if 'parameters' in func:
-                        gemini_func["parameters"] = func['parameters']
-                    gemini_tools.append(gemini_func)
+                                {"text": system_message}]})
 
         return content, config, gemini_tools
 
-    def complete(
+    def _prepare_api_params(
+        self,
+        request: ChatCompletionRequest,
+        content: Any,
+        config: Any,
+        gemini_tools: Optional[List[Dict]],
+        **provider_specific_kwargs
+    ) -> Dict[str, Any]:
+        """Prepare API parameters for Gemini."""
+        model = request.model or "gemini-1.5-flash"
+        api_params = {
+            "model": model,
+            "contents": content,
+            "config": config
+        }
+
+        if gemini_tools:
+            from google.genai.types import Tool, FunctionDeclaration
+            tool_declarations = []
+            for func_def in gemini_tools:
+                tool_declarations.append(
+                    FunctionDeclaration(
+                        name=func_def["name"],
+                        description=func_def.get("description", ""),
+                        parameters=func_def.get("parameters")
+                    )
+                )
+            api_params["tools"] = [Tool(function_declarations=tool_declarations)]
+
+        api_params.update(provider_specific_kwargs)
+        return api_params
+
+    def _process_response_common(
+        self,
+        response: Any,
+        model: str,
+        request_model: Optional[str]
+    ) -> ChatCompletionResponse:
+        """Process a Gemini API response into a ChatCompletionResponse."""
+        if response.prompt_feedback and response.prompt_feedback.block_reason:
+            raise UniInferError(
+                f"Gemini content generation blocked. Reason: {response.prompt_feedback.block_reason}. "
+                f"Safety ratings: {response.prompt_feedback.safety_ratings}"
+            )
+
+        content_text = ""
+        tool_calls = None
+
+        if response.parts:
+            try:
+                content_text = response.text
+            except ValueError:
+                all_parts_text_list = []
+                for part in response.parts:
+                    part_text_content = getattr(part, 'text', None)
+                    if part_text_content:
+                        all_parts_text_list.append(part_text_content)
+
+                if all_parts_text_list:
+                    content_text = "".join(all_parts_text_list)
+
+            function_calls = []
+            for part in response.parts:
+                if hasattr(part, 'function_call') and part.function_call:
+                    function_calls.append({
+                        "id": f"call_{part.function_call.name}",
+                        "type": "function",
+                        "function": {
+                            "name": part.function_call.name,
+                            "arguments": json.dumps(dict(part.function_call.args))
+                        }
+                    })
+            if function_calls:
+                tool_calls = function_calls
+
+        message = ChatMessage(
+            role="assistant",
+            content=content_text if content_text else None,
+            tool_calls=tool_calls
+        )
+
+        usage = {
+            "prompt_tokens": 0,
+            "completion_tokens": 0,
+            "total_tokens": 0
+        }
+
+        return ChatCompletionResponse(
+            message=message,
+            provider='gemini',
+            model=model,
+            usage=usage,
+            raw_response=response
+        )
+
+    def _complete_impl(
         self,
         request: ChatCompletionRequest,
         **provider_specific_kwargs
     ) -> ChatCompletionResponse:
-        """
-        Make a chat completion request to Gemini.
+        """Internal implementation of synchronous completion for Gemini."""
+        client = self._get_client()
 
-        Args:
-            request (ChatCompletionRequest): The request to make.
-            **provider_specific_kwargs: Additional Gemini-specific parameters.
-
-        Returns:
-            ChatCompletionResponse: The completion response.
-
-        Raises:
-            Exception: If the request fails.
-        """
         if self.api_key is None:
             raise ValueError("Gemini API key is required")
 
         try:
-            # Get the model from the request or use a default
-            model = request.model or "gemini-1.5-pro"
-
-            # Prepare the content and get gemini_tools
-            content, _, gemini_tools = self._prepare_content_and_config(request)
-
-            # Prepare config with generation parameters
-            config_params = {}
-            if request.temperature is not None:
-                config_params["temperature"] = request.temperature
-            if request.max_tokens is not None:
-                config_params["max_output_tokens"] = request.max_tokens
-            
-            # Add tools to config if provided
-            if gemini_tools:
-                from google.genai.types import Tool, FunctionDeclaration
-                tool_declarations = []
-                for func_def in gemini_tools:
-                    tool_declarations.append(
-                        FunctionDeclaration(
-                            name=func_def["name"],
-                            description=func_def.get("description", ""),
-                            parameters=func_def.get("parameters")
-                        )
-                    )
-                config_params["tools"] = [Tool(function_declarations=tool_declarations)]
-            
-            # Create the config object
-            config = types.GenerateContentConfig(**config_params)
-
-            # Prepare API call parameters
-            api_params = {
-                "model": model,
-                "contents": content,
-                "config": config
-            }
-
-            # Make the API call using the new client-based approach
-            response = self.client.models.generate_content(**api_params)
-
-            # Check for content filtering
-            if response.prompt_feedback and response.prompt_feedback.block_reason:
-                raise UniInferError(
-                    f"Gemini content generation blocked. Reason: {response.prompt_feedback.block_reason}. "
-                    f"Safety ratings: {response.prompt_feedback.safety_ratings}"
-                )
-
-            # Extract response text and tool calls
-            content_text = ""
-            tool_calls = None
-            
-            if response.parts:
-                try:
-                    content_text = response.text  # Preferred way, handles multi-part correctly if applicable
-                # Handles cases where .text might raise ValueError (e.g. no parts with text)
-                except ValueError:
-                    # Fallback to iterating parts if .text fails or parts exist but .text is empty.
-                    # Concatenate text from all text-bearing parts in the response.
-                    all_parts_text_list = []
-                    for part in response.parts:
-                        # Check if the part has a 'text' attribute and if it's not None or empty
-                        part_text_content = getattr(part, 'text', None)
-                        if part_text_content:  # This ensures part_text_content is not None and not an empty string
-                            all_parts_text_list.append(part_text_content)
-                    if all_parts_text_list:
-                        content_text = "".join(all_parts_text_list)
-                
-                # Check for function calls in response parts
-                function_calls = []
-                for part in response.parts:
-                    if hasattr(part, 'function_call') and part.function_call:
-                        # Convert Gemini function_call to OpenAI tool_calls format
-                        import json
-                        function_calls.append({
-                            "id": f"call_{part.function_call.name}",
-                            "type": "function",
-                            "function": {
-                                "name": part.function_call.name,
-                                "arguments": json.dumps(dict(part.function_call.args))
-                            }
-                        })
-                if function_calls:
-                    tool_calls = function_calls
-
-            if not content_text and not tool_calls and not (response.prompt_feedback and response.prompt_feedback.block_reason):
-                # If content is still empty and not blocked, it might be an empty generation
-                print(
-                    "Warning: Gemini response has no text content and no explicit block reason.")
-
-            # Create a ChatMessage from the response
-            message = ChatMessage(
-                role="assistant",
-                content=content_text if content_text else None,
-                tool_calls=tool_calls
-            )
-
-            # Create usage information (Gemini doesn't provide detailed token counts)
-            usage = {
-                "prompt_tokens": 0,
-                "completion_tokens": 0,
-                "total_tokens": 0
-            }
-
-            return ChatCompletionResponse(
-                message=message,
-                provider='gemini',
-                model=model,
-                usage=usage,
-                raw_response=response
-            )
+            content, config, gemini_tools = self._prepare_content_and_config(request)
+            api_params = self._prepare_api_params(request, content, config, gemini_tools, **provider_specific_kwargs)
+            response = client.models.generate_content(**api_params)
+            return self._process_response_common(response, api_params['model'], request.model)
 
         except Exception as e:
-            # Map the error to a standardized format with rich info
-            status_code = None
+            status_code = getattr(e, 'status_code', None)
             response_body = str(e)
             if hasattr(e, 'response') and hasattr(e.response, 'text'):
                 response_body = e.response.text
                 status_code = e.response.status_code
-            elif hasattr(e, 'status_code'):
-                status_code = e.status_code
             elif hasattr(e, 'message'):
                 response_body = e.message
 
             mapped_error = map_provider_error("gemini", e, status_code=status_code, response_body=response_body)
             raise mapped_error
 
-    @classmethod
-    def list_models(cls, api_key: Optional[str] = None) -> list:
-        """
-        List available models from Gemini.
-
-        Args:
-            api_key (Optional[str]): The Gemini API key.
-
-        Returns:
-            list: A list of available model names.
-        """
-        if not HAS_GENAI:
-            raise ImportError(
-                "The 'google-genai' package is required to use the Gemini provider. "
-                "Install it with 'pip install google-genai'"
-            )
-
-        # Try to get API key from credgoo if not provided
-        if api_key is None:
-            try:
-                from credgoo.credgoo import get_api_key
-                api_key = get_api_key("gemini")
-                if api_key is None:
-                    raise ValueError(
-                        "Failed to retrieve Gemini API key from credgoo")
-            except ImportError:
-                raise ValueError(
-                    "Gemini API key is required when credgoo is not available")
-
-        # Create a client instance for listing models
-        client = genai.Client(api_key=api_key)
-        models = []
-
-        # Get models using the new client-based approach
-        model_list = client.models.list()
-        for model in model_list:
-            models.append(model.name)
-
-        return models
-
-    def stream_complete(
+    async def _acomplete_impl(
         self,
         request: ChatCompletionRequest,
         **provider_specific_kwargs
-    ) -> Iterator[ChatCompletionResponse]:
-        """
-        Stream a chat completion response from Gemini.
+    ) -> ChatCompletionResponse:
+        """Internal implementation of asynchronous completion for Gemini."""
+        client = self._get_client()
 
-        Args:
-            request (ChatCompletionRequest): The request to make.
-            **provider_specific_kwargs: Additional Gemini-specific parameters.
-
-        Returns:
-            Iterator[ChatCompletionResponse]: An iterator of response chunks.
-
-        Raises:
-            Exception: If the request fails.
-        """
         if self.api_key is None:
             raise ValueError("Gemini API key is required")
 
         try:
-            # Get the model from the request or use a default
-            model = request.model or "gemini-1.5-pro"
+            content, config, gemini_tools = self._prepare_content_and_config(request)
+            api_params = self._prepare_api_params(request, content, config, gemini_tools, **provider_specific_kwargs)
+            response = await client.aio.models.generate_content(**api_params)
+            return self._process_response_common(response, api_params['model'], request.model)
 
-            # Prepare the content and get gemini_tools
-            content, _, gemini_tools = self._prepare_content_and_config(request)
+        except Exception as e:
+            status_code = getattr(e, 'status_code', None)
+            response_body = str(e)
+            if hasattr(e, 'response') and hasattr(e.response, 'text'):
+                response_body = e.response.text
+                status_code = e.response.status_code
+            elif hasattr(e, 'message'):
+                response_body = e.message
 
-            # Prepare config with generation parameters
-            config_params = {}
-            if request.temperature is not None:
-                config_params["temperature"] = request.temperature
-            if request.max_tokens is not None:
-                config_params["max_output_tokens"] = request.max_tokens
-            
-            # Add tools to config if provided
-            if gemini_tools:
-                from google.genai.types import Tool, FunctionDeclaration, GenerateContentConfig
-                tool_declarations = []
-                for func_def in gemini_tools:
-                    tool_declarations.append(
-                        FunctionDeclaration(
-                            name=func_def["name"],
-                            description=func_def.get("description", ""),
-                            parameters=func_def.get("parameters")
-                        )
-                    )
-                config_params["tools"] = [Tool(function_declarations=tool_declarations)]
-            
-            # Create the config object
-            from google.genai import types
-            config = types.GenerateContentConfig(**config_params)
+            mapped_error = map_provider_error("gemini", e, status_code=status_code, response_body=response_body)
+            raise mapped_error
 
-            # Prepare API call parameters
-            api_params = {
-                "model": model,
-                "contents": content,
-                "config": config
-            }
-            
-            # Make the streaming API call using the new client-based approach
-            stream = self.client.models.generate_content_stream(**api_params)
+    async def acomplete(
+        self,
+        request: ChatCompletionRequest,
+        **provider_specific_kwargs
+    ) -> ChatCompletionResponse:
+        """Make an async chat completion request to Gemini."""
+        return await self._acomplete_impl(request, **provider_specific_kwargs)
 
-            # Process the streaming response
-            for chunk in stream:
-                # Check for content filtering in each chunk
+    async def astream_complete(
+        self,
+        request: ChatCompletionRequest,
+        **provider_specific_kwargs
+    ) -> AsyncIterator[ChatCompletionResponse]:
+        """Stream an async chat completion response from Gemini."""
+        client = self._get_client()
+
+        if self.api_key is None:
+            raise ValueError("Gemini API key is required")
+
+        try:
+            content, config, gemini_tools = self._prepare_content_and_config(request)
+            api_params = self._prepare_api_params(request, content, config, gemini_tools, **provider_specific_kwargs)
+
+            model = api_params['model']
+            async for chunk in await client.aio.models.generate_content_stream(**api_params):
                 if chunk.prompt_feedback and chunk.prompt_feedback.block_reason:
-                    # Yield a response indicating blockage, or raise an error
-                    # For now, let's raise an error to make it explicit
                     raise UniInferError(
-                        f"Gemini content generation blocked mid-stream. Reason: {chunk.prompt_feedback.block_reason}. "
+                        f"Gemini content generation blocked. Reason: {chunk.prompt_feedback.block_reason}. "
                         f"Safety ratings: {chunk.prompt_feedback.safety_ratings}"
                     )
 
-                # Ensure parts exist and are not empty before accessing text
-                chunk_text = ""
-                chunk_tool_calls = None
+                content_text = ""
+                tool_calls = None
                 
                 if chunk.parts:
                     try:
-                        chunk_text = chunk.text  # Preferred way
-                    except ValueError:  # Handles cases where .text might raise ValueError
-                        # Fallback to iterating parts if .text fails.
-                        # Concatenate text from all text-bearing parts in the chunk.
+                        content_text = chunk.text
+                    except ValueError:
+                        # Handle chunks that don't have text (e.g. function calls)
                         all_parts_text_list = []
                         for part in chunk.parts:
-                            # Check if the part has a 'text' attribute and if it's not None or empty
                             part_text_content = getattr(part, 'text', None)
-                            if part_text_content:  # This ensures part_text_content is not None and not an empty string
+                            if part_text_content:
                                 all_parts_text_list.append(part_text_content)
                         if all_parts_text_list:
-                            chunk_text = "".join(all_parts_text_list)
-                    
-                    # Check for function calls in chunk parts
+                            content_text = "".join(all_parts_text_list)
+
+                    # Extract function calls if present
                     function_calls = []
                     for part in chunk.parts:
                         if hasattr(part, 'function_call') and part.function_call:
-                            # Convert Gemini function_call to OpenAI tool_calls format
-                            import json
                             function_calls.append({
                                 "id": f"call_{part.function_call.name}",
                                 "type": "function",
@@ -462,40 +420,31 @@ class GeminiProvider(ChatProvider):
                                 }
                             })
                     if function_calls:
-                        chunk_tool_calls = function_calls
+                        tool_calls = function_calls
 
-                if chunk_text or chunk_tool_calls:
-                    # Create a message for this chunk
+                if content_text or tool_calls:
                     message = ChatMessage(
-                        role="assistant",
-                        content=chunk_text if chunk_text else None,
-                        tool_calls=chunk_tool_calls
+                        role="assistant", 
+                        content=content_text if content_text else None,
+                        tool_calls=tool_calls
                     )
-
-                    # Create a response for this chunk
+                    usage = {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0}
                     yield ChatCompletionResponse(
                         message=message,
                         provider='gemini',
                         model=model,
-                        usage={},
+                        usage=usage,
                         raw_response=chunk
                     )
-                elif not (chunk.prompt_feedback and chunk.prompt_feedback.block_reason):
-                    # If no text and not blocked, it might be an empty chunk or end of stream signal
-                    # Depending on Gemini's stream behavior, this might be normal or an issue
-                    # For now, we'll just skip empty, non-blocked chunks
-                    # print(f"DEBUG: Gemini stream chunk has no text and no block reason: {chunk}")
-                    pass
 
         except Exception as e:
-            # Map the error to a standardized format with rich info
-            status_code = None
+            if isinstance(e, UniInferError):
+                raise
+            status_code = getattr(e, 'status_code', None)
             response_body = str(e)
             if hasattr(e, 'response') and hasattr(e.response, 'text'):
                 response_body = e.response.text
                 status_code = e.response.status_code
-            elif hasattr(e, 'status_code'):
-                status_code = e.status_code
             elif hasattr(e, 'message'):
                 response_body = e.message
 

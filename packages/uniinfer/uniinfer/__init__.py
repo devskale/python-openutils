@@ -14,11 +14,11 @@ from .core import (
 from .factory import ProviderFactory
 from .embedding_factory import EmbeddingProviderFactory
 from .providers import (
-    MistralProvider, AnthropicProvider, OpenAIProvider,
+    MistralProvider, AnthropicProvider, OpenAIProvider, OpenAITTSProvider,
     OllamaProvider, OllamaEmbeddingProvider, OpenRouterProvider, ArliAIProvider,
     InternLMProvider, StepFunProvider, SambanovaProvider,
     UpstageProvider, NGCProvider, CloudflareProvider, ChutesProvider,
-    PollinationsProvider, BigmodelProvider, TuAIProvider, TuAIEmbeddingProvider,
+    PollinationsProvider, ZAIProvider, ZAICodeProvider, TUProvider, TuAIEmbeddingProvider,
     TuAITTSProvider, TuAISTTProvider
 )
 from .errors import (
@@ -79,8 +79,9 @@ ProviderFactory.register_provider("ngc", NGCProvider)
 ProviderFactory.register_provider("cloudflare", CloudflareProvider)
 ProviderFactory.register_provider("chutes", ChutesProvider)
 ProviderFactory.register_provider("pollinations", PollinationsProvider)
-ProviderFactory.register_provider("bigmodel", BigmodelProvider)
-ProviderFactory.register_provider("tu", TuAIProvider)
+ProviderFactory.register_provider("zai", ZAIProvider)
+ProviderFactory.register_provider("zai-code", ZAICodeProvider)
+ProviderFactory.register_provider("tu", TUProvider)
 
 # Register embedding providers
 EmbeddingProviderFactory.register_provider("ollama", OllamaEmbeddingProvider)
@@ -125,18 +126,20 @@ __all__ = [
     'EmbeddingResponse',
     'EmbeddingProvider',
     'EmbeddingProviderFactory',
+    'TTSRequest',
+    'TTSResponse',
+    'TTSProvider',
+    'STTRequest',
+    'STTResponse',
+    'STTProvider',
     'MistralProvider',
     'AnthropicProvider',
     'OpenAIProvider',
-    'HuggingFaceProvider',
-    'CohereProvider',
-    'MoonshotProvider',
-    'GroqProvider',
-    'AI21Provider',
-    'GeminiProvider',
+    'OpenAITTSProvider',
     'ChutesProvider',
     'PollinationsProvider',
-    'BigmodelProvider',
+    'ZAIProvider',
+    'ZAICodeProvider',
     'OllamaProvider',
     'OllamaEmbeddingProvider',
     'OpenRouterProvider',
@@ -147,11 +150,10 @@ __all__ = [
     'UpstageProvider',
     'NGCProvider',
     'CloudflareProvider',
-    'ChutesProvider',
-    'PollinationsProvider',
-    'BigmodelProvider',
-    'TuAIProvider',
+    'TUProvider',
     'TuAIEmbeddingProvider',
+    'TuAITTSProvider',
+    'TuAISTTProvider',
     'UniInferError',
     'ProviderError',
     'AuthenticationError',

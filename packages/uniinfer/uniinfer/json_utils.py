@@ -96,7 +96,5 @@ def update_model_accessed(model_name, provider_name, json_file='models.json'):
     try:
         with open(json_path, 'w') as f:
             json.dump(existing_models, f, indent=2)
-        logger.info(
-            f"Model '{model_name}' accessed time and count updated in {json_path}")
     except (PermissionError, OSError) as e:
         logger.error(f"Failed to update model access in {json_path}: {e}")

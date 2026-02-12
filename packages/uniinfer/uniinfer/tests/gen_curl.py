@@ -14,7 +14,7 @@ data_uri = f"data:image/jpeg;base64,{b64_data}"
 
 # Construct curl command
 # Using a shorter prompt to speed it up if possible
-print(f"curl http://localhost:8123/v1/chat/completions \\")
-print(f"  -H \"Content-Type: application/json\" \\")
-print(f"  -H \"Authorization: Bearer test\" \\") # Token doesn't matter much if credgoo is working in proxy
+print("curl http://localhost:8123/v1/chat/completions \\")
+print("  -H \"Content-Type: application/json\" \\")
+print("  -H \"Authorization: Bearer test\" \\") # Token doesn't matter much if credgoo is working in proxy
 print(f"  -d '{{\"model\": \"tu@glm-4.5v-106b\", \"messages\": [{{\"role\": \"user\", \"content\": [{{\"type\": \"text\", \"text\": \"Describe this\"}}, {{\"type\": \"image_url\", \"image_url\": {{\"url\": \"{data_uri}\"}}}}]}}], \"stream\": true}}'")

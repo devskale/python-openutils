@@ -2,7 +2,7 @@
 Provider strategies for UniInfer.
 """
 import time
-from typing import List, Dict, Any, Iterator, Optional, Tuple
+from typing import List, Dict, Any, Iterator, Tuple
 
 from .core import ChatCompletionRequest, ChatCompletionResponse
 from .factory import ProviderFactory

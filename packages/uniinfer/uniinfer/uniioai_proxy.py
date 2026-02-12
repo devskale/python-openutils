@@ -1,23 +1,37 @@
+from logging.handlers import RotatingFileHandler
+import logging
+from typing import Any, AsyncGenerator, Optional, List, Dict
+from collections.abc import Iterable
+import re
+import subprocess
+import uuid
+import json
+import time
+import sys
+import asyncio
+import urllib.parse
 import requests
 import base64
+import httpx
 from fastapi.security.http import HTTPAuthorizationCredentials
 from fastapi.security import HTTPBearer  # Import HTTPBearer
 from starlette.concurrency import iterate_in_threadpool, run_in_threadpool
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import StreamingResponse, FileResponse
-from fastapi import FastAPI, HTTPException, Request, Depends, File, Form, UploadFile
+from fastapi.responses import StreamingResponse, FileResponse, JSONResponse, Response
+from fastapi import FastAPI, HTTPException, Request, Depends, File, Form, UploadFile, status
+from fastapi.encoders import jsonable_encoder
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.util import get_remote_address
+from slowapi.errors import RateLimitExceeded
+from slowapi.middleware import SlowAPIMiddleware
 import os
-import sys
-import time
-import json
-import uuid
-import subprocess
-import re
-from typing import List, Optional, Dict, Any, AsyncGenerator, Union, Tuple
-import logging
-from logging.handlers import RotatingFileHandler
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
+
 
 # --- Setup Logging ---
 # Configure root logger to capture logs from all modules (including uniinfer)
@@ -64,8 +78,9 @@ if parent_dir not in sys.path:
     sys.path.insert(0, parent_dir)
 
 try:
-    from uniinfer.uniioai import stream_completion, get_completion, get_provider_api_key, list_providers, list_models_for_provider, get_embeddings, list_embedding_providers, list_embedding_models_for_provider
+    from uniinfer.uniioai import stream_completion, astream_completion, get_completion, aget_completion, get_provider_api_key, list_providers, list_models_for_provider, get_embeddings, list_embedding_providers, list_embedding_models_for_provider, format_chunk_to_openai
     from uniinfer.errors import UniInferError, AuthenticationError, ProviderError, RateLimitError
+    from uniinfer.auth import validate_proxy_token, get_optional_proxy_token, verify_provider_access
 except ImportError as e:
     logger.error(f"Error importing from uniinfer.uniioai: {e}")
     logger.error(f"Python path: {sys.path[:3]}")
@@ -78,6 +93,28 @@ app = FastAPI(
     version="0.1.0",
 )
 
+# --- Rate Limiting Setup ---
+# Enable headers to let clients know their limits
+limiter = Limiter(key_func=get_remote_address, headers_enabled=True)
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+app.add_middleware(SlowAPIMiddleware)
+
+# --- Rate Limit Helpers ---
+
+
+def get_chat_rate_limit():
+    return os.getenv("UNIINFER_RATE_LIMIT_CHAT", "100/minute")
+
+
+def get_embeddings_rate_limit():
+    return os.getenv("UNIINFER_RATE_LIMIT_EMBEDDINGS", "200/minute")
+
+
+def get_media_rate_limit():
+    return os.getenv("UNIINFER_RATE_LIMIT_MEDIA", "50/minute")
+
+
 # --- Add CORS Middleware ---
 # Allow requests from any origin for the web demo
 app.add_middleware(
@@ -89,6 +126,22 @@ app.add_middleware(
 )
 
 # --- Middleware for Request Logging and ID ---
+
+MAX_REQUEST_SIZE = 10 * 1024 * 1024
+
+@app.middleware("http")
+async def limit_request_size(request: Request, call_next):
+    content_length = request.headers.get("content-length")
+    # print(f"DEBUG: Middleware Content-Length: {content_length}")
+    if content_length:
+        content_length = int(content_length)
+        if content_length > MAX_REQUEST_SIZE:
+            # print("DEBUG: Request too large")
+            return JSONResponse(
+                status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+                content={"detail": "Request too large"}
+            )
+    return await call_next(request)
 
 
 @app.middleware("http")
@@ -123,29 +176,12 @@ if os.path.isdir(webdemo_dir):
 # Define the security scheme
 security = HTTPBearer()
 
-# --- Security Dependencies ---
-
-
-async def get_token(credentials: HTTPAuthorizationCredentials = Depends(security)) -> str:
-    """Returns the bearer token string from the Authorization header."""
-    return credentials.credentials
-
-
-async def get_optional_token(request: Request) -> Optional[str]:
-    """
-    Optionally returns the bearer token string if provided, otherwise None.
-    Does not raise an exception if authentication is missing.
-    """
-    try:
-        credentials = await security(request)
-        return credentials.credentials if credentials else None
-    except Exception:
-        return None
+# --- Security Dependencies moved to auth.py ---
 
 
 # --- Model Parsing Helper ---
 
-def parse_provider_model(provider_model: str, allowed_providers: Optional[List[str]] = None, task_name: Optional[str] = None) -> Tuple[str, str]:
+def parse_provider_model(provider_model: str, allowed_providers: list[str] | None = None, task_name: str | None = None) -> tuple[str, str]:
     """
     Parses 'provider@model' string and optionally validates the provider.
     Raises HTTPException (400) if format is invalid or provider is not allowed.
@@ -182,39 +218,60 @@ def parse_provider_model(provider_model: str, allowed_providers: Optional[List[s
 
 class ChatMessageInput(BaseModel):
     role: str
-    content: Union[str, List[Dict[str, Any]], None] = None
-    tool_calls: Optional[List[Dict]] = None
-    tool_call_id: Optional[str] = None
+    content: str | list[dict[str, Any]] | None = None
+    tool_calls: list[dict] | None = None
+    tool_call_id: str | None = None
 
 
 class ChatCompletionRequestInput(BaseModel):
     model: str  # Expected format: "provider@modelname"
-    messages: List[ChatMessageInput]
-    temperature: Optional[float] = 0.7
-    max_tokens: Optional[int] = 500
-    stream: Optional[bool] = False
-    base_url: Optional[str] = None  # Add base_url field
-    tools: Optional[List[Dict]] = None
-    tool_choice: Optional[Any] = None
+    messages: list[ChatMessageInput]
+    temperature: float | None = 0.7
+    max_tokens: int | None = 500
+    stream: bool | None = False
+    base_url: str | None = None  # Add base_url field
+    tools: list[dict] | None = None
+    tool_choice: Any | None = None
     # Add other common OpenAI parameters if needed, e.g., top_p, frequency_penalty
+
+    @field_validator('messages')
+    @classmethod
+    def validate_messages_count(cls, v):
+        # print(f"DEBUG: Validating messages count: {len(v)}")
+        if len(v) > 500:
+            raise ValueError('Too many messages. Maximum allowed is 500.')
+        return v
+
+    @field_validator('model')
+    @classmethod
+    def validate_model_format(cls, v):
+        if '@' not in v:
+             # Allow system models or special cases if needed, but strict for now based on previous code
+             # Actually existing code allows "provider@model", let's check parse_provider_model usage
+             pass # The endpoint calls parse_provider_model which handles the check.
+             # We can enforce basic format here or leave it to endpoint logic.
+             # Let's enforce basic format to fail fast.
+             if not re.match(r'^[^@]+@[^@]+$', v):
+                 raise ValueError("Invalid model format. Expected 'provider@modelname'.")
+        return v
 
 
 class ChatMessageOutput(BaseModel):
     role: str
-    content: Optional[str] = None
-    tool_calls: Optional[List[Dict]] = None
+    content: str | None = None
+    tool_calls: list[dict] | None = None
 
 
 class ChoiceDelta(BaseModel):
-    role: Optional[str] = None
-    content: Optional[str] = None
-    tool_calls: Optional[List[Dict]] = None
+    role: str | None = None
+    content: str | None = None
+    tool_calls: list[dict] | None = None
 
 
 class StreamingChoice(BaseModel):
     index: int = 0
     delta: ChoiceDelta
-    finish_reason: Optional[str] = None
+    finish_reason: str | None = None
 
 
 class StreamingChatCompletionChunk(BaseModel):
@@ -222,7 +279,7 @@ class StreamingChatCompletionChunk(BaseModel):
     object: str = "chat.completion.chunk"
     created: int = Field(default_factory=lambda: int(time.time()))
     model: str
-    choices: List[StreamingChoice]
+    choices: list[StreamingChoice]
 
 
 class NonStreamingChoice(BaseModel):
@@ -236,9 +293,9 @@ class NonStreamingChatCompletion(BaseModel):
     object: str = "chat.completion"
     created: int = Field(default_factory=lambda: int(time.time()))
     model: str
-    choices: List[NonStreamingChoice]
+    choices: list[NonStreamingChoice]
     # uniinfer doesn't provide usage yet
-    usage: Optional[Dict[str, int]] = None
+    usage: dict[str, int] | None = None
 
 
 # --- Models for /v1/models endpoint ---
@@ -252,34 +309,34 @@ class Model(BaseModel):
 
 class ModelList(BaseModel):
     object: str = "list"
-    data: List[Model]
+    data: list[Model]
 
 
 # --- Add ProviderList model for OpenAI‐style list response ---
 class ProviderList(BaseModel):
     object: str = "list"
-    data: List[str]
+    data: list[str]
 
 
 # --- Models for Embedding Endpoint ---
 
 class EmbeddingRequest(BaseModel):
     model: str  # Expected format: "provider@modelname"
-    input: List[str]  # List of texts to embed
-    user: Optional[str] = None  # Optional user identifier
+    input: list[str]  # List of texts to embed
+    user: str | None = None  # Optional user identifier
 
 
 class EmbeddingData(BaseModel):
     object: str = "embedding"
-    embedding: List[float]
+    embedding: list[float]
     index: int
 
 
 class EmbeddingResponse(BaseModel):
     object: str = "list"
-    data: List[EmbeddingData]
+    data: list[EmbeddingData]
     model: str
-    usage: Optional[Dict[str, int]] = None
+    usage: dict[str, int] | None = None
 
 
 # --- Predefined Models ---
@@ -329,7 +386,8 @@ PREDEFINED_MODELS = [
     "internlm@internlm3-latest",
     "stepfun@step-1-flash",
     "upstage@solar-mini-250401",
-    "bigmodel@glm-4-flash",
+    "zai@glm-4-flash",
+    "zai-code@glm-4.5",
     "ngc@google/gemma-3-27b-it",
     "cohere@command-r",
     "moonshot@kimi-latest",
@@ -343,7 +401,7 @@ PREDEFINED_MODELS = [
 # --- Helper Functions ---
 
 # Update signature: remove api_bearer_token, add provider_api_key
-async def stream_response_generator(messages: List[Dict], provider_model: str, temp: float, max_tok: int, provider_api_key: Optional[str], base_url: Optional[str], tools: Optional[List[Dict]] = None, tool_choice: Optional[Any] = None) -> AsyncGenerator[str, None]:
+async def stream_response_generator(messages: list[dict], provider_model: str, temp: float, max_tok: int, provider_api_key: str | None, base_url: str | None, tools: list[dict] | None = None, tool_choice: Any | None = None) -> AsyncGenerator[str, None]:
     """Generates OpenAI-compatible SSE chunks from uniioai.stream_completion using a thread pool."""
     completion_id = f"chatcmpl-{uuid.uuid4()}"
     created_time = int(time.time())
@@ -463,6 +521,179 @@ async def stream_response_generator(messages: List[Dict], provider_model: str, t
     yield "data: [DONE]\n\n"
 
 
+# --- Async Stream Response Generator ---
+async def astream_response_generator(messages: list[dict], provider_model: str, temp: float, max_tok: int, provider_api_key: str | None, base_url: str | None, tools: list[dict] | None = None, tool_choice: Any | None = None, request_id: str | None = None) -> AsyncGenerator[str, None]:
+    """Generates OpenAI-compatible SSE chunks from uniioai.astream_completion using async."""
+    completion_id = f"chatcmpl-{uuid.uuid4()}"
+    created_time = int(time.time())
+    model_name = provider_model
+
+    stream_label = f"[{request_id}] " if request_id else ""
+    logger.info(f"{stream_label}Async stream start for {model_name}")
+    chunk_count = 0
+    heartbeat_count = 0
+    last_yield_time = time.monotonic()
+    idle_warning_threshold = 10.0
+    heartbeat_interval = float(os.getenv("UNIINFER_STREAM_HEARTBEAT", "5"))
+    idle_timeout = float(os.getenv("UNIINFER_STREAM_IDLE_TIMEOUT", "30"))
+
+    first_chunk_data = StreamingChatCompletionChunk(
+        id=completion_id,
+        created=created_time,
+        model=model_name,
+        choices=[StreamingChoice(delta=ChoiceDelta(role="assistant"))]
+    )
+    yield f"data: {first_chunk_data.model_dump_json()}\n\n"
+
+    seen_tool_calls = False
+    sent_finish_reason = False
+
+    try:
+        async_iter = astream_completion(
+            messages, provider_model, temp, max_tok, provider_api_key=provider_api_key, base_url=base_url, tools=tools, tool_choice=tool_choice
+        ).__aiter__()
+        while True:
+            try:
+                chunk = await asyncio.wait_for(async_iter.__anext__(), timeout=heartbeat_interval)
+            except asyncio.TimeoutError:
+                now = time.monotonic()
+                idle_for = now - last_yield_time
+                if idle_for >= idle_timeout:
+                    logger.warning(
+                        f"{stream_label}Async stream idle timeout after {idle_for:.2f}s for {model_name}")
+                    error_chunk = {
+                        "error": {
+                            "message": f"Stream idle timeout after {idle_for:.2f}s",
+                            "type": "stream_timeout",
+                            "code": None
+                        }
+                    }
+                    yield f"data: {json.dumps(error_chunk)}\n\n"
+                    sent_finish_reason = True
+                    break
+
+                heartbeat_count += 1
+                logger.debug(
+                    f"{stream_label}Async stream heartbeat {heartbeat_count} for {model_name} (idle {idle_for:.2f}s)")
+                yield ": keep-alive\n\n"
+                continue
+            except StopAsyncIteration:
+                break
+
+            if isinstance(chunk, dict):
+                json_data = json.dumps(chunk)
+                logger.debug(f"Yielding async chunk (dict): {json_data}")
+                yield f"data: {json_data}\n\n"
+                chunk_count += 1
+                now = time.monotonic()
+                if now - last_yield_time > idle_warning_threshold:
+                    logger.warning(
+                        f"{stream_label}Async stream idle gap {now - last_yield_time:.2f}s for {model_name}")
+                last_yield_time = now
+                
+                choice = chunk.get('choices', [{}])[0]
+                if choice.get('finish_reason'):
+                    sent_finish_reason = True
+                delta = choice.get('delta', {})
+                if delta.get('tool_calls'):
+                    seen_tool_calls = True
+            else:
+                chunk_finish_reason = getattr(chunk, 'finish_reason', None)
+
+                if chunk.message:
+                    choice_kwargs = {}
+                    if chunk.message.content:
+                        choice_kwargs['content'] = chunk.message.content
+                    if chunk.message.tool_calls:
+                        choice_kwargs['tool_calls'] = chunk.message.tool_calls
+                        seen_tool_calls = True
+
+                    choice_kwargs_with_delta = {}
+                    if choice_kwargs:
+                        choice_kwargs_with_delta['delta'] = ChoiceDelta(**choice_kwargs)
+                    else:
+                        choice_kwargs_with_delta['delta'] = ChoiceDelta()
+
+                    if chunk_finish_reason:
+                        choice_kwargs_with_delta['finish_reason'] = chunk_finish_reason
+                        sent_finish_reason = True
+
+                    if choice_kwargs or chunk_finish_reason:
+                        chunk_data = StreamingChatCompletionChunk(
+                            id=completion_id,
+                            created=created_time,
+                            model=model_name,
+                            choices=[StreamingChoice(**choice_kwargs_with_delta)]
+                        )
+                        json_data = chunk_data.model_dump_json()
+                        logger.debug(f"Yielding async chunk: {json_data}")
+                        yield f"data: {json_data}\n\n"
+                        chunk_count += 1
+                        now = time.monotonic()
+                        if now - last_yield_time > idle_warning_threshold:
+                            logger.warning(
+                                f"{stream_label}Async stream idle gap {now - last_yield_time:.2f}s for {model_name}")
+                        last_yield_time = now
+
+        if not sent_finish_reason:
+            finish_reason = "tool_calls" if seen_tool_calls else "stop"
+            logger.info(
+                f"Async stream finished. Fallback finish_reason: {finish_reason}")
+
+            final_chunk_data = StreamingChatCompletionChunk(
+                id=completion_id,
+                created=created_time,
+                model=model_name,
+                choices=[StreamingChoice(
+                    delta=ChoiceDelta(), finish_reason=finish_reason)]
+            )
+            yield f"data: {final_chunk_data.model_dump_json()}\n\n"
+            chunk_count += 1
+            sent_finish_reason = True
+
+    except NameError as e:
+        logger.error(f"NameError during async streaming: {e}")
+        error_chunk = {
+            "error": {
+                "message": f"Stream internal error: {e}",
+                "type": "NameError",
+                "code": None
+            }
+        }
+        yield f"data: {json.dumps(error_chunk)}\n\n"
+    except (UniInferError, ValueError) as e:
+        logger.error(f"Error during async streaming: {e}")
+        status_code = getattr(e, 'status_code', None)
+        message = str(e)
+        if isinstance(e, ProviderError) and e.response_body:
+            message = f"{message} | Provider Response: {e.response_body}"
+
+        error_chunk = {
+            "error": {
+                "message": message,
+                "type": type(e).__name__,
+                "code": status_code
+            }
+        }
+        yield f"data: {json.dumps(error_chunk)}\n\n"
+    except Exception as e:
+        logger.exception(f"Unexpected error during async streaming: {e}")
+        error_chunk = {
+            "error": {
+                "message": f"Unexpected server error: {type(e).__name__}",
+                "type": "internal_server_error",
+                "code": None
+            }
+        }
+        yield f"data: {json.dumps(error_chunk)}\n\n"
+
+    logger.info(
+        f"{stream_label}Async stream end for {model_name} (chunks={chunk_count}, heartbeats={heartbeat_count}, finish_sent={sent_finish_reason})")
+    logger.info(f"{stream_label}Async stream sending [DONE] for {model_name}")
+
+    yield "data: [DONE]\n\n"
+
+
 # --- API Endpoints ---
 
 # --- Add Endpoint to Serve Web Demo HTML ---
@@ -526,7 +757,7 @@ async def update_models():
 
 # --- Update /v1/providers to return ProviderList ---
 @app.get("/v1/providers", response_model=ProviderList)
-async def get_providers(api_bearer_token: str = Depends(get_token)):
+async def get_providers(api_bearer_token: str = Depends(validate_proxy_token)):
     """
     OpenAI‐style endpoint to list available providers.
     """
@@ -538,8 +769,8 @@ async def get_providers(api_bearer_token: str = Depends(get_token)):
 
 
 @app.post("/v1/chat/completions")
-# Add the security dependency
-async def chat_completions(request_input: ChatCompletionRequestInput, api_bearer_token: str = Depends(get_token)):
+@limiter.limit(get_chat_rate_limit)
+async def chat_completions(request: Request, request_input: ChatCompletionRequestInput, api_bearer_token: str | None = Depends(get_optional_proxy_token)):
     """
     OpenAI-compatible chat completions endpoint.
     Uses the 'model' field in the format 'provider@modelname'.
@@ -570,19 +801,14 @@ async def chat_completions(request_input: ChatCompletionRequestInput, api_bearer
                 "extra_params", {}).get("base_url")
         logger.debug(f"DEBUG: Using base_url: {base_url}")
 
-        try:
-            provider_api_key = get_provider_api_key(
-                api_bearer_token, provider_name)
-        except (ValueError, AuthenticationError) as e:
-            # Handle errors during key retrieval specifically
-            raise HTTPException(
-                status_code=401, detail=f"API Key Retrieval Failed: {e}")
+        provider_api_key = verify_provider_access(
+            api_bearer_token, provider_name)
         # --- End API Key Retrieval & Base URL Logic ---
 
         if request_input.stream:
-            # Use the async generator with StreamingResponse
+            # Use async generator with StreamingResponse
             return StreamingResponse(
-                stream_response_generator(
+                astream_response_generator(
                     messages=messages_dict,
                     provider_model=provider_model,
                     temp=request_input.temperature,
@@ -590,14 +816,19 @@ async def chat_completions(request_input: ChatCompletionRequestInput, api_bearer
                     provider_api_key=provider_api_key,  # Pass retrieved key
                     base_url=base_url,  # Pass potentially modified base_url
                     tools=request_input.tools,
-                    tool_choice=request_input.tool_choice
+                    tool_choice=request_input.tool_choice,
+                    request_id=getattr(request.state, "request_id", None)
                 ),
-                media_type="text/event-stream"
+                media_type="text/event-stream",
+                headers={
+                    "Cache-Control": "no-cache",
+                    "X-Accel-Buffering": "no",
+                    "Connection": "keep-alive",
+                },
             )
         else:
-            # Wrap synchronous get_completion in run_in_threadpool
-            full_content = await run_in_threadpool(
-                get_completion,  # The sync function
+            # Use async aget_completion for non-streaming requests
+            full_content = await aget_completion(
                 messages=messages_dict,
                 provider_model_string=provider_model,
                 temperature=request_input.temperature,
@@ -620,7 +851,7 @@ async def chat_completions(request_input: ChatCompletionRequestInput, api_bearer
                 # It's a string
                 content = full_content
 
-            # Format the response according to OpenAI spec
+            # Format response according to OpenAI spec
             finish_reason = "tool_calls" if tool_calls else "stop"
             response_data = NonStreamingChatCompletion(
                 model=provider_model,
@@ -633,7 +864,7 @@ async def chat_completions(request_input: ChatCompletionRequestInput, api_bearer
                 ]
                 # Usage data is not available from uniioai currently
             )
-            return response_data
+            return JSONResponse(content=jsonable_encoder(response_data))
 
     # Catches ValueErrors from uniioai completion functions (e.g., model format)
     except ValueError as e:
@@ -651,6 +882,8 @@ async def chat_completions(request_input: ChatCompletionRequestInput, api_bearer
         if e.response_body:
             detail = f"{detail} | Response: {e.response_body}"
         raise HTTPException(status_code=status_code, detail=detail)
+    except HTTPException:
+        raise
     except ProviderError as e:
         status_code = getattr(e, 'status_code', 500) or 500
         detail = f"Provider Error ({provider_name}): {e}"
@@ -659,6 +892,8 @@ async def chat_completions(request_input: ChatCompletionRequestInput, api_bearer
         raise HTTPException(status_code=status_code, detail=detail)
     except UniInferError as e:  # Catches general uniinfer errors
         raise HTTPException(status_code=500, detail=f"UniInfer Error: {e}")
+    except HTTPException:
+        raise
     except Exception as e:
         # Catch-all for unexpected errors
         logger.exception(
@@ -669,7 +904,8 @@ async def chat_completions(request_input: ChatCompletionRequestInput, api_bearer
 
 # --- Add Embedding Endpoint ---
 @app.post("/v1/embeddings", response_model=EmbeddingResponse)
-async def create_embeddings(request_input: EmbeddingRequest, api_bearer_token: Optional[str] = Depends(get_optional_token)):
+@limiter.limit(get_embeddings_rate_limit)
+async def create_embeddings(request: Request, request_input: EmbeddingRequest, api_bearer_token: str | None = Depends(get_optional_proxy_token)):
     """
     OpenAI-compatible embeddings endpoint.
     Uses the 'model' field in the format 'provider@modelname'.
@@ -690,15 +926,8 @@ async def create_embeddings(request_input: EmbeddingRequest, api_bearer_token: O
                 "extra_params", {}).get("base_url")
         else:
             # For other providers, require authentication
-            if not api_bearer_token:
-                raise HTTPException(
-                    status_code=401, detail="Authentication required for this provider")
-            try:
-                provider_api_key = get_provider_api_key(
-                    api_bearer_token, provider_name)
-            except (ValueError, AuthenticationError) as e:
-                raise HTTPException(
-                    status_code=401, detail=f"API Key Retrieval Failed: {e}")
+            provider_api_key = verify_provider_access(
+                api_bearer_token, provider_name)
             base_url = None
 
         # Get embeddings using the synchronous function in a thread pool
@@ -747,6 +976,8 @@ async def create_embeddings(request_input: EmbeddingRequest, api_bearer_token: O
         raise HTTPException(status_code=status_code, detail=detail)
     except UniInferError as e:
         raise HTTPException(status_code=500, detail=f"UniInfer Error: {e}")
+    except HTTPException:
+        raise
     except Exception as e:
         logger.exception(
             f"Unexpected error in /v1/embeddings: {type(e).__name__}: {e}")
@@ -756,7 +987,7 @@ async def create_embeddings(request_input: EmbeddingRequest, api_bearer_token: O
 
 # --- Change dynamic list models to return ModelList ---
 @app.get("/v1/models/{provider_name}", response_model=ModelList)
-async def dynamic_list_models(provider_name: str, api_bearer_token: str = Depends(get_token)):
+async def dynamic_list_models(provider_name: str, api_bearer_token: str = Depends(validate_proxy_token)):
     """
     List available models for a specific provider, formatted OpenAI‐style.
     """
@@ -788,7 +1019,7 @@ async def get_embedding_providers(request: Request):
 
 # --- Add Embedding Models Endpoint ---
 @app.get("/v1/embedding/models/{provider_name}", response_model=ModelList)
-async def dynamic_list_embedding_models(provider_name: str, api_bearer_token: Optional[str] = Depends(get_optional_token)):
+async def dynamic_list_embedding_models(provider_name: str, api_bearer_token: Optional[str] = Depends(get_optional_proxy_token)):
     """
     List available embedding models for a specific provider, formatted OpenAI‐style.
     Authentication optional for Ollama.
@@ -863,6 +1094,56 @@ if __name__ == "__main__":
 # --- Models for Image Generation Endpoint ---
 
 
+# --- Image Models Endpoint ---
+@app.get("/v1/image/models/{provider_name}", response_model=ModelList)
+async def list_image_models(provider_name: str, api_bearer_token: Optional[str] = Depends(get_optional_proxy_token)):
+    """
+    List available image generation models for a specific provider.
+    Dynamically fetches from Pollinations API or returns known TU models.
+    """
+    try:
+        models = []
+        
+        if provider_name == "pollinations":
+            # Fetch models dynamically from Pollinations API
+            try:
+                async with httpx.AsyncClient() as client:
+                    resp = await client.get("https://gen.pollinations.ai/image/models", timeout=10)
+                    resp.raise_for_status()
+                    pollinations_models = resp.json()
+                    
+                    # Filter to only image output models (exclude video models)
+                    for model in pollinations_models:
+                        if "image" in model.get("output_modalities", []):
+                            models.append(model["name"])
+                    
+                    logger.info(f"Fetched {len(models)} image models from Pollinations")
+            except Exception as e:
+                logger.error(f"Failed to fetch Pollinations models: {e}, using fallback list")
+                # Fallback to known models
+                models = ["turbo", "flux", "kontext", "nanobanana", "gptimage", "zimage", "klein"]
+        
+        elif provider_name == "tu":
+            # TU/Aqueduct models - these are known models
+            # You can extend this list based on what's available in your Aqueduct instance
+            models = ["flux-schnell", "flux-dev", "dall-e-3", "stable-diffusion-xl"]
+        
+        else:
+            raise HTTPException(
+                status_code=400, 
+                detail=f"Image generation not supported for provider '{provider_name}'. Supported providers: pollinations, tu"
+            )
+        
+        model_objs = [Model(id=m) for m in models]
+        return ModelList(data=model_objs)
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.exception(f"Error listing image models for {provider_name}: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to list image models: {str(e)}")
+
+
 class ImageGenerationRequest(BaseModel):
     model: str
     prompt: str
@@ -882,19 +1163,22 @@ class ImageGenerationResponse(BaseModel):
     model: str
 
 
-@app.post("/v1/images/generations", response_model=ImageGenerationResponse)
-async def generate_images(request_input: ImageGenerationRequest, api_bearer_token: Optional[str] = Depends(get_optional_token)):
+@app.post("/v1/images/generations")
+@limiter.limit(get_media_rate_limit)
+async def generate_images(request: Request, request_input: ImageGenerationRequest, api_bearer_token: Optional[str] = Depends(get_optional_proxy_token)):
     """
     OpenAI-compatible image generations endpoint.
-    Accepts provider@model naming and generates images via Pollinations image API.
+    Accepts provider@model naming and generates images via Pollinations or TU providers.
     """
-    provider_model = request_input.model
-    prompt = request_input.prompt
-    n = request_input.n or 1
-    size = request_input.size or "512x512"
-    seed = request_input.seed
-
     try:
+        provider_model = request_input.model
+        prompt = request_input.prompt
+        n = request_input.n or 1
+        size = request_input.size or "512x512"
+        seed = request_input.seed
+
+        logger.info(f"Image generation request: provider_model={provider_model}, prompt={prompt[:50]}..., n={n}, size={size}")
+
         provider_name, model_name = parse_provider_model(
             provider_model, allowed_providers=['pollinations', 'tu'], task_name="images")
 
@@ -902,7 +1186,8 @@ async def generate_images(request_input: ImageGenerationRequest, api_bearer_toke
         if api_bearer_token:
             try:
                 api_key = get_provider_api_key(api_bearer_token, provider_name)
-            except (ValueError, AuthenticationError):
+            except (ValueError, AuthenticationError) as e:
+                logger.warning(f"Failed to get provider API key: {e}")
                 api_key = None
 
         width, height = 512, 512
@@ -911,158 +1196,173 @@ async def generate_images(request_input: ImageGenerationRequest, api_bearer_toke
                 w_str, h_str = size.split('x', 1)
                 width = int(w_str)
                 height = int(h_str)
-        except Exception:
+        except Exception as e:
+            logger.warning(f"Failed to parse size '{size}', using default 512x512: {e}")
             width, height = 512, 512
 
         data_items: List[ImageData] = []
 
-        # TU provider (Aqueduct) - uses OpenAI-compatible API
-        if provider_name == 'tu':
-            # Fallback to env var if no key provided in request
-            if not api_key:
-                api_key = os.environ.get("TU_API_KEY")
+        try:
+            async with httpx.AsyncClient() as client:
+                # TU provider (Aqueduct) - uses OpenAI-compatible API
+                if provider_name == 'tu':
+                    # Fallback to env var if no key provided in request
+                    if not api_key:
+                        api_key = os.environ.get("TU_API_KEY")
 
-            if not api_key:
-                raise HTTPException(
-                    status_code=401, detail="API key required for TU provider")
+                    if not api_key:
+                        raise HTTPException(
+                            status_code=401, detail="API key required for TU provider")
 
-            tu_base_url = "https://aqueduct.ai.datalab.tuwien.ac.at/v1"
-            tu_endpoint = f"{tu_base_url}/images/generations"
+                    tu_base_url = "https://aqueduct.ai.datalab.tuwien.ac.at/v1"
+                    tu_endpoint = f"{tu_base_url}/images/generations"
 
-            headers = {
-                "Content-Type": "application/json",
-                "Authorization": f"Bearer {api_key}"
-            }
+                    headers = {
+                        "Content-Type": "application/json",
+                        "Authorization": f"Bearer {api_key}"
+                    }
 
-            payload = {
-                "model": model_name,
-                "prompt": prompt,
-                "n": n,
-                "size": size
-            }
+                    payload = {
+                        "model": model_name,
+                        "prompt": prompt,
+                        "n": n,
+                        "size": size
+                    }
 
-            try:
-                resp = requests.post(
-                    tu_endpoint, headers=headers, json=payload, timeout=120)
-                resp.raise_for_status()
-                tu_data = resp.json()
+                    logger.info(f"Sending request to TU endpoint: {tu_endpoint}")
 
-                # Process TU response (OpenAI-compatible format)
-                for item in tu_data.get("data", []):
-                    # TU may return b64_json or url
-                    b64_json = item.get("b64_json")
-                    url = item.get("url")
-
-                    if b64_json:
-                        data_items.append(
-                            ImageData(b64_json=b64_json, url=url))
-                    elif url:
-                        # If only URL is provided, fetch and encode
-                        try:
-                            img_resp = requests.get(url, timeout=60)
-                            img_resp.raise_for_status()
-                            b64 = base64.b64encode(
-                                img_resp.content).decode('utf-8')
-                            data_items.append(ImageData(b64_json=b64, url=url))
-                        except requests.exceptions.RequestException as e:
-                            raise HTTPException(
-                                status_code=502, detail=f"Failed to fetch image from TU URL: {e}")
-
-            except requests.exceptions.HTTPError as e:
-                raise HTTPException(status_code=e.response.status_code if e.response else 500,
-                                    detail=f"TU API error: {e.response.text if e.response else str(e)}")
-            except requests.exceptions.RequestException as e:
-                raise HTTPException(
-                    status_code=502, detail=f"TU API request failed: {str(e)}")
-
-        # Pollinations provider - existing logic
-        else:
-            # Enforce known image models; default to turbo when unknown
-            allowed_models = {"turbo", "flux", "gptimage"}
-            if model_name not in allowed_models:
-                model_name = "turbo"
-
-            encoded_prompt = requests.utils.quote(prompt)
-            base_url = "https://image.pollinations.ai/prompt"
-
-            for i in range(n):
-                this_seed = seed if seed is not None else int(time.time()) + i
-                url_primary = f"{base_url}/{encoded_prompt}?model={model_name}&width={width}&height={height}&seed={this_seed}"
-                url_fallback = f"{base_url}/{encoded_prompt}?width={width}&height={height}&seed={this_seed}"
-                headers = {"Accept": "image/jpeg", "User-Agent": "UniIOAI/0.1"}
-                if api_key:
-                    headers["Authorization"] = f"Bearer {api_key}"
-                used_url = url_primary
-                ok = False
-                try:
-                    resp = requests.get(
-                        url_primary, headers=headers, timeout=60)
-                    if resp.status_code == 200:
-                        ok = True
-                    else:
-                        used_url = url_fallback
-                        resp_fb = requests.get(
-                            url_fallback, headers=headers, timeout=60)
-                        resp = resp_fb
-                        if resp.status_code == 200:
-                            ok = True
-                except requests.exceptions.RequestException:
-                    used_url = url_fallback
                     try:
-                        resp = requests.get(
-                            url_fallback, headers=headers, timeout=60)
-                        if resp.status_code == 200:
-                            ok = True
-                    except requests.exceptions.RequestException:
+                        resp = await client.post(
+                            tu_endpoint, headers=headers, json=payload, timeout=120)
+                        resp.raise_for_status()
+                        tu_data = resp.json()
+
+                        # Process TU response (OpenAI-compatible format)
+                        for item in tu_data.get("data", []):
+                            # TU may return b64_json or url
+                            b64_json = item.get("b64_json")
+                            url = item.get("url")
+
+                            if b64_json:
+                                data_items.append(
+                                    ImageData(b64_json=b64_json, url=url))
+                            elif url:
+                                # If only URL is provided, fetch and encode
+                                try:
+                                    img_resp = await client.get(url, timeout=60)
+                                    img_resp.raise_for_status()
+                                    b64 = base64.b64encode(
+                                        img_resp.content).decode('utf-8')
+                                    data_items.append(
+                                        ImageData(b64_json=b64, url=url))
+                                except httpx.HTTPError as e:
+                                    logger.error(f"Failed to fetch image from TU URL: {e}")
+                                    raise HTTPException(
+                                        status_code=502, detail=f"Failed to fetch image from TU URL: {e}")
+
+                    except httpx.HTTPStatusError as e:
+                        error_detail = f"TU API error: {e.response.text if e.response else str(e)}"
+                        logger.error(error_detail)
+                        raise HTTPException(status_code=e.response.status_code if e.response else 500,
+                                            detail=error_detail)
+                    except httpx.RequestError as e:
+                        error_detail = f"TU API request failed: {str(e)}"
+                        logger.error(error_detail)
+                        raise HTTPException(
+                            status_code=502, detail=error_detail)
+
+                # Pollinations provider - existing logic
+                else:
+                    # Supported Pollinations models (as of 2026)
+                    # See: https://gen.pollinations.ai/image/models
+                    allowed_models = {
+                        "turbo", "flux", "kontext", "nanobanana", "nanobanana-pro",
+                        "seedream", "seedream-pro", "gptimage", "gptimage-large",
+                        "zimage", "klein", "klein-large"
+                    }
+                    if model_name not in allowed_models:
+                        logger.warning(f"Unknown Pollinations model '{model_name}', defaulting to 'turbo'")
+                        model_name = "turbo"
+
+                    encoded_prompt = urllib.parse.quote(prompt)
+                    # Updated to use the current Pollinations API endpoint
+                    base_url = "https://gen.pollinations.ai/image"
+
+                    for i in range(n):
+                        this_seed = seed if seed is not None else int(time.time()) + i
+                        url_primary = f"{base_url}/{encoded_prompt}?model={model_name}&width={width}&height={height}&seed={this_seed}"
+                        url_fallback = f"{base_url}/{encoded_prompt}?width={width}&height={height}&seed={this_seed}"
+                        headers = {"Accept": "image/jpeg", "User-Agent": "UniIOAI/0.1"}
+                        if api_key:
+                            headers["Authorization"] = f"Bearer {api_key}"
+                        
+                        used_url = url_primary
                         ok = False
-                if not ok:
-                    turbo_primary = f"{base_url}/{encoded_prompt}?model=turbo&width={width}&height={height}&seed={this_seed}"
-                    turbo_fallback = f"{base_url}/{encoded_prompt}?width={width}&height={height}&seed={this_seed}"
-                    try:
-                        rtp = requests.get(
-                            turbo_primary, headers=headers, timeout=60)
-                        if rtp.status_code == 200:
-                            used_url = turbo_primary
-                            resp = rtp
-                            ok = True
-                        else:
-                            rtf = requests.get(
-                                turbo_fallback, headers=headers, timeout=60)
-                            if rtf.status_code == 200:
-                                used_url = turbo_fallback
-                                resp = rtf
+                        resp = None
+                        try:
+                            resp = await client.get(url_primary, headers=headers, timeout=60)
+                            if resp.status_code == 200:
                                 ok = True
-                    except requests.exceptions.RequestException:
-                        ok = False
-                    if not ok:
-                        primary_status = None
-                        fallback_status = None
-                        try:
-                            r1 = requests.get(
-                                url_primary, headers=headers, timeout=10)
-                            primary_status = r1.status_code
-                            r2 = requests.get(
-                                url_fallback, headers=headers, timeout=10)
-                            fallback_status = r2.status_code
-                        except Exception:
-                            pass
-                        detail = {
-                            "message": "Pollinations image error",
-                            "primary_url": url_primary,
-                            "primary_status": primary_status,
-                            "fallback_url": url_fallback,
-                            "fallback_status": fallback_status,
-                        }
-                        raise HTTPException(status_code=502, detail=detail)
-                b64 = base64.b64encode(resp.content).decode('utf-8')
-                data_items.append(ImageData(b64_json=b64, url=used_url))
+                            else:
+                                used_url = url_fallback
+                                resp_fb = await client.get(url_fallback, headers=headers, timeout=60)
+                                resp = resp_fb
+                                if resp.status_code == 200:
+                                    ok = True
+                        except httpx.RequestError as e:
+                            logger.warning(f"Primary URL failed: {e}, trying fallback")
+                            used_url = url_fallback
+                            try:
+                                resp = await client.get(url_fallback, headers=headers, timeout=60)
+                                if resp.status_code == 200:
+                                    ok = True
+                            except httpx.RequestError as e2:
+                                logger.warning(f"Fallback URL also failed: {e2}")
+                                ok = False
+                        
+                        if not ok:
+                            # Fallback to turbo models
+                            turbo_primary = f"{base_url}/{encoded_prompt}?model=turbo&width={width}&height={height}&seed={this_seed}"
+                            turbo_fallback = f"{base_url}/{encoded_prompt}?width={width}&height={height}&seed={this_seed}"
+                            try:
+                                rtp = await client.get(turbo_primary, headers=headers, timeout=60)
+                                if rtp.status_code == 200:
+                                    used_url = turbo_primary
+                                    resp = rtp
+                                    ok = True
+                                else:
+                                    rtf = await client.get(turbo_fallback, headers=headers, timeout=60)
+                                    if rtf.status_code == 200:
+                                        used_url = turbo_fallback
+                                        resp = rtf
+                                        ok = True
+                            except httpx.RequestError as e:
+                                logger.error(f"All turbo fallbacks failed: {e}")
+                                ok = False
+                        
+                        if ok and resp:
+                            b64 = base64.b64encode(resp.content).decode('utf-8')
+                            data_items.append(ImageData(b64_json=b64, url=used_url))
+                        else:
+                            raise HTTPException(status_code=500, detail="Failed to generate image from Pollinations")
+        
+        except HTTPException:
+            raise
+        except Exception as e:
+            logger.exception(f"Error in async client context: {e}")
+            raise HTTPException(status_code=500, detail=f"Image generation failed: {str(e)}")
 
-        return ImageGenerationResponse(data=data_items, model=provider_model)
+        logger.info(f"Successfully generated {len(data_items)} images")
+        
+        # Return JSONResponse to ensure SlowAPI can inject headers
+        response_data = ImageGenerationResponse(data=data_items, model=provider_model)
+        return JSONResponse(content=response_data.model_dump())
 
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.exception(f"Unexpected error in generate_images endpoint: {e}")
+        raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
 
 
 # --- Models for TTS Endpoint ---
@@ -1077,7 +1377,8 @@ class TTSRequestModel(BaseModel):
 
 
 @app.post("/v1/audio/speech")
-async def generate_speech(request_input: TTSRequestModel, api_bearer_token: Optional[str] = Depends(get_optional_token)):
+async def generate_speech(
+    request: Request, request_input: TTSRequestModel, api_bearer_token: Optional[str] = Depends(get_optional_proxy_token)):
     """
     OpenAI-compatible text-to-speech endpoint.
     Generates audio from text using TTS models.
@@ -1089,13 +1390,7 @@ async def generate_speech(request_input: TTSRequestModel, api_bearer_token: Opti
         provider_name, model_name = parse_provider_model(
             provider_model, allowed_providers=['tu'], task_name="TTS")
 
-        api_key = None
-        if api_bearer_token:
-            try:
-                api_key = get_provider_api_key(api_bearer_token, provider_name)
-            except (ValueError, AuthenticationError):
-                raise HTTPException(
-                    status_code=401, detail="API key retrieval failed")
+        api_key = verify_provider_access(api_bearer_token, provider_name)
 
         if not api_key:
             raise HTTPException(
@@ -1118,14 +1413,14 @@ async def generate_speech(request_input: TTSRequestModel, api_bearer_token: Opti
             instructions=request_input.instructions
         )
 
-        # Generate speech (run in thread pool to avoid blocking)
-        response = await run_in_threadpool(
-            tts_provider.generate_speech,
-            tts_request
-        )
+        logger.info(f"Generating TTS speech with model: {model_name}, voice: {request_input.voice}, text length: {len(input_text)}")
+
+        # Generate speech using async method directly
+        response = await tts_provider.agenerate_speech(tts_request)
+
+        logger.info(f"TTS speech generated successfully, content length: {len(response.audio_content)} bytes")
 
         # Return audio content
-        from fastapi.responses import Response
         return Response(
             content=response.audio_content,
             media_type=response.content_type
@@ -1160,13 +1455,14 @@ class STTVerboseResponseModel(BaseModel):
 
 @app.post("/v1/audio/transcriptions")
 async def transcribe_audio(
+    request: Request,
     file: UploadFile = File(...),
     model: str = Form(...),
     language: Optional[str] = Form(None),
     prompt: Optional[str] = Form(None),
     response_format: Optional[str] = Form("json"),
     temperature: Optional[float] = Form(0.0),
-    api_bearer_token: Optional[str] = Depends(get_optional_token)
+    api_bearer_token: Optional[str] = Depends(get_optional_proxy_token)
 ):
     """
     OpenAI-compatible speech-to-text endpoint.
@@ -1179,13 +1475,7 @@ async def transcribe_audio(
         provider_name, model_name = parse_provider_model(
             provider_model, allowed_providers=['tu'], task_name="STT")
 
-        api_key = None
-        if api_bearer_token:
-            try:
-                api_key = get_provider_api_key(api_bearer_token, provider_name)
-            except (ValueError, AuthenticationError):
-                raise HTTPException(
-                    status_code=401, detail="API key retrieval failed")
+        api_key = verify_provider_access(api_bearer_token, provider_name)
 
         if not api_key:
             raise HTTPException(
@@ -1211,9 +1501,8 @@ async def transcribe_audio(
             temperature=temperature or 0.0
         )
 
-        # Transcribe audio (run in thread pool to avoid blocking)
-        response = await run_in_threadpool(
-            stt_provider.transcribe,
+        # Transcribe audio using async method directly
+        response = await stt_provider.atranscribe(
             stt_request
         )
 

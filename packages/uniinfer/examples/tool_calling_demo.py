@@ -3,7 +3,6 @@
 Test script for tool calling functionality across different providers.
 """
 import os
-import json
 from uniinfer.uniioai import get_completion, get_provider_api_key
 from credgoo import get_api_key
 
@@ -75,9 +74,9 @@ def test_provider_tool_calling(provider_name, model_name):
         # Check response type
         if hasattr(response, 'tool_calls') and response.tool_calls:
             print("✅ Tool call detected!")
-            print(f"\nResponse type: ChatMessage with tool_calls")
+            print("\nResponse type: ChatMessage with tool_calls")
             print(f"Content: {response.content}")
-            print(f"\nTool calls:")
+            print("\nTool calls:")
             for i, tool_call in enumerate(response.tool_calls, 1):
                 print(f"\n  Tool call {i}:")
                 print(f"    ID: {tool_call.get('id', 'N/A')}")

@@ -2,7 +2,7 @@
 Embedding provider factory for managing and instantiating embedding providers.
 """
 import os  # Added import
-from typing import Dict, Type, Optional, Any
+from typing import Dict, Type, Optional
 from .core import EmbeddingProvider
 
 # Try to import credgoo for API key management
@@ -67,7 +67,7 @@ class EmbeddingProviderFactory:
             # This might indicate an issue with the specific provider's __init__ signature
             raise ValueError(
                 f"Failed to initialize embedding provider '{name}' due to argument mismatch: {str(e)}") from e
-        except ValueError as e:
+        except ValueError:
             raise  # Re-raise explicit value errors from provider init
         except Exception as e:
             # Catch other potential initialization errors

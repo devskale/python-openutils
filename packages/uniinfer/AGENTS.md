@@ -15,7 +15,9 @@ UniInfer is a unified LLM inference interface for Python providing a consistent 
 ```bash
 cd $PROJECTDIR/python-utils/packages/uniinfer
 source .venv/bin/activate  # Use local virtual environment
-uv pip install -e ".[all]"    # Install all dependencies
+uv pip install -e ".[all]"    # Install all dependencies (editable mode)
+# OR for reproducible builds:
+uv pip install -r requirements.lock
 ```
 
 ## Build/Lint/Test Commands
@@ -23,28 +25,77 @@ uv pip install -e ".[all]"    # Install all dependencies
 ### Running Tests
 
 ```bash
-uv run pytest                              # All tests
-uv run pytest uniinfer/tests/test_async_functionality.py    # Single file
-uv run pytest uniinfer/tests/test_async.py::TestClass::test_method  # Specific test
-uv run pytest -v                           # Verbose output
-uv run pytest --cov=uniinfer --cov-report=term-mit         # With coverage
+# Run all tests
+uv run pytest
+
+# Run a single test file
+uv run pytest uniinfer/tests/test_auth.py
+
+# Run a specific test class
+uv run pytest uniinfer/tests/test_auth.py::TestAuth
+
+# Run a specific test method
+uv run pytest uniinfer/tests/test_auth.py::TestAuth::test_token_validation
+
+# Run tests by keyword (function name)
+uv run pytest -k "test_token_validation"
+
+# Verbose output with coverage
+uv run pytest -v --cov=uniinfer --cov-report=term-missing
 ```
 
 ### Code Formatting
 
 ```bash
-black .                             # Format code (line-length: 88)
-isort .                             # Sort imports (profile: black)
-ruff check .                        # Run linter
-ruff check . --fix                  # Auto-fix linting issues
+uv run black .                      # Format code (line-length: 88)
+uv run isort .                      # Sort imports (profile: black)
+uv run ruff check .                 # Run linter
+uv run ruff check . --fix           # Auto-fix linting issues
 ```
 
 ### Package Distribution
 
 ```bash
-python setup.py sdist bdist_wheel   # Build package
-uv pip install dist/*.whl              # Install built wheel
+uv build                                    # Build package (sdist + wheel)
+uv pip install dist/*.whl                   # Install built wheel
+``````
+
+## Writing Tests
+
+Place tests in `uniinfer/tests/` directory. Name files `test_*.py`.
+
+```python
+# Example: uniinfer/tests/test_feature.py
+import pytest
+from unittest.mock import patch, MagicMock
+
+class TestFeature:
+    """Test suite for feature X."""
+    
+    def test_success_case(self):
+        """Test the happy path."""
+        assert True
+    
+    @patch('uniinfer.module.external_call')
+    def test_with_mock(self, mock_call):
+        """Test with mocked external API."""
+        mock_call.return_value = {'result': 'success'}
+        # test code here
+        mock_call.assert_called_once()
+    
+    def test_error_handling(self):
+        """Test error conditions."""
+        with pytest.raises(ValueError):
+            raise ValueError("expected")
 ```
+
+Testing best practices:
+- Use descriptive test names that explain what's being tested
+- Mock external API calls with `unittest.mock`
+- Test both sync and async methods
+- Test edge cases and error conditions
+- Test proxy request limits and security validators (size, message count, auth)
+- Use pytest fixtures for shared setup
 
 ## Code Style Guidelines
 
@@ -120,14 +171,6 @@ raise mapped_error
 5. Register in `uniinfer/__init__.py` with `ProviderFactory.register_provider()`
 6. Add conditional import for optional dependencies
 7. Export in `uniinfer/providers/__init__.py`
-
-### Testing
-
-- Place tests in `uniinfer/tests/`
-- Name: `test_*.py`
-- Use pytest framework
-- Mock external API calls with `unittest.mock`
-- Test both sync and async methods
 
 ### API Compatibility
 

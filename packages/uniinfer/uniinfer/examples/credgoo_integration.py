@@ -23,7 +23,7 @@ from uniinfer import (
 import sys
 import os
 import argparse
-from typing import Optional, List, Dict, Any
+from typing import Optional, Dict, Any
 
 # Add the parent directory to the Python path to make the uniinfer package importable
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))

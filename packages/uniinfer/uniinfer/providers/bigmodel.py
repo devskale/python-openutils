@@ -1,311 +1,226 @@
 """
-Bigmodel provider implementation.
+Bigmodel (Z.ai) provider implementation.
 """
-import requests
-from typing import Dict, Any, Iterator, Optional
+import asyncio
+from typing import Optional
 
 from ..core import ChatProvider, ChatCompletionRequest, ChatCompletionResponse, ChatMessage
-from ..errors import map_provider_error
+from ..errors import map_provider_error, UniInferError
 
-try:
-    from openai import OpenAI
-    HAS_OPENAI = True
-except ImportError:
-    HAS_OPENAI = False
+_END = object()
 
 
-class BigmodelProvider(ChatProvider):
-    """
-    Provider for Bigmodel AI API.
+def _safe_get(obj, key, default=None):
+    if obj is None:
+        return default
+    if isinstance(obj, dict):
+        return obj.get(key, default)
+    return getattr(obj, key, default)
 
-    Bigmodel AI is a China-based LLM provider that uses the OpenAI client format.
-    """
 
-    def __init__(self, api_key: Optional[str] = None, base_url: str = "https://open.bigmodel.cn/api/paas/v4/", **kwargs):
-        """
-        Initialize the Bigmodel provider.
+def _safe_dump(obj):
+    if obj is None:
+        return None
+    if hasattr(obj, "model_dump"):
+        try:
+            return obj.model_dump()
+        except Exception:
+            pass
+    if hasattr(obj, "dict"):
+        try:
+            return obj.dict()
+        except Exception:
+            pass
+    return obj
 
-        Args:
-            api_key (Optional[str]): The Bigmodel API key.
-            base_url (str): The base URL for the Bigmodel API.
-            **kwargs: Additional configuration options.
-        """
-        super().__init__(api_key)
-        self.base_url = base_url
 
-        if not HAS_OPENAI:
-            raise ImportError(
-                "openai package is required for the Bigmodel. "
-                "Install it with: pip install openai"
-            )
+def _next_or_end(iterator):
+    try:
+        return next(iterator)
+    except StopIteration:
+        return _END
 
-        # Initialize the OpenAI client for Bigmodel
-        self.client = OpenAI(
-            api_key=self.api_key,
-            base_url=self.base_url
-        )
+
+class ZAIBaseProvider(ChatProvider):
+    BASE_URL = "https://api.z.ai/api/paas/v4"
+    PROVIDER_ID = "bigmodel"
+    ERROR_PROVIDER_NAME = "Bigmodel"
+    DEFAULT_MODEL = "glm-4.7"
+    CREDGOO_SERVICE = "bigmodel"
+
+    def __init__(self, api_key: Optional[str] = None, base_url: Optional[str] = None, **kwargs):
+        if not api_key:
+            try:
+                from credgoo.credgoo import get_api_key
+                api_key = get_api_key(self.CREDGOO_SERVICE)
+            except Exception:
+                api_key = None
+        super().__init__(api_key=api_key, **kwargs)
+        self.base_url = (base_url or self.BASE_URL).rstrip("/")
+        try:
+            from zai import ZaiClient
+        except ImportError as e:
+            raise ImportError("zai-sdk is required for Z.ai providers. Install with: pip install zai-sdk") from e
+        self.client = ZaiClient(api_key=self.api_key, base_url=self.base_url)
 
     @classmethod
-    def list_models(cls, api_key: Optional[str] = None, base_url: str = "https://open.bigmodel.cn/api/paas/v4/") -> list:
-        """
-        List available models from Bigmodel AI using the API.
-        Ensures that glm-4-flash and glm-4.5-flash are always included.
-
-        Args:
-            api_key (Optional[str]): The Bigmodel API key.
-            base_url (str): The base URL for the Bigmodel API.
-
-        Returns:
-            list: A list of available model IDs, including guaranteed models.
-
-        Raises:
-            ValueError: If API key is not provided.
-            Exception: If the API request fails.
-        """
+    def list_models(cls, api_key: Optional[str] = None, base_url: Optional[str] = None) -> list[str]:
         if not api_key:
             raise ValueError("API key is required to list models")
-        
-        # Define guaranteed models that should always be available
-        guaranteed_models = ["glm-4-flash", "glm-4.5-flash"]
-        
-        url = f"{base_url.rstrip('/')}/models"
-        headers = {
-            "Authorization": f"Bearer {api_key}",
-            "Content-Type": "application/json"
-        }
-        
-        response = requests.get(url, headers=headers)
-        if response.status_code != 200:
-            raise map_provider_error("Bigmodel", Exception(f"Bigmodel API error: {response.status_code} - {response.text}"), status_code=response.status_code, response_body=response.text)
+        try:
+            from zai import ZaiClient
+            import requests
+            effective_base_url = (base_url or cls.BASE_URL).rstrip("/")
+            client = ZaiClient(api_key=api_key, base_url=effective_base_url)
+            try:
+                model_list = client.get("/models", cast_type=dict)
+            except Exception:
+                headers = {"Authorization": f"Bearer {api_key}"}
+                response = requests.get(f"{effective_base_url}/models", headers=headers, timeout=30)
+                response.raise_for_status()
+                model_list = response.json()
+            data = _safe_get(_safe_dump(model_list), "data", []) or []
+            api_models = []
+            for model in data:
+                model_id = _safe_get(model, "id")
+                if model_id:
+                    api_models.append(model_id)
+            guaranteed_models = ["glm-4.7", "glm-4-flash", "glm-4.5-flash", "glm-4.5"]
+            return list(dict.fromkeys(api_models + guaranteed_models))
+        except Exception as e:
+            raise map_provider_error(cls.ERROR_PROVIDER_NAME, e)
 
-        data = response.json()
-        api_models = [model["id"] for model in data.get("data", [])]
-        
-        # Combine API models with guaranteed models, removing duplicates while preserving order
-        all_models = list(dict.fromkeys(api_models + guaranteed_models))
-        
-        return all_models
-
-    def _flatten_messages(self, messages: list) -> list:
-        """
-        Flatten message content if it's a list of text objects.
-        Some proxies/providers only support string content.
-        """
+    def _flatten_messages(self, messages: list[ChatMessage]) -> list[dict]:
         flattened_messages = []
         for msg in messages:
             msg_dict = msg.to_dict()
             content = msg_dict.get("content")
-            
             if isinstance(content, list):
-                # Check if it's a list of text objects
                 text_parts = []
                 for part in content:
                     if isinstance(part, dict) and part.get("type") == "text":
                         text_parts.append(part.get("text", ""))
-                
-                # If we found text parts, join them
                 if text_parts:
                     msg_dict["content"] = "".join(text_parts)
-            
             flattened_messages.append(msg_dict)
         return flattened_messages
 
-    def complete(
+    async def acomplete(
         self,
         request: ChatCompletionRequest,
         **provider_specific_kwargs
     ) -> ChatCompletionResponse:
-        """
-        Make a chat completion request to Bigmodel.
-
-        Args:
-            request (ChatCompletionRequest): The request to make.
-            **provider_specific_kwargs: Additional Bigmodel-specific parameters.
-
-        Returns:
-            ChatCompletionResponse: The completion response.
-
-        Raises:
-            Exception: If the request fails.
-        """
         if self.api_key is None:
-            raise ValueError("Bigmodel API key is required")
+            raise ValueError(f"{self.ERROR_PROVIDER_NAME} API key is required")
 
-        # Prepare messages in the OpenAI format
-        messages = self._flatten_messages(request.messages)
-
-        # Prepare parameters
         params = {
-            "model": request.model or "glm-4-flash",  # Default model
-            "messages": messages,
+            "model": request.model or self.DEFAULT_MODEL,
+            "messages": self._flatten_messages(request.messages),
             "temperature": request.temperature,
+            "stream": False,
         }
-
-        # Add max_tokens if provided
         if request.max_tokens is not None:
             params["max_tokens"] = request.max_tokens
-
-        # Add tools and tool_choice if provided
         if request.tools:
             params["tools"] = request.tools
         if request.tool_choice:
             params["tool_choice"] = request.tool_choice
-
-        # Add any provider-specific parameters
         params.update(provider_specific_kwargs)
 
         try:
-            # Make the chat completion request
-            completion = self.client.chat.completions.create(**params)
-
-            # Extract the response content and tool calls
-            response_message = completion.choices[0].message
-            
-            # Extract tool calls if present
-            tool_calls = None
-            if hasattr(response_message, 'tool_calls') and response_message.tool_calls:
-                tool_calls = [
-                    {
-                        "id": tc.id,
-                        "type": tc.type,
-                        "function": {
-                            "name": tc.function.name,
-                            "arguments": tc.function.arguments
-                        }
-                    }
-                    for tc in response_message.tool_calls
-                ]
-            
+            completion = await asyncio.to_thread(self.client.chat.completions.create, **params)
+            completion_data = _safe_dump(completion) or {}
+            choices = _safe_get(completion_data, "choices", []) or []
+            choice = choices[0] if choices else {}
+            message_data = _safe_get(choice, "message", {}) or {}
             message = ChatMessage(
-                role=response_message.role,
-                content=response_message.content,
-                tool_calls=tool_calls
+                role=_safe_get(message_data, "role", "assistant"),
+                content=_safe_get(message_data, "content"),
+                tool_calls=_safe_get(message_data, "tool_calls"),
+                tool_call_id=_safe_get(message_data, "tool_call_id"),
             )
-
-            # Extract usage information
-            usage = {}
-            if hasattr(completion, 'usage'):
-                usage = {
-                    "prompt_tokens": completion.usage.prompt_tokens,
-                    "completion_tokens": completion.usage.completion_tokens,
-                    "total_tokens": completion.usage.total_tokens
-                }
-
-            # Create raw response
-            try:
-                raw_response = completion.model_dump_json()
-            except AttributeError:
-                raw_response = {
-                    "choices": [{"message": message.to_dict()}],
-                    "model": params["model"],
-                    "usage": usage
-                }
-
+            usage = _safe_get(completion_data, "usage", {}) or {}
             return ChatCompletionResponse(
                 message=message,
-                provider='bigmodel',
-                model=params["model"],
+                provider=self.PROVIDER_ID,
+                model=_safe_get(completion_data, "model", params["model"]),
                 usage=usage,
-                raw_response=raw_response
+                raw_response=completion_data,
+                finish_reason=_safe_get(choice, "finish_reason"),
             )
         except Exception as e:
-            status_code = getattr(e, 'status_code', None)
-            response_body = getattr(e, 'response', None)
-            if hasattr(response_body, 'text'):
-                response_body = response_body.text
-            raise map_provider_error("Bigmodel", e, status_code=status_code, response_body=str(response_body) if response_body else None)
+            if isinstance(e, UniInferError):
+                raise
+            raise map_provider_error(self.ERROR_PROVIDER_NAME, e)
 
-    def stream_complete(
+    async def astream_complete(
         self,
         request: ChatCompletionRequest,
         **provider_specific_kwargs
-    ) -> Iterator[ChatCompletionResponse]:
-        """
-        Stream a chat completion response from Bigmodel.
-
-        Args:
-            request (ChatCompletionRequest): The request to make.
-            **provider_specific_kwargs: Additional Bigmodel-specific parameters.
-
-        Returns:
-            Iterator[ChatCompletionResponse]: An iterator of response chunks.
-
-        Raises:
-            Exception: If the request fails.
-        """
+    ):
         if self.api_key is None:
-            raise ValueError("Bigmodel API key is required")
+            raise ValueError(f"{self.ERROR_PROVIDER_NAME} API key is required")
 
-        # Prepare messages in the OpenAI format
-        messages = self._flatten_messages(request.messages)
-
-        # Prepare parameters
         params = {
-            "model": request.model or "glm-4-flash",  # Default model
-            "messages": messages,
+            "model": request.model or self.DEFAULT_MODEL,
+            "messages": self._flatten_messages(request.messages),
             "temperature": request.temperature,
-            "stream": True
+            "stream": True,
         }
-
-        # Add max_tokens if provided
         if request.max_tokens is not None:
             params["max_tokens"] = request.max_tokens
-
-        # Add tools and tool_choice if provided
         if request.tools:
             params["tools"] = request.tools
         if request.tool_choice:
             params["tool_choice"] = request.tool_choice
-
-        # Add any provider-specific parameters
         params.update(provider_specific_kwargs)
 
         try:
-            # Make the streaming request
-            stream = self.client.chat.completions.create(**params)
-
-            for chunk in stream:
-                if hasattr(chunk.choices[0], 'delta'):
-                    delta = chunk.choices[0].delta
-                    
-                    # Extract content and tool_calls from delta
-                    content = getattr(delta, 'content', None)
-                    tool_calls = None
-                    
-                    if hasattr(delta, 'tool_calls') and delta.tool_calls:
-                        tool_calls = [
-                            {
-                                "id": getattr(tc, 'id', None),
-                                "type": getattr(tc, 'type', 'function'),
-                                "function": {
-                                    "name": tc.function.name if hasattr(tc, 'function') else None,
-                                    "arguments": tc.function.arguments if hasattr(tc, 'function') else None
-                                }
-                            }
-                            for tc in delta.tool_calls
-                        ]
-                    
-                    if content or tool_calls:
-                        # Create a message for this chunk
-                        message = ChatMessage(
-                            role="assistant",
-                            content=content,
-                            tool_calls=tool_calls
-                        )
-
-                        # No detailed usage stats in streaming mode
-                        usage = {}
-
-                        yield ChatCompletionResponse(
-                            message=message,
-                            provider='bigmodel',
-                            model=params["model"],
-                            usage=usage,
-                            raw_response={"chunk": {"content": content}}
-                        )
+            stream = await asyncio.to_thread(self.client.chat.completions.create, **params)
+            iterator = iter(stream)
+            while True:
+                chunk = await asyncio.to_thread(_next_or_end, iterator)
+                if chunk is _END:
+                    break
+                chunk_data = _safe_dump(chunk) or {}
+                choices = _safe_get(chunk_data, "choices", []) or []
+                if not choices:
+                    continue
+                choice = choices[0]
+                delta = _safe_get(choice, "delta", {}) or {}
+                content = _safe_get(delta, "content")
+                tool_calls = _safe_get(delta, "tool_calls")
+                finish_reason = _safe_get(choice, "finish_reason")
+                if content is None and tool_calls is None and finish_reason is None:
+                    continue
+                yield ChatCompletionResponse(
+                    message=ChatMessage(
+                        role=_safe_get(delta, "role", "assistant"),
+                        content=content,
+                        tool_calls=tool_calls,
+                    ),
+                    provider=self.PROVIDER_ID,
+                    model=_safe_get(chunk_data, "model", params["model"]),
+                    usage=_safe_get(chunk_data, "usage", {}) or {},
+                    raw_response=chunk_data,
+                    finish_reason=finish_reason,
+                )
         except Exception as e:
-            status_code = getattr(e, 'status_code', None)
-            response_body = getattr(e, 'response', None)
-            if hasattr(response_body, 'text'):
-                response_body = response_body.text
-            raise map_provider_error("Bigmodel", e, status_code=status_code, response_body=str(response_body) if response_body else None)
+            if isinstance(e, UniInferError):
+                raise
+            raise map_provider_error(self.ERROR_PROVIDER_NAME, e)
+
+
+class ZAIProvider(ZAIBaseProvider):
+    PROVIDER_ID = "zai"
+    ERROR_PROVIDER_NAME = "ZAI"
+    DEFAULT_MODEL = "glm-4.7"
+    CREDGOO_SERVICE = "zai"
+
+
+class ZAICodeProvider(ZAIBaseProvider):
+    BASE_URL = "https://api.z.ai/api/coding/paas/v4"
+    PROVIDER_ID = "zai-code"
+    ERROR_PROVIDER_NAME = "ZAI-Code"
+    DEFAULT_MODEL = "glm-4.5"
+    CREDGOO_SERVICE = "zai-code"

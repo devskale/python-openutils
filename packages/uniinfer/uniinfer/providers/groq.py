@@ -1,14 +1,14 @@
 """
-Groq provider implementation.
+Groq provider implementation with async support.
 """
 import os
-from typing import Dict, Any, Iterator, Optional, List
+from typing import Dict, Any, Iterator, Optional, List, AsyncIterator
 
 from ..core import ChatProvider, ChatCompletionRequest, ChatCompletionResponse, ChatMessage
-from ..errors import map_provider_error
+from ..errors import map_provider_error, UniInferError
 
 try:
-    from groq import Groq
+    from groq import Groq, AsyncGroq
     HAS_GROQ = True
 except ImportError:
     HAS_GROQ = False
@@ -41,48 +41,20 @@ class GroqProvider(ChatProvider):
                 "Install it with: pip install groq"
             )
 
-        # Initialize the Groq client
-        # If api_key is None, groq will use GROQ_API_KEY environment variable
+        # Initialize the Groq clients
         self.client = Groq(api_key=self.api_key)
+        self.async_client = AsyncGroq(api_key=self.api_key)
 
-    def complete(
+    async def acomplete(
         self,
         request: ChatCompletionRequest,
         **provider_specific_kwargs
     ) -> ChatCompletionResponse:
         """
-        Make a chat completion request to Groq.
-
-        Args:
-            request (ChatCompletionRequest): The request to make.
-            **provider_specific_kwargs: Additional Groq-specific parameters.
-
-        Returns:
-            ChatCompletionResponse: The completion response.
-
-        Raises:
-            Exception: If the request fails.
+        Make an async chat completion request to Groq.
         """
-        def _flatten_messages(msgs: List[ChatMessage]) -> List[Dict[str, Any]]:
-            flattened = []
-            for m in msgs:
-                md = m.to_dict()
-                content = md.get("content")
-                if isinstance(content, list):
-                    parts: List[str] = []
-                    for part in content:
-                        if isinstance(part, dict) and part.get("type") == "text":
-                            parts.append(part.get("text", ""))
-                    if parts:
-                        md["content"] = "".join(parts)
-                    else:
-                        md["content"] = "".join(str(p) for p in content)
-                flattened.append(md)
-            return flattened
+        messages = self._flatten_messages(request.messages)
 
-        messages = _flatten_messages(request.messages)
-
-        # Prepare parameters
         params = {
             "model": request.model or "llama-3.1-8b",
             "messages": messages,
@@ -99,8 +71,7 @@ class GroqProvider(ChatProvider):
         params.update(provider_specific_kwargs)
 
         try:
-            # Make the chat completion request
-            completion = self.client.chat.completions.create(**params)
+            completion = await self.async_client.chat.completions.create(**params)
 
             response_message = completion.choices[0].message
             tool_calls = None
@@ -122,7 +93,6 @@ class GroqProvider(ChatProvider):
                 tool_calls=tool_calls
             )
 
-            # Extract usage information
             usage = {}
             if hasattr(completion, 'usage'):
                 usage = {
@@ -131,16 +101,10 @@ class GroqProvider(ChatProvider):
                     "total_tokens": completion.usage.total_tokens
                 }
 
-            # Create raw response (the groq library might not support model_dump_json())
             try:
-                raw_response = completion.model_dump_json()
-            except AttributeError:
-                # Fallback to constructing a simple dict
-                raw_response = {
-                    "model": params["model"],
-                    "choices": [{"message": {"role": message.role, "content": message.content}}],
-                    "usage": usage
-                }
+                raw_response = completion.model_dump()
+            except Exception:
+                raw_response = str(completion)
 
             return ChatCompletionResponse(
                 message=message,
@@ -150,12 +114,90 @@ class GroqProvider(ChatProvider):
                 raw_response=raw_response
             )
         except Exception as e:
-            status_code = getattr(e, 'status_code', None)
-            # OpenAI-style clients often have 'body' or 'response'
-            response_body = getattr(e, 'body', None) or getattr(e, 'response', None)
-            if hasattr(response_body, 'text'):
-                response_body = response_body.text
-            raise map_provider_error("Groq", e, status_code=status_code, response_body=str(response_body) if response_body else None)
+            if isinstance(e, UniInferError):
+                raise
+            raise map_provider_error("Groq", e)
+
+    async def astream_complete(
+        self,
+        request: ChatCompletionRequest,
+        **provider_specific_kwargs
+    ) -> AsyncIterator[ChatCompletionResponse]:
+        """
+        Stream an async chat completion response from Groq.
+        """
+        messages = self._flatten_messages(request.messages)
+
+        params = {
+            "model": request.model or "llama-3.1-8b",
+            "messages": messages,
+            "temperature": request.temperature,
+            "stream": True,
+        }
+
+        if request.max_tokens is not None:
+            params["max_tokens"] = request.max_tokens
+        if request.tools:
+            params["tools"] = request.tools
+        if request.tool_choice:
+            params["tool_choice"] = request.tool_choice
+        params.update(provider_specific_kwargs)
+
+        try:
+            stream = await self.async_client.chat.completions.create(**params)
+
+            async for chunk in stream:
+                if chunk.choices and hasattr(chunk.choices[0], 'delta'):
+                    delta = chunk.choices[0].delta
+                    content = getattr(delta, 'content', None)
+                    tool_calls = None
+                    if hasattr(delta, 'tool_calls') and delta.tool_calls:
+                        tool_calls = [
+                            {
+                                "id": getattr(tc, 'id', None),
+                                "type": getattr(tc, 'type', 'function'),
+                                "function": {
+                                    "name": tc.function.name if hasattr(tc, 'function') else None,
+                                    "arguments": tc.function.arguments if hasattr(tc, 'function') else None
+                                }
+                            }
+                            for tc in delta.tool_calls
+                        ]
+
+                    if content or tool_calls:
+                        message = ChatMessage(
+                            role="assistant",
+                            content=content,
+                            tool_calls=tool_calls
+                        )
+                        yield ChatCompletionResponse(
+                            message=message,
+                            provider='groq',
+                            model=params["model"],
+                            usage={},
+                            raw_response={"delta": {"content": content, "tool_calls": tool_calls}}
+                        )
+        except Exception as e:
+            if isinstance(e, UniInferError):
+                raise
+            raise map_provider_error("Groq", e)
+
+    def _flatten_messages(self, msgs: List[ChatMessage]) -> List[Dict[str, Any]]:
+        flattened = []
+        for m in msgs:
+            md = m.to_dict()
+            content = md.get("content")
+            if isinstance(content, list):
+                parts: List[str] = []
+                for part in content:
+                    if isinstance(part, dict) and part.get("type") == "text":
+                        parts.append(part.get("text", ""))
+                if parts:
+                    md["content"] = "".join(parts)
+                else:
+                    md["content"] = "".join(str(p) for p in content)
+            flattened.append(md)
+        return flattened
 
     @classmethod
     def list_models(cls, api_key: Optional[str] = None) -> List[str]:

@@ -5,7 +5,6 @@ from uniinfer import (
     ChatMessage,
     ChatCompletionRequest,
     ProviderFactory,
-    ChatProvider,
     EmbeddingRequest,
     EmbeddingProviderFactory
 )
@@ -27,6 +26,10 @@ found_dotenv = load_dotenv(dotenv_path=dotenv_path,
 
 # print(f"DEBUG: Attempted to load .env from: {dotenv_path}")  # Debug print
 # print(f"DEBUG: .env file found and loaded: {found_dotenv}")  # Debug print
+
+
+def _resolve_credgoo_service(provider: str) -> str:
+    return provider
 
 
 def main():
@@ -100,15 +103,16 @@ def main():
     credgoo_encryption_token = args.encryption_key or os.getenv(
         'CREDGOO_ENCRYPTION_KEY')
     credgoo_api_token = args.bearer_token or os.getenv('CREDGOO_BEARER_TOKEN')
-    bearer_token = f"{credgoo_api_token}@{credgoo_encryption_token}" if credgoo_api_token and credgoo_encryption_token else None
+    _bearer_token = f"{credgoo_api_token}@{credgoo_encryption_token}" if credgoo_api_token and credgoo_encryption_token else None
 
 #    if not credgoo_api_token or not credgoo_encryption_token:
 #        print("Error: CREDGOO_ENCRYPTION_KEY or CREDGOO_BEARER_TOKEN not found.")
 #        print("Please provide them either via command-line arguments (--encryption-key, --bearer-token) or environment variables.")
 #        return
     provider = args.provider
+    credgoo_service = _resolve_credgoo_service(provider)
     retrieved_api_key = get_api_key(
-        service=provider,
+        service=credgoo_service,
         encryption_key=credgoo_encryption_token,
         bearer_token=credgoo_api_token,)
 
@@ -116,9 +120,10 @@ def main():
         providers = ProviderFactory.list_providers()
         for provider in providers:
             try:
+                credgoo_service = _resolve_credgoo_service(provider)
                 provider_class = ProviderFactory.get_provider_class(provider)
                 retrieved_api_key = get_api_key(
-                    service=provider,
+                    service=credgoo_service,
                     encryption_key=credgoo_encryption_token,
                     bearer_token=credgoo_api_token,)
                 # models = ProviderFactory.list_models(
@@ -185,7 +190,7 @@ def main():
         try:
             # Get API key using credgoo
             api_key = get_api_key(
-                service=provider,
+                service=credgoo_service,
                 encryption_key=credgoo_encryption_token,
                 bearer_token=credgoo_api_token
             )
@@ -295,7 +300,7 @@ def main():
 
             # Get API key using credgoo
             api_key = get_api_key(
-                service=provider,
+                service=credgoo_service,
                 encryption_key=credgoo_encryption_token,
                 bearer_token=credgoo_api_token
             )
@@ -328,9 +333,9 @@ def main():
                     os.makedirs(output_dir, exist_ok=True)
             else:
                 # Generate filename from text
-                safe_text = "".join(c if c.isalnum() or c in (
+                _safe_text = "".join(c if c.isalnum() or c in (
                     ' ', '-', '_') else '_' for c in tts_text)[:50]
-                output_path = f"cli_test.mp3"
+                output_path = "cli_test.mp3"
 
             # Save the audio
             with open(output_path, 'wb') as f:
@@ -378,7 +383,7 @@ def main():
 
             # Get API key using credgoo
             api_key = get_api_key(
-                service=provider,
+                service=credgoo_service,
                 encryption_key=credgoo_encryption_token,
                 bearer_token=credgoo_api_token
             )
@@ -401,7 +406,7 @@ def main():
             # Transcribe audio
             response = stt_provider.transcribe(stt_request)
 
-            print(f"\n=== Transcription ===")
+            print("\n=== Transcription ===")
             print(f"Text: {response.text}")
             print(f"\nModel: {response.model}")
             if response.language:

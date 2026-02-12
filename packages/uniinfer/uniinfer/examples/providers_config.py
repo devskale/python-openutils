@@ -6,49 +6,49 @@ import os
 
 # Check if HuggingFace support is available
 try:
-    from uniinfer import HuggingFaceProvider
+    from uniinfer import HuggingFaceProvider  # noqa: F401
     HAS_HUGGINGFACE = True
 except ImportError:
     HAS_HUGGINGFACE = False
 
 # Check if Cohere support is available
 try:
-    from uniinfer import CohereProvider
+    from uniinfer import CohereProvider  # noqa: F401
     HAS_COHERE = True
 except ImportError:
     HAS_COHERE = False
 
 # Check if Moonshot support is available
 try:
-    from uniinfer import MoonshotProvider
+    from uniinfer import MoonshotProvider  # noqa: F401
     HAS_MOONSHOT = True
 except ImportError:
     HAS_MOONSHOT = False
 
 # Check if OpenAI client is available (for StepFun)
 try:
-    from openai import OpenAI
+    from openai import OpenAI  # noqa: F401
     HAS_OPENAI = True
 except ImportError:
     HAS_OPENAI = False
 
 # Check if Groq support is available
 try:
-    from uniinfer import GroqProvider
+    from uniinfer import GroqProvider  # noqa: F401
     HAS_GROQ = True
 except ImportError:
     HAS_GROQ = False
 
 # Check if AI21 support is available
 try:
-    from uniinfer import AI21Provider
+    from uniinfer import AI21Provider  # noqa: F401
     HAS_AI21 = True
 except ImportError:
     HAS_AI21 = False
 
 # Check if Gemini support is available
 try:
-    from uniinfer import GeminiProvider
+    from uniinfer import GeminiProvider  # noqa: F401
     HAS_GENAI = True
 except ImportError:
     HAS_GENAI = False
@@ -122,14 +122,19 @@ PROVIDER_CONFIGS = {
         'default_model': 'deepseek-ai/DeepSeek-V3-0324',
         'needs_api_key': True,
     },
-    'bigmodel': {
-        'name': 'Bigmodel',
-        'default_model': 'glm-4-flash',
+    'zai': {
+        'name': 'Z.ai',
+        'default_model': 'glm-4.7',
+        'needs_api_key': True,
+    },
+    'zai-code': {
+        'name': 'Z.ai Code',
+        'default_model': 'glm-4.5',
         'needs_api_key': True,
     },
     'tu': {
         'name': 'tu',
-        'default_model': 'deepseek-r1',
+        'default_model': 'qwen-coder-30b',
         'needs_api_key': True,
     },
     'pollinations': {

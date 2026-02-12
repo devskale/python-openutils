@@ -1,6 +1,4 @@
 import requests
-import json
-import sys
 import os
 from dotenv import load_dotenv
 
@@ -72,7 +70,7 @@ def run_test(provider, model, token, stream):
             text = ""
             try:
                 text = response.text
-            except:
+            except Exception:
                 pass
                 
             if "Invalid token" in text or "Authentication" in text or "API key" in text or "Unauthorized" in text or "401" in text:
