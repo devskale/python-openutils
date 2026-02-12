@@ -172,6 +172,49 @@ raise mapped_error
 6. Add conditional import for optional dependencies
 7. Export in `uniinfer/providers/__init__.py`
 
+### Dev Guide Index (Compatible Providers)
+
+- OpenAI-compatible provider flow
+- Anthropic-compatible provider flow
+
+### OpenAI-Compatible Provider Flow
+
+Use this when the target provider exposes OpenAI-style chat endpoints.
+
+1. Create `uniinfer/providers/<provider_name>.py`
+2. Inherit from `OpenAICompatibleChatProvider`
+3. Set constants:
+   - `BASE_URL`
+   - `PROVIDER_ID`
+   - `ERROR_PROVIDER_NAME`
+   - `DEFAULT_MODEL`
+   - `CREDGOO_SERVICE` when credgoo-managed
+4. Override only provider-specific pieces:
+   - `list_models()` if provider uses non-standard models endpoint or payload
+   - header/default-parameter hooks as needed
+5. Export in `uniinfer/providers/__init__.py`
+6. Register in `uniinfer/__init__.py`
+7. Add tests for sync, async, streaming, list-models, and error mapping
+
+### Anthropic-Compatible Provider Flow
+
+Use this when the target provider exposes Anthropic-style `messages` APIs.
+
+1. Create `uniinfer/providers/<provider_name>.py`
+2. Inherit from `AnthropicCompatibleProvider`
+3. Set constants:
+   - `BASE_URL`
+   - `PROVIDER_ID`
+   - `ERROR_PROVIDER_NAME`
+   - `DEFAULT_MODEL`
+   - `CREDGOO_SERVICE` when credgoo-managed
+4. Override provider-specific behavior as needed:
+   - `list_models()` fallback where Anthropic model-list endpoint is unavailable
+   - `_default_headers()` or class-level header hooks for vendor requirements
+5. Export in `uniinfer/providers/__init__.py`
+6. Register in `uniinfer/__init__.py`
+7. Add tests for sync, async, streaming, list-models fallback, and error mapping
+
 ### API Compatibility
 
 - Maintain backward compatibility for public APIs

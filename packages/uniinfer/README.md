@@ -496,17 +496,86 @@ Contributions are welcome! Please follow these steps:
 
 ### Adding New Providers
 
-To add a new provider:
+#### Dev Guide Index
 
-1. Create a new file in `uniinfer/providers/`
-2. For OpenAI-compatible chat APIs, inherit from `OpenAICompatibleChatProvider`
-3. Set provider constants (`BASE_URL`, `PROVIDER_ID`, `ERROR_PROVIDER_NAME`, `DEFAULT_MODEL`)
-4. Implement only provider-specific pieces (`list_models()`, extra headers, default params)
-5. Register the provider in `uniinfer/__init__.py`
-6. Add provider-specific dependencies to `setup.py`
-7. Add tests in `uniinfer/tests/`
+- [OpenAI-Compatible Provider Guide](#openai-compatible-provider-guide)
+- [Anthropic-Compatible Provider Guide](#anthropic-compatible-provider-guide)
 
-See [AGENTS.md](AGENTS.md) for detailed development guidelines.
+#### OpenAI-Compatible Provider Guide
+
+Use this path when the provider exposes OpenAI-style chat endpoints.
+
+1. Create `uniinfer/providers/<provider_name>.py`
+2. Inherit from `OpenAICompatibleChatProvider`
+3. Set constants:
+   - `BASE_URL`
+   - `PROVIDER_ID`
+   - `ERROR_PROVIDER_NAME`
+   - `DEFAULT_MODEL`
+   - `CREDGOO_SERVICE` (if key is managed via credgoo)
+4. Override only provider-specific behavior:
+   - `list_models()` when provider model listing differs
+   - headers/default params hooks if needed
+5. Export provider in `uniinfer/providers/__init__.py`
+6. Register provider in `uniinfer/__init__.py` via `ProviderFactory.register_provider(...)`
+7. Add tests in `uniinfer/tests/` (sync, async, streaming, list-models, error mapping)
+
+Minimal template:
+
+```python
+from typing import Optional
+from .openai_compatible import OpenAICompatibleChatProvider
+
+
+class NewProvider(OpenAICompatibleChatProvider):
+    BASE_URL = "https://api.example.com/v1"
+    PROVIDER_ID = "newprovider"
+    ERROR_PROVIDER_NAME = "NewProvider"
+    DEFAULT_MODEL = "example-model"
+    CREDGOO_SERVICE = "newprovider"
+
+    def __init__(self, api_key: Optional[str] = None, base_url: Optional[str] = None):
+        super().__init__(api_key=api_key, base_url=base_url or self.BASE_URL)
+```
+
+#### Anthropic-Compatible Provider Guide
+
+Use this path when the provider exposes Anthropic-style `messages` APIs.
+
+1. Create `uniinfer/providers/<provider_name>.py`
+2. Inherit from `AnthropicCompatibleProvider`
+3. Set constants:
+   - `BASE_URL`
+   - `PROVIDER_ID`
+   - `ERROR_PROVIDER_NAME`
+   - `DEFAULT_MODEL`
+   - `CREDGOO_SERVICE` (if key is managed via credgoo)
+4. Override provider-specific behavior where needed:
+   - `list_models()` for providers that do not implement Anthropic model list
+   - `_default_headers()` or class header hooks for vendor headers
+5. Export provider in `uniinfer/providers/__init__.py`
+6. Register provider in `uniinfer/__init__.py` via `ProviderFactory.register_provider(...)`
+7. Add tests in `uniinfer/tests/` (sync, async, streaming, list-models fallback, error mapping)
+
+Minimal template:
+
+```python
+from typing import Optional
+from .anthropic_compatible import AnthropicCompatibleProvider
+
+
+class NewAnthropicProvider(AnthropicCompatibleProvider):
+    BASE_URL = "https://api.example.com/anthropic"
+    PROVIDER_ID = "newanthropic"
+    ERROR_PROVIDER_NAME = "NewAnthropic"
+    DEFAULT_MODEL = "example-anthropic-model"
+    CREDGOO_SERVICE = "newanthropic"
+
+    def __init__(self, api_key: Optional[str] = None, base_url: Optional[str] = None):
+        super().__init__(api_key=api_key, base_url=base_url or self.BASE_URL)
+```
+
+See [AGENTS.md](AGENTS.md) for contributor rules and test expectations.
 
 ## License
 
