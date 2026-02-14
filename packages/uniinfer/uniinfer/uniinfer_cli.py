@@ -32,6 +32,17 @@ def _resolve_credgoo_service(provider: str) -> str:
     return provider
 
 
+def _models_file_path() -> str:
+    package_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    return os.path.join(package_root, "models.txt")
+
+
+def _write_models_output(lines: list[str]) -> None:
+    output = "\n".join(lines).rstrip() + "\n"
+    with open(_models_file_path(), "w") as f:
+        f.write(output)
+
+
 def main():
     # Initialize argument parser
     parser = argparse.ArgumentParser(description='UniInfer example script')
@@ -118,6 +129,7 @@ def main():
 
     if args.list_providers and args.list_models:
         providers = ProviderFactory.list_providers()
+        output_lines: list[str] = []
         for provider in providers:
             try:
                 credgoo_service = _resolve_credgoo_service(provider)
@@ -135,11 +147,18 @@ def main():
                     api_key=retrieved_api_key,
                     **({} if provider not in ['cloudflare', 'ollama'] else PROVIDER_CONFIGS[provider].get('extra_params', {}))
                 )
-                print(f"\nAvailable models for {provider}:")
+                header = f"\nAvailable models for {provider}:"
+                print(header)
+                output_lines.append(header)
                 for model in models:
-                    print(f"- {model}")
+                    row = f"- {model}"
+                    print(row)
+                    output_lines.append(row)
             except Exception as e:
-                print(f"\nError listing models for {provider}: {str(e)}")
+                row = f"\nError listing models for {provider}: {str(e)}"
+                print(row)
+                output_lines.append(row)
+        _write_models_output(output_lines)
         return
 
     if args.list_providers:
@@ -157,9 +176,13 @@ def main():
                 **({} if args.provider not in ['cloudflare', 'ollama'] else PROVIDER_CONFIGS[args.provider].get('extra_params', {}))
             )
 
-            print(f"Available models for {args.provider}:")
+            output_lines = [f"Available models for {args.provider}:"]
+            print(output_lines[0])
             for model in models:
-                print(f"- {model}")
+                row = f"- {model}"
+                print(row)
+                output_lines.append(row)
+            _write_models_output(output_lines)
             return
         except Exception as e:
             print(f"Error listing models for {args.provider}: {str(e)}")
