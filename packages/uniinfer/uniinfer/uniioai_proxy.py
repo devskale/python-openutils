@@ -2,6 +2,7 @@ from logging.handlers import RotatingFileHandler
 import logging
 from typing import Any, AsyncGenerator, Optional, List, Dict
 from collections.abc import Iterable
+from importlib.metadata import PackageNotFoundError, version
 import re
 import subprocess
 import uuid
@@ -86,11 +87,15 @@ except ImportError as e:
     logger.error(f"Python path: {sys.path[:3]}")
     sys.exit(1)
 
+try:
+    UNIINFER_VERSION = version("uniinfer")
+except PackageNotFoundError:
+    UNIINFER_VERSION = "unknown"
 
 app = FastAPI(
     title="UniIOAI API",
     description="OpenAI-compatible API wrapper using UniInfer",
-    version="0.1.0",
+    version=UNIINFER_VERSION,
 )
 
 # --- Rate Limiting Setup ---
@@ -342,6 +347,60 @@ class EmbeddingResponse(BaseModel):
 # --- Predefined Models ---
 # The models.txt file is expected to be in the package root (one level up from uniioai_proxy.py)
 MODELS_FILE_PATH = os.path.join(os.path.dirname(script_dir), "models.txt")
+
+
+def get_refetch_interval_seconds() -> float:
+    raw = os.getenv("REFETCHTIME", "24")
+    try:
+        hours = float(raw)
+        if hours <= 0:
+            raise ValueError
+    except ValueError:
+        logger.warning(
+            f"Invalid REFETCHTIME value '{raw}', defaulting to 24 hours")
+        hours = 24.0
+    return hours * 3600.0
+
+
+def models_file_is_stale() -> bool:
+    if not os.path.exists(MODELS_FILE_PATH):
+        return True
+    age_seconds = time.time() - os.path.getmtime(MODELS_FILE_PATH)
+    return age_seconds > get_refetch_interval_seconds()
+
+
+async def refresh_models_file() -> dict[str, Any]:
+    cmd = ["uniinfer", "-l", "--list-models"]
+
+    if subprocess.call(["which", "uniinfer"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL) != 0:
+        cmd = [sys.executable, "-m",
+               "uniinfer.uniinfer_cli", "-l", "--list-models"]
+
+    result = await run_in_threadpool(
+        subprocess.run,
+        cmd,
+        capture_output=True,
+        text=True,
+        check=True
+    )
+
+    with open(MODELS_FILE_PATH, 'w') as f:
+        f.write(result.stdout)
+
+    return {
+        "status": "success",
+        "message": "Models updated successfully",
+        "output_length": len(result.stdout)
+    }
+
+
+async def ensure_fresh_models_file() -> None:
+    if not models_file_is_stale():
+        return
+    try:
+        await refresh_models_file()
+    except Exception as e:
+        logger.warning(f"Failed to refresh stale models file: {e}")
 
 
 def parse_models_file():
@@ -714,6 +773,7 @@ async def list_models():
     OpenAI-compatible endpoint to list available models.
     Returns a list of models supported by UniInfer, read from models.txt.
     """
+    await ensure_fresh_models_file()
     models = parse_models_file()
     model_data = [Model(id=model_id) for model_id in models]
     return ModelList(data=model_data)
@@ -725,28 +785,7 @@ async def update_models():
     Triggers 'uniinfer -l --list-models' to update the models.txt file.
     """
     try:
-        # Run uniinfer -l --list-models and capture output
-        # Assuming 'uniinfer' is in the path. If not, we might need to use sys.executable -m uniinfer.uniinfer_cli
-        cmd = ["uniinfer", "-l", "--list-models"]
-
-        # Check if uniinfer is in path, otherwise try python module execution
-        if subprocess.call(["which", "uniinfer"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL) != 0:
-            cmd = [sys.executable, "-m",
-                   "uniinfer.uniinfer_cli", "-l", "--list-models"]
-
-        result = await run_in_threadpool(
-            subprocess.run,
-            cmd,
-            capture_output=True,
-            text=True,
-            check=True
-        )
-
-        # Write to models.txt
-        with open(MODELS_FILE_PATH, 'w') as f:
-            f.write(result.stdout)
-
-        return {"status": "success", "message": "Models updated successfully", "output_length": len(result.stdout)}
+        return await refresh_models_file()
     except subprocess.CalledProcessError as e:
         raise HTTPException(
             status_code=500, detail=f"Failed to update models: {e.stderr}")
@@ -1044,6 +1083,11 @@ async def dynamic_list_embedding_models(provider_name: str, api_bearer_token: Op
         raise HTTPException(status_code=401, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/v1/system/info")
+async def get_system_info():
+    return {"version": UNIINFER_VERSION}
 
 
 @app.get("/")

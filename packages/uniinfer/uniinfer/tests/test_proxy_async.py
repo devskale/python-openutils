@@ -143,6 +143,54 @@ def test_proxy_models_helper():
     assert callable(list_models_for_provider)
 
 
+def test_get_refetch_interval_seconds_default(monkeypatch):
+    """Test default REFETCHTIME interval."""
+    from uniinfer.uniioai_proxy import get_refetch_interval_seconds
+    monkeypatch.delenv("REFETCHTIME", raising=False)
+    assert get_refetch_interval_seconds() == 24 * 3600
+
+
+def test_get_refetch_interval_seconds_invalid(monkeypatch):
+    """Test invalid REFETCHTIME interval fallback."""
+    from uniinfer.uniioai_proxy import get_refetch_interval_seconds
+    monkeypatch.setenv("REFETCHTIME", "abc")
+    assert get_refetch_interval_seconds() == 24 * 3600
+
+
+@pytest.mark.asyncio
+async def test_ensure_fresh_models_file_refreshes_when_stale(monkeypatch):
+    """Test stale models trigger refresh."""
+    from uniinfer import uniioai_proxy as proxy
+    calls = {"refresh": 0}
+
+    monkeypatch.setattr(proxy, "models_file_is_stale", lambda: True)
+
+    async def fake_refresh():
+        calls["refresh"] += 1
+        return {"status": "success"}
+
+    monkeypatch.setattr(proxy, "refresh_models_file", fake_refresh)
+    await proxy.ensure_fresh_models_file()
+    assert calls["refresh"] == 1
+
+
+@pytest.mark.asyncio
+async def test_ensure_fresh_models_file_skips_when_fresh(monkeypatch):
+    """Test fresh models do not trigger refresh."""
+    from uniinfer import uniioai_proxy as proxy
+    calls = {"refresh": 0}
+
+    monkeypatch.setattr(proxy, "models_file_is_stale", lambda: False)
+
+    async def fake_refresh():
+        calls["refresh"] += 1
+        return {"status": "success"}
+
+    monkeypatch.setattr(proxy, "refresh_models_file", fake_refresh)
+    await proxy.ensure_fresh_models_file()
+    assert calls["refresh"] == 0
+
+
 def test_chat_message_input_validation():
     """Test ChatMessageInput validation."""
     from pydantic import ValidationError
@@ -307,6 +355,12 @@ class TestProxyEndpoints:
         from uniinfer.uniioai_proxy import list_models
 
         assert hasattr(list_models, "__call__")
+
+    def test_system_info_endpoint_exists(self):
+        """Test that system info endpoint exists."""
+        from uniinfer.uniioai_proxy import get_system_info
+
+        assert hasattr(get_system_info, "__call__")
 
     def test_webdemo_endpoint_exists(self):
         """Test that web demo endpoint exists."""

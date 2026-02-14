@@ -17,6 +17,14 @@
   <div class="app-container">
     <header>
       <h1>UniInfer</h1>
+      <div id="app-version" style="
+            font-size: 0.78rem;
+            color: #6b7280;
+            background: #f3f4f6;
+            padding: 5px 10px;
+            border-radius: 999px;
+            margin-left: 8px;
+          ">v...</div>
 
       <div class="mode-switch">
         <button id="mode-chat" class="mode-btn active">Chat</button>
@@ -565,6 +573,7 @@
 
     const chatStats = document.getElementById("chat-stats");
     const statsText = document.getElementById("stats-text");
+    const appVersion = document.getElementById("app-version");
 
     let currentAbortController = null;
 
@@ -716,6 +725,15 @@
     async function apiFetchJson(path, options = {}) {
       const response = await apiFetch(path, options);
       return response.json();
+    }
+
+    async function loadVersion() {
+      try {
+        const payload = await apiFetchJson("/v1/system/info");
+        appVersion.textContent = `v${payload.version || "unknown"}`;
+      } catch (_error) {
+        appVersion.textContent = "vunknown";
+      }
     }
 
     // Load providers into dropdown
@@ -1380,6 +1398,7 @@
 
     // Init
     loadChatHistory();
+    loadVersion();
     loadProviders();
     updateImageModels();
     updateVoices();

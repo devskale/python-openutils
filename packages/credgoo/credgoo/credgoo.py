@@ -5,6 +5,7 @@ import os
 import sys
 import json
 import time
+import getpass
 from pathlib import Path
 from importlib.metadata import version  # Changed from pkg_resources
 
@@ -293,11 +294,63 @@ def get_api_key(service, bearer_token=None, encryption_key=None, api_url=None, c
     return api_key
 
 
+def _prompt_required(prompt_text, secret=False):
+    """Prompt for a required value until non-empty input is given."""
+    while True:
+        if secret:
+            value = getpass.getpass(prompt_text).strip()
+        else:
+            value = input(prompt_text).strip()
+        if value:
+            return value
+        print("Value is required.")
+
+
+def _prompt_service_name():
+    """Prompt for a required service name used for setup validation."""
+    return _prompt_required("Service name to test setup: ", secret=False)
+
+
+def interactive_setup(service, cache_dir, existing_url=None):
+    """Run first-time interactive setup and validate credentials with a live request."""
+    print("credgoo: First-time setup")
+    default_url_text = f" [{existing_url}]" if existing_url else ""
+    entered_url = input(
+        f"Google Apps Script URL{default_url_text}: ").strip()
+    api_url = entered_url or existing_url
+    while not api_url:
+        print("URL is required.")
+        entered_url = input("Google Apps Script URL: ").strip()
+        api_url = entered_url
+    token = _prompt_required("Bearer token: ", secret=True)
+    encryption_key = _prompt_required("Encryption key: ", secret=True)
+    print(f"credgoo: Testing credentials with service '{service}'...")
+    api_key = get_api_key_from_google(service, token, encryption_key, api_url)
+    if not api_key:
+        print("credgoo: Setup test failed. Credentials were not saved.")
+        return None, None, None, None, False
+    cred_file = cache_dir / 'credgoo.txt'
+    store_credentials(
+        token,
+        encryption_key,
+        api_url,
+        cred_file,
+        True,
+        True,
+        True
+    )
+    cache_api_key(service, api_key, encryption_key, cache_dir)
+    print("credgoo: Setup complete. Everything looks good.")
+    return token, encryption_key, api_url, api_key, True
+
+
 def main():
     parser = argparse.ArgumentParser(
         description="Retrieve API keys securely with caching")
     parser.add_argument(
-        "service", help="Service name to retrieve the API key for")
+        "service", nargs="?", help="Service name to retrieve the API key for")
+    parser.add_argument("--setup", action="store_true",
+                        help="Run interactive first-time setup and validate credentials")
     parser.add_argument("--token", help="Bearer token for authentication")
     parser.add_argument("--key", help="Encryption key for decryption")
     parser.add_argument("--url", help="URL of the Google Apps Script web app")
@@ -316,17 +369,17 @@ def main():
 
     args = parser.parse_args()
 
-    # print("Starting API key retrieval...")
+    if not args.setup and not args.service:
+        parser.error("the following arguments are required: service")
 
     # Determine cache directory
     cache_dir = Path(args.cache_dir) if args.cache_dir else (Path.home() / '.config' / 'api_keys')
 
-    # Store credentials if requested
     cred_file = (cache_dir or Path.home() / '.config' / 'api_keys') / 'credgoo.txt'
     save_token = args.save in ('all', 'token')
     save_key = args.save in ('all', 'key')
     save_url = args.save in ('all', 'url')
-    if args.save != 'none':
+    if args.save != 'none' and (args.token is not None or args.key is not None or args.url is not None):
         store_credentials(
             args.token if save_token else None,
             args.key if save_key else None,
@@ -342,6 +395,32 @@ def main():
     final_token = args.token if args.token else stored_token
     final_key = args.key if args.key else stored_key
     final_url = args.url if args.url else stored_url
+
+    if args.setup:
+        if not sys.stdin.isatty():
+            print("Error: Interactive setup requires a TTY.")
+            return 1
+        setup_service = _prompt_service_name()
+        _, _, _, _, setup_ok = interactive_setup(
+            setup_service,
+            cache_dir,
+            existing_url=final_url
+        )
+        return 0 if setup_ok else 1
+
+    setup_api_key = None
+    setup_required = not final_token or not final_key or not final_url
+    if setup_required:
+        if not sys.stdin.isatty():
+            print("Error: Missing URL, token, or key and interactive setup is unavailable in non-interactive mode.")
+            return 1
+        final_token, final_key, final_url, setup_api_key, setup_ok = interactive_setup(
+            args.service,
+            cache_dir,
+            existing_url=final_url
+        )
+        if not setup_ok:
+            return 1
 
     # Get API key using the more flexible function
     # If --update is used, force no_cache to true to fetch from source
@@ -364,14 +443,17 @@ def main():
         else:
             print(f"credgoo: No cached key found for {args.service}.")
 
-    api_key = get_api_key(
-        args.service,
-        bearer_token=final_token,
-        encryption_key=final_key,
-        api_url=final_url,
-        cache_dir=cache_dir,
-        no_cache=force_no_cache
-    )
+    if setup_api_key and not args.update and not force_no_cache:
+        api_key = setup_api_key
+    else:
+        api_key = get_api_key(
+            args.service,
+            bearer_token=final_token,
+            encryption_key=final_key,
+            api_url=final_url,
+            cache_dir=cache_dir,
+            no_cache=force_no_cache
+        )
 
     should_cache_update = False
     if args.update and api_key and current_cached_key:
@@ -401,7 +483,5 @@ def main():
 
 
 # This allows the script to be both imported as a module and run as a command-line tool
-if __name__ == "__main__":
-    sys.exit(main())
 if __name__ == "__main__":
     sys.exit(main())
