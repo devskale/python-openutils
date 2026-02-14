@@ -4,13 +4,12 @@ version = "0.1.6"
 description = "A package for securely retrieving API keys from Google Sheets"
 readme = "README.md"
 requires-python = ">=3.6"
-license = {text = "MIT"}
+license = "MIT"
 authors = [
     {name = "Han Woo", email = "dev@skale.dev"}
 ]
 classifiers = [
     "Programming Language :: Python :: 3",
-    "License :: OSI Approved :: MIT License",
     "Operating System :: OS Independent",
 ]
 dependencies = [
@@ -22,6 +21,9 @@ Homepage = "https://github.com/devskale/python-openutils/tree/master/packages/cr
 
 [project.scripts]
 credgoo = "credgoo.credgoo:main"
+
+[tool.setuptools.packages.find]
+include = ["credgoo*"]
 
 [build-system]
 requires = ["setuptools"]
