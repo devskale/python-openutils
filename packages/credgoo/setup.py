@@ -3,7 +3,7 @@ import os
 
 setup(
     name="credgoo",
-    version="0.1.5",
+    version="0.1.6",
     packages=find_packages(),
     install_requires=[
         "requests",
