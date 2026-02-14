@@ -1,0 +1,28 @@
+[project]
+name = "credgoo"
+version = "0.1.6"
+description = "A package for securely retrieving API keys from Google Sheets"
+readme = "README.md"
+requires-python = ">=3.6"
+license = {text = "MIT"}
+authors = [
+    {name = "Han Woo", email = "dev@skale.dev"}
+]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
+dependencies = [
+    "requests",
+]
+
+[project.urls]
+Homepage = "https://github.com/devskale/python-openutils/tree/master/packages/credgoo"
+
+[project.scripts]
+credgoo = "credgoo.credgoo:main"
+
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
