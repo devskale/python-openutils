@@ -73,7 +73,16 @@ class TUProvider(ChatProvider):
         """
         messages = []
         for m in request.messages:
-            msg = {"role": m.role, "content": m.content}
+            content = m.content
+            # Flatten list content (multimodal messages)
+            if isinstance(content, list):
+                text_parts = []
+                for part in content:
+                    if isinstance(part, dict) and part.get("type") == "text":
+                        text_parts.append(part.get("text", ""))
+                content = "".join(text_parts) if text_parts else None
+            
+            msg = {"role": m.role, "content": content}
             if m.tool_calls:
                 msg["tool_calls"] = m.tool_calls
             if m.tool_call_id:
@@ -139,13 +148,17 @@ class TUProvider(ChatProvider):
                 tool_call_id=message_data.get("tool_call_id")
             )
             
+            # Handle reasoning_content (TU thinking models)
+            reasoning_content = message_data.get("reasoning_content") or message_data.get("reasoning")
+            
             return ChatCompletionResponse(
                 message=message,
                 provider="tu",
                 model=data.get("model", request.model or "qwen-coder-30b"),
                 usage=data.get("usage", {}),
                 raw_response=data,
-                finish_reason=choice.get("finish_reason")
+                finish_reason=choice.get("finish_reason"),
+                thinking=reasoning_content
             )
         except Exception as e:
             if isinstance(e, UniInferError):
@@ -197,13 +210,18 @@ class TUProvider(ChatProvider):
                             delta = choice.get('delta', {})
                             finish_reason = choice.get('finish_reason')
                             
-                            if not delta.get('content') and not delta.get('tool_calls') and not finish_reason:
+                            content = delta.get('content')
+                            # Handle reasoning_content (TU thinking models)
+                            reasoning_content = delta.get('reasoning_content') or delta.get('reasoning')
+                            tool_calls = delta.get('tool_calls')
+                            
+                            if not content and not reasoning_content and not tool_calls and not finish_reason:
                                 continue
                                 
                             message = ChatMessage(
                                 role=delta.get('role', 'assistant'),
-                                content=delta.get('content'),
-                                tool_calls=delta.get('tool_calls')
+                                content=content,
+                                tool_calls=tool_calls
                             )
                             
                             yield ChatCompletionResponse(
@@ -212,7 +230,8 @@ class TUProvider(ChatProvider):
                                 model=data.get("model", request.model),
                                 usage={},
                                 raw_response=data,
-                                finish_reason=finish_reason
+                                finish_reason=finish_reason,
+                                thinking=reasoning_content  # Separate thinking content
                             )
                     except json.JSONDecodeError:
                         continue

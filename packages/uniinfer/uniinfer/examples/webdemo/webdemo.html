@@ -859,6 +859,7 @@
       currentAbortController = new AbortController();
 
       let fullResponse = "";
+      let fullThinking = "";
 
       try {
         const response = await apiFetch("/v1/chat/completions", {
@@ -918,9 +919,26 @@
               }
               
               // Normal response chunk
-              const delta = data.choices?.[0]?.delta?.content || "";
-              fullResponse += delta;
-              assistantDiv.innerHTML = renderMarkdown(fullResponse);
+              const delta = data.choices?.[0]?.delta || {};
+              const content = delta.content || "";
+              const thinking = delta.thinking || "";
+              
+              if (content) {
+                fullResponse += content;
+              }
+              if (thinking) {
+                fullThinking += thinking;
+              }
+              
+              // Build the display HTML
+              let displayHtml = "";
+              if (fullThinking) {
+                displayHtml += `<details class="thinking-details"><summary class="thinking-badge">💭 Thinking...</summary><div class="thinking-content">${escapeHtml(fullThinking)}</div></details>`;
+              }
+              if (fullResponse) {
+                displayHtml += renderMarkdown(fullResponse);
+              }
+              assistantDiv.innerHTML = displayHtml || renderMarkdown("");
               chatContainer.scrollTop = chatContainer.scrollHeight;
             } catch (e) {
               console.error("Parse error", e);

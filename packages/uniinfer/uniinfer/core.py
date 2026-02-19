@@ -80,6 +80,8 @@ class ChatCompletionResponse:
         model (str): The model used for generation.
         usage (dict): Token usage information.
         raw_response (Any): The raw response from the provider.
+        finish_reason (str | None): The reason for completion.
+        thinking (str | None): Thinking/reasoning content (for thinking models).
     """
 
     def __init__(
@@ -89,7 +91,8 @@ class ChatCompletionResponse:
         model: str,
         usage: dict,
         raw_response: Any,
-        finish_reason: str | None = None
+        finish_reason: str | None = None,
+        thinking: str | None = None
     ):
         self.message = message
         self.provider = provider
@@ -97,6 +100,7 @@ class ChatCompletionResponse:
         self.usage = usage
         self.raw_response = raw_response
         self.finish_reason = finish_reason
+        self.thinking = thinking
 
 
 class ChatProvider:

@@ -1,0 +1,2 @@
+[console_scripts]
+credgoo = credgoo.credgoo:main
