@@ -47,7 +47,7 @@ class TUProvider(ChatProvider):
                     "Authorization": f"Bearer {self.api_key}",
                     "Content-Type": "application/json"
                 },
-                timeout=httpx.Timeout(60.0, connect=10.0)
+                timeout=httpx.Timeout(300.0, connect=30.0)  # 5 min timeout for large models
             )
         return self._async_client
 
@@ -105,25 +105,30 @@ class TUProvider(ChatProvider):
 
         try:
             response = await client.post("/chat/completions", json=payload)
-            if response.status_code != 200:
-                log_raw_response(
-                    provider="tu",
-                    operation="chat.completions",
-                    raw_response={
-                        "status_code": response.status_code,
-                        "body": response.text,
-                    },
-                    log_file=os.path.join(os.getcwd(), "logs", "tu_raw_chat.log"),
-                )
-                raise map_provider_error("tu", Exception(f"TU API error: {response.status_code} - {response.text}"), status_code=response.status_code, response_body=response.text)
             
+            # Log raw response for debugging
+            raw_text = response.text
             log_raw_response(
                 provider="tu",
                 operation="chat.completions",
-                raw_response=response.text,
+                raw_response={
+                    "status_code": response.status_code,
+                    "body": raw_text[:1000] if raw_text else "(empty)",
+                },
                 log_file=os.path.join(os.getcwd(), "logs", "tu_raw_chat.log"),
             )
-            data = response.json()
+            
+            if response.status_code != 200:
+                raise map_provider_error("tu", Exception(f"TU API error: {response.status_code} - {raw_text}"), status_code=response.status_code, response_body=raw_text)
+            
+            # Check for empty response
+            if not raw_text or not raw_text.strip():
+                raise map_provider_error("tu", Exception("TU API returned empty response"), status_code=500, response_body="(empty)")
+            
+            try:
+                data = response.json()
+            except Exception as json_err:
+                raise map_provider_error("tu", Exception(f"TU API JSON parse error: {json_err}. Response: {raw_text[:500]}"), status_code=500, response_body=raw_text)
             choice = data["choices"][0]
             message_data = choice["message"]
             
