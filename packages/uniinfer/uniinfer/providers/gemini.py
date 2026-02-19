@@ -255,18 +255,31 @@ class GeminiProvider(ChatProvider):
         content_text = ""
         tool_calls = None
 
+        thinking_content = None
         if response.parts:
-            try:
-                content_text = response.text
-            except ValueError:
-                all_parts_text_list = []
-                for part in response.parts:
-                    part_text_content = getattr(part, 'text', None)
-                    if part_text_content:
-                        all_parts_text_list.append(part_text_content)
-
-                if all_parts_text_list:
-                    content_text = "".join(all_parts_text_list)
+            # Collect thinking and content parts
+            thinking_parts = []
+            text_parts = []
+            
+            for part in response.parts:
+                # Gemini 2.0 Thinking models use the 'thought' attribute on parts
+                if hasattr(part, 'thought') and part.thought:
+                    if hasattr(part, 'text') and part.text:
+                        thinking_parts.append(part.text)
+                elif hasattr(part, 'text') and part.text:
+                    text_parts.append(part.text)
+            
+            if thinking_parts:
+                thinking_content = "".join(thinking_parts)
+                
+            if text_parts:
+                content_text = "".join(text_parts)
+            else:
+                # Try the standard .text property if manual extraction produced nothing
+                try:
+                    content_text = response.text
+                except (ValueError, AttributeError):
+                    content_text = ""
 
             function_calls = []
             for part in response.parts:
@@ -299,7 +312,8 @@ class GeminiProvider(ChatProvider):
             provider='gemini',
             model=model,
             usage=usage,
-            raw_response=response
+            raw_response=response,
+            thinking=thinking_content
         )
 
     def _complete_impl(
@@ -395,17 +409,27 @@ class GeminiProvider(ChatProvider):
                 tool_calls = None
                 
                 if chunk.parts:
-                    try:
-                        content_text = chunk.text
-                    except ValueError:
-                        # Handle chunks that don't have text (e.g. function calls)
-                        all_parts_text_list = []
-                        for part in chunk.parts:
-                            part_text_content = getattr(part, 'text', None)
-                            if part_text_content:
-                                all_parts_text_list.append(part_text_content)
-                        if all_parts_text_list:
-                            content_text = "".join(all_parts_text_list)
+                    thinking_parts = []
+                    text_parts = []
+                    
+                    for part in chunk.parts:
+                        # Gemini 2.0 Thinking models use the 'thought' attribute on parts
+                        if hasattr(part, 'thought') and part.thought:
+                            if hasattr(part, 'text') and part.text:
+                                thinking_parts.append(part.text)
+                        elif hasattr(part, 'text') and part.text:
+                            text_parts.append(part.text)
+                    
+                    thinking_content_chunk = "".join(thinking_parts) if thinking_parts else None
+                    
+                    if text_parts:
+                        content_text = "".join(text_parts)
+                    else:
+                        # Try the standard .text property as fallback
+                        try:
+                            content_text = chunk.text
+                        except (ValueError, AttributeError):
+                            content_text = ""
 
                     # Extract function calls if present
                     function_calls = []
@@ -422,7 +446,7 @@ class GeminiProvider(ChatProvider):
                     if function_calls:
                         tool_calls = function_calls
 
-                if content_text or tool_calls:
+                if content_text or tool_calls or thinking_content_chunk:
                     message = ChatMessage(
                         role="assistant", 
                         content=content_text if content_text else None,
@@ -434,7 +458,8 @@ class GeminiProvider(ChatProvider):
                         provider='gemini',
                         model=model,
                         usage=usage,
-                        raw_response=chunk
+                        raw_response=chunk,
+                        thinking=thinking_content_chunk
                     )
 
         except Exception as e:

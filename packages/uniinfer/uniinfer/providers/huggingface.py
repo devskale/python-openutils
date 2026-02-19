@@ -60,7 +60,8 @@ class HuggingFaceProvider(ChatProvider):
     def _flatten_content(self, content: Any) -> str:
         """Helper to flatten message content to string."""
         if isinstance(content, list):
-            return "".join(p.get("text", "") for p in content if isinstance(p, dict) and p.get("type") == "text")
+            text = "".join(p.get("text", "") for p in content if isinstance(p, dict) and p.get("type") == "text")
+            return text if text else "[content]"
         return str(content) if content is not None else ""
 
     @classmethod
@@ -180,6 +181,9 @@ class HuggingFaceProvider(ChatProvider):
             assistant_msg = resp.choices[0].message
             content = assistant_msg.content
             tool_calls = getattr(assistant_msg, "tool_calls", None)
+            
+            # Handle reasoning_content (models like DeepSeek-R1)
+            reasoning = getattr(assistant_msg, "reasoning_content", None) or getattr(assistant_msg, "reasoning", None)
 
             message = ChatMessage(role="assistant", content=content, tool_calls=tool_calls)
             
@@ -188,7 +192,8 @@ class HuggingFaceProvider(ChatProvider):
                 provider='huggingface',
                 model=model_id,
                 usage=getattr(resp, "usage", {}),
-                raw_response=resp
+                raw_response=resp,
+                thinking=reasoning
             )
 
         except Exception as e:
@@ -235,9 +240,11 @@ class HuggingFaceProvider(ChatProvider):
                     
                     delta = chunk.choices[0].delta
                     content = getattr(delta, "content", None)
+                    # Handle reasoning_content (models like DeepSeek-R1)
+                    reasoning = getattr(delta, "reasoning_content", None) or getattr(delta, "reasoning", None)
                     tool_calls = delta.tool_calls if hasattr(delta, "tool_calls") else None
 
-                    if content is None and tool_calls is None:
+                    if content is None and tool_calls is None and reasoning is None:
                         continue
 
                     yield ChatCompletionResponse(
@@ -245,7 +252,8 @@ class HuggingFaceProvider(ChatProvider):
                         provider='huggingface',
                         model=model_id,
                         usage={},
-                        raw_response=chunk
+                        raw_response=chunk,
+                        thinking=reasoning
                     )
             except Exception as e:
                 # Smarter Fallback Logic
