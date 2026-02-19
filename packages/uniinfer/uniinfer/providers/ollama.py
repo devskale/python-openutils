@@ -48,6 +48,27 @@ class OllamaProvider(ChatProvider):
         super().__init__(api_key)
         self.base_url = base_url
 
+    def _flatten_messages(self, messages: list[ChatMessage]) -> list[dict]:
+        """Flatten multimodal messages for Ollama (text only for now)."""
+        flattened_messages = []
+        for msg in messages:
+            msg_dict = msg.to_dict()
+            content = msg_dict.get("content")
+            if isinstance(content, list):
+                text_parts = []
+                for part in content:
+                    if isinstance(part, dict) and part.get("type") == "text":
+                        text_parts.append(part.get("text", ""))
+                # Join text parts, or use placeholder if no text (e.g., image-only message)
+                msg_dict["content"] = "".join(text_parts) if text_parts else "[content]"
+            # Remove keys that Ollama doesn't expect in its native /api/chat if they are empty
+            if not msg_dict.get("tool_calls"):
+                msg_dict.pop("tool_calls", None)
+            if not msg_dict.get("tool_call_id"):
+                msg_dict.pop("tool_call_id", None)
+            flattened_messages.append(msg_dict)
+        return flattened_messages
+
     @classmethod
     def list_models(cls, **kwargs) -> list:
         """
@@ -107,7 +128,7 @@ class OllamaProvider(ChatProvider):
 
         payload = {
             "model": request.model or "llama2",
-            "messages": [{"role": msg.role, "content": msg.content} for msg in request.messages],
+            "messages": self._flatten_messages(request.messages),
             "stream": False,
             "options": {}
         }
@@ -151,6 +172,9 @@ class OllamaProvider(ChatProvider):
                 role=assistant_message.get("role", "assistant"),
                 content=assistant_message.get("content", "")
             )
+            
+            # Handle reasoning_content (DeepSeek-R1 on Ollama)
+            reasoning_content = assistant_message.get("reasoning_content")
 
             usage = {
                 "prompt_tokens": response_data.get("prompt_eval_count", 0),
@@ -166,7 +190,8 @@ class OllamaProvider(ChatProvider):
                 provider='ollama',
                 model=response_data.get('model', request.model),
                 usage=usage,
-                raw_response=response_data
+                raw_response=response_data,
+                thinking=reasoning_content
             )
         except Exception as e:
             if isinstance(e, UniInferError):
@@ -186,7 +211,7 @@ class OllamaProvider(ChatProvider):
 
         payload = {
             "model": request.model or "llama2",
-            "messages": [{"role": msg.role, "content": msg.content} for msg in request.messages],
+            "messages": self._flatten_messages(request.messages),
             "stream": True,
             "options": {}
         }
@@ -232,8 +257,11 @@ class OllamaProvider(ChatProvider):
                                 continue
 
                             content = ""
+                            reasoning_content = None
                             if "message" in data and "content" in data["message"]:
                                 content = data["message"]["content"]
+                            if "message" in data and "reasoning_content" in data["message"]:
+                                reasoning_content = data["message"]["reasoning_content"]
 
                             message = ChatMessage(
                                 role="assistant", content=content)
@@ -243,7 +271,8 @@ class OllamaProvider(ChatProvider):
                                 provider='ollama',
                                 model=data.get('model', request.model),
                                 usage={},
-                                raw_response=data
+                                raw_response=data,
+                                thinking=reasoning_content
                             )
                         except json.JSONDecodeError:
                             continue

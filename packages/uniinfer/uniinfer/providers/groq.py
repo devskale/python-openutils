@@ -92,6 +92,9 @@ class GroqProvider(ChatProvider):
                 content=getattr(response_message, 'content', None),
                 tool_calls=tool_calls
             )
+            
+            # Handle reasoning_content (Groq R1 models)
+            reasoning_content = getattr(response_message, 'reasoning_content', None)
 
             usage = {}
             if hasattr(completion, 'usage'):
@@ -111,7 +114,8 @@ class GroqProvider(ChatProvider):
                 provider='groq',
                 model=params["model"],
                 usage=usage,
-                raw_response=raw_response
+                raw_response=raw_response,
+                thinking=reasoning_content,
             )
         except Exception as e:
             if isinstance(e, UniInferError):
@@ -150,6 +154,8 @@ class GroqProvider(ChatProvider):
                 if chunk.choices and hasattr(chunk.choices[0], 'delta'):
                     delta = chunk.choices[0].delta
                     content = getattr(delta, 'content', None)
+                    # Handle reasoning_content (Groq R1 models)
+                    reasoning_content = getattr(delta, 'reasoning_content', None)
                     tool_calls = None
                     if hasattr(delta, 'tool_calls') and delta.tool_calls:
                         tool_calls = [
@@ -164,7 +170,7 @@ class GroqProvider(ChatProvider):
                             for tc in delta.tool_calls
                         ]
 
-                    if content or tool_calls:
+                    if content or tool_calls or reasoning_content:
                         message = ChatMessage(
                             role="assistant",
                             content=content,
@@ -175,7 +181,8 @@ class GroqProvider(ChatProvider):
                             provider='groq',
                             model=params["model"],
                             usage={},
-                            raw_response={"delta": {"content": content, "tool_calls": tool_calls}}
+                            raw_response={"delta": {"content": content, "tool_calls": tool_calls, "reasoning_content": reasoning_content}},
+                            thinking=reasoning_content
                         )
         except Exception as e:
             if isinstance(e, UniInferError):
@@ -192,10 +199,8 @@ class GroqProvider(ChatProvider):
                 for part in content:
                     if isinstance(part, dict) and part.get("type") == "text":
                         parts.append(part.get("text", ""))
-                if parts:
-                    md["content"] = "".join(parts)
-                else:
-                    md["content"] = "".join(str(p) for p in content)
+                # Join text parts, or use placeholder if no text (e.g., image-only message)
+                md["content"] = "".join(parts) if parts else "[content]"
             flattened.append(md)
         return flattened
 
@@ -310,6 +315,8 @@ class GroqProvider(ChatProvider):
             for chunk in completion_stream:
                 delta = chunk.choices[0].delta
                 content = getattr(delta, 'content', None)
+                # Handle reasoning_content (Groq R1 models)
+                reasoning_content = getattr(delta, 'reasoning_content', None)
                 tool_calls = None
                 if hasattr(delta, 'tool_calls') and delta.tool_calls:
                     tool_calls = [
@@ -324,7 +331,7 @@ class GroqProvider(ChatProvider):
                         for tc in delta.tool_calls
                     ]
 
-                if not content and not tool_calls:
+                if not content and not tool_calls and not reasoning_content:
                     continue
 
                 message = ChatMessage(
@@ -341,7 +348,8 @@ class GroqProvider(ChatProvider):
                     provider='groq',
                     model=params["model"],
                     usage=usage,
-                    raw_response={"delta": {"content": content, "tool_calls": tool_calls}}
+                    raw_response={"delta": {"content": content, "tool_calls": tool_calls, "reasoning_content": reasoning_content}},
+                    thinking=reasoning_content
                 )
         except Exception as e:
             status_code = getattr(e, 'status_code', None)

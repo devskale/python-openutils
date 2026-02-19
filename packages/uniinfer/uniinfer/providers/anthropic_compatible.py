@@ -103,12 +103,17 @@ class AnthropicCompatibleProvider(ChatProvider):
     def _extract_message(self, response: Any) -> tuple[str | None, list[dict] | None]:
         content_text_parts: list[str] = []
         tool_calls: list[dict] = []
+        thinking_text_parts: list[str] = []
         for block in getattr(response, "content", []) or []:
             btype = getattr(block, "type", None)
             if btype == "text":
                 text = getattr(block, "text", None)
                 if text:
                     content_text_parts.append(text)
+            elif btype == "thinking":
+                thinking = getattr(block, "thinking", None)
+                if thinking:
+                    thinking_text_parts.append(thinking)
             elif btype == "tool_use":
                 tool_calls.append({
                     "id": getattr(block, "id", None),
@@ -119,7 +124,8 @@ class AnthropicCompatibleProvider(ChatProvider):
                     },
                 })
         content = "".join(content_text_parts) if content_text_parts else None
-        return content, tool_calls or None
+        thinking = "".join(thinking_text_parts) if thinking_text_parts else None
+        return content, tool_calls or None, thinking
 
     async def acomplete(
         self,
@@ -147,7 +153,7 @@ class AnthropicCompatibleProvider(ChatProvider):
 
         try:
             response = await self.async_client.messages.create(**params)
-            content, tool_calls = self._extract_message(response)
+            content, tool_calls, thinking = self._extract_message(response)
             usage_obj = getattr(response, "usage", None)
             input_tokens = getattr(usage_obj, "input_tokens", 0) or 0
             output_tokens = getattr(usage_obj, "output_tokens", 0) or 0
@@ -163,6 +169,7 @@ class AnthropicCompatibleProvider(ChatProvider):
                 usage=usage,
                 raw_response=response.model_dump() if hasattr(response, "model_dump") else response,
                 finish_reason=getattr(response, "stop_reason", None),
+                thinking=thinking,
             )
         except Exception as e:
             if isinstance(e, UniInferError):
@@ -201,13 +208,15 @@ class AnthropicCompatibleProvider(ChatProvider):
                 if event_type == "content_block_delta":
                     delta = getattr(event, "delta", None)
                     text = getattr(delta, "text", None)
-                    if text:
+                    thinking = getattr(delta, "thinking", None)
+                    if text or thinking:
                         yield ChatCompletionResponse(
                             message=ChatMessage(role="assistant", content=text),
                             provider=self.PROVIDER_ID,
                             model=request.model or self.DEFAULT_MODEL or "",
                             usage={},
                             raw_response=event.model_dump() if hasattr(event, "model_dump") else event,
+                            thinking=thinking,
                         )
                 elif event_type == "content_block_start":
                     block = getattr(event, "content_block", None)

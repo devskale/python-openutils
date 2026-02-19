@@ -25,8 +25,8 @@ class OpenAICompatibleChatProvider(ChatProvider):
                 for part in content:
                     if isinstance(part, dict) and part.get("type") == "text":
                         text_parts.append(part.get("text", ""))
-                if text_parts:
-                    msg_dict["content"] = "".join(text_parts)
+                # Join text parts, or use placeholder if no text (e.g., image-only message)
+                msg_dict["content"] = "".join(text_parts) if text_parts else "[content]"
             flattened_messages.append(msg_dict)
         return flattened_messages
 
@@ -109,6 +109,8 @@ class OpenAICompatibleChatProvider(ChatProvider):
                 tool_calls=message_data.get("tool_calls"),
                 tool_call_id=message_data.get("tool_call_id"),
             )
+            # Handle reasoning_content (OpenAI o1/o3, Groq R1, etc.)
+            reasoning_content = message_data.get("reasoning_content")
 
             return ChatCompletionResponse(
                 message=message,
@@ -117,6 +119,7 @@ class OpenAICompatibleChatProvider(ChatProvider):
                 usage=response_data.get("usage", {}),
                 raw_response=response_data,
                 finish_reason=choice.get("finish_reason"),
+                thinking=reasoning_content,
             )
         except Exception as e:
             if isinstance(e, UniInferError):
@@ -182,9 +185,11 @@ class OpenAICompatibleChatProvider(ChatProvider):
                     finish_reason = choice.get("finish_reason")
                     role = delta.get("role", "assistant")
                     content = delta.get("content")
+                    # Handle reasoning_content (OpenAI o1/o3, Groq R1, etc.)
+                    reasoning_content = delta.get("reasoning_content")
                     tool_calls = delta.get("tool_calls")
 
-                    if content is None and tool_calls is None and finish_reason is None:
+                    if content is None and reasoning_content is None and tool_calls is None and finish_reason is None:
                         continue
 
                     yield ChatCompletionResponse(
@@ -198,6 +203,7 @@ class OpenAICompatibleChatProvider(ChatProvider):
                         usage=data.get("usage", {}),
                         raw_response=data,
                         finish_reason=finish_reason,
+                        thinking=reasoning_content,
                     )
         except Exception as e:
             if isinstance(e, UniInferError):
