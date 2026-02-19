@@ -105,6 +105,17 @@ app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 app.add_middleware(SlowAPIMiddleware)
 
+from fastapi.exceptions import RequestValidationError
+
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(request: Request, exc: RequestValidationError):
+    request_id = getattr(request.state, "request_id", "unknown")
+    logger.error(f"[{request_id}] Validation error for {request.method} {request.url}: {exc.errors()}")
+    return JSONResponse(
+        status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+        content=jsonable_encoder({"detail": exc.errors(), "body": exc.body}),
+    )
+
 # --- Rate Limit Helpers ---
 
 
@@ -251,13 +262,9 @@ class ChatCompletionRequestInput(BaseModel):
     @classmethod
     def validate_model_format(cls, v):
         if '@' not in v:
-             # Allow system models or special cases if needed, but strict for now based on previous code
-             # Actually existing code allows "provider@model", let's check parse_provider_model usage
-             pass # The endpoint calls parse_provider_model which handles the check.
-             # We can enforce basic format here or leave it to endpoint logic.
-             # Let's enforce basic format to fail fast.
-             if not re.match(r'^[^@]+@[^@]+$', v):
-                 raise ValueError("Invalid model format. Expected 'provider@modelname'.")
+             raise ValueError("Invalid model format. Expected 'provider@modelname'.")
+        if not re.match(r'^[^@]+@[^@]+$', v):
+             raise ValueError("Incorrect model format. Exactly one '@' expected.")
         return v
 
 
