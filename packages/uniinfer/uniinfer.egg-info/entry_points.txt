@@ -1,3 +1,0 @@
-[console_scripts]
-uniinfer = uniinfer.uniinfer_cli:main
-uniioai-proxy = uniinfer.uniioai_proxy:main
