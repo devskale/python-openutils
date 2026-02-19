@@ -921,7 +921,7 @@
               // Normal response chunk
               const delta = data.choices?.[0]?.delta || {};
               const content = delta.content || "";
-              const thinking = delta.thinking || "";
+              const thinking = delta.thinking || delta.reasoning_content || "";
               
               if (content) {
                 fullResponse += content;

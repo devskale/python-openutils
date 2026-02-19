@@ -271,12 +271,14 @@ class ChatCompletionRequestInput(BaseModel):
 class ChatMessageOutput(BaseModel):
     role: str
     content: str | None = None
+    reasoning_content: str | None = None  # Add support for thinking/reasoning
     tool_calls: list[dict] | None = None
 
 
 class ChoiceDelta(BaseModel):
     role: str | None = None
     content: str | None = None
+    reasoning_content: str | None = None  # Add support for thinking/reasoning
     tool_calls: list[dict] | None = None
 
 
@@ -501,6 +503,8 @@ async def stream_response_generator(messages: list[dict], provider_model: str, t
                 delta_kwargs = {}
                 if chunk.message.content:
                     delta_kwargs["content"] = chunk.message.content
+                if chunk.thinking:
+                    delta_kwargs["reasoning_content"] = chunk.thinking
                 if chunk.message.tool_calls:
                     delta_kwargs["tool_calls"] = chunk.message.tool_calls
                     seen_tool_calls = True
@@ -670,6 +674,8 @@ async def astream_response_generator(messages: list[dict], provider_model: str, 
                     choice_kwargs = {}
                     if chunk.message.content:
                         choice_kwargs['content'] = chunk.message.content
+                    if chunk.thinking:
+                        choice_kwargs['reasoning_content'] = chunk.thinking
                     if chunk.message.tool_calls:
                         choice_kwargs['tool_calls'] = chunk.message.tool_calls
                         seen_tool_calls = True
@@ -885,30 +891,27 @@ async def chat_completions(request: Request, request_input: ChatCompletionReques
                 tool_choice=request_input.tool_choice
             )
 
-            # Handle response which can be content string or ChatMessage object
-            content = None
-            tool_calls = None
-
-            if hasattr(full_content, 'tool_calls'):
-                # It's a ChatMessage object
-                content = full_content.content
-                tool_calls = full_content.tool_calls
-            else:
-                # It's a string
-                content = full_content
+            # Handle response (ChatCompletionResponse object)
+            content = full_content.message.content
+            tool_calls = full_content.message.tool_calls
+            thinking = getattr(full_content, 'thinking', None)
 
             # Format response according to OpenAI spec
-            finish_reason = "tool_calls" if tool_calls else "stop"
+            finish_reason = getattr(full_content, 'finish_reason', None) or ("tool_calls" if tool_calls else "stop")
             response_data = NonStreamingChatCompletion(
                 model=provider_model,
                 choices=[
                     NonStreamingChoice(
                         message=ChatMessageOutput(
-                            role="assistant", content=content, tool_calls=tool_calls),
+                            role="assistant", 
+                            content=content, 
+                            reasoning_content=thinking,
+                            tool_calls=tool_calls
+                        ),
                         finish_reason=finish_reason
                     )
                 ]
-                # Usage data is not available from uniioai currently
+                # Usage data could be added here from full_content.usage if needed
             )
             return JSONResponse(content=jsonable_encoder(response_data))
 

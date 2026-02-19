@@ -275,17 +275,10 @@ def get_completion(
         if response.message:
             # Update model accessed time after successful non-streaming completion
             update_model_accessed(model_name, provider_name)
-            if response.message.tool_calls:
-                return response.message
-            elif response.message.content:
-                return response.message.content
-            else:
-                logger.warning(
-                    "Received empty content and no tool calls in response.")
-                return ""
+            return response
         else:
             logger.warning("Received empty message in response.")
-            return ""
+            return response
 
     except (UniInferError, ValueError) as e:
         logger.error(f"An error occurred during non-streaming completion: {e}")
@@ -594,17 +587,10 @@ async def aget_completion(messages, provider_model_string, temperature=0.7, max_
 
         if response.message:
             update_model_accessed(model_name, provider_name)
-            if response.message.tool_calls:
-                return response.message
-            elif response.message.content:
-                return response.message.content
-            else:
-                logger.warning(
-                    "Received empty content and no tool calls in async response.")
-                return ""
+            return response
         else:
             logger.warning("Async response has no message field")
-            return ""
+            return response
 
     except (UniInferError, ValueError) as e:
         logger.error(f"Error during async completion: {e}")
