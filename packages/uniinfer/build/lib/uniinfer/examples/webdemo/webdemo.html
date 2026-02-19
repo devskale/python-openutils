@@ -1,0 +1,1409 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>UniInfer | Unified AI Interface</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/dompurify@3.2.6/dist/purify.min.js"></script>
+  <link rel="stylesheet" href="/webdemo/style.css" />
+</head>
+
+<body>
+  <div class="app-container">
+    <header>
+      <h1>UniInfer</h1>
+      <div id="app-version" style="
+            font-size: 0.78rem;
+            color: #6b7280;
+            background: #f3f4f6;
+            padding: 5px 10px;
+            border-radius: 999px;
+            margin-left: 8px;
+          ">v...</div>
+
+      <div class="mode-switch">
+        <button id="mode-chat" class="mode-btn active">Chat</button>
+        <button id="mode-image" class="mode-btn">Images</button>
+        <button id="mode-audio" class="mode-btn">Audio</button>
+      </div>
+
+      <div id="chat-stats" style="
+            display: none;
+            align-items: center;
+            gap: 12px;
+            font-size: 0.85rem;
+            color: #666;
+            background: #f5f5f5;
+            padding: 6px 12px;
+            border-radius: 20px;
+            margin-right: 12px;
+          ">
+        <span id="stats-text">0 turns • 0 tokens</span>
+        <button id="clear-chat-btn" title="Clear Chat History" style="
+              background: none;
+              border: none;
+              font-size: 1rem;
+              cursor: pointer;
+              padding: 0;
+              line-height: 1;
+              color: #999;
+              display: flex;
+              align-items: center;
+            " onmouseover="this.style.color = '#ff4444'" onmouseout="this.style.color = '#999'">
+          ❌
+        </button>
+      </div>
+
+      <button id="settings-button" title="Settings">⚙️</button>
+    </header>
+
+    <!-- Settings Modal -->
+    <div id="settings-modal" style="
+          display: none;
+          position: fixed;
+          top: 0;
+          left: 0;
+          width: 100%;
+          height: 100%;
+          z-index: 1000;
+          align-items: center;
+          justify-content: center;
+        ">
+      <div class="modal-content">
+        <h2 style="margin-top: 0; margin-bottom: 24px">Settings</h2>
+
+        <div class="form-group">
+          <label for="settings-api-base-url">API Base URL</label>
+          <input type="text" id="settings-api-base-url" placeholder="https://api.example.com/v1" />
+        </div>
+
+        <div class="form-group">
+          <label for="settings-api-key">API Key</label>
+          <input type="password" id="settings-api-key" placeholder="Enter your key" />
+        </div>
+
+        <div class="form-group" style="margin-top: -8px">
+          <label style="display: flex; align-items: center; gap: 8px; text-transform: none; letter-spacing: 0; font-family: inherit; font-size: 0.85rem; color: #374151;">
+            <input type="checkbox" id="settings-remember-key" />
+            Remember API key on this device
+          </label>
+          <div style="font-size: 0.75rem; color: #b45309; margin-top: 6px;">
+            Warning: Stored browser keys can be read by scripts running on this page.
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="settings-max-tokens">Max Tokens</label>
+          <input type="number" id="settings-max-tokens" value="4000" />
+        </div>
+
+        <div style="display: flex; gap: 12px; margin-top: 32px">
+          <button id="settings-save" class="btn-primary" style="flex: 1">
+            Save Changes
+          </button>
+          <button id="settings-cancel" style="
+                flex: 1;
+                background: #eee;
+                color: #333;
+                border: none;
+                border-radius: 12px;
+                cursor: pointer;
+              ">
+            Cancel
+          </button>
+        </div>
+
+        <div style="
+              margin-top: 24px;
+              padding-top: 20px;
+              border-top: 1px solid #eee;
+              text-align: center;
+            ">
+          <button id="update-models-btn">Refresh Models List</button>
+          <div id="update-models-status"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Logic Containers -->
+    <div id="chat-section-container" style="
+          display: flex;
+          flex-direction: column;
+          flex: 1;
+          overflow: hidden;
+        ">
+      <div id="model-select-container">
+        <div>
+          <label>Provider</label>
+          <select id="provider-select" disabled>
+            <option value="" disabled selected>Loading...</option>
+          </select>
+        </div>
+        <div style="flex: 1">
+          <label>Model</label>
+          <select id="model-select" disabled>
+            <option value="">Select provider first</option>
+          </select>
+          <button id="copy-model-btn" title="Copy model ID" style="
+                background: none;
+                border: none;
+                cursor: pointer;
+                padding: 4px;
+                display: flex;
+                align-items: center;
+                opacity: 0.6;
+                transition: opacity 0.2s;
+              " onmouseover="this.style.opacity = '1'" onmouseout="this.style.opacity = '0.6'">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+              stroke-linecap="round" stroke-linejoin="round">
+              <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+              <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      <div id="chat-container">
+        <div class="system-message">
+          Select a provider and model to start chatting.
+        </div>
+      </div>
+
+      <div id="chat-input-wrapper">
+        <div id="image-preview-area" style="display: none">
+          <div style="position: relative">
+            <img id="image-preview-img" class="preview-thumb" />
+            <button id="remove-image-btn" style="
+                  position: absolute;
+                  top: -8px;
+                  right: -8px;
+                  background: #ff4444;
+                  color: white;
+                  border: none;
+                  border-radius: 50%;
+                  width: 20px;
+                  height: 20px;
+                  cursor: pointer;
+                ">
+              ×
+            </button>
+          </div>
+        </div>
+
+        <div id="input-area">
+          <button id="upload-image-btn" class="icon-btn" title="Upload Image">
+            📷
+          </button>
+          <input type="file" id="chat-file-input" accept="image/*" style="display: none" />
+
+          <textarea id="message-input" placeholder="Type a message..." rows="1"></textarea>
+
+          <button id="predefined-button" class="icon-btn" title="Quick Prompts">
+            ✨
+          </button>
+          <button id="send-button" title="Send message">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+              stroke-linecap="round" stroke-linejoin="round">
+              <line x1="12" y1="19" x2="12" y2="5"></line>
+              <polyline points="5 12 12 5 19 12"></polyline>
+            </svg>
+          </button>
+          <button id="stop-button" title="Stop generating" style="display: none">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+              <rect x="6" y="6" width="12" height="12" rx="2"></rect>
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      <!-- Floating Quick Prompts -->
+      <div id="predefined-messages" style="display: none">
+        <h3>Quick Suggestions</h3>
+        <div style="display: flex; flex-direction: column; gap: 4px">
+          <button class="predefined-message">Tell me a joke</button>
+          <button class="predefined-message">
+            Explain Quantum Computing
+          </button>
+          <button class="predefined-message">What is HSL Color?</button>
+          <button id="close-predefined" class="predefined-message">
+            Close
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Image Generation Section -->
+    <div id="image-area" class="panel panel-image">
+      <h3>Image Generation</h3>
+      <div class="image-controls-grid">
+        <textarea id="image-prompt" placeholder="A futuristic city with glass towers and neon lights..."></textarea>
+
+        <div style="
+              display: flex;
+              gap: 12px;
+              flex-wrap: wrap;
+              align-items: center;
+            ">
+          <div class="form-group" style="flex: 1; min-width: 120px; margin-bottom: 0">
+            <label>Provider</label>
+            <select id="image-provider" style="width: 100%">
+              <option value="pollinations" selected>pollinations</option>
+              <option value="tu">tu</option>
+            </select>
+          </div>
+
+          <div class="form-group" style="flex: 1; min-width: 120px; margin-bottom: 0">
+            <label>Model</label>
+            <select id="image-model" style="width: 100%"></select>
+          </div>
+
+          <div class="form-group" style="width: 120px; margin-bottom: 0">
+            <label>Size</label>
+            <select id="image-size" style="width: 100%">
+              <option value="256x256">256x256</option>
+              <option value="512x512" selected>512x512</option>
+              <option value="1024x1024">1024x1024</option>
+            </select>
+          </div>
+
+          <button id="generate-image" class="btn-primary" style="margin-top: 18px">
+            Generate Image
+          </button>
+          <button id="stop-image" class="btn-primary" style="margin-top: 18px; background: #ff4444; display: none">
+            Stop
+          </button>
+        </div>
+      </div>
+
+      <div id="image-status"></div>
+      <div id="image-results" style="
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 24px;
+          "></div>
+    </div>
+
+    <!-- Audio Section -->
+    <div id="audio-area" class="panel panel-audio">
+      <div class="audio-box">
+        <h3>Text-to-Speech (TTS)</h3>
+        <textarea id="tts-input" placeholder="Paste text here to convert to speech..." rows="4" style="
+              width: 100%;
+              border: 1px solid #eee;
+              border-radius: 12px;
+              padding: 16px;
+              margin-bottom: 16px;
+              font-family: inherit;
+            "></textarea>
+
+        <div style="
+              display: flex;
+              gap: 16px;
+              flex-wrap: wrap;
+              align-items: flex-end;
+            ">
+          <div class="form-group" style="flex: 1; min-width: 150px; margin-bottom: 0">
+            <label>Model</label>
+            <select id="tts-model" style="width: 100%">
+              <option value="tu@kokoro">tu@kokoro</option>
+              <option value="tu@piper-thorsten">tu@piper-thorsten</option>
+              <option value="openai@tts-1">openai@tts-1</option>
+              <option value="openai@tts-1-hd">openai@tts-1-hd</option>
+            </select>
+          </div>
+
+          <div class="form-group" style="flex: 1; min-width: 150px; margin-bottom: 0">
+            <label>Voice</label>
+            <select id="tts-voice" style="width: 100%"></select>
+          </div>
+
+          <button id="tts-generate-btn" class="btn-primary">
+            Generate Speech
+          </button>
+          <span id="tts-status"></span>
+        </div>
+        <div id="tts-result" style="margin-top: 24px"></div>
+      </div>
+
+      <div class="audio-box">
+        <h3>Speech-to-Text (STT)</h3>
+        <div style="
+              border: 2px dashed #eee;
+              border-radius: 12px;
+              padding: 32px;
+              text-align: center;
+            ">
+          <input type="file" id="stt-file" accept="audio/*" style="display: none" />
+          <button onclick="document.getElementById('stt-file').click()" style="
+                background: #f8f9fa;
+                border: 1px solid #ddd;
+                padding: 12px 24px;
+                border-radius: 12px;
+                cursor: pointer;
+              ">
+            Choose Audio File
+          </button>
+          <div id="selected-audio-name" style="margin-top: 12px; font-size: 0.8rem; color: #888">
+            No file selected
+          </div>
+        </div>
+
+        <div style="
+              display: flex;
+              gap: 16px;
+              align-items: center;
+              margin-top: 24px;
+            ">
+          <select id="stt-model" style="min-width: 200px">
+            <option value="tu@whisper-large">tu@whisper-large</option>
+          </select>
+          <button id="stt-transcribe-btn" class="btn-primary">
+            Transcribe Audio
+          </button>
+          <span id="stt-status"></span>
+        </div>
+
+        <div id="stt-result" style="
+              margin-top: 24px;
+              padding: 16px;
+              background: #fbfbfb;
+              border-radius: 12px;
+              min-height: 60px;
+            "></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Scripts -->
+  <script src="/webdemo/config.js"></script>
+  <script>
+    // Initialize internal store for providers and models
+    window.uniinferStore = {
+      providers: [],
+      models: [],
+      chatHistory: [],
+    };
+    const HISTORY_MAX_MESSAGES = 30;
+    const HISTORY_MAX_CHARS = 24000;
+
+    // --- History Helpers ---
+    function saveChatHistory() {
+      localStorage.setItem(
+        "uniinfer_chat_history",
+        JSON.stringify(window.uniinferStore.chatHistory),
+      );
+    }
+
+    function estimateMessageChars(message) {
+      if (!message) return 0;
+      const content = message.content;
+      if (typeof content === "string") return content.length;
+      if (Array.isArray(content)) {
+        return content.reduce((acc, part) => {
+          if (!part) return acc;
+          if (part.type === "text") return acc + String(part.text || "").length;
+          if (part.type === "image_url") return acc + 1000;
+          return acc;
+        }, 0);
+      }
+      return 0;
+    }
+
+    function truncateChatHistory() {
+      let history = Array.isArray(window.uniinferStore.chatHistory)
+        ? [...window.uniinferStore.chatHistory]
+        : [];
+      if (history.length > HISTORY_MAX_MESSAGES) {
+        history = history.slice(history.length - HISTORY_MAX_MESSAGES);
+      }
+      let totalChars = history.reduce((acc, msg) => acc + estimateMessageChars(msg), 0);
+      while (history.length > 1 && totalChars > HISTORY_MAX_CHARS) {
+        const removed = history.shift();
+        totalChars -= estimateMessageChars(removed);
+      }
+      window.uniinferStore.chatHistory = history;
+    }
+
+    function loadChatHistory() {
+      console.log("Loading chat history...");
+      const saved = localStorage.getItem("uniinfer_chat_history");
+      if (saved) {
+        try {
+          const history = JSON.parse(saved);
+          console.log("Found history:", history.length, "items");
+          window.uniinferStore.chatHistory = history;
+          truncateChatHistory();
+          saveChatHistory();
+          if (window.uniinferStore.chatHistory.length > 0) {
+            chatContainer.innerHTML = ""; // Clear initial system message
+            window.uniinferStore.chatHistory.forEach((msg) => {
+              let content = msg.content;
+              if (Array.isArray(content)) {
+                const textItem = content.find((i) => i.type === "text");
+                content = textItem ? textItem.text : "[Image]";
+              }
+              addMessage(content, msg.role);
+            });
+            updateChatStats();
+          }
+        } catch (e) {
+          console.error("Failed to load chat history:", e);
+        }
+      } else {
+        console.log("No saved chat history found.");
+      }
+    }
+
+    function setCookie(name, value, hours) {
+      let expires = "";
+      if (hours) {
+        const date = new Date();
+        date.setTime(date.getTime() + hours * 60 * 60 * 1000);
+        expires = "; expires=" + date.toUTCString();
+      }
+      document.cookie = name + "=" + (value || "") + expires + "; path=/";
+    }
+
+    function getCookie(name) {
+      const nameEQ = name + "=";
+      const ca = document.cookie.split(";");
+      for (let i = 0; i < ca.length; i++) {
+        let c = ca[i];
+        while (c.charAt(0) === " ") c = c.substring(1, c.length);
+        if (c.indexOf(nameEQ) === 0)
+          return c.substring(nameEQ.length, c.length);
+      }
+      return null;
+    }
+
+    const rememberApiKey = localStorage.getItem("uniinfer_remember_api_key") === "1";
+    const savedKeyCookie = getCookie("uniinfer_api_key");
+    const savedKeyLocal = localStorage.getItem("uniinfer_api_key");
+
+    if (rememberApiKey) {
+      if (savedKeyLocal && savedKeyLocal.trim()) {
+        window.uniinferConfig.apiKey = savedKeyLocal.trim();
+      } else if (savedKeyCookie && savedKeyCookie.trim()) {
+        window.uniinferConfig.apiKey = savedKeyCookie.trim();
+      }
+    } else {
+      setCookie("uniinfer_api_key", "", -1);
+    }
+
+    // --- Settings/config modal logic ---
+    const settingsButton = document.getElementById("settings-button");
+    const settingsModal = document.getElementById("settings-modal");
+    const settingsApiBaseUrl = document.getElementById(
+      "settings-api-base-url",
+    );
+    const settingsApiKey = document.getElementById("settings-api-key");
+    const settingsRememberKey = document.getElementById("settings-remember-key");
+    const settingsMaxTokens = document.getElementById("settings-max-tokens");
+    const settingsSave = document.getElementById("settings-save");
+    const settingsCancel = document.getElementById("settings-cancel");
+
+    function openSettings() {
+      settingsApiBaseUrl.value = window.uniinferConfig.apiBaseUrl;
+      settingsApiKey.value = window.uniinferConfig.apiKey;
+      settingsRememberKey.checked =
+        localStorage.getItem("uniinfer_remember_api_key") === "1";
+      settingsMaxTokens.value = window.uniinferConfig.maxTokens || 4000;
+      settingsModal.style.display = "flex";
+    }
+    function closeSettings() {
+      settingsModal.style.display = "none";
+    }
+    settingsButton.addEventListener("click", openSettings);
+    settingsCancel.addEventListener("click", closeSettings);
+    settingsModal.addEventListener("click", (e) => {
+      if (e.target === settingsModal) closeSettings();
+    });
+    settingsSave.addEventListener("click", () => {
+      window.uniinferConfig.apiBaseUrl = settingsApiBaseUrl.value.trim();
+      const newKey = settingsApiKey.value.trim();
+      window.uniinferConfig.apiKey = newKey;
+      const shouldRememberKey = settingsRememberKey.checked;
+      localStorage.setItem(
+        "uniinfer_remember_api_key",
+        shouldRememberKey ? "1" : "0",
+      );
+      if (shouldRememberKey) {
+        localStorage.setItem("uniinfer_api_key", newKey);
+        setCookie("uniinfer_api_key", newKey, 48);
+      } else {
+        localStorage.removeItem("uniinfer_api_key");
+        setCookie("uniinfer_api_key", "", -1);
+      }
+
+      window.uniinferConfig.maxTokens =
+        parseInt(settingsMaxTokens.value) || 4000;
+      closeSettings();
+      loadProviders();
+      addMessage("Settings updated.", "system");
+    });
+
+    // DOM elements
+    const providerSelect = document.getElementById("provider-select");
+    const modelSelect = document.getElementById("model-select");
+    const chatContainer = document.getElementById("chat-container");
+    const messageInput = document.getElementById("message-input");
+    const sendButton = document.getElementById("send-button");
+    const stopButton = document.getElementById("stop-button");
+    const predefinedButton = document.getElementById("predefined-button");
+    const uploadImageBtn = document.getElementById("upload-image-btn");
+    const chatFileInput = document.getElementById("chat-file-input");
+    const imagePreviewArea = document.getElementById("image-preview-area");
+    const imagePreviewImg = document.getElementById("image-preview-img");
+    const removeImageBtn = document.getElementById("remove-image-btn");
+    const predefinedMessages = document.getElementById("predefined-messages");
+    const closePredefinedBtn = document.getElementById("close-predefined");
+
+    const modeChatBtn = document.getElementById("mode-chat");
+    const modeImageBtn = document.getElementById("mode-image");
+    const modeAudioBtn = document.getElementById("mode-audio");
+
+    const chatSection = document.getElementById("chat-section-container");
+    const imageSection = document.getElementById("image-area");
+    const audioSection = document.getElementById("audio-area");
+
+    const chatStats = document.getElementById("chat-stats");
+    const statsText = document.getElementById("stats-text");
+    const appVersion = document.getElementById("app-version");
+
+    let currentAbortController = null;
+
+    function escapeHtml(value) {
+      const text = value == null ? "" : String(value);
+      return text
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#39;");
+    }
+
+    function sanitizeHtml(html) {
+      if (window.DOMPurify) {
+        return window.DOMPurify.sanitize(html);
+      }
+      return escapeHtml(html);
+    }
+
+    function renderMarkdown(content) {
+      const raw = marked.parse(content || "");
+      return sanitizeHtml(raw);
+    }
+
+    function safeImageUrl(url) {
+      const value = (url || "").trim();
+      if (!value) return "";
+      if (value.startsWith("data:image/")) return value;
+      if (value.startsWith("https://")) return value;
+      if (value.startsWith("http://")) return value;
+      return "";
+    }
+
+    function updateChatStats() {
+      const history = window.uniinferStore.chatHistory || [];
+      const turns = history.length;
+
+      // Simple token estimation: ~4 chars per token
+      let totalChars = 0;
+      history.forEach((msg) => {
+        if (typeof msg.content === "string") {
+          totalChars += msg.content.length;
+        } else if (Array.isArray(msg.content)) {
+          msg.content.forEach((part) => {
+            if (part.type === "text") totalChars += part.text.length;
+            // Rough estimate for images
+            if (part.type === "image_url") totalChars += 1000;
+          });
+        }
+      });
+      const tokens = Math.ceil(totalChars / 4);
+
+      statsText.textContent = `${turns} msgs • ~${tokens} toks`;
+      chatStats.style.display = "flex";
+    }
+
+    function setMode(mode) {
+      [modeChatBtn, modeImageBtn, modeAudioBtn].forEach((b) =>
+        b.classList.remove("active"),
+      );
+      [chatSection, imageSection, audioSection].forEach(
+        (s) => (s.style.display = "none"),
+      );
+
+      if (mode === "chat") {
+        modeChatBtn.classList.add("active");
+        chatSection.style.display = "flex";
+      } else if (mode === "image") {
+        modeImageBtn.classList.add("active");
+        imageSection.style.display = "block";
+      } else if (mode === "audio") {
+        modeAudioBtn.classList.add("active");
+        audioSection.style.display = "block";
+      }
+    }
+
+    modeChatBtn.addEventListener("click", () => setMode("chat"));
+    modeImageBtn.addEventListener("click", () => setMode("image"));
+    modeAudioBtn.addEventListener("click", () => setMode("audio"));
+
+    // Auto-resize textarea
+    messageInput.addEventListener("input", () => {
+      messageInput.style.height = "auto";
+      messageInput.style.height = messageInput.scrollHeight + "px";
+    });
+
+    // Quick Prompts Toggle
+    predefinedButton.addEventListener("click", () => {
+      const isHidden = predefinedMessages.style.display === "none";
+      predefinedMessages.style.display = isHidden ? "block" : "none";
+    });
+    closePredefinedBtn.addEventListener(
+      "click",
+      () => (predefinedMessages.style.display = "none"),
+    );
+
+    // Shared Headers Helper
+    function getHeaders() {
+      return {
+        Authorization: `Bearer ${window.uniinferConfig.apiKey}`,
+        "Content-Type": "application/json",
+      };
+    }
+
+    async function parseErrorBody(response) {
+      const text = await response.text();
+      if (!text) return response.statusText || `HTTP ${response.status}`;
+      try {
+        const data = JSON.parse(text);
+        return (
+          data?.error?.message ||
+          data?.detail ||
+          data?.message ||
+          text.substring(0, 500)
+        );
+      } catch {
+        return text.substring(0, 500);
+      }
+    }
+
+    async function apiFetch(path, options = {}) {
+      const {
+        method = "GET",
+        headers = {},
+        body,
+        signal,
+        allowHttpErrors = false,
+      } = options;
+      const isAbsolute =
+        path.startsWith("http://") || path.startsWith("https://");
+      const url = isAbsolute
+        ? path
+        : `${window.uniinferConfig.apiBaseUrl}${path}`;
+      const init = { method, headers: { ...headers }, signal };
+      if (body !== undefined) init.body = body;
+      const response = await fetch(url, init);
+      if (!response.ok && !allowHttpErrors) {
+        const detail = await parseErrorBody(response);
+        const error = new Error(detail || `HTTP ${response.status}`);
+        error.status = response.status;
+        error.statusText = response.statusText;
+        error.detail = detail;
+        throw error;
+      }
+      return response;
+    }
+
+    async function apiFetchJson(path, options = {}) {
+      const response = await apiFetch(path, options);
+      return response.json();
+    }
+
+    async function loadVersion() {
+      try {
+        const payload = await apiFetchJson("/v1/system/info");
+        appVersion.textContent = `v${payload.version || "unknown"}`;
+      } catch (_error) {
+        appVersion.textContent = "vunknown";
+      }
+    }
+
+    // Load providers into dropdown
+    async function loadProviders() {
+      try {
+        const payload = await apiFetchJson("/v1/providers", {
+          headers: getHeaders(),
+        });
+        const providers = Array.isArray(payload.data) ? payload.data : [];
+        window.uniinferStore.providers = providers;
+
+        providerSelect.innerHTML =
+          '<option value="" disabled selected>Select provider</option>';
+        providers.forEach((p) => {
+          const option = document.createElement("option");
+          option.value = p;
+          option.textContent = p;
+          providerSelect.appendChild(option);
+        });
+        providerSelect.disabled = false;
+
+        if (providers.includes("zai")) {
+          providerSelect.value = "zai";
+          await loadModels("zai");
+        } else if (providers.includes("zai-code")) {
+          providerSelect.value = "zai-code";
+          await loadModels("zai-code");
+        } else if (providers.length > 0) {
+          providerSelect.value = providers[0];
+          await loadModels(providers[0]);
+        }
+      } catch (e) {
+        console.error(e);
+        const errorDiv = document.createElement("div");
+        errorDiv.className = "message error-message";
+        const errorDetail = e.status
+          ? `Status ${e.status}: ${e.detail || e.statusText || e.message}`
+          : e.message;
+        errorDiv.innerHTML = `
+          <div class="error-title">
+            <span>⚠️</span>
+            <span>Connection Error</span>
+          </div>
+          <div class="error-detail">${escapeHtml(errorDetail)}</div>
+        `;
+        chatContainer.innerHTML = "";
+        chatContainer.appendChild(errorDiv);
+      }
+    }
+
+    // Load models for provider
+    async function loadModels(provider) {
+      try {
+        const data = await apiFetchJson(`/v1/models/${provider}`, {
+          headers: getHeaders(),
+        });
+        window.uniinferStore.models = data.data.map((m) => m.id);
+
+        modelSelect.innerHTML = "";
+        modelSelect.disabled = false;
+        data.data.forEach((model) => {
+          const option = document.createElement("option");
+          option.value = model.id;
+          option.textContent = model.id;
+          modelSelect.appendChild(option);
+        });
+        modelSelect.value = data.data[0]?.id || "";
+      } catch (error) {
+        console.error(error);
+        addMessage(`Failed to load models for ${provider}`, "error");
+      }
+    }
+
+    function addMessage(content, role = "user") {
+      const messageDiv = document.createElement("div");
+      messageDiv.className = `message ${role}-message`;
+      if (role === "assistant") {
+        messageDiv.innerHTML = renderMarkdown(content);
+      } else {
+        messageDiv.textContent = content;
+      }
+      chatContainer.appendChild(messageDiv);
+      chatContainer.scrollTo({
+        top: chatContainer.scrollHeight,
+        behavior: "smooth",
+      });
+      return messageDiv;
+    }
+
+    async function sendMessage(message) {
+      const provider = providerSelect.value;
+      const model = modelSelect.value;
+      if (!provider || !model) {
+        addMessage("Select provider and model first", "error");
+        return;
+      }
+
+      let apiMessageContent = message;
+      if (imagePreviewArea.style.display !== "none" && imagePreviewImg.src) {
+        apiMessageContent = [
+          { type: "text", text: message },
+          { type: "image_url", image_url: { url: imagePreviewImg.src } },
+        ];
+        imagePreviewArea.style.display = "none";
+      }
+
+      addMessage(message, "user");
+      // Update history
+      window.uniinferStore.chatHistory.push({
+        role: "user",
+        content: apiMessageContent,
+      });
+      truncateChatHistory();
+      saveChatHistory();
+
+      messageInput.value = "";
+      messageInput.style.height = "auto";
+
+      sendButton.style.display = "none";
+      stopButton.style.display = "flex";
+
+      const assistantDiv = addMessage("...", "assistant");
+      currentAbortController = new AbortController();
+
+      let fullResponse = "";
+
+      try {
+        const response = await apiFetch("/v1/chat/completions", {
+          method: "POST",
+          headers: getHeaders(),
+          body: JSON.stringify({
+            model: `${provider}@${model}`,
+            messages: window.uniinferStore.chatHistory,
+            stream: true,
+            max_tokens: window.uniinferConfig.maxTokens || 4000,
+          }),
+          signal: currentAbortController.signal,
+        });
+        if (!response.body) {
+          throw new Error("Empty streaming response body");
+        }
+
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          const chunk = decoder.decode(value);
+          const lines = chunk
+            .split("\n")
+            .filter((l) => l.startsWith("data: "));
+
+          for (const line of lines) {
+            const dataStr = line.replace("data: ", "");
+            if (dataStr === "[DONE]") break;
+
+            try {
+              const data = JSON.parse(dataStr);
+              
+              // Check if this is an error chunk from streaming
+              if (data.error) {
+                // Remove loading indicator and show error
+                assistantDiv.remove();
+                
+                const errorDiv = document.createElement("div");
+                errorDiv.className = "message error-message";
+                errorDiv.innerHTML = `
+                  <div class="error-title">
+                    <span>⚠️</span>
+                    <span>Error ${data.error.code || ''}</span>
+                  </div>
+                  <div class="error-detail">${escapeHtml(data.error.message || JSON.stringify(data.error))}</div>
+                `;
+                chatContainer.appendChild(errorDiv);
+                chatContainer.scrollTo({
+                  top: chatContainer.scrollHeight,
+                  behavior: "smooth",
+                });
+                return; // Stop processing
+              }
+              
+              // Normal response chunk
+              const delta = data.choices?.[0]?.delta?.content || "";
+              fullResponse += delta;
+              assistantDiv.innerHTML = renderMarkdown(fullResponse);
+              chatContainer.scrollTop = chatContainer.scrollHeight;
+            } catch (e) {
+              console.error("Parse error", e);
+            }
+          }
+        }
+
+        // Save assistant response to history
+        if (fullResponse) {
+          window.uniinferStore.chatHistory.push({
+            role: "assistant",
+            content: fullResponse,
+          });
+          truncateChatHistory();
+          saveChatHistory();
+        }
+      } catch (e) {
+        if (e.name !== "AbortError") {
+          // Remove loading indicator
+          assistantDiv.remove();
+          
+          let errorTitle = "Error";
+          let errorDetail = e.detail || e.message;
+          if (e.status) {
+            errorTitle = `Error ${e.status}`;
+            errorDetail = e.detail || e.statusText || e.message;
+          }
+          
+          // Create error message element
+          const errorDiv = document.createElement("div");
+          errorDiv.className = "message error-message";
+          errorDiv.innerHTML = `
+            <div class="error-title">
+              <span>⚠️</span>
+              <span>${errorTitle}</span>
+            </div>
+            <div class="error-detail">${escapeHtml(errorDetail)}</div>
+          `;
+          chatContainer.appendChild(errorDiv);
+          chatContainer.scrollTo({
+            top: chatContainer.scrollHeight,
+            behavior: "smooth",
+          });
+        }
+      } finally {
+        sendButton.style.display = "flex";
+        stopButton.style.display = "none";
+        currentAbortController = null;
+      }
+    }
+
+    // Event Listeners
+    providerSelect.addEventListener("change", () =>
+      loadModels(providerSelect.value),
+    );
+    sendButton.addEventListener("click", () =>
+      sendMessage(messageInput.value.trim()),
+    );
+    messageInput.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" && !e.shiftKey) {
+        e.preventDefault();
+        sendMessage(messageInput.value.trim());
+      }
+    });
+    stopButton.addEventListener("click", () =>
+      currentAbortController?.abort(),
+    );
+
+    document
+      .getElementById("copy-model-btn")
+      .addEventListener("click", () => {
+        const p = providerSelect.value;
+        const m = modelSelect.value;
+        if (!p || !m) return;
+
+        const full = `${p}@${m}`;
+        navigator.clipboard.writeText(full).then(() => {
+          const btn = document.getElementById("copy-model-btn");
+          const original = btn.innerHTML;
+          // Show checkmark
+          btn.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>`;
+          setTimeout(() => {
+            btn.innerHTML = original;
+          }, 1500);
+        });
+      });
+
+    uploadImageBtn.addEventListener("click", () => chatFileInput.click());
+    chatFileInput.addEventListener("change", (e) => {
+      const file = e.target.files[0];
+      if (file) {
+        const reader = new FileReader();
+        reader.onload = (ev) => {
+          imagePreviewImg.src = ev.target.result;
+          imagePreviewArea.style.display = "block";
+        };
+        reader.readAsDataURL(file);
+      }
+    });
+    removeImageBtn.addEventListener("click", () => {
+      imagePreviewArea.style.display = "none";
+      chatFileInput.value = "";
+    });
+
+    // Quick Prompt usage
+    document.querySelectorAll(".predefined-message").forEach((btn) => {
+      if (btn.id === "close-predefined") return;
+      btn.addEventListener("click", () => {
+        messageInput.value = btn.textContent;
+        predefinedMessages.style.display = "none";
+        messageInput.focus();
+      });
+    });
+
+    // Clear Chat Listener
+    document
+      .getElementById("clear-chat-btn")
+      .addEventListener("click", () => {
+        window.uniinferStore.chatHistory = [];
+        localStorage.removeItem("uniinfer_chat_history");
+        chatContainer.innerHTML = "";
+        addMessage(
+          "Select a provider and model to start chatting.",
+          "system",
+        );
+        updateChatStats();
+      });
+
+    // Load history on init (moved to end)
+
+    // --- PNG Metadata Helpers ---
+    const crcTable = [];
+    for (let n = 0; n < 256; n++) {
+      let c = n;
+      for (let k = 0; k < 8; k++) {
+        c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1;
+      }
+      crcTable[n] = c;
+    }
+    function crc32(buf) {
+      let c = 0xffffffff;
+      for (let i = 0; i < buf.length; i++) {
+        c = (c >>> 8) ^ crcTable[(c ^ buf[i]) & 0xff];
+      }
+      return (c ^ 0xffffffff) >>> 0;
+    }
+
+    function addPngMetadata(pngBuffer, key, value) {
+      if (!value) return pngBuffer;
+      // Verify PNG signature
+      if (
+        pngBuffer[0] !== 137 ||
+        pngBuffer[1] !== 80 ||
+        pngBuffer[2] !== 78 ||
+        pngBuffer[3] !== 71
+      ) {
+        return pngBuffer;
+      }
+
+      const keyBytes = new TextEncoder().encode(key);
+      const valueBytes = new TextEncoder().encode(value);
+      const len = keyBytes.length + 1 + valueBytes.length;
+      const chunk = new Uint8Array(12 + len);
+      const view = new DataView(chunk.buffer);
+
+      view.setUint32(0, len, false);
+      chunk.set([116, 69, 88, 116], 4); // "tEXt"
+      chunk.set(keyBytes, 8);
+      chunk[8 + keyBytes.length] = 0;
+      chunk.set(valueBytes, 9 + keyBytes.length);
+
+      const crc = crc32(chunk.subarray(4, 8 + len));
+      view.setUint32(8 + len, crc, false);
+
+      // Insert after IHDR (33 bytes)
+      const newPng = new Uint8Array(pngBuffer.length + chunk.length);
+      newPng.set(pngBuffer.subarray(0, 33), 0);
+      newPng.set(chunk, 33);
+      newPng.set(pngBuffer.subarray(33), 33 + chunk.length);
+      return newPng;
+    }
+
+    function base64ToUint8Array(base64) {
+      const binary_string = window.atob(base64.split(",")[1]);
+      const len = binary_string.length;
+      const bytes = new Uint8Array(len);
+      for (let i = 0; i < len; i++) {
+        bytes[i] = binary_string.charCodeAt(i);
+      }
+      return bytes;
+    }
+
+    // --- Image Gen Logic ---
+    const imageProvider = document.getElementById("image-provider");
+    const imageModel = document.getElementById("image-model");
+    const generateImgBtn = document.getElementById("generate-image");
+    const imagePrompt = document.getElementById("image-prompt");
+    const imageResults = document.getElementById("image-results");
+
+    async function updateImageModels() {
+      const prov = imageProvider.value;
+      try {
+        const json = await apiFetchJson(`/v1/image/models/${prov}`, {
+          headers: getHeaders(),
+        });
+        imageModel.innerHTML = "";
+        (json.data || []).forEach((m) => {
+          const option = document.createElement("option");
+          option.value = m.id;
+          option.textContent = m.id;
+          imageModel.appendChild(option);
+        });
+      } catch (error) {
+        console.error("Error fetching image models:", error);
+      }
+    }
+    imageProvider.addEventListener("change", updateImageModels);
+    // Load initial models for default provider
+    updateImageModels();
+
+    generateImgBtn.addEventListener("click", async () => {
+      const prompt = imagePrompt.value.trim();
+      if (!prompt) return;
+      const fullModelId = `${imageProvider.value}@${imageModel.value}`;
+
+      generateImgBtn.disabled = true;
+      const status = document.getElementById("image-status");
+      status.innerHTML = '<div class="spinner"></div> Generating...';
+
+      try {
+        const resp = await apiFetch("/v1/images/generations", {
+          method: "POST",
+          headers: getHeaders(),
+          body: JSON.stringify({
+            model: fullModelId,
+            prompt,
+            size: document.getElementById("image-size").value,
+          }),
+        });
+        const data = await resp.json();
+        const item = data.data?.[0];
+
+        if (item) {
+          let imgSrc = item.url;
+          if (item.b64_json) {
+            // Detection based on base64 headers: /9j/ is JPEG, iVBOR is PNG
+            const isJpeg = item.b64_json.startsWith("/9j/");
+            const prefix = isJpeg ? "data:image/jpeg;base64," : "data:image/png;base64,";
+            imgSrc = prefix + item.b64_json;
+          }
+          imgSrc = safeImageUrl(imgSrc);
+
+          if (imgSrc) {
+            const card = document.createElement("div");
+            card.style.background = "white";
+            card.style.padding = "8px";
+            card.style.borderRadius = "16px";
+            card.style.boxShadow = "0 4px 12px rgba(0,0,0,0.1)";
+            card.innerHTML = `
+                <div style="position: relative;">
+                  <img src="${escapeHtml(imgSrc)}" style="width:100%; border-radius:12px;" />
+                  <button class="download-btn" style="
+                      position: absolute;
+                      bottom: 12px;
+                      right: 12px;
+                      background: rgba(255, 255, 255, 0.95);
+                      border: 1px solid rgba(0,0,0,0.1);
+                      border-radius: 50%;
+                      width: 36px;
+                      height: 36px;
+                      display: flex;
+                      align-items: center;
+                      justify-content: center;
+                      cursor: pointer;
+                      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+                      transition: all 0.2s ease;
+                      z-index: 10;
+                  " onmouseover="this.style.transform='scale(1.1)'; this.style.background='#fff'" 
+                    onmouseout="this.style.transform='scale(1)'; this.style.background='rgba(255, 255, 255, 0.95)'"
+                    title="Download Image">
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#333" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                          <polyline points="7 10 12 15 17 10"></polyline>
+                          <line x1="12" y1="15" x2="12" y2="3"></line>
+                      </svg>
+                  </button>
+                </div>
+                <div style="padding:12px; font-size:0.8rem; color:#666;">${escapeHtml(prompt)}</div>`;
+
+            const btn = card.querySelector(".download-btn");
+            btn.addEventListener("click", async () => {
+              try {
+                let pngBytes;
+                if (imgSrc.startsWith("data:")) {
+                  pngBytes = base64ToUint8Array(imgSrc);
+                } else {
+                  const r = await fetch(imgSrc);
+                  const b = await r.arrayBuffer();
+                  pngBytes = new Uint8Array(b);
+                }
+
+                // Add Metadata
+                pngBytes = addPngMetadata(pngBytes, "Description", prompt);
+                pngBytes = addPngMetadata(pngBytes, "Software", fullModelId);
+                pngBytes = addPngMetadata(
+                  pngBytes,
+                  "Source",
+                  "UniInfer WebDemo",
+                );
+
+                const blob = new Blob([pngBytes], { type: "image/png" });
+                const url = URL.createObjectURL(blob);
+
+                const a = document.createElement("a");
+                a.href = url;
+                a.download = `uniinfer-image-${Date.now()}.png`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+              } catch (e) {
+                console.error("Download failed or metadata error", e);
+                const a = document.createElement("a");
+                a.href = imgSrc;
+                a.download = `uniinfer-image-${Date.now()}.png`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+              }
+            });
+
+            imageResults.prepend(card);
+          }
+        } else {
+          status.innerHTML = `
+            <div class="error-status">
+              <div class="error-title">
+                <span>⚠️</span>
+                <span>Error</span>
+              </div>
+              <div class="error-detail">No image generated</div>
+            </div>
+          `;
+        }
+      } catch (e) {
+        const title = e.status ? `Error ${e.status}` : "Error";
+        const detail = e.detail || e.statusText || e.message;
+        status.innerHTML = `
+          <div class="error-status">
+            <div class="error-title">
+              <span>⚠️</span>
+              <span>${title}</span>
+            </div>
+            <div class="error-detail">${escapeHtml(detail)}</div>
+          </div>
+        `;
+      } finally {
+        generateImgBtn.disabled = false;
+        status.innerHTML = "";
+      }
+    });
+
+    // --- TTS Logic ---
+    const ttsGenerateBtn = document.getElementById("tts-generate-btn");
+    const ttsModel = document.getElementById("tts-model");
+    const ttsVoice = document.getElementById("tts-voice");
+    const ttsInput = document.getElementById("tts-input");
+    const ttsResult = document.getElementById("tts-result");
+
+    async function updateVoices() {
+      const voices = ttsModel.value.includes("kokoro")
+        ? ["af_heart", "af_bella", "af_nicole", "thorsten"]
+        : ["alloy", "echo", "fable", "onyx", "nova", "shimmer"];
+      ttsVoice.innerHTML = voices
+        .map((v) => `<option value="${v}">${v}</option>`)
+        .join("");
+    }
+    ttsModel.addEventListener("change", updateVoices);
+    updateVoices();
+
+    ttsGenerateBtn.addEventListener("click", async () => {
+      const text = ttsInput.value.trim();
+      if (!text) return;
+
+      ttsGenerateBtn.disabled = true;
+      document.getElementById("tts-status").innerHTML =
+        '<div class="spinner"></div> Creating audio...';
+
+      try {
+        const resp = await apiFetch("/v1/audio/speech", {
+          method: "POST",
+          headers: getHeaders(),
+          body: JSON.stringify({
+            model: ttsModel.value,
+            input: text,
+            voice: ttsVoice.value,
+          }),
+        });
+        const blob = await resp.blob();
+        const url = URL.createObjectURL(blob);
+        const audio = document.createElement("audio");
+        audio.controls = true;
+        audio.src = url;
+        audio.style.width = "100%";
+        ttsResult.prepend(audio);
+      } catch (e) {
+        const statusEl = document.getElementById("tts-status");
+        const errorDetail = e.detail || e.statusText || e.message;
+        
+        statusEl.innerHTML = `
+          <div class="error-status">
+            <div class="error-title">
+              <span>⚠️</span>
+              <span>Error ${e.status || ""}</span>
+            </div>
+            <div class="error-detail">${escapeHtml(errorDetail)}</div>
+          </div>
+        `;
+      } finally {
+        ttsGenerateBtn.disabled = false;
+        document.getElementById("tts-status").innerHTML = "";
+      }
+    });
+
+    // --- STT Logic ---
+    const sttTranscribeBtn = document.getElementById("stt-transcribe-btn");
+    const sttFile = document.getElementById("stt-file");
+    const sttResult = document.getElementById("stt-result");
+
+    sttFile.addEventListener("change", () => {
+      document.getElementById("selected-audio-name").textContent =
+        sttFile.files[0]?.name || "No file selected";
+    });
+
+    sttTranscribeBtn.addEventListener("click", async () => {
+      const file = sttFile.files[0];
+      if (!file) return;
+
+      sttTranscribeBtn.disabled = true;
+      document.getElementById("stt-status").innerHTML =
+        '<div class="spinner"></div> Transcribing...';
+
+      try {
+        const formData = new FormData();
+        formData.append("file", file);
+        formData.append("model", document.getElementById("stt-model").value);
+
+        const resp = await apiFetch("/v1/audio/transcriptions", {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${window.uniinferConfig.apiKey}`,
+          },
+          body: formData,
+        });
+        const data = await resp.json();
+        sttResult.innerHTML = `<div style="font-weight:600; margin-bottom:8px; font-size:0.7rem; color:#888;">Transcription:</div>${escapeHtml(data.text || "No text found")}`;
+      } catch (e) {
+        const statusEl = document.getElementById("stt-status");
+        const errorDetail = e.detail || e.statusText || e.message;
+        
+        statusEl.innerHTML = `
+          <div class="error-status">
+            <div class="error-title">
+              <span>⚠️</span>
+              <span>Error ${e.status || ""}</span>
+            </div>
+            <div class="error-detail">${escapeHtml(errorDetail)}</div>
+          </div>
+        `;
+      } finally {
+        sttTranscribeBtn.disabled = false;
+        document.getElementById("stt-status").innerHTML = "";
+      }
+    });
+
+    // Init
+    loadChatHistory();
+    loadVersion();
+    loadProviders();
+    updateImageModels();
+    updateVoices();
+    setMode("chat");
+  </script>
+</body>
+
+</html>

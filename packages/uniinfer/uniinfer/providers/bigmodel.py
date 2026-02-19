@@ -2,10 +2,13 @@
 Bigmodel (Z.ai) provider implementation.
 """
 import asyncio
+import logging
 from typing import Optional
 
 from ..core import ChatProvider, ChatCompletionRequest, ChatCompletionResponse, ChatMessage
 from ..errors import map_provider_error, UniInferError
+
+logger = logging.getLogger(__name__)
 
 _END = object()
 
@@ -85,8 +88,7 @@ class ZAIBaseProvider(ChatProvider):
                 model_id = _safe_get(model, "id")
                 if model_id:
                     api_models.append(model_id)
-            guaranteed_models = ["glm-4.7", "glm-4-flash", "glm-4.5-flash", "glm-4.5"]
-            return list(dict.fromkeys(api_models + guaranteed_models))
+            return list(dict.fromkeys(api_models))
         except Exception as e:
             raise map_provider_error(cls.ERROR_PROVIDER_NAME, e)
 
@@ -100,8 +102,9 @@ class ZAIBaseProvider(ChatProvider):
                 for part in content:
                     if isinstance(part, dict) and part.get("type") == "text":
                         text_parts.append(part.get("text", ""))
-                if text_parts:
-                    msg_dict["content"] = "".join(text_parts)
+                # Join text parts, or use placeholder if no text (e.g., image-only message)
+                msg_dict["content"] = "".join(text_parts) if text_parts else "[content]"
+            # Always include the message
             flattened_messages.append(msg_dict)
         return flattened_messages
 
@@ -161,9 +164,14 @@ class ZAIBaseProvider(ChatProvider):
         if self.api_key is None:
             raise ValueError(f"{self.ERROR_PROVIDER_NAME} API key is required")
 
+        flattened_messages = self._flatten_messages(request.messages)
+        
+        if not flattened_messages:
+            logger.warning(f"ZAI {self.PROVIDER_ID}: No messages to send!")
+        
         params = {
             "model": request.model or self.DEFAULT_MODEL,
-            "messages": self._flatten_messages(request.messages),
+            "messages": flattened_messages,
             "temperature": request.temperature,
             "stream": True,
         }
@@ -189,9 +197,11 @@ class ZAIBaseProvider(ChatProvider):
                 choice = choices[0]
                 delta = _safe_get(choice, "delta", {}) or {}
                 content = _safe_get(delta, "content")
+                # Handle reasoning_content (Z.ai thinking models) - put in thinking field
+                reasoning_content = _safe_get(delta, "reasoning_content")
                 tool_calls = _safe_get(delta, "tool_calls")
                 finish_reason = _safe_get(choice, "finish_reason")
-                if content is None and tool_calls is None and finish_reason is None:
+                if content is None and reasoning_content is None and tool_calls is None and finish_reason is None:
                     continue
                 yield ChatCompletionResponse(
                     message=ChatMessage(
@@ -204,6 +214,7 @@ class ZAIBaseProvider(ChatProvider):
                     usage=_safe_get(chunk_data, "usage", {}) or {},
                     raw_response=chunk_data,
                     finish_reason=finish_reason,
+                    thinking=reasoning_content,  # Separate thinking content
                 )
         except Exception as e:
             if isinstance(e, UniInferError):

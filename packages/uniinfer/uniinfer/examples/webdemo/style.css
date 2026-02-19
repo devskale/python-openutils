@@ -742,3 +742,44 @@ select:disabled {
   align-items: center;
   gap: 6px;
 }
+
+/* Thinking badge styles */
+.thinking-details {
+  margin-bottom: 12px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+.thinking-badge {
+  padding: 8px 12px;
+  background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
+  cursor: pointer;
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: #0284c7;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  user-select: none;
+}
+
+.thinking-badge:hover {
+  background: linear-gradient(135deg, #e0f2fe 0%, #bae6fd 100%);
+}
+
+.thinking-details[open] .thinking-badge {
+  border-bottom: 1px solid var(--border-color);
+}
+
+.thinking-content {
+  padding: 12px;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  background: #fafafa;
+  white-space: pre-wrap;
+  font-family: var(--font-mono);
+  line-height: 1.5;
+  max-height: 300px;
+  overflow-y: auto;
+}

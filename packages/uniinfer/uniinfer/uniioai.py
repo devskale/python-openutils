@@ -716,6 +716,12 @@ def format_chunk_to_openai(response: ChatCompletionResponse, provider_model_stri
             delta["content"] = response.message.content
         if response.message.tool_calls:
             delta["tool_calls"] = response.message.tool_calls
+        if response.message.role:
+            delta["role"] = response.message.role
+    
+    # Add thinking content if present (for thinking models)
+    if hasattr(response, 'thinking') and response.thinking:
+        delta["thinking"] = response.thinking
 
     choice_data = {"index": 0, "delta": delta}
     if hasattr(response, 'finish_reason') and response.finish_reason:
