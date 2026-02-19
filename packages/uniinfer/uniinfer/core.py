@@ -171,21 +171,30 @@ class ChatProvider:
         async_gen = self.astream_complete(request, **provider_specific_kwargs)
         
         loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
         try:
             while True:
                 try:
                     yield loop.run_until_complete(async_gen.__anext__())
                 except StopAsyncIteration:
                     break
+                except Exception:
+                    # Re-raise any other exception after cleanup
+                    raise
         finally:
-            try:
-                loop.run_until_complete(async_gen.aclose())
-            except Exception:
-                pass
-            try:
-                loop.run_until_complete(self.aclose())
-            except Exception:
-                pass
+            # Properly close the async generator
+            async def cleanup():
+                try:
+                    await async_gen.aclose()
+                except Exception:
+                    pass
+                try:
+                    await self.aclose()
+                except Exception:
+                    pass
+            
+            loop.run_until_complete(cleanup())
+            loop.run_until_complete(loop.shutdown_asyncgens())
             loop.close()
 
     async def acomplete(
