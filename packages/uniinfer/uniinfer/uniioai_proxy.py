@@ -240,15 +240,18 @@ class ChatMessageInput(BaseModel):
 
 
 class ChatCompletionRequestInput(BaseModel):
-    model: str  # Expected format: "provider@modelname"
+    model: str
     messages: list[ChatMessageInput]
     temperature: float | None = 0.7
-    max_tokens: int | None = 500
+    max_tokens: int | None = 4096
+    max_completion_tokens: int | None = None
     stream: bool | None = False
-    base_url: str | None = None  # Add base_url field
+    base_url: str | None = None
     tools: list[dict] | None = None
     tool_choice: Any | None = None
-    # Add other common OpenAI parameters if needed, e.g., top_p, frequency_penalty
+
+    def get_effective_max_tokens(self) -> int | None:
+        return self.max_completion_tokens or self.max_tokens
 
     @field_validator('messages')
     @classmethod
@@ -864,9 +867,9 @@ async def chat_completions(request: Request, request_input: ChatCompletionReques
                     messages=messages_dict,
                     provider_model=provider_model,
                     temp=request_input.temperature,
-                    max_tok=request_input.max_tokens,
-                    provider_api_key=provider_api_key,  # Pass retrieved key
-                    base_url=base_url,  # Pass potentially modified base_url
+                    max_tok=request_input.get_effective_max_tokens(),
+                    provider_api_key=provider_api_key,
+                    base_url=base_url,
                     tools=request_input.tools,
                     tool_choice=request_input.tool_choice,
                     request_id=getattr(request.state, "request_id", None)
@@ -884,9 +887,9 @@ async def chat_completions(request: Request, request_input: ChatCompletionReques
                 messages=messages_dict,
                 provider_model_string=provider_model,
                 temperature=request_input.temperature,
-                max_tokens=request_input.max_tokens,
-                provider_api_key=provider_api_key,  # Pass retrieved key
-                base_url=base_url,  # Pass potentially modified base_url
+                max_tokens=request_input.get_effective_max_tokens(),
+                provider_api_key=provider_api_key,
+                base_url=base_url,
                 tools=request_input.tools,
                 tool_choice=request_input.tool_choice
             )
