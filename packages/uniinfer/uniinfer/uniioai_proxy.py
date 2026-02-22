@@ -249,6 +249,7 @@ class ChatCompletionRequestInput(BaseModel):
     base_url: str | None = None
     tools: list[dict] | None = None
     tool_choice: Any | None = None
+    reasoning_effort: str | None = None
 
     def get_effective_max_tokens(self) -> int | None:
         return self.max_completion_tokens or self.max_tokens
@@ -595,7 +596,7 @@ async def stream_response_generator(messages: list[dict], provider_model: str, t
 
 
 # --- Async Stream Response Generator ---
-async def astream_response_generator(messages: list[dict], provider_model: str, temp: float, max_tok: int, provider_api_key: str | None, base_url: str | None, tools: list[dict] | None = None, tool_choice: Any | None = None, request_id: str | None = None) -> AsyncGenerator[str, None]:
+async def astream_response_generator(messages: list[dict], provider_model: str, temp: float, max_tok: int, provider_api_key: str | None, base_url: str | None, tools: list[dict] | None = None, tool_choice: Any | None = None, request_id: str | None = None, reasoning_effort: str | None = None) -> AsyncGenerator[str, None]:
     """Generates OpenAI-compatible SSE chunks from uniioai.astream_completion using async."""
     completion_id = f"chatcmpl-{uuid.uuid4()}"
     created_time = int(time.time())
@@ -623,7 +624,7 @@ async def astream_response_generator(messages: list[dict], provider_model: str, 
 
     try:
         async_iter = astream_completion(
-            messages, provider_model, temp, max_tok, provider_api_key=provider_api_key, base_url=base_url, tools=tools, tool_choice=tool_choice
+            messages, provider_model, temp, max_tok, provider_api_key=provider_api_key, base_url=base_url, tools=tools, tool_choice=tool_choice, reasoning_effort=reasoning_effort
         ).__aiter__()
         while True:
             try:
@@ -872,7 +873,8 @@ async def chat_completions(request: Request, request_input: ChatCompletionReques
                     base_url=base_url,
                     tools=request_input.tools,
                     tool_choice=request_input.tool_choice,
-                    request_id=getattr(request.state, "request_id", None)
+                    request_id=getattr(request.state, "request_id", None),
+                    reasoning_effort=request_input.reasoning_effort
                 ),
                 media_type="text/event-stream",
                 headers={
@@ -891,7 +893,8 @@ async def chat_completions(request: Request, request_input: ChatCompletionReques
                 provider_api_key=provider_api_key,
                 base_url=base_url,
                 tools=request_input.tools,
-                tool_choice=request_input.tool_choice
+                tool_choice=request_input.tool_choice,
+                reasoning_effort=request_input.reasoning_effort
             )
 
             # Handle response (ChatCompletionResponse object)
