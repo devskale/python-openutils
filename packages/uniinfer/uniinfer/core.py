@@ -59,7 +59,8 @@ class ChatCompletionRequest:
         max_tokens: int | None = None,
         streaming: bool = False,
         tools: list[dict] | None = None,
-        tool_choice: Any | None = None
+        tool_choice: Any | None = None,
+        reasoning_effort: str | None = None
     ):
         self.messages = messages
         self.model = model
@@ -68,6 +69,7 @@ class ChatCompletionRequest:
         self.streaming = streaming
         self.tools = tools
         self.tool_choice = tool_choice
+        self.reasoning_effort = reasoning_effort
 
 
 class ChatCompletionResponse:

@@ -120,6 +120,7 @@ def stream_completion(
     base_url: str | None = None,
     tools: list[dict] | None = None,
     tool_choice: Any | None = None,
+    reasoning_effort: str | None = None,
 ) -> Iterator[ChatCompletionResponse]:
     """
     Initiates a streaming chat completion request via uniinfer.
@@ -178,7 +179,8 @@ def stream_completion(
             max_tokens=max_tokens,
             streaming=True,
             tools=tools,
-            tool_choice=tool_choice
+            tool_choice=tool_choice,
+            reasoning_effort=reasoning_effort
         )
 
         # Stream the response
@@ -207,6 +209,7 @@ def get_completion(
     base_url: str | None = None,
     tools: list[dict] | None = None,
     tool_choice: Any | None = None,
+    reasoning_effort: str | None = None,
 ) -> Any:
     """
     Initiates a non-streaming chat completion request via uniinfer.
@@ -263,7 +266,8 @@ def get_completion(
             max_tokens=max_tokens,
             streaming=False,
             tools=tools,
-            tool_choice=tool_choice
+            tool_choice=tool_choice,
+            reasoning_effort=reasoning_effort
         )
 
         # Get the response
@@ -522,7 +526,7 @@ if __name__ == "__main__":
 
 # --- Async Helper Functions ---
 
-async def aget_completion(messages, provider_model_string, temperature=0.7, max_tokens=None, provider_api_key: Optional[str] = None, base_url: Optional[str] = None, tools: Optional[List[Dict]] = None, tool_choice: Optional[Any] = None) -> Any:
+async def aget_completion(messages, provider_model_string, temperature=0.7, max_tokens=None, provider_api_key: Optional[str] = None, base_url: Optional[str] = None, tools: Optional[List[Dict]] = None, tool_choice: Optional[Any] = None, reasoning_effort: Optional[str] = None) -> Any:
     """
     Async version of get_completion.
 
@@ -577,7 +581,8 @@ async def aget_completion(messages, provider_model_string, temperature=0.7, max_
             max_tokens=max_tokens,
             streaming=False,
             tools=tools,
-            tool_choice=tool_choice
+            tool_choice=tool_choice,
+            reasoning_effort=reasoning_effort
         )
 
         logger.info(
@@ -600,7 +605,7 @@ async def aget_completion(messages, provider_model_string, temperature=0.7, max_
         raise UniInferError(f"Unexpected error: {e}")
 
 
-async def astream_completion(messages, provider_model_string, temperature=0.7, max_tokens=None, provider_api_key: Optional[str] = None, base_url: Optional[str] = None, tools: Optional[List[Dict]] = None, tool_choice: Optional[Any] = None) -> AsyncGenerator[Dict[str, Any], None]:
+async def astream_completion(messages, provider_model_string, temperature=0.7, max_tokens=None, provider_api_key: Optional[str] = None, base_url: Optional[str] = None, tools: Optional[List[Dict]] = None, tool_choice: Optional[Any] = None, reasoning_effort: Optional[str] = None) -> AsyncGenerator[Dict[str, Any], None]:
     """
     Async version of stream_completion.
 
@@ -655,7 +660,8 @@ async def astream_completion(messages, provider_model_string, temperature=0.7, m
             max_tokens=max_tokens,
             streaming=True,
             tools=tools,
-            tool_choice=tool_choice
+            tool_choice=tool_choice,
+            reasoning_effort=reasoning_effort
         )
 
         logger.info(

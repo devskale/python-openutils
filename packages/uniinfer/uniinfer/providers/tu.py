@@ -21,12 +21,14 @@ class TUProvider(ChatProvider):
     _global_lock = asyncio.Lock()
     _min_request_interval = timedelta(seconds=2)
 
-    def __init__(self, api_key: str | None = None, base_url: str | None = None):
+    def __init__(self, api_key: str | None = None, base_url: str | None = None, supports_reasoning_effort: bool = False):
         """Initialize the TU provider.
         
         Args:
             api_key: The API key for TU. Defaults to TU_API_KEY env var.
             base_url: The base URL for the API.
+            supports_reasoning_effort: Whether the backend supports reasoning_effort parameter.
+                                       Aqueduct-backed endpoints typically don't support this.
         """
         self.api_key = api_key or os.getenv("TU_API_KEY")
         if not self.api_key:
@@ -36,6 +38,7 @@ class TUProvider(ChatProvider):
             except (ImportError, Exception):
                 pass
         self.base_url = base_url or "https://aqueduct.ai.datalab.tuwien.ac.at/v1"
+        self.supports_reasoning_effort = supports_reasoning_effort
         self._async_client: httpx.AsyncClient | None = None
         
     async def _get_async_client(self) -> httpx.AsyncClient:
@@ -103,6 +106,9 @@ class TUProvider(ChatProvider):
             payload["tools"] = request.tools
             if request.tool_choice:
                 payload["tool_choice"] = request.tool_choice
+        
+        if request.reasoning_effort and self.supports_reasoning_effort:
+            payload["reasoning_effort"] = request.reasoning_effort
                 
         return payload
 
