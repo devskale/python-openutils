@@ -243,7 +243,7 @@ class ChatCompletionRequestInput(BaseModel):
     model: str
     messages: list[ChatMessageInput]
     temperature: float | None = 0.7
-    max_tokens: int | None = 4096
+    max_tokens: int | None = 32768
     max_completion_tokens: int | None = None
     stream: bool | None = False
     base_url: str | None = None
