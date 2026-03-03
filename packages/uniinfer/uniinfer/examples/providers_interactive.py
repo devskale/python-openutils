@@ -4,7 +4,7 @@ Interactive example to select a provider and ask a question with streaming outpu
 This script uses the inquirer library for interactive prompts.
 """
 from uniinfer import ChatMessage, ChatCompletionRequest, ProviderFactory
-from providers_config import get_all_providers, get_provider_config
+from uniinfer.config.providers import get_all_providers, get_provider_config
 import inquirer
 import time
 

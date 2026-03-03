@@ -58,7 +58,7 @@ logger = logging.getLogger("uniioai_proxy")
 # Import run_in_threadpool
 # Import HTTPAuthorizationCredentials
 try:
-    from uniinfer.examples.providers_config import PROVIDER_CONFIGS
+    from uniinfer.config.providers import PROVIDER_CONFIGS
 except ImportError:
     # Fallback: define minimal configs
     PROVIDER_CONFIGS = {

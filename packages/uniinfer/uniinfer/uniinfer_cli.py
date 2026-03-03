@@ -1,6 +1,6 @@
 # Import uniinfer components
 from importlib.metadata import version  # Changed from pkg_resources
-from uniinfer.examples.providers_config import PROVIDER_CONFIGS
+from uniinfer.config.providers import PROVIDER_CONFIGS
 from uniinfer import (
     ChatMessage,
     ChatCompletionRequest,
