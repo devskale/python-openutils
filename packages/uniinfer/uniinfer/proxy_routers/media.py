@@ -169,8 +169,9 @@ def create_media_router(
                             data_items.append(ImageData(b64_json=b64, url=url))
                 else:
                     allowed_models = {
-                        "turbo", "flux", "kontext", "nanobanana", "nanobanana-pro",
-                        "seedream", "seedream-pro", "gptimage", "gptimage-large", "zimage", "klein", "klein-large",
+                        "turbo", "flux", "kontext", "nanobanana", "nanobanana-2", "nanobanana-pro",
+                        "seedream5", "seedream", "seedream-pro", "gptimage", "gptimage-large",
+                        "zimage", "klein", "klein-large", "imagen-4", "flux-2-dev", "grok-imagine",
                     }
                     if model_name not in allowed_models:
                         model_name = "turbo"
@@ -180,9 +181,16 @@ def create_media_router(
                     for i in range(n):
                         this_seed = seed if seed is not None else int(time.time()) + i
                         url = f"{base_url}/{encoded_prompt}?model={model_name}&width={width}&height={height}&seed={this_seed}"
-                        resp = await client.get(url, headers={"Accept": "image/jpeg", "User-Agent": "UniIOAI/0.1"}, timeout=60)
+
+                        headers = {"Accept": "image/jpeg", "User-Agent": "UniIOAI/0.1"}
+                        if api_key:
+                            headers["Authorization"] = f"Bearer {api_key}"
+
+                        resp = await client.get(url, headers=headers, timeout=60)
                         if resp.status_code != 200:
-                            raise HTTPException(status_code=500, detail="Failed to generate image from Pollinations")
+                            detail = resp.text if resp.text else "Failed to generate image from Pollinations"
+                            raise HTTPException(status_code=resp.status_code, detail=detail)
+
                         b64 = base64.b64encode(resp.content).decode("utf-8")
                         data_items.append(ImageData(b64_json=b64, url=url))
 
