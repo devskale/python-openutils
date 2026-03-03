@@ -1,7 +1,6 @@
 from logging.handlers import RotatingFileHandler
 import logging
 from typing import Any, AsyncGenerator, Optional, List, Dict
-from collections.abc import Iterable
 from importlib.metadata import PackageNotFoundError, version
 import re
 import subprocess
@@ -11,10 +10,8 @@ import time
 import sys
 import asyncio
 import urllib.parse
-import requests
 import base64
 import httpx
-from fastapi.security.http import HTTPAuthorizationCredentials
 from fastapi.security import HTTPBearer  # Import HTTPBearer
 from starlette.concurrency import iterate_in_threadpool, run_in_threadpool
 from pydantic import BaseModel, Field, field_validator
@@ -22,6 +19,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import StreamingResponse, FileResponse, JSONResponse, Response
 from fastapi import FastAPI, HTTPException, Request, Depends, File, Form, UploadFile, status
+from fastapi.exceptions import RequestValidationError
 from fastapi.encoders import jsonable_encoder
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.util import get_remote_address
@@ -40,21 +38,23 @@ root_logger = logging.getLogger()
 root_logger.setLevel(logging.INFO)
 
 # Create rotating file handler (2MB max, 5 backup files)
-log_dir = os.path.join(os.getcwd(), "logs")
-os.makedirs(log_dir, exist_ok=True)
-log_file_path = os.path.join(log_dir, "uniioai_proxy.log")
+# Guard against duplicate handlers on reload/import.
+if not root_logger.handlers:
+    log_dir = os.path.join(os.getcwd(), "logs")
+    os.makedirs(log_dir, exist_ok=True)
+    log_file_path = os.path.join(log_dir, "uniioai_proxy.log")
 
-file_handler = RotatingFileHandler(
-    log_file_path, maxBytes=2 * 1024 * 1024, backupCount=5)
-file_handler.setFormatter(logging.Formatter(
-    '%(asctime)s - %(name)s - %(levelname)s - %(message)s'))
-root_logger.addHandler(file_handler)
+    file_handler = RotatingFileHandler(
+        log_file_path, maxBytes=2 * 1024 * 1024, backupCount=5)
+    file_handler.setFormatter(logging.Formatter(
+        '%(asctime)s - %(name)s - %(levelname)s - %(message)s'))
+    root_logger.addHandler(file_handler)
 
-# Also log to console
-console_handler = logging.StreamHandler()
-console_handler.setFormatter(logging.Formatter(
-    '%(asctime)s - %(name)s - %(levelname)s - %(message)s'))
-root_logger.addHandler(console_handler)
+    # Also log to console
+    console_handler = logging.StreamHandler()
+    console_handler.setFormatter(logging.Formatter(
+        '%(asctime)s - %(name)s - %(levelname)s - %(message)s'))
+    root_logger.addHandler(console_handler)
 
 # Proxy specific logger
 logger = logging.getLogger("uniioai_proxy")
@@ -79,7 +79,7 @@ if parent_dir not in sys.path:
     sys.path.insert(0, parent_dir)
 
 try:
-    from uniinfer.uniioai import stream_completion, astream_completion, get_completion, aget_completion, get_provider_api_key, list_providers, list_models_for_provider, get_embeddings, list_embedding_providers, list_embedding_models_for_provider, format_chunk_to_openai
+    from uniinfer.uniioai import stream_completion, astream_completion, aget_completion, get_provider_api_key, list_providers, list_models_for_provider, get_embeddings, list_embedding_providers, list_embedding_models_for_provider
     from uniinfer.errors import UniInferError, AuthenticationError, ProviderError, RateLimitError
     from uniinfer.auth import validate_proxy_token, get_optional_proxy_token, verify_provider_access
 except ImportError as e:
@@ -121,8 +121,6 @@ limiter = Limiter(key_func=get_remote_address, headers_enabled=True)
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 app.add_middleware(SlowAPIMiddleware)
-
-from fastapi.exceptions import RequestValidationError
 
 @app.exception_handler(RequestValidationError)
 async def validation_exception_handler(request: Request, exc: RequestValidationError):
@@ -985,8 +983,6 @@ async def chat_completions(request: Request, request_input: ChatCompletionReques
         raise HTTPException(status_code=status_code, detail=detail)
     except UniInferError as e:  # Catches general uniinfer errors
         raise HTTPException(status_code=500, detail=f"UniInfer Error: {e}")
-    except HTTPException:
-        raise
     except Exception as e:
         # Catch-all for unexpected errors
         logger.exception(
