@@ -9,12 +9,12 @@ import time
 import sys
 import asyncio
 from fastapi.security import HTTPBearer  # Import HTTPBearer
-from starlette.concurrency import iterate_in_threadpool, run_in_threadpool
+from starlette.concurrency import iterate_in_threadpool
 from pydantic import BaseModel, Field, field_validator
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import StreamingResponse, FileResponse, JSONResponse
-from fastapi import FastAPI, HTTPException, Request, Depends, status
+from fastapi.responses import FileResponse, JSONResponse
+from fastapi import FastAPI, HTTPException, Request, status
 from fastapi.exceptions import RequestValidationError
 from fastapi.encoders import jsonable_encoder
 from slowapi import Limiter, _rate_limit_exceeded_handler
@@ -26,6 +26,7 @@ from dotenv import load_dotenv
 
 from uniinfer.proxy_routers.models import create_models_router
 from uniinfer.proxy_routers.media import create_media_router
+from uniinfer.proxy_routers.chat import create_chat_router
 
 # Load environment variables from .env file
 load_dotenv()
@@ -78,9 +79,8 @@ if parent_dir not in sys.path:
     sys.path.insert(0, parent_dir)
 
 try:
-    from uniinfer.uniioai import stream_completion, astream_completion, aget_completion, get_embeddings
-    from uniinfer.errors import UniInferError, AuthenticationError, ProviderError, RateLimitError
-    from uniinfer.auth import get_optional_proxy_token, verify_provider_access
+    from uniinfer.uniioai import stream_completion, astream_completion
+    from uniinfer.errors import UniInferError, ProviderError
 except ImportError as e:
     logger.error(f"Error importing from uniinfer.uniioai: {e}")
     logger.error(f"Python path: {sys.path[:3]}")
@@ -704,224 +704,15 @@ app.include_router(create_models_router(UNIINFER_VERSION))
 app.include_router(create_media_router(parse_provider_model, limiter, get_media_rate_limit))
 
 
-@app.post("/v1/chat/completions")
-@limiter.limit(get_chat_rate_limit)
-async def chat_completions(request: Request, request_input: ChatCompletionRequestInput, api_bearer_token: str | None = Depends(get_optional_proxy_token)):
-    """
-    OpenAI-compatible chat completions endpoint.
-    Uses the 'model' field in the format 'provider@modelname'.
-    Requires Bearer token authentication (used for key retrieval).
-    Optionally accepts a 'base_url'. If provider is 'ollama' and no base_url is provided,
-    it defaults to 'https://amp1.mooo.com:11444'.
-    """
-    base_url = request_input.base_url  # Get base_url from request first
-    provider_model = request_input.model
-    messages_dict = [msg.model_dump() for msg in request_input.messages]
-
-    # Debug logging for request
-    logger.info(
-        f"Received chat completion request for model: {provider_model}")
-    logger.debug(
-        f"Request params: stream={request_input.stream}, tools_count={len(request_input.tools) if request_input.tools else 0}")
-    if request_input.tools:
-        logger.debug(
-            f"Tools: {[t.get('function', {}).get('name') for t in request_input.tools]}")
-
-    try:
-        # --- API Key Retrieval & Base URL Logic ---
-        provider_name, _ = parse_provider_model(provider_model)
-
-        # Set default base_url for ollama if not provided
-        if provider_name == "ollama" and base_url is None:
-            base_url = PROVIDER_CONFIGS.get("ollama", {}).get(
-                "extra_params", {}).get("base_url")
-        logger.debug(f"DEBUG: Using base_url: {base_url}")
-
-        provider_api_key = verify_provider_access(
-            api_bearer_token, provider_name)
-        # --- End API Key Retrieval & Base URL Logic ---
-
-        if request_input.stream:
-            # Use async generator with StreamingResponse
-            return StreamingResponse(
-                astream_response_generator(
-                    messages=messages_dict,
-                    provider_model=provider_model,
-                    temp=request_input.temperature,
-                    max_tok=request_input.get_effective_max_tokens(),
-                    provider_api_key=provider_api_key,
-                    base_url=base_url,
-                    tools=request_input.tools,
-                    tool_choice=request_input.tool_choice,
-                    request_id=getattr(request.state, "request_id", None),
-                    reasoning_effort=request_input.reasoning_effort
-                ),
-                media_type="text/event-stream",
-                headers={
-                    "Cache-Control": "no-cache",
-                    "X-Accel-Buffering": "no",
-                    "Connection": "keep-alive",
-                },
-            )
-        else:
-            # Use async aget_completion for non-streaming requests
-            full_content = await aget_completion(
-                messages=messages_dict,
-                provider_model_string=provider_model,
-                temperature=request_input.temperature,
-                max_tokens=request_input.get_effective_max_tokens(),
-                provider_api_key=provider_api_key,
-                base_url=base_url,
-                tools=request_input.tools,
-                tool_choice=request_input.tool_choice,
-                reasoning_effort=request_input.reasoning_effort
-            )
-
-            # Handle response (ChatCompletionResponse object)
-            raw_content = full_content.message.content
-            tool_calls = full_content.message.tool_calls
-            thinking = getattr(full_content, 'thinking', None)
-            content = _normalize_nonstream_content(raw_content, tool_calls)
-
-            # Format response according to OpenAI spec
-            finish_reason = getattr(full_content, 'finish_reason', None) or ("tool_calls" if tool_calls else "stop")
-            message_obj = ChatMessageOutput(
-                role="assistant",
-                content=content,
-                tool_calls=tool_calls
-            )
-            if thinking and not _is_openai_strict_mode():
-                message_obj.reasoning_content = thinking
-
-            response_data = NonStreamingChatCompletion(
-                model=provider_model,
-                choices=[
-                    NonStreamingChoice(
-                        message=message_obj,
-                        finish_reason=finish_reason
-                    )
-                ]
-                # Usage data could be added here from full_content.usage if needed
-            )
-            if _is_openai_strict_mode():
-                return JSONResponse(content=response_data.model_dump(exclude_none=True))
-            return JSONResponse(content=jsonable_encoder(response_data))
-
-    # Catches ValueErrors from uniioai completion functions (e.g., model format)
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
-    # Note: AuthenticationError from uniioai.py key retrieval is handled above
-    except AuthenticationError as e:
-        status_code = getattr(e, 'status_code', 401) or 401
-        detail = str(e)
-        if e.response_body:
-            detail = f"{detail} | Response: {e.response_body}"
-        raise HTTPException(status_code=status_code, detail=detail)
-    except RateLimitError as e:
-        status_code = getattr(e, 'status_code', 429) or 429
-        detail = str(e)
-        if e.response_body:
-            detail = f"{detail} | Response: {e.response_body}"
-        raise HTTPException(status_code=status_code, detail=detail)
-    except HTTPException:
-        raise
-    except ProviderError as e:
-        status_code = getattr(e, 'status_code', 500) or 500
-        detail = f"Provider Error ({provider_name}): {e}"
-        if e.response_body:
-            detail = f"{detail} | Response: {e.response_body}"
-        raise HTTPException(status_code=status_code, detail=detail)
-    except UniInferError as e:  # Catches general uniinfer errors
-        raise HTTPException(status_code=500, detail=f"UniInfer Error: {e}")
-    except Exception as e:
-        # Catch-all for unexpected errors
-        logger.exception(
-            f"Unexpected error in /v1/chat/completions: {type(e).__name__}: {e}")
-        raise HTTPException(
-            status_code=500, detail=f"Internal Server Error: {type(e).__name__}")
-
-
-# --- Add Embedding Endpoint ---
-@app.post("/v1/embeddings", response_model=EmbeddingResponse)
-@limiter.limit(get_embeddings_rate_limit)
-async def create_embeddings(request: Request, request_input: EmbeddingRequest, api_bearer_token: str | None = Depends(get_optional_proxy_token)):
-    """
-    OpenAI-compatible embeddings endpoint.
-    Uses the 'model' field in the format 'provider@modelname'.
-    Authentication optional for Ollama, required for other providers.
-    """
-    provider_model = request_input.model
-    input_texts = request_input.input
-
-    try:
-        # Validate model format
-        provider_name, _ = parse_provider_model(provider_model)
-
-        # For Ollama, we don't require authentication
-        if provider_name == 'ollama':
-            provider_api_key = None
-            # Get base_url from provider config for Ollama
-            base_url = PROVIDER_CONFIGS.get("ollama", {}).get(
-                "extra_params", {}).get("base_url")
-        else:
-            # For other providers, require authentication
-            provider_api_key = verify_provider_access(
-                api_bearer_token, provider_name)
-            base_url = None
-
-        # Get embeddings using the synchronous function in a thread pool
-        embeddings_result = await run_in_threadpool(
-            get_embeddings,
-            input_texts=input_texts,
-            provider_model_string=provider_model,
-            provider_api_key=provider_api_key,
-            base_url=base_url
-        )
-
-        # Format the response according to OpenAI spec
-        embedding_data = []
-        for i, embedding in enumerate(embeddings_result['embeddings']):
-            embedding_data.append(EmbeddingData(
-                embedding=embedding,
-                index=i
-            ))
-
-        response_data = EmbeddingResponse(
-            data=embedding_data,
-            model=provider_model,
-            usage=embeddings_result['usage']
-        )
-        return response_data
-
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
-    except AuthenticationError as e:
-        status_code = getattr(e, 'status_code', 401) or 401
-        detail = str(e)
-        if e.response_body:
-            detail = f"{detail} | Response: {e.response_body}"
-        raise HTTPException(status_code=status_code, detail=detail)
-    except RateLimitError as e:
-        status_code = getattr(e, 'status_code', 429) or 429
-        detail = str(e)
-        if e.response_body:
-            detail = f"{detail} | Response: {e.response_body}"
-        raise HTTPException(status_code=status_code, detail=detail)
-    except ProviderError as e:
-        status_code = getattr(e, 'status_code', 500) or 500
-        detail = f"Provider Error ({provider_name}): {e}"
-        if e.response_body:
-            detail = f"{detail} | Response: {e.response_body}"
-        raise HTTPException(status_code=status_code, detail=detail)
-    except UniInferError as e:
-        raise HTTPException(status_code=500, detail=f"UniInfer Error: {e}")
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.exception(
-            f"Unexpected error in /v1/embeddings: {type(e).__name__}: {e}")
-        raise HTTPException(
-            status_code=500, detail=f"Internal Server Error: {type(e).__name__}")
+app.include_router(
+    create_chat_router(
+        parse_provider_model=parse_provider_model,
+        provider_configs=PROVIDER_CONFIGS,
+        limiter=limiter,
+        get_chat_rate_limit=get_chat_rate_limit,
+        get_embeddings_rate_limit=get_embeddings_rate_limit,
+    )
+)
 
 
 @app.get("/")
