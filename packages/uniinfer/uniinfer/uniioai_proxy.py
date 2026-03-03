@@ -100,8 +100,8 @@ app = FastAPI(
 
 
 def _is_openai_strict_mode() -> bool:
-    """Strict OpenAI-compatible response shaping is always enabled."""
-    return True
+    """Return False to preserve TU/vLLM-style reasoning fields (reasoning_content)."""
+    return False
 
 
 def _normalize_nonstream_content(content: Any, tool_calls: Any) -> str | None:
@@ -672,12 +672,21 @@ async def astream_response_generator(messages: list[dict], provider_model: str, 
                 break
 
             if isinstance(chunk, dict):
-                if _is_openai_strict_mode():
-                    for choice in chunk.get('choices', []):
-                        delta = choice.get('delta', {}) or {}
-                        if isinstance(delta, dict):
-                            delta.pop('reasoning_content', None)
-                            delta.pop('thinking', None)
+                for choice in chunk.get('choices', []):
+                    delta = choice.get('delta', {}) or {}
+                    if not isinstance(delta, dict):
+                        continue
+
+                    if _is_openai_strict_mode():
+                        delta.pop('reasoning_content', None)
+                        delta.pop('thinking', None)
+                    else:
+                        # Unify to TU/vLLM-style field expected by pi clients.
+                        if delta.get('thinking') and not delta.get('reasoning_content'):
+                            delta['reasoning_content'] = delta['thinking']
+                        # Emit only reasoning_content in non-strict mode for consistency.
+                        delta.pop('thinking', None)
+
                 json_data = json.dumps(chunk)
                 logger.debug(f"Yielding async chunk (dict): {json_data}")
                 yield f"data: {json_data}\n\n"
