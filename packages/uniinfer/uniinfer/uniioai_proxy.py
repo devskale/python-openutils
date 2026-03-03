@@ -98,6 +98,23 @@ app = FastAPI(
     version=UNIINFER_VERSION,
 )
 
+
+def _is_openai_strict_mode() -> bool:
+    """Strict OpenAI-compatible response shaping is always enabled."""
+    return True
+
+
+def _normalize_nonstream_content(content: Any, tool_calls: Any) -> str | None:
+    """Normalize assistant content for stricter OpenAI compatibility.
+
+    If not a tool call and content is missing, return an empty string instead of null.
+    """
+    if tool_calls:
+        return content
+    if content is None and _is_openai_strict_mode():
+        return ""
+    return content
+
 # --- Rate Limiting Setup ---
 # Enable headers to let clients know their limits
 limiter = Limiter(key_func=get_remote_address, headers_enabled=True)
@@ -507,7 +524,7 @@ async def stream_response_generator(messages: list[dict], provider_model: str, t
                 delta_kwargs = {}
                 if chunk.message.content:
                     delta_kwargs["content"] = chunk.message.content
-                if chunk.thinking:
+                if chunk.thinking and not _is_openai_strict_mode():
                     delta_kwargs["reasoning_content"] = chunk.thinking
                 if chunk.message.tool_calls:
                     delta_kwargs["tool_calls"] = chunk.message.tool_calls
@@ -655,6 +672,12 @@ async def astream_response_generator(messages: list[dict], provider_model: str, 
                 break
 
             if isinstance(chunk, dict):
+                if _is_openai_strict_mode():
+                    for choice in chunk.get('choices', []):
+                        delta = choice.get('delta', {}) or {}
+                        if isinstance(delta, dict):
+                            delta.pop('reasoning_content', None)
+                            delta.pop('thinking', None)
                 json_data = json.dumps(chunk)
                 logger.debug(f"Yielding async chunk (dict): {json_data}")
                 yield f"data: {json_data}\n\n"
@@ -678,7 +701,7 @@ async def astream_response_generator(messages: list[dict], provider_model: str, 
                     choice_kwargs = {}
                     if chunk.message.content:
                         choice_kwargs['content'] = chunk.message.content
-                    if chunk.thinking:
+                    if chunk.thinking and not _is_openai_strict_mode():
                         choice_kwargs['reasoning_content'] = chunk.thinking
                     if chunk.message.tool_calls:
                         choice_kwargs['tool_calls'] = chunk.message.tool_calls
@@ -898,27 +921,33 @@ async def chat_completions(request: Request, request_input: ChatCompletionReques
             )
 
             # Handle response (ChatCompletionResponse object)
-            content = full_content.message.content
+            raw_content = full_content.message.content
             tool_calls = full_content.message.tool_calls
             thinking = getattr(full_content, 'thinking', None)
+            content = _normalize_nonstream_content(raw_content, tool_calls)
 
             # Format response according to OpenAI spec
             finish_reason = getattr(full_content, 'finish_reason', None) or ("tool_calls" if tool_calls else "stop")
+            message_obj = ChatMessageOutput(
+                role="assistant",
+                content=content,
+                tool_calls=tool_calls
+            )
+            if thinking and not _is_openai_strict_mode():
+                message_obj.reasoning_content = thinking
+
             response_data = NonStreamingChatCompletion(
                 model=provider_model,
                 choices=[
                     NonStreamingChoice(
-                        message=ChatMessageOutput(
-                            role="assistant", 
-                            content=content, 
-                            reasoning_content=thinking,
-                            tool_calls=tool_calls
-                        ),
+                        message=message_obj,
                         finish_reason=finish_reason
                     )
                 ]
                 # Usage data could be added here from full_content.usage if needed
             )
+            if _is_openai_strict_mode():
+                return JSONResponse(content=response_data.model_dump(exclude_none=True))
             return JSONResponse(content=jsonable_encoder(response_data))
 
     # Catches ValueErrors from uniioai completion functions (e.g., model format)
