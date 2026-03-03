@@ -3,7 +3,6 @@ import logging
 from typing import Any, AsyncGenerator, Optional, List, Dict
 from importlib.metadata import PackageNotFoundError, version
 import re
-import subprocess
 import uuid
 import json
 import time
@@ -28,11 +27,7 @@ from slowapi.middleware import SlowAPIMiddleware
 import os
 from dotenv import load_dotenv
 
-from uniinfer.proxy_services.models_registry import (
-    ensure_fresh_models_file,
-    parse_models_file,
-    refresh_models_file,
-)
+from uniinfer.proxy_routers.models import create_models_router
 
 # Load environment variables from .env file
 load_dotenv()
@@ -85,9 +80,9 @@ if parent_dir not in sys.path:
     sys.path.insert(0, parent_dir)
 
 try:
-    from uniinfer.uniioai import stream_completion, astream_completion, aget_completion, get_provider_api_key, list_providers, list_models_for_provider, get_embeddings, list_embedding_providers, list_embedding_models_for_provider
+    from uniinfer.uniioai import stream_completion, astream_completion, aget_completion, get_provider_api_key, list_models_for_provider, get_embeddings
     from uniinfer.errors import UniInferError, AuthenticationError, ProviderError, RateLimitError
-    from uniinfer.auth import validate_proxy_token, get_optional_proxy_token, verify_provider_access
+    from uniinfer.auth import get_optional_proxy_token, verify_provider_access
 except ImportError as e:
     logger.error(f"Error importing from uniinfer.uniioai: {e}")
     logger.error(f"Python path: {sys.path[:3]}")
@@ -707,44 +702,7 @@ async def get_web_demo():
     return FileResponse(html_file_path)
 
 
-@app.get("/v1/models", response_model=ModelList)
-async def list_models():
-    """
-    OpenAI-compatible endpoint to list available models.
-    Returns a list of models supported by UniInfer, read from models.txt.
-    """
-    await ensure_fresh_models_file()
-    models = parse_models_file()
-    model_data = [Model(id=model_id) for model_id in models]
-    return ModelList(data=model_data)
-
-
-@app.post("/v1/system/update-models")
-async def update_models():
-    """
-    Triggers 'uniinfer -l --list-models' to update the models.txt file.
-    """
-    try:
-        return await refresh_models_file()
-    except subprocess.CalledProcessError as e:
-        raise HTTPException(
-            status_code=500, detail=f"Failed to update models: {e.stderr}")
-    except Exception as e:
-        raise HTTPException(
-            status_code=500, detail=f"An error occurred: {str(e)}")
-
-
-# --- Update /v1/providers to return ProviderList ---
-@app.get("/v1/providers", response_model=ProviderList)
-async def get_providers(api_bearer_token: str = Depends(validate_proxy_token)):
-    """
-    OpenAI‐style endpoint to list available providers.
-    """
-    try:
-        providers = list_providers()
-        return ProviderList(data=providers)
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+app.include_router(create_models_router(UNIINFER_VERSION))
 
 
 @app.post("/v1/chat/completions")
@@ -965,77 +923,6 @@ async def create_embeddings(request: Request, request_input: EmbeddingRequest, a
             f"Unexpected error in /v1/embeddings: {type(e).__name__}: {e}")
         raise HTTPException(
             status_code=500, detail=f"Internal Server Error: {type(e).__name__}")
-
-
-# --- Change dynamic list models to return ModelList ---
-@app.get("/v1/models/{provider_name}", response_model=ModelList)
-async def dynamic_list_models(provider_name: str, api_bearer_token: str = Depends(validate_proxy_token)):
-    """
-    List available models for a specific provider, formatted OpenAI‐style.
-    """
-    try:
-        raw_models = list_models_for_provider(provider_name, api_bearer_token)
-
-        # Ensure known working aliases appear in UI even if upstream listing omits them.
-        if provider_name == "zai" and "glm-4.5-flash" not in raw_models:
-            raw_models.append("glm-4.5-flash")
-
-        model_objs = [Model(id=m) for m in raw_models]
-        return ModelList(data=model_objs)
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
-    except AuthenticationError as e:
-        raise HTTPException(status_code=401, detail=str(e))
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-
-# --- Add Embedding Providers Endpoint ---
-@app.get("/v1/embedding/providers", response_model=ProviderList)
-async def get_embedding_providers(request: Request):
-    """
-    OpenAI‐style endpoint to list available embedding providers.
-    Authentication optional.
-    """
-    try:
-        providers = list_embedding_providers()
-        return ProviderList(data=providers)
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-
-# --- Add Embedding Models Endpoint ---
-@app.get("/v1/embedding/models/{provider_name}", response_model=ModelList)
-async def dynamic_list_embedding_models(provider_name: str, api_bearer_token: Optional[str] = Depends(get_optional_proxy_token)):
-    """
-    List available embedding models for a specific provider, formatted OpenAI‐style.
-    Authentication optional for Ollama.
-    """
-    try:
-        # For Ollama, we don't require authentication
-        if provider_name == 'ollama':
-            api_bearer_token = None
-        else:
-            # For other providers, require authentication
-            if not api_bearer_token:
-                raise HTTPException(
-                    status_code=401, detail="Authentication required for this provider")
-
-        raw_models = list_embedding_models_for_provider(
-            provider_name, api_bearer_token or "")
-        model_objs = [Model(id=m) for m in raw_models]
-        return ModelList(data=model_objs)
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
-    except AuthenticationError as e:
-        raise HTTPException(status_code=401, detail=str(e))
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-
-@app.get("/v1/system/info")
-async def get_system_info():
-    return {"version": UNIINFER_VERSION}
 
 
 @app.get("/")
