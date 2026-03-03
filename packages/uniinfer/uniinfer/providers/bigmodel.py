@@ -44,6 +44,20 @@ def _next_or_end(iterator):
         return _END
 
 
+def _map_reasoning_effort_to_thinking(reasoning_effort: Optional[str]) -> Optional[dict]:
+    """Map OpenAI-style reasoning_effort to Z.AI thinking config.
+
+    Z.AI supports a `thinking` object (enabled/disabled), not `reasoning_effort`.
+    We map all active effort levels to enabled, and off/none/disabled to disabled.
+    """
+    if not reasoning_effort:
+        return None
+    effort = str(reasoning_effort).strip().lower()
+    if effort in {"off", "none", "disabled", "false", "0"}:
+        return {"type": "disabled"}
+    return {"type": "enabled"}
+
+
 class ZAIBaseProvider(ChatProvider):
     BASE_URL = "https://api.z.ai/api/paas/v4"
     PROVIDER_ID = "bigmodel"
@@ -128,6 +142,9 @@ class ZAIBaseProvider(ChatProvider):
             params["tools"] = request.tools
         if request.tool_choice:
             params["tool_choice"] = request.tool_choice
+        thinking_cfg = _map_reasoning_effort_to_thinking(request.reasoning_effort)
+        if thinking_cfg is not None:
+            params["thinking"] = thinking_cfg
         params.update(provider_specific_kwargs)
 
         try:
@@ -181,6 +198,9 @@ class ZAIBaseProvider(ChatProvider):
             params["tools"] = request.tools
         if request.tool_choice:
             params["tool_choice"] = request.tool_choice
+        thinking_cfg = _map_reasoning_effort_to_thinking(request.reasoning_effort)
+        if thinking_cfg is not None:
+            params["thinking"] = thinking_cfg
         params.update(provider_specific_kwargs)
 
         try:
