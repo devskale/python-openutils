@@ -503,7 +503,7 @@ async def stream_response_generator(messages: list[dict], provider_model: str, t
         model=model_name,
         choices=[StreamingChoice(delta=ChoiceDelta(role="assistant"))]
     )
-    yield f"data: {first_chunk_data.model_dump_json()}\n\n"
+    yield f"data: {first_chunk_data.model_dump_json(exclude_none=True)}\n\n"
 
     seen_tool_calls = False
     sent_finish_reason = False
@@ -553,7 +553,7 @@ async def stream_response_generator(messages: list[dict], provider_model: str, t
                         model=model_name,
                         choices=[StreamingChoice(**choice_kwargs)]
                     )
-                    json_data = chunk_data.model_dump_json()
+                    json_data = chunk_data.model_dump_json(exclude_none=True)
                     logger.debug(f"Yielding chunk: {json_data}")
                     yield f"data: {json_data}\n\n"
 
@@ -570,7 +570,7 @@ async def stream_response_generator(messages: list[dict], provider_model: str, t
                 choices=[StreamingChoice(
                     delta=ChoiceDelta(), finish_reason=finish_reason)]
             )
-            yield f"data: {final_chunk_data.model_dump_json()}\n\n"
+            yield f"data: {final_chunk_data.model_dump_json(exclude_none=True)}\n\n"
 
     except NameError as e:
         # Specific catch for missing 'payload' or similar undefined names
@@ -634,7 +634,7 @@ async def astream_response_generator(messages: list[dict], provider_model: str, 
         model=model_name,
         choices=[StreamingChoice(delta=ChoiceDelta(role="assistant"))]
     )
-    yield f"data: {first_chunk_data.model_dump_json()}\n\n"
+    yield f"data: {first_chunk_data.model_dump_json(exclude_none=True)}\n\n"
 
     seen_tool_calls = False
     sent_finish_reason = False
@@ -733,7 +733,7 @@ async def astream_response_generator(messages: list[dict], provider_model: str, 
                             model=model_name,
                             choices=[StreamingChoice(**choice_kwargs_with_delta)]
                         )
-                        json_data = chunk_data.model_dump_json()
+                        json_data = chunk_data.model_dump_json(exclude_none=True)
                         logger.debug(f"Yielding async chunk: {json_data}")
                         yield f"data: {json_data}\n\n"
                         chunk_count += 1
@@ -755,7 +755,7 @@ async def astream_response_generator(messages: list[dict], provider_model: str, 
                 choices=[StreamingChoice(
                     delta=ChoiceDelta(), finish_reason=finish_reason)]
             )
-            yield f"data: {final_chunk_data.model_dump_json()}\n\n"
+            yield f"data: {final_chunk_data.model_dump_json(exclude_none=True)}\n\n"
             chunk_count += 1
             sent_finish_reason = True
 
@@ -1146,7 +1146,7 @@ async def get_system_info():
 
 @app.get("/")
 async def root():
-    return {"message": "UniIOAI API is running. Visit /webdemo for the interactive demo, or use POST /v1/chat/completions, POST /v1/embeddings, or GET /v1/models"}
+    return {"message": "UniIOAI API is running. Visit /webdemo or /webdemo/webdemo.html for the interactive demo, or use POST /v1/chat/completions, POST /v1/embeddings, or GET /v1/models"}
 
 
 # --- Run the API (for local development) ---
@@ -1222,9 +1222,27 @@ async def list_image_models(provider_name: str, api_bearer_token: Optional[str] 
                 models = ["turbo", "flux", "kontext", "nanobanana", "gptimage", "zimage", "klein"]
         
         elif provider_name == "tu":
-            # TU/Aqueduct models - these are known models
-            # You can extend this list based on what's available in your Aqueduct instance
-            models = ["flux-schnell", "flux-dev", "dall-e-3", "stable-diffusion-xl"]
+            # TU/Aqueduct models - fetch dynamically, then keep only image-generation models.
+            token_for_tu = api_bearer_token or os.getenv("TU_API_KEY")
+            if not token_for_tu:
+                raise HTTPException(status_code=401, detail="Authentication required for provider 'tu'")
+
+            raw_models = list_models_for_provider("tu", token_for_tu)
+
+            # Heuristic image-model filter (kept broad for future TU model additions)
+            image_markers = (
+                "image", "z-image", "dall-e", "stable-diffusion", "sdxl", "flux"
+            )
+            models = [
+                m for m in raw_models
+                if any(marker in m.lower() for marker in image_markers)
+            ]
+
+            # Keep deterministic order and avoid duplicates
+            models = sorted(set(models))
+
+            if not models:
+                logger.warning("No TU image models detected dynamically")
         
         else:
             raise HTTPException(
