@@ -28,6 +28,12 @@ from slowapi.middleware import SlowAPIMiddleware
 import os
 from dotenv import load_dotenv
 
+from uniinfer.proxy_services.models_registry import (
+    ensure_fresh_models_file,
+    parse_models_file,
+    refresh_models_file,
+)
+
 # Load environment variables from .env file
 load_dotenv()
 
@@ -370,119 +376,6 @@ class EmbeddingResponse(BaseModel):
     data: list[EmbeddingData]
     model: str
     usage: dict[str, int] | None = None
-
-
-# --- Predefined Models ---
-# The models.txt file is expected to be in the package root (one level up from uniioai_proxy.py)
-MODELS_FILE_PATH = os.path.join(os.path.dirname(script_dir), "models.txt")
-
-
-def get_refetch_interval_seconds() -> float:
-    raw = os.getenv("REFETCHTIME", "24")
-    try:
-        hours = float(raw)
-        if hours <= 0:
-            raise ValueError
-    except ValueError:
-        logger.warning(
-            f"Invalid REFETCHTIME value '{raw}', defaulting to 24 hours")
-        hours = 24.0
-    return hours * 3600.0
-
-
-def models_file_is_stale() -> bool:
-    if not os.path.exists(MODELS_FILE_PATH):
-        return True
-    age_seconds = time.time() - os.path.getmtime(MODELS_FILE_PATH)
-    return age_seconds > get_refetch_interval_seconds()
-
-
-async def refresh_models_file() -> dict[str, Any]:
-    cmd = ["uniinfer", "-l", "--list-models"]
-
-    if subprocess.call(["which", "uniinfer"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL) != 0:
-        cmd = [sys.executable, "-m",
-               "uniinfer.uniinfer_cli", "-l", "--list-models"]
-
-    result = await run_in_threadpool(
-        subprocess.run,
-        cmd,
-        capture_output=True,
-        text=True,
-        check=True
-    )
-
-    with open(MODELS_FILE_PATH, 'w') as f:
-        f.write(result.stdout)
-
-    return {
-        "status": "success",
-        "message": "Models updated successfully",
-        "output_length": len(result.stdout)
-    }
-
-
-async def ensure_fresh_models_file() -> None:
-    if not models_file_is_stale():
-        return
-    try:
-        await refresh_models_file()
-    except Exception as e:
-        logger.warning(f"Failed to refresh stale models file: {e}")
-
-
-def parse_models_file():
-    """Parses the models.txt file to extract available models."""
-    models = []
-    if not os.path.exists(MODELS_FILE_PATH):
-        # Fallback to predefined if file doesn't exist
-        return PREDEFINED_MODELS
-
-    current_provider = None
-    try:
-        with open(MODELS_FILE_PATH, 'r') as f:
-            for line in f:
-                line = line.strip()
-                if not line:
-                    continue
-
-                # Check for provider header
-                # "Available models for mistral:"
-                provider_match = re.match(r"Available models for (\w+):", line)
-                if provider_match:
-                    current_provider = provider_match.group(1)
-                    continue
-
-                # Check for model item
-                # "- mistral-tiny"
-                if line.startswith("- ") and current_provider:
-                    model_name = line[2:].strip()
-                    models.append(f"{current_provider}@{model_name}")
-    except Exception as e:
-        logger.error(f"Error reading models file: {e}")
-        return PREDEFINED_MODELS
-
-    return models if models else PREDEFINED_MODELS
-
-
-PREDEFINED_MODELS = [
-    "mistral@mistral-tiny-latest",
-    "ollama@qwen2.5:3b",
-    "openrouter@google/gemma-3-12b-it:free",
-    "arli@Mistral-Nemo-12B-Instruct-2407",
-    "internlm@internlm3-latest",
-    "stepfun@step-1-flash",
-    "upstage@solar-mini-250401",
-    "zai@glm-4.5-flash",
-    "zai-code@glm-4.5",
-    "ngc@google/gemma-3-27b-it",
-    "cohere@command-r",
-    "moonshot@kimi-latest",
-    "groq@llama3-8b-8192",
-    "gemini@models/gemma-3-27b-it",
-    "chutes@Qwen/Qwen3-235B-A22B",
-    "pollinations@grok"
-]
 
 
 # --- Helper Functions ---
