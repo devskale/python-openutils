@@ -129,7 +129,7 @@ PROVIDER_CONFIGS = {
     },
     'zai': {
         'name': 'Z.ai',
-        'default_model': 'glm-4.7',
+        'default_model': 'glm-4.5-flash',
         'needs_api_key': True,
     },
     'zai-code': {
