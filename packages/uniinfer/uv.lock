@@ -366,7 +366,7 @@ wheels = [
 [[package]]
 name = "credgoo"
 version = "0.1.6"
-source = { git = "https://github.com/devskale/python-openutils.git?subdirectory=packages%2Fcredgoo#d2221b6defa79ef2f4b6bb0457318fbc0484355d" }
+source = { git = "https://github.com/devskale/python-openutils.git?subdirectory=packages%2Fcredgoo#8508853addf9218c00e7e099557a636286a5bda4" }
 dependencies = [
     { name = "requests" },
 ]
@@ -1960,7 +1960,7 @@ wheels = [
 
 [[package]]
 name = "uniinfer"
-version = "0.5.6"
+version = "0.5.7"
 source = { editable = "." }
 dependencies = [
     { name = "credgoo" },
