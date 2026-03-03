@@ -77,14 +77,18 @@ class TUProvider(ChatProvider):
         messages = []
         for m in request.messages:
             content = m.content
-            # Flatten list content (multimodal messages)
+            # Preserve multimodal OpenAI-style content (text + image_url) for VLM models.
+            # Fallback: if list is malformed/non-dict, keep only text parts.
             if isinstance(content, list):
-                text_parts = []
-                for part in content:
-                    if isinstance(part, dict) and part.get("type") == "text":
-                        text_parts.append(part.get("text", ""))
-                content = "".join(text_parts) if text_parts else None
-            
+                if all(isinstance(part, dict) and part.get("type") in {"text", "image_url"} for part in content):
+                    content = content
+                else:
+                    text_parts = []
+                    for part in content:
+                        if isinstance(part, dict) and part.get("type") == "text":
+                            text_parts.append(part.get("text", ""))
+                    content = "".join(text_parts) if text_parts else None
+
             msg = {"role": m.role, "content": content}
             if m.tool_calls:
                 msg["tool_calls"] = m.tool_calls
