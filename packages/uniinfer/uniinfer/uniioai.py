@@ -14,7 +14,7 @@ from uniinfer import EmbeddingProviderFactory, EmbeddingRequest, EmbeddingRespon
 from uniinfer.errors import UniInferError, AuthenticationError
 from dotenv import load_dotenv
 from credgoo import get_api_key
-from uniinfer.examples.providers_config import PROVIDER_CONFIGS  # added
+from uniinfer.config.providers import PROVIDER_CONFIGS  # added
 # Import helper functions
 from uniinfer.json_utils import update_models, update_model_accessed
 
