@@ -215,6 +215,7 @@ If no token is provided in the header, the server will attempt to use the `CREDG
 - `POST /v1/chat/completions` - OpenAI-compatible chat completions
 - `POST /v1/embeddings` - OpenAI-compatible embeddings
 - `GET /v1/models` - List available models
+- `POST /v1/images/generations` - Image generation
 - `POST /v1/audio/speech` - Text-to-Speech
 - `POST /v1/audio/transcriptions` - Speech-to-Text
 
@@ -231,7 +232,7 @@ The API server includes built-in security features for production deployments:
 
 2.  **Authentication**: Enforces strict token validation.
     - **Protected Endpoints**: `/v1/chat/completions`, `/v1/embeddings` (except Ollama), `/v1/images/*`, `/v1/audio/*`.
-    - **Public Endpoints**: `/v1/models`, `/webdemo`, `/` (root).
+    - **Public Endpoints**: `/v1/models`, `/webdemo` (alias) / `/webdemo/webdemo.html`, `/` (root).
     - **Ollama Bypass**: Local Ollama instances are accessible without authentication for easier local development.
 
 ### How to Setup Security Features
@@ -273,16 +274,21 @@ from openai import OpenAI
 
 client = OpenAI(
     base_url="http://localhost:8123/v1",
-    api_key="dummy-key"  # UniInfer uses credgoo for actual auth
+    # Use either a provider API key or credgoo combo token
+    api_key="YOUR_PROVIDER_KEY_OR_CREDGOO_BEARER@ENCRYPTION"
 )
 
 response = client.chat.completions.create(
-    model="gpt-4",
+    # UniInfer proxy expects provider-prefixed model IDs
+    model="tu@glm-4.7-355b",
     messages=[{"role": "user", "content": "Hello!"}]
 )
 
 print(response.choices[0].message.content)
 ```
+
+> Note: Some reasoning models/providers (e.g., TU/vLLM) may additionally return
+> `reasoning_content` in the assistant message for visible thinking traces.
 
 ## Configuration
 

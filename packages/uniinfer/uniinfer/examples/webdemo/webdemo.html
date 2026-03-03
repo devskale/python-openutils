@@ -18,12 +18,12 @@
     <header>
       <h1>UniInfer</h1>
       <div id="app-version" style="
-            font-size: 0.78rem;
+            font-size: 0.72rem;
             color: #6b7280;
             background: #f3f4f6;
-            padding: 5px 10px;
+            padding: 3px 8px;
             border-radius: 999px;
-            margin-left: 8px;
+            margin-left: 6px;
           ">v...</div>
 
       <div class="mode-switch">
@@ -35,19 +35,19 @@
       <div id="chat-stats" style="
             display: none;
             align-items: center;
-            gap: 12px;
-            font-size: 0.85rem;
+            gap: 8px;
+            font-size: 0.78rem;
             color: #666;
             background: #f5f5f5;
-            padding: 6px 12px;
-            border-radius: 20px;
-            margin-right: 12px;
+            padding: 4px 10px;
+            border-radius: 16px;
+            margin-right: 8px;
           ">
         <span id="stats-text">0 turns • 0 tokens</span>
         <button id="clear-chat-btn" title="Clear Chat History" style="
               background: none;
               border: none;
-              font-size: 1rem;
+              font-size: 0.88rem;
               cursor: pointer;
               padding: 0;
               line-height: 1;
@@ -102,7 +102,7 @@
           <input type="number" id="settings-max-tokens" value="4000" />
         </div>
 
-        <div style="display: flex; gap: 12px; margin-top: 32px">
+        <div style="display: flex; gap: 10px; margin-top: 18px">
           <button id="settings-save" class="btn-primary" style="flex: 1">
             Save Changes
           </button>
@@ -119,8 +119,8 @@
         </div>
 
         <div style="
-              margin-top: 24px;
-              padding-top: 20px;
+              margin-top: 16px;
+              padding-top: 12px;
               border-top: 1px solid #eee;
               text-align: center;
             ">
@@ -153,7 +153,7 @@
                 background: none;
                 border: none;
                 cursor: pointer;
-                padding: 4px;
+                padding: 2px;
                 display: flex;
                 align-items: center;
                 opacity: 0.6;
@@ -245,7 +245,7 @@
 
         <div style="
               display: flex;
-              gap: 12px;
+              gap: 8px;
               flex-wrap: wrap;
               align-items: center;
             ">
@@ -271,10 +271,10 @@
             </select>
           </div>
 
-          <button id="generate-image" class="btn-primary" style="margin-top: 18px">
+          <button id="generate-image" class="btn-primary" style="margin-top: 14px">
             Generate Image
           </button>
-          <button id="stop-image" class="btn-primary" style="margin-top: 18px; background: #ff4444; display: none">
+          <button id="stop-image" class="btn-primary" style="margin-top: 14px; background: #ff4444; display: none">
             Stop
           </button>
         </div>
@@ -296,24 +296,21 @@
               width: 100%;
               border: 1px solid #eee;
               border-radius: 12px;
-              padding: 16px;
-              margin-bottom: 16px;
+              padding: 12px;
+              margin-bottom: 10px;
               font-family: inherit;
             "></textarea>
 
         <div style="
               display: flex;
-              gap: 16px;
+              gap: 10px;
               flex-wrap: wrap;
               align-items: flex-end;
             ">
           <div class="form-group" style="flex: 1; min-width: 150px; margin-bottom: 0">
             <label>Model</label>
             <select id="tts-model" style="width: 100%">
-              <option value="tu@kokoro">tu@kokoro</option>
-              <option value="tu@piper-thorsten">tu@piper-thorsten</option>
-              <option value="openai@tts-1">openai@tts-1</option>
-              <option value="openai@tts-1-hd">openai@tts-1-hd</option>
+              <option value="tu@kokoro">Loading TU TTS models...</option>
             </select>
           </div>
 
@@ -335,15 +332,15 @@
         <div style="
               border: 2px dashed #eee;
               border-radius: 12px;
-              padding: 32px;
+              padding: 18px;
               text-align: center;
             ">
           <input type="file" id="stt-file" accept="audio/*" style="display: none" />
           <button onclick="document.getElementById('stt-file').click()" style="
                 background: #f8f9fa;
                 border: 1px solid #ddd;
-                padding: 12px 24px;
-                border-radius: 12px;
+                padding: 8px 14px;
+                border-radius: 10px;
                 cursor: pointer;
               ">
             Choose Audio File
@@ -355,12 +352,12 @@
 
         <div style="
               display: flex;
-              gap: 16px;
+              gap: 10px;
               align-items: center;
-              margin-top: 24px;
+              margin-top: 12px;
             ">
           <select id="stt-model" style="min-width: 200px">
-            <option value="tu@whisper-large">tu@whisper-large</option>
+            <option value="tu@whisper-large">Loading TU STT models...</option>
           </select>
           <button id="stt-transcribe-btn" class="btn-primary">
             Transcribe Audio
@@ -369,11 +366,11 @@
         </div>
 
         <div id="stt-result" style="
-              margin-top: 24px;
-              padding: 16px;
+              margin-top: 12px;
+              padding: 10px;
               background: #fbfbfb;
-              border-radius: 12px;
-              min-height: 60px;
+              border-radius: 10px;
+              min-height: 44px;
             "></div>
       </div>
     </div>
@@ -506,6 +503,8 @@
     const settingsMaxTokens = document.getElementById("settings-max-tokens");
     const settingsSave = document.getElementById("settings-save");
     const settingsCancel = document.getElementById("settings-cancel");
+    const updateModelsBtn = document.getElementById("update-models-btn");
+    const updateModelsStatus = document.getElementById("update-models-status");
 
     function openSettings() {
       settingsApiBaseUrl.value = window.uniinferConfig.apiBaseUrl;
@@ -518,11 +517,50 @@
     function closeSettings() {
       settingsModal.style.display = "none";
     }
+    function formatRefreshTimestamp(ts) {
+      const d = new Date(ts);
+      return d.toLocaleString();
+    }
+
+    function setModelsRefreshStatus(text, isError = false) {
+      updateModelsStatus.textContent = text;
+      updateModelsStatus.style.color = isError ? "#b91c1c" : "#6b7280";
+    }
+
+    function loadLastRefreshStatus() {
+      const saved = localStorage.getItem("uniinfer_models_last_refreshed");
+      if (saved) {
+        setModelsRefreshStatus(`Last refreshed: ${formatRefreshTimestamp(saved)}`);
+      } else {
+        setModelsRefreshStatus("Never refreshed");
+      }
+    }
+
+    async function refreshAllModelLists() {
+      updateModelsBtn.disabled = true;
+      updateModelsStatus.innerHTML = '<span class="spinner"></span>Refreshing models...';
+      updateModelsStatus.style.color = "#6b7280";
+      try {
+        await loadProviders();
+        await updateImageModels();
+        await loadTuAudioModels();
+        const now = Date.now();
+        localStorage.setItem("uniinfer_models_last_refreshed", String(now));
+        setModelsRefreshStatus(`Last refreshed: ${formatRefreshTimestamp(now)}`);
+      } catch (error) {
+        console.error("Model refresh failed:", error);
+        setModelsRefreshStatus(`Refresh failed: ${error.message || error}`, true);
+      } finally {
+        updateModelsBtn.disabled = false;
+      }
+    }
+
     settingsButton.addEventListener("click", openSettings);
     settingsCancel.addEventListener("click", closeSettings);
     settingsModal.addEventListener("click", (e) => {
       if (e.target === settingsModal) closeSettings();
     });
+    updateModelsBtn.addEventListener("click", refreshAllModelLists);
     settingsSave.addEventListener("click", () => {
       window.uniinferConfig.apiBaseUrl = settingsApiBaseUrl.value.trim();
       const newKey = settingsApiKey.value.trim();
@@ -544,6 +582,7 @@
         parseInt(settingsMaxTokens.value) || 4000;
       closeSettings();
       loadProviders();
+      loadTuAudioModels();
       addMessage("Settings updated.", "system");
     });
 
@@ -1166,6 +1205,7 @@
 
       generateImgBtn.disabled = true;
       const status = document.getElementById("image-status");
+      let imageGenSucceeded = false;
       status.innerHTML = '<div class="spinner"></div> Generating...';
 
       try {
@@ -1271,6 +1311,7 @@
             });
 
             imageResults.prepend(card);
+            imageGenSucceeded = true;
           }
         } else {
           status.innerHTML = `
@@ -1297,21 +1338,82 @@
         `;
       } finally {
         generateImgBtn.disabled = false;
-        status.innerHTML = "";
+        if (imageGenSucceeded) {
+          status.innerHTML = "";
+        }
       }
     });
 
-    // --- TTS Logic ---
+    // --- TTS/STT Logic ---
     const ttsGenerateBtn = document.getElementById("tts-generate-btn");
     const ttsModel = document.getElementById("tts-model");
     const ttsVoice = document.getElementById("tts-voice");
     const ttsInput = document.getElementById("tts-input");
     const ttsResult = document.getElementById("tts-result");
 
+    async function loadTuAudioModels() {
+      try {
+        const data = await apiFetchJson(`/v1/models/tu`, {
+          headers: getHeaders(),
+        });
+        const ids = (data.data || []).map((m) => m.id || "");
+
+        const ttsIds = ids.filter((id) => {
+          const low = id.toLowerCase();
+          return low.includes("kokoro") || low.includes("piper");
+        });
+
+        const sttIds = ids.filter((id) => {
+          const low = id.toLowerCase();
+          return low.includes("whisper") || low.includes("stt");
+        });
+
+        // TTS models (provider-prefixed for proxy calls)
+        ttsModel.innerHTML = "";
+        (ttsIds.length ? ttsIds : ["kokoro", "piper-thorsten"]).forEach((id) => {
+          const option = document.createElement("option");
+          option.value = `tu@${id}`;
+          option.textContent = `tu@${id}`;
+          ttsModel.appendChild(option);
+        });
+
+        // STT models (provider-prefixed for proxy calls)
+        const sttModel = document.getElementById("stt-model");
+        sttModel.innerHTML = "";
+        (sttIds.length ? sttIds : ["whisper-large"]).forEach((id) => {
+          const option = document.createElement("option");
+          option.value = `tu@${id}`;
+          option.textContent = `tu@${id}`;
+          sttModel.appendChild(option);
+        });
+      } catch (error) {
+        console.error("Failed to load TU audio models dynamically:", error);
+        // Keep sane defaults
+        ttsModel.innerHTML = `
+          <option value="tu@kokoro">tu@kokoro</option>
+          <option value="tu@piper-thorsten">tu@piper-thorsten</option>
+        `;
+        const sttModel = document.getElementById("stt-model");
+        sttModel.innerHTML = `<option value="tu@whisper-large">tu@whisper-large</option>`;
+      }
+
+      // voices depend on selected TTS model
+      updateVoices();
+    }
+
     async function updateVoices() {
-      const voices = ttsModel.value.includes("kokoro")
-        ? ["af_heart", "af_bella", "af_nicole", "thorsten"]
-        : ["alloy", "echo", "fable", "onyx", "nova", "shimmer"];
+      let voices = [];
+      if (ttsModel.value === "tu@kokoro") {
+        // TU kokoro-compatible voices
+        voices = ["af_alloy", "af_heart", "af_bella", "af_nicole"];
+      } else if (ttsModel.value === "tu@piper-thorsten") {
+        // TU piper-thorsten expects thorsten voice
+        voices = ["thorsten"];
+      } else {
+        // OpenAI voices
+        voices = ["alloy", "echo", "fable", "onyx", "nova", "shimmer"];
+      }
+
       ttsVoice.innerHTML = voices
         .map((v) => `<option value="${v}">${v}</option>`)
         .join("");
@@ -1324,7 +1426,9 @@
       if (!text) return;
 
       ttsGenerateBtn.disabled = true;
-      document.getElementById("tts-status").innerHTML =
+      const ttsStatusEl = document.getElementById("tts-status");
+      let ttsSucceeded = false;
+      ttsStatusEl.innerHTML =
         '<div class="spinner"></div> Creating audio...';
 
       try {
@@ -1344,8 +1448,9 @@
         audio.src = url;
         audio.style.width = "100%";
         ttsResult.prepend(audio);
+        ttsSucceeded = true;
       } catch (e) {
-        const statusEl = document.getElementById("tts-status");
+        const statusEl = ttsStatusEl;
         const errorDetail = e.detail || e.statusText || e.message;
         
         statusEl.innerHTML = `
@@ -1359,7 +1464,9 @@
         `;
       } finally {
         ttsGenerateBtn.disabled = false;
-        document.getElementById("tts-status").innerHTML = "";
+        if (ttsSucceeded) {
+          ttsStatusEl.innerHTML = "";
+        }
       }
     });
 
@@ -1378,7 +1485,9 @@
       if (!file) return;
 
       sttTranscribeBtn.disabled = true;
-      document.getElementById("stt-status").innerHTML =
+      const sttStatusEl = document.getElementById("stt-status");
+      let sttSucceeded = false;
+      sttStatusEl.innerHTML =
         '<div class="spinner"></div> Transcribing...';
 
       try {
@@ -1395,8 +1504,9 @@
         });
         const data = await resp.json();
         sttResult.innerHTML = `<div style="font-weight:600; margin-bottom:8px; font-size:0.7rem; color:#888;">Transcription:</div>${escapeHtml(data.text || "No text found")}`;
+        sttSucceeded = true;
       } catch (e) {
-        const statusEl = document.getElementById("stt-status");
+        const statusEl = sttStatusEl;
         const errorDetail = e.detail || e.statusText || e.message;
         
         statusEl.innerHTML = `
@@ -1410,16 +1520,19 @@
         `;
       } finally {
         sttTranscribeBtn.disabled = false;
-        document.getElementById("stt-status").innerHTML = "";
+        if (sttSucceeded) {
+          sttStatusEl.innerHTML = "";
+        }
       }
     });
 
     // Init
     loadChatHistory();
     loadVersion();
+    loadLastRefreshStatus();
     loadProviders();
     updateImageModels();
-    updateVoices();
+    loadTuAudioModels();
     setMode("chat");
   </script>
 </body>

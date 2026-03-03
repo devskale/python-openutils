@@ -39,7 +39,7 @@ body {
 
 /* Layout - Cardless & Airy */
 .app-container {
-  max-width: 900px;
+  max-width: 860px;
   width: 100%;
   margin: 0 auto;
   height: 100%;
@@ -48,22 +48,21 @@ body {
   background: transparent;
   border: none;
   box-shadow: none;
-  padding: 0 24px;
+  padding: 0 16px;
 }
 
 /* Header - Minimal Tech */
 header {
-  padding: 32px 0 16px 0;
+  padding: 18px 0 10px 0;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  /* No border, just whitespace */
 }
 
 h1 {
-  font-size: 1.1rem;
-  font-weight: 800;
-  letter-spacing: -0.02em;
+  font-size: 1rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
   text-transform: uppercase;
   color: var(--text-color);
   margin: 0;
@@ -71,7 +70,7 @@ h1 {
 
 .mode-switch {
   display: flex;
-  gap: 32px;
+  gap: 16px;
   background: transparent;
   padding: 0;
 }
@@ -125,9 +124,9 @@ h1 {
 
 /* Controls Bar - Floating Text */
 #model-select-container {
-  padding: 16px 0;
+  padding: 8px 0;
   display: flex;
-  gap: 32px;
+  gap: 16px;
   align-items: center;
   background: transparent;
   margin-bottom: 0;
@@ -238,17 +237,17 @@ select:disabled {
 #chat-container {
   flex: 1;
   overflow-y: auto;
-  padding: 0 0 20px 0;
+  padding: 0 0 12px 0;
   display: flex;
   flex-direction: column;
-  gap: 24px;
+  gap: 14px;
 }
 
 .message {
-  max-width: 85%;
-  padding: 12px 0; /* Minimal vertical padding */
-  font-size: 1rem;
-  line-height: 1.6;
+  max-width: 88%;
+  padding: 6px 0;
+  font-size: 0.95rem;
+  line-height: 1.5;
   position: relative;
 }
 
@@ -256,9 +255,9 @@ select:disabled {
   align-self: flex-end;
   background: var(--user-msg-bg);
   color: var(--user-msg-text);
-  padding: 12px 20px;
-  border-radius: var(--radius-lg) var(--radius-lg) 0 var(--radius-lg);
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+  padding: 10px 14px;
+  border-radius: 14px 14px 0 14px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
 }
 
 .assistant-message {
@@ -266,6 +265,29 @@ select:disabled {
   background: transparent;
   color: var(--text-color);
   padding-left: 0;
+}
+
+/* Normalize markdown typography so assistant/user text feel consistent */
+.assistant-message p,
+.assistant-message li,
+.assistant-message blockquote,
+.assistant-message span {
+  font-size: inherit;
+  line-height: inherit;
+}
+
+.assistant-message p {
+  margin: 0;
+}
+
+.assistant-message p + p {
+  margin-top: 0.55em;
+}
+
+.assistant-message ul,
+.assistant-message ol {
+  margin: 0.45em 0 0.45em 1.1em;
+  padding: 0;
 }
 
 /* Code blocks in messages */
@@ -352,24 +374,24 @@ select:disabled {
 
 /* Input Area - Floating Pill */
 #chat-input-wrapper {
-  padding: 20px 0 40px 0;
+  padding: 10px 0 18px 0;
   background: linear-gradient(
     to bottom,
     rgba(255, 255, 255, 0),
-    var(--bg-color) 20%
+    var(--bg-color) 30%
   );
   border: none;
 }
 
 #input-area {
   display: flex;
-  gap: 12px;
+  gap: 8px;
   align-items: flex-end;
   background: var(--input-bg);
   border: 1px solid transparent;
-  padding: 6px 6px 6px 20px;
+  padding: 4px 4px 4px 14px;
   border-radius: var(--radius-pill);
-  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: all 0.2s ease;
 }
 
 #input-area:focus-within {
@@ -384,19 +406,19 @@ select:disabled {
   background: transparent;
   border: none;
   outline: none;
-  font-size: 1rem;
-  padding: 12px 0;
+  font-size: 0.95rem;
+  padding: 8px 0;
   color: var(--text-color);
   max-height: 150px;
-  line-height: 1.5;
+  line-height: 1.45;
 }
 
 .icon-btn {
   background: transparent;
   border: none;
   color: var(--text-muted);
-  width: 40px;
-  height: 40px;
+  width: 34px;
+  height: 34px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -410,8 +432,8 @@ select:disabled {
 }
 
 #send-button {
-  width: 44px;
-  height: 44px;
+  width: 38px;
+  height: 38px;
   border-radius: 50%;
   background: var(--text-color);
   color: white;
@@ -421,15 +443,15 @@ select:disabled {
   justify-content: center;
   cursor: pointer;
   transition: all 0.2s;
-  font-size: 1.1rem;
+  font-size: 1rem;
 }
 #send-button:hover {
   transform: scale(1.05);
   background: var(--accent-color);
 }
 #stop-button {
-  width: 44px;
-  height: 44px;
+  width: 38px;
+  height: 38px;
   border-radius: 50%;
   background: #fee2e2;
   color: #ef4444;
@@ -472,10 +494,10 @@ select:disabled {
 }
 
 .panel h3 {
-  font-size: 1.5rem;
-  font-weight: 800;
-  margin-bottom: 32px;
-  letter-spacing: -0.02em;
+  font-size: 1.15rem;
+  font-weight: 700;
+  margin-bottom: 16px;
+  letter-spacing: -0.01em;
 }
 
 /* Image Generation - Minimal Grid */
@@ -518,15 +540,15 @@ select:disabled {
 .btn-primary {
   background: var(--text-color);
   color: white;
-  padding: 16px 32px;
+  padding: 10px 18px;
   border-radius: var(--radius-pill);
   font-weight: 600;
   border: none;
   cursor: pointer;
   transition: all 0.2s;
-  letter-spacing: 0.5px;
-  font-size: 0.95rem;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  letter-spacing: 0.2px;
+  font-size: 0.85rem;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
 }
 .btn-primary:hover {
   background: var(--accent-color);
@@ -592,27 +614,27 @@ select:disabled {
 .modal-content {
   background: white;
   border: 1px solid var(--border-color);
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
-  border-radius: 24px;
-  padding: 40px;
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.12);
+  border-radius: 18px;
+  padding: 24px;
 }
 
 /* Quick Suggestions - Floating Techie Menu */
 #predefined-messages {
   position: absolute;
-  bottom: 100px;
-  right: 24px;
-  background: rgba(255, 255, 255, 0.9);
-  backdrop-filter: blur(12px);
+  bottom: 74px;
+  right: 12px;
+  background: rgba(255, 255, 255, 0.92);
+  backdrop-filter: blur(10px);
   border: 1px solid var(--border-color);
-  border-radius: var(--radius-lg);
-  padding: 20px;
-  width: 260px;
-  box-shadow: 0 10px 40px -10px rgba(0, 0, 0, 0.1);
+  border-radius: 12px;
+  padding: 12px;
+  width: 220px;
+  box-shadow: 0 8px 24px -10px rgba(0, 0, 0, 0.12);
   z-index: 100;
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 8px;
 }
 
 #predefined-messages h3 {
