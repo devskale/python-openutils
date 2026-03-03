@@ -466,6 +466,11 @@ uv run uniinfer -p PROVIDER_NAME --list-models
 
 ## Development
 
+### Architecture
+
+- [Proxy Architecture Overview](ARCHITECTURE.md)
+- [Agent/Contributor Rules](AGENTS.md)
+
 ### Running Tests
 
 ```bash

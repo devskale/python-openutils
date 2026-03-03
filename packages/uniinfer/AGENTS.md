@@ -10,6 +10,12 @@ UniInfer is a unified LLM inference interface for Python providing a consistent 
 - CLI tool for quick interactions (`uniinfer_cli.py`)
 - OpenAI-compatible FastAPI proxy server (`uniioai_proxy.py`)
 
+## Docs Index
+
+- `README.md` – user-facing usage, API examples, development commands
+- `ARCHITECTURE.md` – current proxy router/service/schema layout
+- `AGENTS.md` – contributor and agent workflow rules
+
 ## Environment Setup
 
 ```bash
@@ -172,8 +178,9 @@ raise mapped_error
 6. Add conditional import for optional dependencies
 7. Export in `uniinfer/providers/__init__.py`
 
-### Dev Guide Index (Compatible Providers)
+### Dev Guide Index
 
+- Proxy architecture/layout: `ARCHITECTURE.md`
 - OpenAI-compatible provider flow
 - Anthropic-compatible provider flow
 
