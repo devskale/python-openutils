@@ -475,7 +475,7 @@ PREDEFINED_MODELS = [
     "internlm@internlm3-latest",
     "stepfun@step-1-flash",
     "upstage@solar-mini-250401",
-    "zai@glm-4-flash",
+    "zai@glm-4.5-flash",
     "zai-code@glm-4.5",
     "ngc@google/gemma-3-27b-it",
     "cohere@command-r",
@@ -1086,6 +1086,11 @@ async def dynamic_list_models(provider_name: str, api_bearer_token: str = Depend
     """
     try:
         raw_models = list_models_for_provider(provider_name, api_bearer_token)
+
+        # Ensure known working aliases appear in UI even if upstream listing omits them.
+        if provider_name == "zai" and "glm-4.5-flash" not in raw_models:
+            raw_models.append("glm-4.5-flash")
+
         model_objs = [Model(id=m) for m in raw_models]
         return ModelList(data=model_objs)
     except ValueError as e:
