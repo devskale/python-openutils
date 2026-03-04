@@ -41,6 +41,7 @@ async def astream_response_generator(
     tool_choice: Any | None = None,
     request_id: str | None = None,
     reasoning_effort: str | None = None,
+    think: bool | str | None = None,
 ) -> AsyncGenerator[str, None]:
     completion_id = f"chatcmpl-{uuid.uuid4()}"
     created_time = int(time.time())

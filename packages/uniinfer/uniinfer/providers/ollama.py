@@ -143,6 +143,8 @@ class OllamaProvider(ChatProvider):
             for key, value in provider_specific_kwargs.items():
                 if key == "options" and isinstance(value, dict):
                     payload["options"].update(value)
+                elif key == "think":
+                    payload["think"] = value
                 else:
                     payload[key] = value
 
@@ -166,15 +168,15 @@ class OllamaProvider(ChatProvider):
                 raise map_provider_error("Ollama", Exception(error_msg), status_code=response.status_code, response_body=response.text)
 
             response_data = response.json()
-            assistant_message = response_data["message"]
+            assistant_message = response_data.get("message", {})
 
             message = ChatMessage(
                 role=assistant_message.get("role", "assistant"),
                 content=assistant_message.get("content", "")
             )
             
-            # Handle reasoning_content (DeepSeek-R1 on Ollama)
-            reasoning_content = assistant_message.get("reasoning_content")
+            # Handle thinking field (Qwen 3 on Ollama)
+            thinking_content = assistant_message.get("thinking") or assistant_message.get("reasoning_content")
 
             usage = {
                 "prompt_tokens": response_data.get("prompt_eval_count", 0),
@@ -191,7 +193,7 @@ class OllamaProvider(ChatProvider):
                 model=response_data.get('model', request.model),
                 usage=usage,
                 raw_response=response_data,
-                thinking=reasoning_content
+                thinking=thinking_content
             )
         except Exception as e:
             if isinstance(e, UniInferError):
@@ -257,11 +259,12 @@ class OllamaProvider(ChatProvider):
                                 continue
 
                             content = ""
-                            reasoning_content = None
+                            thinking_content = None
                             if "message" in data and "content" in data["message"]:
                                 content = data["message"]["content"]
-                            if "message" in data and "reasoning_content" in data["message"]:
-                                reasoning_content = data["message"]["reasoning_content"]
+                            # Handle thinking field (Qwen 3) or reasoning_content (DeepSeek-R1)
+                            if "message" in data:
+                                thinking_content = data["message"].get("thinking") or data["message"].get("reasoning_content")
 
                             message = ChatMessage(
                                 role="assistant", content=content)
@@ -272,7 +275,7 @@ class OllamaProvider(ChatProvider):
                                 model=data.get('model', request.model),
                                 usage={},
                                 raw_response=data,
-                                thinking=reasoning_content
+                                thinking=thinking_content
                             )
                         except json.JSONDecodeError:
                             continue
