@@ -377,6 +377,131 @@
               min-height: 44px;
             "></div>
       </div>
+
+      <!-- Streaming STT Box -->
+      <div class="audio-box" style="border: 2px solid #f59e0b; background: linear-gradient(135deg, #fffbeb 0%, #fff 100%);">
+        <h3>
+          🎤 Streaming Speech-to-Text
+          <span style="
+            display: inline-block;
+            background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+            color: white;
+            font-size: 0.6rem;
+            font-weight: 700;
+            padding: 2px 8px;
+            border-radius: 4px;
+            margin-left: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+          ">Demo</span>
+        </h3>
+        <p style="font-size: 0.75rem; color: #92400e; margin: -8px 0 12px 0;">
+          Records mic audio with real-time transcription using browser's Web Speech API. Works entirely in browser (WebSocket optional).
+        </p>
+        
+        <div style="display: flex; gap: 10px; flex-wrap: wrap; align-items: flex-end; margin-bottom: 12px;">
+          <div class="form-group" style="flex: 1; min-width: 200px; margin-bottom: 0;">
+            <label>WebSocket URL <span style="color: #9ca3af; font-weight: normal;">(leave empty for demo mode)</span></label>
+            <input type="text" id="stream-stt-ws-url" 
+              placeholder="ws://localhost:8123/v1/audio/transcriptions/stream" 
+              style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 8px; font-size: 0.85rem;" />
+          </div>
+          
+          <div class="form-group" style="width: 150px; margin-bottom: 0;">
+            <label>Model</label>
+            <select id="stream-stt-model" style="width: 100%;">
+              <option value="tu@whisper-large">tu@whisper-large</option>
+              <option value="tu@whisper-small">tu@whisper-small</option>
+              <option value="tu@whisper-turbo">tu@whisper-turbo</option>
+            </select>
+          </div>
+          
+          <div class="form-group" style="width: 100px; margin-bottom: 0;">
+            <label>Chunk (ms)</label>
+            <select id="stream-stt-chunk-ms" style="width: 100%;">
+              <option value="100">100</option>
+              <option value="200">200</option>
+              <option value="250" selected>250</option>
+              <option value="300">300</option>
+              <option value="500">500</option>
+              <option value="1000">1000</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Audio Level Meter -->
+        <div style="margin-bottom: 12px;">
+          <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
+            <span style="font-size: 0.75rem; color: #6b7280;">Audio Level:</span>
+            <span id="stream-stt-level-text" style="font-size: 0.7rem; color: #9ca3af;">--</span>
+          </div>
+          <div style="background: #e5e7eb; border-radius: 4px; height: 8px; overflow: hidden;">
+            <div id="stream-stt-level-bar" style="background: linear-gradient(90deg, #22c55e 0%, #f59e0b 50%, #ef4444 100%); height: 100%; width: 0%; transition: width 0.05s;"></div>
+          </div>
+        </div>
+
+        <div style="display: flex; gap: 10px; align-items: center; margin-bottom: 12px;">
+          <button id="stream-stt-toggle" class="btn-primary" style="
+            background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
+            font-weight: 600;
+            padding: 10px 24px;
+            box-shadow: 0 2px 8px rgba(34, 197, 94, 0.3);
+            min-width: 160px;
+            transition: all 0.2s ease;
+          ">
+            🎙️ Start Recording
+          </button>
+          <span id="stream-stt-status" style="font-size: 0.8rem; color: #666;"></span>
+          <span id="stream-stt-indicator" style="display: none; margin-left: auto; align-items: center; gap: 4px;">
+            <span class="recording-dot"></span>
+            <span style="font-size: 0.75rem; color: #ef4444; font-weight: 700;">● LIVE</span>
+          </span>
+        </div>
+        
+        <!-- Stats Row -->
+        <div style="display: flex; gap: 16px; margin-bottom: 12px; font-size: 0.75rem; color: #6b7280; flex-wrap: wrap;">
+          <span>Chunks: <strong id="stream-stt-chunks" style="color: #1f2937;">0</strong></span>
+          <span>Bytes: <strong id="stream-stt-bytes" style="color: #1f2937;">0</strong></span>
+          <span>Duration: <strong id="stream-stt-duration" style="color: #1f2937;">0.0s</strong></span>
+          <span id="stream-stt-mode-badge" style="background: #dbeafe; color: #1d4ed8; padding: 1px 6px; border-radius: 4px;">Demo Mode</span>
+        </div>
+        
+        <!-- Debug Panel -->
+        <div id="stream-stt-debug" style="
+          margin-bottom: 12px;
+          padding: 10px;
+          background: #1e293b;
+          border-radius: 8px;
+          font-family: 'Monaco', 'Menlo', monospace;
+          font-size: 0.7rem;
+          color: #94a3b8;
+          max-height: 150px;
+          overflow-y: auto;
+        ">
+          <div style="color: #64748b; margin-bottom: 4px;">Debug Log:</div>
+          <div id="stream-stt-debug-log"></div>
+        </div>
+
+        <div id="stream-stt-transcript" style="
+          margin-top: 12px;
+          padding: 14px;
+          background: #f8fafc;
+          border-radius: 10px;
+          min-height: 60px;
+          border: 1px solid #e2e8f0;
+        ">
+          <div style="font-size: 0.7rem; color: #94a3b8;">Transcription will appear here...</div>
+        </div>
+        
+        <div style="margin-top: 8px; display: flex; gap: 8px; flex-wrap: wrap;">
+          <button id="stream-stt-clear" style="font-size: 0.75rem; background: #f1f5f9; border: 1px solid #e2e8f0; padding: 4px 10px; border-radius: 6px; cursor: pointer;">
+            Clear Log
+          </button>
+          <button id="stream-stt-playback" style="font-size: 0.75rem; background: #f1f5f9; border: 1px solid #e2e8f0; padding: 4px 10px; border-radius: 6px; cursor: pointer; display: none;">
+            ▶️ Playback Recording
+          </button>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -1529,6 +1654,539 @@
         }
       }
     });
+
+    // --- Streaming STT Logic ---
+    const streamSttToggleBtn = document.getElementById("stream-stt-toggle");
+    const streamSttStatus = document.getElementById("stream-stt-status");
+    const streamSttIndicator = document.getElementById("stream-stt-indicator");
+    const streamSttTranscript = document.getElementById("stream-stt-transcript");
+    const streamSttClearBtn = document.getElementById("stream-stt-clear");
+    const streamSttPlaybackBtn = document.getElementById("stream-stt-playback");
+    const streamSttChunksSpan = document.getElementById("stream-stt-chunks");
+    const streamSttBytesSpan = document.getElementById("stream-stt-bytes");
+    const streamSttDurationSpan = document.getElementById("stream-stt-duration");
+    const streamSttModeBadge = document.getElementById("stream-stt-mode-badge");
+    const streamSttWsUrlInput = document.getElementById("stream-stt-ws-url");
+    const streamSttModelSelect = document.getElementById("stream-stt-model");
+    const streamSttChunkMsSelect = document.getElementById("stream-stt-chunk-ms");
+    const streamSttDebugLog = document.getElementById("stream-stt-debug-log");
+    const streamSttLevelBar = document.getElementById("stream-stt-level-bar");
+    const streamSttLevelText = document.getElementById("stream-stt-level-text");
+
+    let streamSttWs = null;
+    let streamSttAudioContext = null;
+    let streamSttMediaStream = null;
+    let streamSttWorkletNode = null;
+    let streamSttAnalyser = null;
+    let streamSttAnalyserInterval = null;
+    let streamSttChunkCount = 0;
+    let streamSttByteCount = 0;
+    let streamSttStartTime = 0;
+    let streamSttDurationInterval = null;
+    let streamSttSessionId = null;
+    let streamSttFullTranscript = "";
+    let streamSttIsRecording = false;
+    let streamSttRecordedChunks = []; // For playback in demo mode
+    let streamSttSpeechRecognition = null; // Web Speech API for demo mode
+
+    // Add recording dot animation styles
+    const recordingStyles = document.createElement("style");
+    recordingStyles.textContent = `
+      .recording-dot {
+        display: inline-block;
+        width: 8px;
+        height: 8px;
+        background: #ef4444;
+        border-radius: 50%;
+        margin-right: 6px;
+        animation: recording-pulse 1s ease-in-out infinite;
+      }
+      @keyframes recording-pulse {
+        0%, 100% { opacity: 1; transform: scale(1); }
+        50% { opacity: 0.5; transform: scale(1.2); }
+      }
+    `;
+    document.head.appendChild(recordingStyles);
+
+    function debugLog(msg, type = "info") {
+      const time = new Date().toLocaleTimeString();
+      const colors = {
+        info: "#94a3b8",
+        success: "#22c55e",
+        error: "#ef4444",
+        warn: "#f59e0b",
+        send: "#3b82f6",
+        recv: "#8b5cf6"
+      };
+      const line = document.createElement("div");
+      line.style.color = colors[type] || colors.info;
+      line.textContent = `[${time}] ${msg}`;
+      streamSttDebugLog.appendChild(line);
+      streamSttDebugLog.scrollTop = streamSttDebugLog.scrollHeight;
+      
+      while (streamSttDebugLog.children.length > 50) {
+        streamSttDebugLog.removeChild(streamSttDebugLog.firstChild);
+      }
+      
+      console.log(`[StreamSTT] ${msg}`);
+    }
+
+    function updateStreamSttStatus(text, isError = false) {
+      streamSttStatus.textContent = text;
+      streamSttStatus.style.color = isError ? "#ef4444" : "#666";
+    }
+
+    function setRecordingUI(isRecording) {
+      streamSttIsRecording = isRecording;
+      if (isRecording) {
+        streamSttToggleBtn.innerHTML = "⏹️ Stop Recording";
+        streamSttToggleBtn.style.background = "linear-gradient(135deg, #ef4444 0%, #dc2626 100%)";
+        streamSttToggleBtn.style.boxShadow = "0 2px 8px rgba(239, 68, 68, 0.3)";
+        streamSttIndicator.style.display = "flex";
+      } else {
+        streamSttToggleBtn.innerHTML = "🎙️ Start Recording";
+        streamSttToggleBtn.style.background = "linear-gradient(135deg, #22c55e 0%, #16a34a 100%)";
+        streamSttToggleBtn.style.boxShadow = "0 2px 8px rgba(34, 197, 94, 0.3)";
+        streamSttIndicator.style.display = "none";
+      }
+    }
+
+    function updateAudioLevel() {
+      if (!streamSttAnalyser) return;
+      
+      const dataArray = new Uint8Array(streamSttAnalyser.frequencyBinCount);
+      streamSttAnalyser.getByteFrequencyData(dataArray);
+      
+      // Calculate average level
+      let sum = 0;
+      for (let i = 0; i < dataArray.length; i++) {
+        sum += dataArray[i];
+      }
+      const avg = sum / dataArray.length;
+      const percent = Math.min(100, (avg / 128) * 100);
+      
+      streamSttLevelBar.style.width = percent + "%";
+      streamSttLevelText.textContent = Math.round(percent) + "%";
+    }
+
+    function updateDuration() {
+      if (!streamSttStartTime) return;
+      const elapsed = (Date.now() - streamSttStartTime) / 1000;
+      streamSttDurationSpan.textContent = elapsed.toFixed(1) + "s";
+    }
+
+    function formatBytes(bytes) {
+      if (bytes < 1024) return bytes + " B";
+      if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + " KB";
+      return (bytes / (1024 * 1024)).toFixed(2) + " MB";
+    }
+
+    function appendTranscript(text, isPartial = false) {
+      if (!text || !text.trim()) return;
+      
+      const trimmed = text.trim();
+      
+      if (isPartial) {
+        streamSttTranscript.innerHTML = `
+          <div style="font-size: 0.85rem; color: #1f2937;">${escapeHtml(streamSttFullTranscript)}</div>
+          <div style="font-size: 0.85rem; color: #9ca3af; font-style: italic;">${escapeHtml(trimmed)}</div>
+        `;
+        debugLog(`Partial: "${trimmed.substring(0, 50)}${trimmed.length > 50 ? '...' : ''}"`, "recv");
+      } else {
+        streamSttFullTranscript += (streamSttFullTranscript ? " " : "") + trimmed;
+        streamSttTranscript.innerHTML = `
+          <div style="font-size: 0.85rem; color: #1f2937;">${escapeHtml(streamSttFullTranscript)}</div>
+        `;
+        debugLog(`Final: "${trimmed.substring(0, 50)}${trimmed.length > 50 ? '...' : ''}"`, "success");
+      }
+      
+      streamSttTranscript.scrollTop = streamSttTranscript.scrollHeight;
+    }
+
+    async function startStreamingStt() {
+      const wsUrl = streamSttWsUrlInput.value.trim();
+      const model = streamSttModelSelect.value;
+      const chunkMs = parseInt(streamSttChunkMsSelect.value) || 250;
+      const isDemoMode = !wsUrl;
+
+      if (isDemoMode) {
+        debugLog("Starting in DEMO mode (no WebSocket)", "info");
+        streamSttModeBadge.textContent = "Demo Mode";
+        streamSttModeBadge.style.background = "#dbeafe";
+        streamSttModeBadge.style.color = "#1d4ed8";
+      } else {
+        debugLog(`Starting... WS: ${wsUrl}`, "info");
+        streamSttModeBadge.textContent = "WS Mode";
+        streamSttModeBadge.style.background = "#dcfce7";
+        streamSttModeBadge.style.color = "#16a34a";
+      }
+      debugLog(`Model: ${model}, Chunk: ${chunkMs}ms`, "info");
+
+      try {
+        debugLog("Requesting microphone access...", "info");
+        
+        streamSttMediaStream = await navigator.mediaDevices.getUserMedia({
+          audio: {
+            echoCancellation: true,
+            noiseSuppression: true,
+            autoGainControl: true,
+          }
+        });
+        
+        debugLog("Microphone access granted", "success");
+
+        // Setup AudioContext at 16kHz
+        streamSttAudioContext = new AudioContext({ sampleRate: 16000 });
+        debugLog(`AudioContext created (sampleRate: ${streamSttAudioContext.sampleRate})`, "info");
+        
+        const source = streamSttAudioContext.createMediaStreamSource(streamSttMediaStream);
+
+        // Create analyser for audio level meter
+        streamSttAnalyser = streamSttAudioContext.createAnalyser();
+        streamSttAnalyser.fftSize = 256;
+        source.connect(streamSttAnalyser);
+        
+        // Start audio level updates
+        streamSttAnalyserInterval = setInterval(updateAudioLevel, 50);
+
+        // Create AudioWorklet for chunking
+        const workletCode = `
+          class StreamSttProcessor extends AudioWorkletProcessor {
+            constructor() {
+              super();
+              this.buffer = [];
+              this.chunkSize = Math.floor(16000 * 250 / 1000);
+              this.chunkCount = 0;
+              
+              this.port.onmessage = (e) => {
+                if (e.data.chunkMs) {
+                  this.chunkSize = Math.floor(16000 * e.data.chunkMs / 1000);
+                  this.chunkCount = 0;
+                }
+              };
+            }
+
+            process(inputs, outputs, parameters) {
+              const input = inputs[0];
+              if (!input || !input[0]) return true;
+
+              const channel = input[0];
+              
+              for (let i = 0; i < channel.length; i++) {
+                this.buffer.push(channel[i]);
+              }
+
+              while (this.buffer.length >= this.chunkSize) {
+                const chunk = this.buffer.splice(0, this.chunkSize);
+                const pcm16 = new Int16Array(chunk.length);
+                for (let i = 0; i < chunk.length; i++) {
+                  const s = Math.max(-1, Math.min(1, chunk[i]));
+                  pcm16[i] = s < 0 ? s * 0x8000 : s * 0x7FFF;
+                }
+                
+                this.chunkCount++;
+                this.port.postMessage({ 
+                  audio: pcm16.buffer, 
+                  chunkNum: this.chunkCount,
+                  samples: chunk.length 
+                }, [pcm16.buffer]);
+              }
+
+              return true;
+            }
+          }
+          registerProcessor('stream-stt-processor', StreamSttProcessor);
+        `;
+
+        const blob = new Blob([workletCode], { type: 'application/javascript' });
+        const workletUrl = URL.createObjectURL(blob);
+        
+        debugLog("Loading AudioWorklet...", "info");
+        await streamSttAudioContext.audioWorklet.addModule(workletUrl);
+        URL.revokeObjectURL(workletUrl);
+        debugLog("AudioWorklet loaded", "success");
+
+        streamSttWorkletNode = new AudioWorkletNode(streamSttAudioContext, 'stream-stt-processor');
+        source.connect(streamSttWorkletNode);
+        streamSttWorkletNode.connect(streamSttAudioContext.destination);
+        debugLog("Audio pipeline connected", "success");
+
+        // Reset counters
+        streamSttChunkCount = 0;
+        streamSttByteCount = 0;
+        streamSttFullTranscript = "";
+        streamSttRecordedChunks = [];
+        streamSttStartTime = Date.now();
+        streamSttSessionId = crypto.randomUUID();
+
+        // Start duration counter
+        streamSttDurationInterval = setInterval(updateDuration, 100);
+
+        // In demo mode, use Web Speech API for transcription
+        if (isDemoMode) {
+          const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+          if (SpeechRecognition) {
+            streamSttSpeechRecognition = new SpeechRecognition();
+            streamSttSpeechRecognition.continuous = true;
+            streamSttSpeechRecognition.interimResults = true;
+            streamSttSpeechRecognition.lang = 'en-US';
+            
+            streamSttSpeechRecognition.onresult = (event) => {
+              let interimTranscript = '';
+              let finalTranscript = '';
+              
+              for (let i = event.resultIndex; i < event.results.length; i++) {
+                const transcript = event.results[i][0].transcript;
+                if (event.results[i].isFinal) {
+                  finalTranscript += transcript;
+                } else {
+                  interimTranscript += transcript;
+                }
+              }
+              
+              if (finalTranscript) {
+                appendTranscript(finalTranscript, false);
+              }
+              if (interimTranscript) {
+                appendTranscript(interimTranscript, true);
+              }
+            };
+            
+            streamSttSpeechRecognition.onerror = (event) => {
+              debugLog(`Speech recognition error: ${event.error}`, "error");
+            };
+            
+            streamSttSpeechRecognition.onend = () => {
+              // Auto-restart if still recording
+              if (streamSttIsRecording && streamSttSpeechRecognition) {
+                debugLog("Speech recognition auto-restarting...", "info");
+                try {
+                  streamSttSpeechRecognition.start();
+                } catch (e) {
+                  debugLog(`Failed to restart speech recognition: ${e.message}`, "error");
+                }
+              }
+            };
+            
+            streamSttSpeechRecognition.start();
+            debugLog("Web Speech API started (browser transcription)", "success");
+          } else {
+            debugLog("Web Speech API not supported in this browser", "warn");
+            streamSttTranscript.innerHTML = `<div style="font-size: 0.75rem; color: #f59e0b;">⚠️ Browser doesn't support Web Speech API. Try Chrome/Edge.</div>`;
+          }
+        }
+
+        // Connect WebSocket if URL provided
+        if (!isDemoMode) {
+          debugLog(`Connecting to WebSocket: ${wsUrl}`, "info");
+          streamSttWs = new WebSocket(wsUrl);
+
+          streamSttWs.onopen = () => {
+            debugLog("WebSocket connected", "success");
+            updateStreamSttStatus("Connected, recording...");
+            
+            const startMsg = {
+              type: "start",
+              session_id: streamSttSessionId,
+              model: model,
+              sample_rate: 16000,
+              format: "pcm_s16le",
+              channels: 1
+            };
+            streamSttWs.send(JSON.stringify(startMsg));
+            debugLog(`Sent start: ${JSON.stringify(startMsg)}`, "send");
+          };
+
+          streamSttWs.onmessage = (event) => {
+            debugLog(`Received: ${event.data.substring(0, 100)}...`, "recv");
+            try {
+              const data = JSON.parse(event.data);
+              
+              if (data.type === "partial" && data.text) {
+                appendTranscript(data.text, true);
+              } else if (data.type === "final" && data.text) {
+                appendTranscript(data.text, false);
+              } else if (data.type === "error") {
+                debugLog(`Server error: ${data.message}`, "error");
+                updateStreamSttStatus(data.message || "Error", true);
+              }
+            } catch (e) {
+              debugLog(`Parse error: ${e.message}`, "error");
+            }
+          };
+
+          streamSttWs.onerror = (err) => {
+            debugLog("WebSocket error!", "error");
+            updateStreamSttStatus("WebSocket error", true);
+          };
+
+          streamSttWs.onclose = (event) => {
+            debugLog(`WebSocket closed (code: ${event.code})`, "warn");
+            updateStreamSttStatus("Disconnected");
+            if (streamSttIsRecording) {
+              stopStreamingStt();
+            }
+          };
+        }
+
+        // Handle audio chunks from worklet
+        streamSttWorkletNode.port.onmessage = (event) => {
+          if (event.data.audio) {
+            streamSttChunkCount++;
+            streamSttByteCount += event.data.audio.byteLength;
+            
+            streamSttChunksSpan.textContent = streamSttChunkCount;
+            streamSttBytesSpan.textContent = formatBytes(streamSttByteCount);
+            
+            // Store chunk for demo playback
+            if (isDemoMode) {
+              streamSttRecordedChunks.push(new Int16Array(event.data.audio));
+              debugLog(`Chunk #${streamSttChunkCount} captured (${event.data.samples} samples, ${event.data.audio.byteLength} bytes)`, "success");
+            } else if (streamSttWs && streamSttWs.readyState === WebSocket.OPEN) {
+              streamSttWs.send(event.data.audio);
+              debugLog(`Sent chunk #${streamSttChunkCount} (${event.data.samples} samples, ${event.data.audio.byteLength} bytes)`, "send");
+            } else {
+              debugLog(`Chunk #${streamSttChunkCount} dropped (WS not ready)`, "warn");
+            }
+          }
+        };
+
+        // Update chunk size in worklet
+        streamSttWorkletNode.port.postMessage({ chunkMs: chunkMs });
+
+        // Update UI
+        setRecordingUI(true);
+        streamSttTranscript.innerHTML = `<div style="font-size: 0.7rem; color: #94a3b8;">${isDemoMode ? 'Listening... (browser transcription)' : 'Listening...'}</div>`;
+        updateStreamSttStatus(isDemoMode ? "Recording with transcription..." : "Recording...");
+
+      } catch (err) {
+        debugLog(`Failed to start: ${err.message}`, "error");
+        console.error("Failed to start streaming STT:", err);
+        updateStreamSttStatus(err.message || "Failed to start", true);
+        stopStreamingStt();
+      }
+    }
+
+    function stopStreamingStt() {
+      debugLog("Stopping...", "info");
+      
+      // Stop Web Speech API if active
+      if (streamSttSpeechRecognition) {
+        streamSttSpeechRecognition.onend = null; // Prevent auto-restart
+        streamSttSpeechRecognition.stop();
+        streamSttSpeechRecognition = null;
+        debugLog("Web Speech API stopped", "info");
+      }
+      
+      // Stop duration counter
+      if (streamSttDurationInterval) {
+        clearInterval(streamSttDurationInterval);
+        streamSttDurationInterval = null;
+      }
+      
+      // Stop audio level meter
+      if (streamSttAnalyserInterval) {
+        clearInterval(streamSttAnalyserInterval);
+        streamSttAnalyserInterval = null;
+      }
+      streamSttLevelBar.style.width = "0%";
+      streamSttLevelText.textContent = "--";
+      
+      // Send end message and close WS
+      if (streamSttWs && streamSttWs.readyState === WebSocket.OPEN) {
+        const endMsg = { type: "end", session_id: streamSttSessionId };
+        streamSttWs.send(JSON.stringify(endMsg));
+        debugLog(`Sent end: ${JSON.stringify(endMsg)}`, "send");
+        streamSttWs.close();
+      }
+      streamSttWs = null;
+
+      // Cleanup audio
+      if (streamSttWorkletNode) {
+        streamSttWorkletNode.disconnect();
+        streamSttWorkletNode = null;
+      }
+      if (streamSttAudioContext) {
+        streamSttAudioContext.close();
+        streamSttAudioContext = null;
+      }
+      if (streamSttMediaStream) {
+        streamSttMediaStream.getTracks().forEach(t => t.stop());
+        streamSttMediaStream = null;
+      }
+      streamSttAnalyser = null;
+
+      // Update UI
+      setRecordingUI(false);
+      
+      const duration = ((Date.now() - streamSttStartTime) / 1000).toFixed(1);
+      updateStreamSttStatus(`Stopped. ${streamSttChunkCount} chunks, ${formatBytes(streamSttByteCount)}, ${duration}s`);
+      debugLog(`Stopped. Total: ${streamSttChunkCount} chunks, ${formatBytes(streamSttByteCount)}`, "info");
+      
+      // Show playback button if we recorded chunks
+      if (streamSttRecordedChunks.length > 0) {
+        streamSttPlaybackBtn.style.display = "inline-block";
+      }
+    }
+
+    function toggleStreamingStt() {
+      if (streamSttIsRecording) {
+        stopStreamingStt();
+      } else {
+        startStreamingStt();
+      }
+    }
+
+    function playRecording() {
+      if (streamSttRecordedChunks.length === 0) return;
+      
+      debugLog(`Playing back ${streamSttRecordedChunks.length} chunks...`, "info");
+      
+      // Concatenate all chunks
+      const totalLength = streamSttRecordedChunks.reduce((sum, chunk) => sum + chunk.length, 0);
+      const allSamples = new Int16Array(totalLength);
+      let offset = 0;
+      for (const chunk of streamSttRecordedChunks) {
+        allSamples.set(chunk, offset);
+        offset += chunk.length;
+      }
+      
+      // Convert Int16 to Float32 for Web Audio
+      const float32 = new Float32Array(allSamples.length);
+      for (let i = 0; i < allSamples.length; i++) {
+        float32[i] = allSamples[i] / (allSamples[i] < 0 ? 0x8000 : 0x7FFF);
+      }
+      
+      // Play
+      const ctx = new AudioContext({ sampleRate: 16000 });
+      const buffer = ctx.createBuffer(1, float32.length, 16000);
+      buffer.getChannelData(0).set(float32);
+      
+      const source = ctx.createBufferSource();
+      source.buffer = buffer;
+      source.connect(ctx.destination);
+      source.start();
+      
+      source.onended = () => {
+        ctx.close();
+        debugLog("Playback finished", "info");
+      };
+    }
+
+    streamSttToggleBtn.addEventListener("click", toggleStreamingStt);
+
+    streamSttClearBtn.addEventListener("click", () => {
+      streamSttDebugLog.innerHTML = "";
+      streamSttFullTranscript = "";
+      streamSttRecordedChunks = [];
+      streamSttPlaybackBtn.style.display = "none";
+      streamSttChunksSpan.textContent = "0";
+      streamSttBytesSpan.textContent = "0";
+      streamSttDurationSpan.textContent = "0.0s";
+      streamSttTranscript.innerHTML = `<div style="font-size: 0.7rem; color: #94a3b8;">Transcription will appear here...</div>`;
+    });
+
+    streamSttPlaybackBtn.addEventListener("click", playRecording);
 
     // Init
     loadChatHistory();
