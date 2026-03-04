@@ -24,6 +24,7 @@ class ChatCompletionRequestInput(BaseModel):
     tools: list[dict] | None = None
     tool_choice: Any | None = None
     reasoning_effort: str | None = None
+    think: bool | str | None = None
 
     def get_effective_max_tokens(self) -> int | None:
         return self.max_completion_tokens or self.max_tokens

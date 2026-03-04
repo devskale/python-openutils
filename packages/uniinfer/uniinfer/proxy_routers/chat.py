@@ -64,6 +64,7 @@ def create_chat_router(
                         tool_choice=request_input.tool_choice,
                         request_id=getattr(request.state, "request_id", None),
                         reasoning_effort=request_input.reasoning_effort,
+                        think=request_input.think if provider_name == "ollama" else None,
                     ),
                     media_type="text/event-stream",
                     headers={
