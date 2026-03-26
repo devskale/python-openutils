@@ -53,8 +53,8 @@ async def astream_response_generator(
     heartbeat_count = 0
     last_yield_time = time.monotonic()
     idle_warning_threshold = 10.0
-    heartbeat_interval = float(os.getenv("UNIINFER_STREAM_HEARTBEAT", "5"))
-    idle_timeout = float(os.getenv("UNIINFER_STREAM_IDLE_TIMEOUT", "30"))
+    heartbeat_interval = float(os.getenv("UNIINFER_STREAM_HEARTBEAT", "120"))  # Increased for reasoning models
+    idle_timeout = float(os.getenv("UNIINFER_STREAM_IDLE_TIMEOUT", "300"))  # Increased for reasoning models
 
     first_chunk_data = StreamingChatCompletionChunk(
         id=completion_id,
@@ -132,6 +132,25 @@ async def astream_response_generator(
                     seen_tool_calls = True
             else:
                 chunk_finish_reason = getattr(chunk, "finish_reason", None)
+                
+                # Handle error finish_reason from provider (e.g., preemption detection)
+                if chunk_finish_reason == "error":
+                    import sys
+                    print(f"[DEBUG] STREAMING: Got error finish_reason, raw_response={chunk.raw_response}", file=sys.stderr, flush=True)
+                    error_msg = "Stream error"
+                    if chunk.raw_response and isinstance(chunk.raw_response, dict):
+                        error_msg = chunk.raw_response.get("error", error_msg)
+                    error_chunk = {
+                        "error": {
+                            "message": error_msg,
+                            "type": "provider_error",
+                            "code": None,
+                        }
+                    }
+                    yield f"data: {json.dumps(error_chunk)}\n\n"
+                    sent_finish_reason = True
+                    continue
+                
                 if chunk.message:
                     choice_kwargs = {}
                     if chunk.message.content:

@@ -182,6 +182,9 @@ class TUProvider(ChatProvider):
         payload = self._prepare_payload(request)
 
         try:
+            chunks_yielded = 0  # Track if we receive any valid chunks
+            received_done = False  # Track if we received [DONE] marker
+            received_finish_reason = False  # Track if we received finish_reason
             async with client.stream("POST", "/chat/completions", json=payload) as response:
                 if response.status_code != 200:
                     error_body = await response.aread()
@@ -201,6 +204,7 @@ class TUProvider(ChatProvider):
                     if not line:
                         continue
                     if line.strip() == 'data: [DONE]':
+                        received_done = True
                         break
                     if not line.startswith('data: '):
                         continue
@@ -219,6 +223,9 @@ class TUProvider(ChatProvider):
                             delta = choice.get('delta', {})
                             finish_reason = choice.get('finish_reason')
                             
+                            if finish_reason:
+                                received_finish_reason = True
+                            
                             content = delta.get('content')
                             # Handle reasoning_content (TU thinking models)
                             reasoning_content = delta.get('reasoning_content') or delta.get('reasoning')
@@ -227,6 +234,7 @@ class TUProvider(ChatProvider):
                             if not content and not reasoning_content and not tool_calls and not finish_reason:
                                 continue
                                 
+                            chunks_yielded += 1
                             message = ChatMessage(
                                 role=delta.get('role', 'assistant'),
                                 content=content,
@@ -244,6 +252,48 @@ class TUProvider(ChatProvider):
                             )
                     except json.JSONDecodeError:
                         continue
+                
+                # Detect incomplete stream (preemption) - stream ended without proper completion
+                if chunks_yielded == 0:
+                    log_raw_response(
+                        provider="tu",
+                        operation="chat.completions.stream",
+                        raw_response={"error": "Empty stream - no chunks received (possible preemption)"},
+                        log_file=os.path.join(os.getcwd(), "logs", "tu_raw_chat.log"),
+                    )
+                    # Yield error response instead of raising - exception would be swallowed by StopAsyncIteration
+                    yield ChatCompletionResponse(
+                        message=ChatMessage(role="assistant", content=""),
+                        provider="tu",
+                        model=request.model,
+                        usage={},
+                        raw_response={"error": "TU API returned empty stream - model may have preempted"},
+                        finish_reason="error",
+                        thinking=None
+                    )
+                    return  # Exit generator cleanly
+                
+                # Detect premature stream termination - stream had chunks but no finish_reason or [DONE]
+                if not received_done and not received_finish_reason:
+                    import sys
+                    print(f"[DEBUG] PREEMPTION DETECTED: {chunks_yielded} chunks, no finish_reason or [DONE]", file=sys.stderr, flush=True)
+                    log_raw_response(
+                        provider="tu",
+                        operation="chat.completions.stream",
+                        raw_response={"error": f"Stream terminated prematurely - {chunks_yielded} chunks but no finish_reason or [DONE] (possible preemption)"},
+                        log_file=os.path.join(os.getcwd(), "logs", "tu_raw_chat.log"),
+                    )
+                    # Yield error response instead of raising - exception would be swallowed by StopAsyncIteration
+                    yield ChatCompletionResponse(
+                        message=ChatMessage(role="assistant", content=""),
+                        provider="tu",
+                        model=request.model,
+                        usage={},
+                        raw_response={"error": f"TU API stream terminated prematurely after {chunks_yielded} chunks - model may have preempted"},
+                        finish_reason="error",
+                        thinking=None
+                    )
+                    return  # Exit generator cleanly
         except Exception as e:
             if isinstance(e, UniInferError):
                 raise
