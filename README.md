@@ -43,11 +43,10 @@ OpenAI-compatible proxy server providing unified access to 500+ models from 20+ 
 
 ```bash
 # Install credgoo
-pip install -r https://skale.dev/credgoo
+uv pip install -r https://skale.dev/credgoo
 
 # Install uniinfer from PyPI
-pip install -r https://skale.dev/uniinfer
-
+uv pip install -r https://skale.dev/uniinfer
 ```
 
 ### Development Setup

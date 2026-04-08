@@ -48,21 +48,21 @@ A more comprehensive example demonstrating:
 1. Ensure you have both packages installed:
 
    ```bash
-   pip install -e /path/to/packages/credgoo
-   pip install -e /path/to/packages/uniinfer
+   uv pip install -e /path/to/packages/credgoo
+   uv pip install -e /path/to/packages/uniinfer
    ```
 
 2. Set up your credgoo credentials (first time only):
 
    ```bash
-   python -m credgoo.credgoo --setup
+   uv run python -m credgoo.credgoo --setup
    ```
 
 3. Run the examples:
    ```bash
-   python examples/credgoo_example.py
+   uv run python examples/credgoo_example.py
    # or
-   python examples/credgoo_integration.py --provider openai --prompt "Tell me a joke"
+   uv run python examples/credgoo_integration.py --provider openai --prompt "Tell me a joke"
    ```
 
 ## Benefits of Using Credgoo with UniInfer
