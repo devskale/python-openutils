@@ -39,14 +39,29 @@ OpenAI-compatible proxy server providing unified access to 500+ models from 20+ 
 
 ## Quick Start
 
-### Install Individual Packages
+### Install
 
 ```bash
-# Install credgoo
+# Credgoo
 uv pip install -r https://skale.dev/credgoo
 
-# Install uniinfer from PyPI
+# UniInfer
 uv pip install -r https://skale.dev/uniinfer
+```
+
+### Credgoo — Get an API Key in 3 Lines
+
+```python
+from credgoo import get_api_key
+
+key = get_api_key("openai")
+print(key[:8] + "...")  # sk-proj-...
+```
+
+First time? Set up your credentials:
+
+```bash
+credgoo --setup
 ```
 
 ### Development Setup
