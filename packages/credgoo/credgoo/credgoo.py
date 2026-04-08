@@ -1,3 +1,4 @@
+import logging
 import requests
 import base64
 import argparse
@@ -7,7 +8,9 @@ import json
 import time
 import getpass
 from pathlib import Path
-from importlib.metadata import version  # Changed from pkg_resources
+from importlib.metadata import version
+
+logger = logging.getLogger("credgoo")
 
 
 def decrypt_key(encrypted_key, encryption_key):
@@ -29,10 +32,10 @@ def decrypt_key(encrypted_key, encryption_key):
         if len(result) > 8:
             return result[8:]
         else:
-            print("Warning: Decrypted result too short")
+            logger.warning("Decrypted result too short")
             return result
     except Exception as e:
-        print(f"Decryption error: {e}")
+        logger.error("Decryption error: %s", e)
         return None
 
 
@@ -47,7 +50,7 @@ def encrypt_local_key(api_key, encryption_key):
             encrypted_bytes.append(char_code ^ key_char_code)
         return base64.b64encode(encrypted_bytes).decode('utf-8')
     except Exception as e:
-        print(f"Local encryption error: {e}")
+        logger.error("Local encryption error: %s", e)
         return None
 
 
@@ -63,7 +66,7 @@ def decrypt_local_key(encrypted_api_key, encryption_key):
             decrypted_bytes.append(byte_val ^ key_char_code)
         return decrypted_bytes.decode('utf-8')
     except Exception as e:
-        print(f"Local decryption error: {e}")
+        logger.error("Local decryption error: %s", e)
         return None
 
 
@@ -72,8 +75,8 @@ def get_api_key_from_google(service, bearer_token, encryption_key, api_url=None)
     # Use provided URL or fall back to default
     url = api_url
 
-    print(f"Fetching key for service: {service} from Google Sheets")
-    print(f"Using URL: {url}")
+    logger.info("Fetching key for %s from Google Sheets", service)
+    logger.debug("Using URL: %s", url)
 
     params = {
         "service": service,
@@ -92,14 +95,13 @@ def get_api_key_from_google(service, bearer_token, encryption_key, api_url=None)
                     api_key = decrypt_key(encrypted_key, encryption_key)
                     return api_key
                 else:
-                    print("Error: No encrypted key in response")
+                    logger.error("No encrypted key in response")
             else:
-                print(f"Error: {data.get('message', 'Unknown error')}")
+                logger.error("%s", data.get('message', 'Unknown error'))
         else:
-            print(
-                f"Error: Failed to retrieve key (Status code: {response.status_code})")
+            logger.error("Failed to retrieve key (HTTP %d)", response.status_code)
     except requests.exceptions.RequestException as e:
-        print(f"Request error: {e}")
+        logger.error("Request error: %s", e)
 
     return None
 
@@ -107,12 +109,12 @@ def get_api_key_from_google(service, bearer_token, encryption_key, api_url=None)
 def cache_api_key(service, api_key, encryption_key, cache_dir):
     """Store encrypted API key in service-specific cache file."""
     if not encryption_key:
-        print("Warning: Cannot cache API key without an encryption key.")
+        logger.warning("Cannot cache API key without an encryption key.")
         return
 
     encrypted_key_for_cache = encrypt_local_key(api_key, encryption_key)
     if not encrypted_key_for_cache:
-        print("Warning: Failed to encrypt API key for caching.")
+        logger.warning("Failed to encrypt API key for caching.")
         return
 
     try:
@@ -147,16 +149,16 @@ def cache_api_key(service, api_key, encryption_key, cache_dir):
             json.dump(existing_cache, f, indent=2)
 
         # Set restrictive permissions
-        os.chmod(cache_file, 0o600)  # Read/write for owner only
-        print(f"API key for {service} cached (encrypted) in {cache_file}")
+        os.chmod(cache_file, 0o600)
+        logger.info("API key for %s cached (encrypted)", service)
     except Exception as e:
-        print(f"Warning: Failed to cache API key: {e}")
+        logger.warning("Failed to cache API key: %s", e)
 
 
 def get_cached_api_key(service, encryption_key, cache_dir):
     """Retrieve and decrypt API key for specific service from cache."""
     if not encryption_key:
-        print("Warning: Cannot decrypt cached key without an encryption key.")
+        logger.warning("Cannot decrypt cached key without an encryption key.")
         return None
 
     cache_file = cache_dir / 'api_keys.json'
@@ -176,17 +178,15 @@ def get_cached_api_key(service, encryption_key, cache_dir):
                 decrypted_key = decrypt_local_key(
                     encrypted_cached_key, encryption_key)
                 if decrypted_key:
-                    print("[*] ", end="")
+                    logger.info("Using cached key for %s", service)
                     return decrypted_key
                 else:
-                    print(
-                        f"Retrieving key for {service}.")
+                    logger.info("Retrieving key for %s.", service)
             else:
-                print(
-                    f"Warning: No 'api_key' field found in cache for {service}.")
+                logger.warning("No 'api_key' field in cache for %s.", service)
 
     except Exception as e:
-        print(f"Warning: Failed to read or decrypt cached API key: {e}")
+        logger.warning("Failed to read cached API key: %s", e)
 
     return None
 
@@ -204,8 +204,7 @@ def store_credentials(token, encryption_key, url, cred_file, save_token_flag, sa
                 with open(cred_file, 'r') as f:
                     credentials = json.load(f)
             except json.JSONDecodeError:
-                print(
-                    f"Warning: Corrupt credentials file {cred_file}. Starting fresh.")
+                logger.warning("Corrupt credentials file %s. Starting fresh.", cred_file)
                 credentials = {}  # Start fresh if file is corrupt
 
         # Update credentials dictionary conditionally based on flags
@@ -222,13 +221,13 @@ def store_credentials(token, encryption_key, url, cred_file, save_token_flag, sa
                 json.dump(credentials, f)
 
             # Set restrictive permissions
-            os.chmod(cred_file, 0o600)  # Read/write for owner only
-            print(f"Credentials updated in {cred_file}")
+            os.chmod(cred_file, 0o600)
+            logger.info("Credentials updated in %s", cred_file)
         else:
-            print("No credentials to store.")
+            logger.info("No credentials to store.")
 
     except Exception as e:
-        print(f"Warning: Failed to store credentials: {e}")
+        logger.warning("Failed to store credentials: %s", e)
 
 
 def load_credentials(cred_file):
@@ -240,7 +239,7 @@ def load_credentials(cred_file):
             return credentials.get("token"), credentials.get("encryption_key"), credentials.get("url")
         return None, None, None
     except Exception as e:
-        print(f"Warning: Failed to load credentials: {e}")
+        logger.warning("Failed to load credentials: %s", e)
         return None, None, None
 
 
@@ -274,7 +273,7 @@ def get_api_key(service, bearer_token=None, encryption_key=None, api_url=None, c
 
     # Use the final determined credentials for the API call
     if not final_token or not final_key:
-        print("Error: Bearer token and encryption key are required (either provided or stored).")
+        logger.error("Bearer token and encryption key are required (either provided or stored).")
         return None
 
     # Check cache first unless no_cache is specified
@@ -324,10 +323,10 @@ def interactive_setup(service, cache_dir, existing_url=None):
         api_url = entered_url
     token = _prompt_required("Bearer token: ", secret=True)
     encryption_key = _prompt_required("Encryption key: ", secret=True)
-    print(f"credgoo: Testing credentials with service '{service}'...")
+    logger.info("Testing credentials with service '%s'...", service)
     api_key = get_api_key_from_google(service, token, encryption_key, api_url)
     if not api_key:
-        print("credgoo: Setup test failed. Credentials were not saved.")
+        print("credgoo: Setup test failed. Credentials were not saved.", file=sys.stderr)
         return None, None, None, None, False
     cred_file = cache_dir / 'credgoo.txt'
     store_credentials(
@@ -340,7 +339,7 @@ def interactive_setup(service, cache_dir, existing_url=None):
         True
     )
     cache_api_key(service, api_key, encryption_key, cache_dir)
-    print("credgoo: Setup complete. Everything looks good.")
+    print("credgoo: Setup complete. Everything looks good.", file=sys.stderr)
     return token, encryption_key, api_url, api_key, True
 
 
@@ -366,8 +365,15 @@ def main():
     parser.add_argument('--version', action='version',
                         version='%(prog)s ' + version('credgoo'),
                         help="Show program's version number and exit")
+    parser.add_argument('-v', '--verbose', action='store_true',
+                        help='Enable verbose output')
 
     args = parser.parse_args()
+
+    if args.verbose:
+        logging.basicConfig(level=logging.DEBUG, format='%(message)s', stream=sys.stderr)
+    else:
+        logging.basicConfig(level=logging.WARNING, format='%(message)s', stream=sys.stderr)
 
     if not args.setup and not args.service:
         parser.error("the following arguments are required: service")
@@ -398,7 +404,7 @@ def main():
 
     if args.setup:
         if not sys.stdin.isatty():
-            print("Error: Interactive setup requires a TTY.")
+            print("Error: Interactive setup requires a TTY.", file=sys.stderr)
             return 1
         setup_service = _prompt_service_name()
         _, _, _, _, setup_ok = interactive_setup(
@@ -412,7 +418,7 @@ def main():
     setup_required = not final_token or not final_key or not final_url
     if setup_required:
         if not sys.stdin.isatty():
-            print("Error: Missing URL, token, or key and interactive setup is unavailable in non-interactive mode.")
+            print("Error: Missing credentials and non-interactive mode.", file=sys.stderr)
             return 1
         final_token, final_key, final_url, setup_api_key, setup_ok = interactive_setup(
             args.service,
@@ -439,9 +445,9 @@ def main():
             no_cache=False  # Read from cache for comparison
         )
         if current_cached_key:
-            print(f"credgoo: Found cached key for {args.service}.")
+            print(f"credgoo: Found cached key for {args.service}.", file=sys.stderr)
         else:
-            print(f"credgoo: No cached key found for {args.service}.")
+            print(f"credgoo: No cached key found for {args.service}.", file=sys.stderr)
 
     if setup_api_key and not args.update and not force_no_cache:
         api_key = setup_api_key
@@ -458,27 +464,27 @@ def main():
     should_cache_update = False
     if args.update and api_key and current_cached_key:
         if api_key != current_cached_key:
-            print(f"credgoo: Online key for {args.service} has changed. Updating cache.")
+            print(f"credgoo: Online key for {args.service} has changed. Updating cache.", file=sys.stderr)
             should_cache_update = True
         else:
-            print(f"credgoo: Online key for {args.service} is the same as cached key. No update needed.")
+            print(f"credgoo: Online key for {args.service} is up to date.", file=sys.stderr)
     elif args.update and api_key and not current_cached_key:
-        print(f"credgoo: Fetched online key for {args.service}. No previous cached key to compare.")
+        print(f"credgoo: Fetched online key for {args.service}. No previous cache.", file=sys.stderr)
         should_cache_update = True
     elif args.update and not api_key:
-        print(f"credgoo: Failed to fetch online key for {args.service}. Cannot update cache.")
+        print(f"credgoo: Failed to fetch online key for {args.service}.", file=sys.stderr)
 
     if should_cache_update and force_no_cache:
         if final_key:
             cache_api_key(args.service, api_key, final_key, cache_dir)
         else:
-            print("credgoo: Skipping cache update because no encryption key is available.")
+            print("credgoo: Skipping cache update — no encryption key.", file=sys.stderr)
 
     if api_key:
-        print(f" credgoo: Success {args.service}: {api_key}")
+        print(api_key)
         return 0
     else:
-        print("Failed to retrieve API key")
+        print("credgoo: Failed to retrieve API key", file=sys.stderr)
         return 1
 
 
