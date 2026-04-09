@@ -1,7 +1,6 @@
 """
 Provider factory for managing and instantiating chat providers.
 """
-import os  # Added import
 from typing import Dict, Type, Optional
 from .core import ChatProvider
 
@@ -33,8 +32,7 @@ class ProviderFactory:
         Args:
             name (str): The name of the provider (e.g., 'openai', 'ollama').
             api_key (Optional[str]): The API key for authentication.
-                If None, will attempt to get the key from the environment
-                variable formatted as PROVIDERNAME_API_KEY (e.g., OPENAI_API_KEY).
+                If None, providers will attempt to retrieve it via credgoo.
             **kwargs: Additional provider-specific arguments (e.g., base_url for Ollama).
 
         Returns:
@@ -46,15 +44,6 @@ class ProviderFactory:
         provider_name_lower = name.lower()  # Ensure consistent casing for lookup
         if provider_name_lower not in ProviderFactory._providers:
             raise ValueError(f"Provider '{name}' not registered")
-
-        # If API key not provided, try to get it from environment
-        if api_key is None:
-            env_var_name = f"{provider_name_lower.upper()}_API_KEY"
-            api_key = os.getenv(env_var_name)
-            if not api_key:
-                # Optionally print a warning if the key is not found in env either
-                print(
-                    f"Warning: API key for '{name}' not provided and not found in environment variable '{env_var_name}'.")
 
         provider_class = ProviderFactory._providers[provider_name_lower]
         try:

@@ -32,7 +32,15 @@ class GeminiProvider(ChatProvider):
             api_key (Optional[str]): The Gemini API key.
             **kwargs: Additional provider-specific configuration parameters.
         """
-        super().__init__(api_key)
+        resolved_key = api_key
+        if not resolved_key:
+            try:
+                from credgoo.credgoo import get_api_key
+                resolved_key = get_api_key("gemini")
+            except (ImportError, Exception):
+                pass
+
+        super().__init__(resolved_key)
         self._client = None
 
         if not HAS_GENAI:
@@ -41,7 +49,6 @@ class GeminiProvider(ChatProvider):
                 "Install it with 'pip install google-genai'"
             )
 
-        # Store any additional configuration
         self.config = kwargs
 
     def _get_client(self):
