@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+
+# Auto-sync uv.lock when pyproject.toml version changes
+for pkg in packages/*/; do
+    if git diff --cached --name-only | grep -q "${pkg}pyproject.toml$"; then
+        if [ -f "${pkg}pyproject.toml" ]; then
+            echo "🔄 Syncing uv.lock for ${pkg%/}..."
+            (cd "$pkg" && uv lock --quiet)
+            git add "${pkg}uv.lock"
+        fi
+    fi
+done
