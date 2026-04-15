@@ -35,6 +35,21 @@ cd packages/credgoo
 uv pip install -e .
 ```
 
+## Add to Your Project
+
+```bash
+# Add credgoo as a dependency to your uv project
+uv add credgoo
+```
+
+Then use it anywhere in your code:
+
+```python
+from credgoo import get_api_key
+
+key = get_api_key("openai")
+```
+
 ## Usage
 
 ### Command Line Interface

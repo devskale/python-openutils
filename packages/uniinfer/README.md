@@ -21,8 +21,28 @@ UniInfer provides a consistent Python interface for **LLM chat completions and t
 
 ```bash
 # Install
-uv venv
 uv pip install -r https://skale.dev/uniinfer
+```
+
+## Add to Your Project
+
+```bash
+# Add uniinfer as a dependency to your uv project
+uv add uniinfer
+```
+
+Then use it anywhere in your code:
+
+```python
+from uniinfer import ProviderFactory, ChatMessage, ChatCompletionRequest
+
+provider = ProviderFactory.get_provider("openai")
+request = ChatCompletionRequest(
+    messages=[ChatMessage(role="user", content="Hello!")],
+    model="gpt-4",
+)
+response = provider.complete(request)
+print(response.message.content)
 ```
 
 ### Requirements
