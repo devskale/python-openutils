@@ -8,7 +8,7 @@ This file provides guidelines for agentic coding agents operating in the credgoo
 
 **Install:**
 ```bash
-uv pip install credgoo
+uv pip install -r https://skale.dev/credgoo
 ```
 Or editable from this repo:
 ```bash
