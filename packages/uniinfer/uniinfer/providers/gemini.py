@@ -8,7 +8,7 @@ from ..core import ChatProvider, ChatCompletionRequest, ChatCompletionResponse, 
 from ..errors import map_provider_error, UniInferError
 
 # Try to import google-genai package (latest recommended package)
-# Note: Install with 'pip install google-genai' if not available
+# Note: Install with 'uv pip install google-genai' if not available
 try:
     from google import genai
     from google.genai import types
@@ -46,7 +46,7 @@ class GeminiProvider(ChatProvider):
         if not HAS_GENAI:
             raise ImportError(
                 "The 'google-genai' package is required to use the Gemini provider. "
-                "Install it with 'pip install google-genai'"
+                "Install it with 'uv pip install google-genai'"
             )
 
         self.config = kwargs

@@ -72,9 +72,7 @@ from uniinfer.core import ChatProvider
 
 ## Version Updates
 
-When asked to update version in `setup.py`:
+When asked to update version in `pyproject.toml`:
 - **Minor bump** (default): Increment patch (0.1.5 → 0.1.6)
 - **Major bump**: Increment minor, reset patch (0.1.5 → 0.2.0)
-
-Update both `setup.py` and `pyproject.toml` exist.
  if both

@@ -482,8 +482,8 @@ if (!ajv || isBrowserExtension) {
 2. **URGENT**: Implement comprehensive test suite
 3. **HIGH**: Fix proxy server security (rate limiting, auth)
 4. **HIGH**: Add requirements.lock or use poetry
-5. **HIGH**: Stop using remote requirements (pip install credgoo)
-6. **MEDIUM**: Add pip-audit to CI/CD
+5. **HIGH**: Stop using remote requirements (uv pip install credgoo)
+6. **MEDIUM**: Add uv-audit to CI/CD
 7. **MEDIUM**: Use specific exception types
 8. **MEDIUM**: Add audit logging for proxy server
 

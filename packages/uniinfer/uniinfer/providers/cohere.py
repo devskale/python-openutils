@@ -38,7 +38,7 @@ class CohereProvider(ChatProvider):
         if not HAS_COHERE:
             raise ImportError(
                 "cohere package is required for the CohereProvider. "
-                "Install it with: pip install cohere"
+                "Install it with: uv pip install cohere"
             )
 
         # Initialize the Cohere clients
@@ -140,7 +140,7 @@ class CohereProvider(ChatProvider):
         if not HAS_COHERE:
             raise ImportError(
                 "cohere package is required for the CohereProvider. "
-                "Install it with: pip install cohere"
+                "Install it with: uv pip install cohere"
             )
 
         if not api_key:

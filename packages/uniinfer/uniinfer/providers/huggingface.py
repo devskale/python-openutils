@@ -31,7 +31,7 @@ class HuggingFaceProvider(ChatProvider):
         if not HAS_HUGGINGFACE:
             raise ImportError(
                 "huggingface_hub package is required for the HuggingFaceProvider. "
-                "Install it with: pip install huggingface_hub"
+                "Install it with: uv pip install huggingface_hub"
             )
 
         self.client = InferenceClient(token=self.api_key)

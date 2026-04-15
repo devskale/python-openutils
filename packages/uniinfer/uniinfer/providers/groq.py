@@ -38,7 +38,7 @@ class GroqProvider(ChatProvider):
         if not HAS_GROQ:
             raise ImportError(
                 "groq package is required for the GroqProvider. "
-                "Install it with: pip install groq"
+                "Install it with: uv pip install groq"
             )
 
         # Initialize the Groq clients

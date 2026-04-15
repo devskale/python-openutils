@@ -13,9 +13,6 @@ Credgoo is a secure credential manager for retrieving API keys from Google Sheet
 uv venv
 uv pip install -e .
 
-# Or with pip
-pip install -e .
-
 # Activate environment
 source .venv/bin/activate
 ```
@@ -66,10 +63,10 @@ black credgoo/ && isort credgoo/ && ruff check credgoo/
 
 ```bash
 # Build package
-python setup.py sdist bdist_wheel
+uv build
 
 # Install from wheel
-pip install dist/*.whl
+uv pip install dist/*.whl
 ```
 
 ## Code Style Guidelines
@@ -165,7 +162,7 @@ credgoo/
 │   └── credgoo.py        # Main implementation (all functions)
 ├── example/              # Usage examples
 ├── appscript/            # Google Apps Script code
-├── setup.py              # Package configuration
+├── pyproject.toml        # Package configuration
 ├── README.md             # User documentation
 └── AGENTS.md             # This file
 ```
@@ -175,14 +172,14 @@ credgoo/
 When adding features:
 
 1. Update `credgoo/__init__.py` to export new public functions
-2. Update version in `setup.py` (patch bump: 0.1.5 → 0.1.6)
+2. Update version in `pyproject.toml` (patch bump: 0.1.5 → 0.1.6)
 3. Add tests in `tests/` directory
 4. Update docstrings and type hints
 5. Ensure security requirements are met
 
 ### Version Management
 
-When asked to update version in `setup.py`:
+When asked to update version in `pyproject.toml`:
 - **Minor bump** (default): Increment patch (0.1.5 → 0.1.6)
 - **Major bump**: Increment minor, reset patch (0.1.5 → 0.2.0)
 
