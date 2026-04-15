@@ -22,7 +22,7 @@ class AnthropicCompatibleProvider(ChatProvider):
 
     def __init__(self, api_key: Optional[str] = None, base_url: Optional[str] = None, **kwargs):
         if not HAS_ANTHROPIC:
-            raise ImportError("anthropic package is required. Install with: pip install anthropic")
+            raise ImportError("anthropic package is required. Install with: uv pip install anthropic")
         if not api_key and self.CREDGOO_SERVICE:
             try:
                 from credgoo.credgoo import get_api_key

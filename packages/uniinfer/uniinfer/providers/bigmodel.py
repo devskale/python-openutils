@@ -77,7 +77,7 @@ class ZAIBaseProvider(ChatProvider):
         try:
             from zai import ZaiClient
         except ImportError as e:
-            raise ImportError("zai-sdk is required for Z.ai providers. Install with: pip install zai-sdk") from e
+            raise ImportError("zai-sdk is required for Z.ai providers. Install with: uv pip install zai-sdk") from e
         self.client = ZaiClient(api_key=self.api_key, base_url=self.base_url)
 
     @classmethod

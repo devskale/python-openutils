@@ -230,12 +230,10 @@ Use this when the target provider exposes Anthropic-style `messages` APIs.
 
 ### Version Updates
 
-When asked to update the version in `setup.py`:
+When asked to update the version in `pyproject.toml`:
 
 - **Minor version bump** (default): Increment the patch number (e.g., `0.3.5` → `0.3.6`)
 - **Major version bump**: Increment the minor number and reset patch to 0 (e.g., `0.3.5` → `0.4.0`)
-
-Update both `setup.py` and `pyproject.toml` if both exist.
 
 ### Response Formats
 

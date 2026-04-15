@@ -35,7 +35,7 @@ class AI21Provider(ChatProvider):
         if not HAS_AI21:
             raise ImportError(
                 "ai21 package is required for the AI21Provider. "
-                "Install it with: pip install ai21"
+                "Install it with: uv pip install ai21"
             )
 
         self.client = AI21Client(api_key=self.api_key or os.environ.get("AI21_API_KEY"))
