@@ -27,8 +27,8 @@ Whether you are developing locally, deploying to a staging server, or running in
 ## Installation
 
 ```bash
-# Quick install (any environment)
-uv pip install credgoo
+# Install from remote (recommended for coding agents)
+uv pip install -r https://skale.dev/credgoo
 
 # Editable install (from this repo)
 cd packages/credgoo
