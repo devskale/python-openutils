@@ -1,6 +1,8 @@
 # Credgoo
 
-[![Python Version](https://img.shields.io/badge/python-3.6+-blue.svg)](https://www.python.org/downloads/)
+> **For coding agents — quick install:** `uv pip install credgoo` or `uv pip install -e .` (from repo root). Then `from credgoo import get_api_key`.
+
+[![Python Version]https://img.shields.io/badge/python-3.6+-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](../LICENSE)
 
 **The Secure Credentials Manager for Everywhere.**
@@ -25,9 +27,12 @@ Whether you are developing locally, deploying to a staging server, or running in
 ## Installation
 
 ```bash
-# Install
-uv venv
-uv pip install -r https://skale.dev/credgoo
+# Quick install (any environment)
+uv pip install credgoo
+
+# Editable install (from this repo)
+cd packages/credgoo
+uv pip install -e .
 ```
 
 ## Usage

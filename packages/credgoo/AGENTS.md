@@ -2,6 +2,57 @@
 
 This file provides guidelines for agentic coding agents operating in the credgoo package.
 
+## Quick Reference for Coding Agents
+
+**What it does:** Retrieves API keys from encrypted Google Sheets with local caching.
+
+**Install:**
+```bash
+uv pip install credgoo
+```
+Or editable from this repo:
+```bash
+cd packages/credgoo && uv pip install -e .
+```
+
+**One-line usage:**
+```python
+from credgoo import get_api_key
+api_key = get_api_key("openai")  # uses cached key if available
+```
+
+**Public API (everything you need):**
+```python
+from credgoo import get_api_key        # main function — get a key by service name
+from credgoo import decrypt_key        # decrypt an encrypted key string
+from credgoo import get_api_key_from_google  # fetch directly from Google Sheets (no cache)
+from credgoo import cache_api_key      # manually cache a key locally
+```
+
+**How it works:**
+1. On first call, `get_api_key("openai")` reads credentials from `~/.config/api_keys/credgoo.txt` (bearer token + encryption key)
+2. Fetches the encrypted key from your Google Sheet via Apps Script
+3. Decrypts it in memory and caches it locally at `~/.config/api_keys/api_keys.json` (permissions 0o600)
+4. Subsequent calls return from cache instantly — no network needed
+
+**Required setup (one-time, by the user, not you):**
+```bash
+credgoo --setup
+```
+This walks the user through setting up the Google Sheet and storing their bearer token + encryption key. After this, all `get_api_key()` calls work automatically.
+
+**If credentials aren't set up:** `get_api_key()` returns `None`. Always handle this:
+```python
+api_key = get_api_key("openai")
+if api_key is None:
+    raise RuntimeError("API key not found. Run 'credgoo --setup' to configure.")
+```
+
+**Security rules for agents:**
+- Never log, print, or commit plaintext API keys or encryption keys
+- Never hardcode credentials in source code
+- Cache files use 0o600 permissions — don't change them
+
 ## Package Overview
 
 Credgoo is a secure credential manager for retrieving API keys from Google Sheets with local caching. It provides both a CLI tool and Python API for accessing credentials securely across environments.
@@ -12,9 +63,6 @@ Credgoo is a secure credential manager for retrieving API keys from Google Sheet
 # Initialize with uv (creates venv, installs deps)
 uv venv
 uv pip install -e .
-
-# Activate environment
-source .venv/bin/activate
 ```
 
 ## Build/Lint/Test Commands
