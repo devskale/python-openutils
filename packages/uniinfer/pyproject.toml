@@ -1,10 +1,10 @@
 [build-system]
-requires = ["setuptools>=61.0"]
-build-backend = "setuptools.build_meta"
+requires = ["hatchling"]
+build-backend = "hatchling.build"
 
 [project]
 name = "uniinfer"
-version = "0.5.14"
+version = "0.5.15"
 description = "Unified Inference API for LLM chat completions across 15+ providers with streaming, fallback strategies, and secure API key management"
 readme = "README.md"
 requires-python = ">=3.9"
@@ -39,7 +39,7 @@ dependencies = [
     "httpx",
     "zai-sdk>=0.2.2",
     "importlib-metadata; python_version<'3.8'",
-    "credgoo @ git+https://github.com/devskale/python-openutils.git#subdirectory=packages/credgoo"
+    "credgoo",  # resolved via local path in [tool.uv.sources]
 ]
 
 [project.optional-dependencies]
@@ -67,9 +67,6 @@ Homepage = "https://github.com/devskale/python-openutils"
 uniinfer = "uniinfer.uniinfer_cli:main"
 uniioai-proxy = "uniinfer.uniioai_proxy:main"
 
-[tool.setuptools.packages.find]
-where = ["."]
-include = ["uniinfer*"]
+[tool.uv.sources]
+credgoo = { path = "../credgoo", editable = true }
 
-[tool.setuptools.package-data]
-uniinfer = ["*.py", "examples/*.py", "examples/webdemo/*"]

@@ -1,7 +1,7 @@
 # UniInfer
 
 [![License](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
-[![Python Versions](https://img.shields.io/pypi/pyversions/uniinfer.svg)](https://pypi.org/project/uniinfer/)
+[![Python Versions](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/downloads/)
 [![PyPI Version](https://img.shields.io/pypi/v/uniinfer.svg)](https://pypi.org/project/uniinfer/)
 
 UniInfer provides a consistent Python interface for **LLM chat completions and text embeddings** across multiple providers with seamless API key management and OpenAI-compatible endpoints.
@@ -20,14 +20,12 @@ UniInfer provides a consistent Python interface for **LLM chat completions and t
 ## Installation
 
 ```bash
-# Install
-uv pip install -r https://skale.dev/uniinfer
+cd packages/uniinfer && uv sync
 ```
 
 ## Add to Your Project
 
 ```bash
-# Add uniinfer as a dependency to your uv project
 uv add uniinfer
 ```
 
@@ -47,9 +45,9 @@ print(response.message.content)
 
 ### Requirements
 
-- Python 3.7+
-- credgoo (for API key management)
-- Provider-specific packages (installed via extras)
+- Python 3.9+
+- credgoo (resolved automatically via local path)
+- Provider-specific packages (installed via extras: `uv sync --extra anthropic`)
 
 ## Quick Start
 
@@ -494,14 +492,9 @@ uv run uniinfer -p PROVIDER_NAME --list-models
 ### Running Tests
 
 ```bash
-# Install development dependencies
-uv pip install -e ".[all]"
-
-# Run tests
+uv sync
 uv run pytest
-
-# Run tests with coverage
-uv run pytest --cov=uniinfer --cov-report=term-mit
+uv run pytest --cov=uniinfer --cov-report=term-missing
 ```
 
 ### Code Formatting

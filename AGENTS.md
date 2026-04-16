@@ -12,11 +12,9 @@ Monorepo for Python utility packages.
 ## Environment Setup
 
 ```bash
-# Initialize all packages (creates venvs, installs deps)
-./uvinit.sh -x
-
-# Or initialize specific package
-./uvinit.sh -x credgoo    # or uniinfer
+# Sync all packages (creates venvs, installs deps from lockfile)
+cd packages/credgoo && uv sync
+cd packages/uniinfer && uv sync
 ```
 
 ## Package-Specific Docs
@@ -31,20 +29,17 @@ Detailed guidelines for each package are in their respective AGENTS.md:
 ### UniInfer
 ```bash
 cd packages/uniinfer
-uv run pytest                                    # All tests
-uv run pytest uniinfer/tests/test_auth.py        # Single file
-uv run pytest -k "test_name"                     # By keyword
-uv run pytest path/to/test.py::Class::method    # Single test
-uv run black . && uv run ruff check .            # Format + lint
+uv sync                                # Install/update deps
+uv run pytest                           # All tests
+uv run pytest -k "test_name"            # By keyword
 ```
 
 ### Credgoo
 ```bash
 cd packages/credgoo
-pytest                              # All tests
-pytest tests/test_credgoo.py         # Single file
-pytest -k "test_name"                # By keyword
-black credgoo/ && ruff check credgoo/
+uv sync                                # Install/update deps
+uv run pytest                           # All tests
+uv run pytest -k "test_name"            # By keyword
 ```
 
 ## Shared Code Style

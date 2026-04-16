@@ -6,13 +6,9 @@ This file provides guidelines for agentic coding agents operating in the credgoo
 
 **What it does:** Retrieves API keys from encrypted Google Sheets with local caching.
 
-**Install:**
+**Setup:**
 ```bash
-uv pip install -r https://skale.dev/credgoo
-```
-Or editable from this repo:
-```bash
-cd packages/credgoo && uv pip install -e .
+cd packages/credgoo && uv sync
 ```
 
 **One-line usage:**
@@ -60,9 +56,7 @@ Credgoo is a secure credential manager for retrieving API keys from Google Sheet
 ## Environment Setup
 
 ```bash
-# Initialize with uv (creates venv, installs deps)
-uv venv
-uv pip install -e .
+cd packages/credgoo && uv sync   # creates venv, installs deps from lockfile
 ```
 
 ## Build/Lint/Test Commands
@@ -110,11 +104,7 @@ black credgoo/ && isort credgoo/ && ruff check credgoo/
 ### Package Distribution
 
 ```bash
-# Build package
 uv build
-
-# Install from wheel
-uv pip install dist/*.whl
 ```
 
 ## Code Style Guidelines
@@ -123,7 +113,7 @@ uv pip install dist/*.whl
 
 - Follow PEP 8 style guidelines
 - Write docstrings for all functions
-- Use type hints where appropriate (Python 3.6+)
+- Use type hints where appropriate (Python 3.9+)
 - Security-first approach when handling credentials
 
 ### Imports
