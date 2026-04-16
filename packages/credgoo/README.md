@@ -1,8 +1,8 @@
 # Credgoo
 
-> **For coding agents — quick install:** `uv pip install credgoo` or `uv pip install -e .` (from repo root). Then `from credgoo import get_api_key`.
+> **For coding agents:** `cd packages/credgoo && uv sync` then `from credgoo import get_api_key`.
 
-[![Python Version]https://img.shields.io/badge/python-3.6+-blue.svg)](https://www.python.org/downloads/)
+[![Python Version](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](../LICENSE)
 
 **The Secure Credentials Manager for Everywhere.**
@@ -27,18 +27,13 @@ Whether you are developing locally, deploying to a staging server, or running in
 ## Installation
 
 ```bash
-# Install from remote (recommended for coding agents)
-uv pip install -r https://skale.dev/credgoo
-
-# Editable install (from this repo)
-cd packages/credgoo
-uv pip install -e .
+# From this repo (creates venv, installs deps)
+cd packages/credgoo && uv sync
 ```
 
 ## Add to Your Project
 
 ```bash
-# Add credgoo as a dependency to your uv project
 uv add credgoo
 ```
 

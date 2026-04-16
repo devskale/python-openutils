@@ -3,19 +3,17 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![GitHub Stars](https://img.shields.io/github/stars/devskale/python-openutils)](https://github.com/devskale/python-openutils/stargazers)
 [![GitHub Issues](https://img.shields.io/github/issues/devskale/python-openutils)](https://github.com/devskale/python-openutils/issues)
-[![Python](https://img.shields.io/badge/python-3.6+-blue.svg)](https://www.python.org/downloads/)
+[![Python](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/downloads/)
 
 A collection of powerful Python utilities for secure credential management and unified LLM inference.
 
 ## Packages
 
-### [Credgoo](packages/credgoo/)
+### [Credgoo](packages/credgoo/) `v0.1.10`
 
 **The Secure Credentials Manager for Everywhere.**
 
 Securely manage your credentials in Google Sheets with encrypted Apps Script integration and access them seamlessly across all your environments.
-
-**Features:**
 
 - **Use Everywhere**: Unified access for local, dev, and production.
 - **Secure Google Sheets Integration**: Encrypted Apps Script backend.
@@ -23,13 +21,11 @@ Securely manage your credentials in Google Sheets with encrypted Apps Script int
 - **Smart Local Caching**: Performance optimized with restrictive permissions.
 - **Centralized Control**: Single source of truth for all your secrets.
 
-### [UniInfer](packages/uniinfer/)
+### [UniInfer](packages/uniinfer/) `v0.5.15`
 
 OpenAI-compatible proxy server providing unified access to 500+ models from 20+ providers with multi-modal support.
 
-**Features:**
-
-- OpenAI-compatible FastAPI proxy - Drop-in replacement for OpenAI API
+- OpenAI-compatible FastAPI proxy — drop-in replacement for OpenAI API
 - 500+ models across 20+ providers (OpenAI, Anthropic, Google Gemini, Mistral, etc.)
 - Multi-modal support: LLM, Image, Text-to-Speech (TTS), and Transcription
 - Secure API key management with credgoo integration
@@ -39,14 +35,14 @@ OpenAI-compatible proxy server providing unified access to 500+ models from 20+ 
 
 ## Quick Start
 
-### Install
-
 ```bash
-# Credgoo
-uv pip install -r https://skale.dev/credgoo
+# Clone and set up
+git clone https://github.com/devskale/python-openutils.git
+cd python-openutils
 
-# UniInfer
-uv pip install -r https://skale.dev/uniinfer
+# Install each package (creates venv, resolves deps from lockfile)
+cd packages/credgoo && uv sync && cd ../..
+cd packages/uniinfer && uv sync && cd ../..
 ```
 
 ### Credgoo — Get an API Key in 3 Lines
@@ -61,38 +57,39 @@ print(key[:8] + "...")  # sk-proj-...
 First time? Set up your credentials:
 
 ```bash
-credgoo --setup
+cd packages/credgoo
+uv run credgoo --setup
 ```
 
-### Development Setup
+### UniInfer — Chat with Any Provider
 
-This repository includes a utility script `uvinit.sh` for setting up development environments for all packages.
+```python
+from uniinfer import ProviderFactory, ChatMessage, ChatCompletionRequest
+
+provider = ProviderFactory.get_provider("openai")
+request = ChatCompletionRequest(
+    messages=[ChatMessage(role="user", content="Hello!")],
+    model="gpt-4",
+)
+response = provider.complete(request)
+print(response.message.content)
+```
+
+## Development
 
 ```bash
-# Initialize all packages with uv (creates venvs, installs deps)
-./uvinit.sh -x
+# Sync deps (creates venv + installs from uv.lock)
+cd packages/credgoo && uv sync
+cd packages/uniinfer && uv sync
 
-# Initialize a specific package
-./uvinit.sh -x credgoo
+# Run tests
+cd packages/credgoo && uv run pytest
+cd packages/uniinfer && uv run pytest
 
-# Upgrade all packages
-./uvinit.sh -u
-
-# Clean all venvs
-./uvinit.sh -c
-```
-
-### uvinit.sh Options
-
-```
--x            Initialize projects with uv (discover, venv, install, activate)
--v            Create venvs with uv for matched projects
--p            Install matched projects into their venvs
--u            Upgrade installs via uv pip
--c            Remove venvs for matched projects
--s            Silent mode (no prompts, concise output)
--i            Interactive mode (confirm per-project)
--D            Use discovery mode (ignore predefined package list)
+# Add optional provider extras
+cd packages/uniinfer && uv sync --extra anthropic --extra gemini
+# or install all at once
+cd packages/uniinfer && uv sync --extra all
 ```
 
 ## Documentation
@@ -102,4 +99,4 @@ This repository includes a utility script `uvinit.sh` for setting up development
 
 ## License
 
-MIT License - see individual package directories for specific license details.
+MIT License — see individual package directories for specific license details.
