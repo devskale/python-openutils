@@ -1,5 +1,7 @@
 # AGENTS.md - Python Open Utils
 
+> **Meta repo**: [kontext.one](https://github.com/devskale/kontext.one) — deploy, release, cross-repo orchestration. See [GUIDE.md](https://github.com/devskale/kontext.one/blob/main/GUIDE.md).
+
 Monorepo for Python utility packages.
 
 ## Packages
