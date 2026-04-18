@@ -29,6 +29,7 @@ class OllamaEmbeddingProvider(EmbeddingProvider):
 
     @classmethod
     def list_models(cls, **kwargs) -> list[ModelInfo]:
+        from ..core import ModelInfo
         """List available models from Ollama."""
         import requests
         try:

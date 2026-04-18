@@ -26,6 +26,7 @@ class NGCProvider(OpenAICompatibleChatProvider):
 
     @classmethod
     def list_models(cls, api_key: Optional[str] = None, base_url: str = BASE_URL) -> list[ModelInfo]:
+        from ..core import ModelInfo
         """List available models from NGC catalog."""
         if api_key is None:
             try:
