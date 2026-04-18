@@ -34,9 +34,9 @@ class PollinationsProvider(OpenAICompatibleChatProvider):
             headers["Authorization"] = f"Bearer {api_key}"
 
         endpoints = [
+            "https://gen.pollinations.ai/models",
             "https://text.pollinations.ai/openai/v1/models",
             "https://gen.pollinations.ai/openai/v1/models",
-            "https://gen.pollinations.ai/models",
         ]
 
         last_error = None
@@ -54,9 +54,55 @@ class PollinationsProvider(OpenAICompatibleChatProvider):
 
                 data = response.json()
                 if isinstance(data, dict) and "data" in data:
-                    return [ModelInfo(id=m.get("id", ""), raw=m) for m in data["data"] if isinstance(m, dict) and m.get("id")]
+                    results = []
+                    for m in data["data"]:
+                        if not isinstance(m, dict) or not m.get("id"):
+                            continue
+                        capabilities = {}
+                        if m.get("reasoning"):
+                            capabilities["reasoning"] = True
+                        if m.get("vision"):
+                            capabilities["vision"] = True
+                        if m.get("tools"):
+                            capabilities["tool_call"] = True
+                        input_mods = m.get("input_modalities", ["text"])
+                        output_mods = m.get("output_modalities", ["text"])
+                        if capabilities.get("vision") and "image" not in input_mods:
+                            input_mods = input_mods + ["image"]
+                        results.append(ModelInfo(
+                            id=m["id"],
+                            name=m.get("name"),
+                            type="chat",
+                            modalities={"input": input_mods, "output": output_mods},
+                            capabilities=capabilities or None,
+                            raw=m,
+                        ))
+                    return results
                 if isinstance(data, list):
-                    return [ModelInfo(id=m.get("name", ""), raw=m) for m in data if isinstance(m, dict) and m.get("name")]
+                    results = []
+                    for m in data:
+                        if not isinstance(m, dict) or not m.get("name"):
+                            continue
+                        capabilities = {}
+                        if m.get("reasoning"):
+                            capabilities["reasoning"] = True
+                        if m.get("vision"):
+                            capabilities["vision"] = True
+                        if m.get("tools"):
+                            capabilities["tool_call"] = True
+                        input_mods = m.get("input_modalities", ["text"])
+                        output_mods = m.get("output_modalities", ["text"])
+                        if capabilities.get("vision") and "image" not in input_mods:
+                            input_mods = input_mods + ["image"]
+                        results.append(ModelInfo(
+                            id=m["name"],
+                            name=m.get("name"),
+                            type="chat",
+                            modalities={"input": input_mods, "output": output_mods},
+                            capabilities=capabilities or None,
+                            raw=m,
+                        ))
+                    return results
                 return []
             except Exception as e:
                 last_error = e
