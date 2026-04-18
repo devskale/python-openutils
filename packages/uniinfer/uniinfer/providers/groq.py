@@ -5,7 +5,7 @@ Groq provider implementation with async support.
 import os
 from typing import Dict, Any, Iterator, Optional, List, AsyncIterator
 
-from ..core import ChatProvider, ChatCompletionRequest, ChatCompletionResponse, ChatMessage
+from ..core import ChatProvider, ChatCompletionRequest, ChatCompletionResponse, ChatMessage, ModelInfo
 from ..errors import map_provider_error, UniInferError
 
 try:
@@ -241,7 +241,13 @@ class GroqProvider(ChatProvider):
             models = client.models.list()
 
             # Extract model IDs
-            return [ModelInfo(id=model.id, owned_by=getattr(model, "owned_by", None), created=getattr(model, "created", None)) for model in models.data]
+            return [ModelInfo(
+                id=model.id,
+                owned_by=getattr(model, "owned_by", None),
+                created=getattr(model, "created", None),
+                context_window=getattr(model, "context_window", None),
+                status="active" if getattr(model, "active", True) else "deprecated",
+            ) for model in models.data]
         except Exception as e:
             # Log the error for debugging
             import logging

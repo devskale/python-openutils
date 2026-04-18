@@ -106,13 +106,31 @@ class OpenRouterProvider(OpenAICompatibleChatProvider):
                         "output": arch.get("output_modalities", ["text"]),
                     }
 
+                capabilities = {}
+                supported_params = model.get("supported_parameters", [])
+                if supported_params:
+                    if "tools" in supported_params or "tool_choice" in supported_params:
+                        capabilities["tool_call"] = True
+                    if "structured_outputs" in supported_params:
+                        capabilities["structured_outputs"] = True
+                    if "reasoning" in supported_params or "include_reasoning" in supported_params:
+                        capabilities["reasoning"] = True
+
+                top_provider = model.get("top_provider", {}) or {}
+                max_output = top_provider.get("max_completion_tokens")
+                knowledge_cutoff = model.get("knowledge_cutoff")
+                if knowledge_cutoff:
+                    capabilities["knowledge_cutoff"] = knowledge_cutoff
+
                 results.append(ModelInfo(
                     id=model["id"],
                     name=model.get("name"),
                     type="chat",
                     context_window=model.get("context_length"),
+                    max_output=max_output,
                     cost=cost,
                     modalities=modalities,
+                    capabilities=capabilities or None,
                     owned_by=model.get("owned_by"),
                     created=model.get("created"),
                     raw=model,

@@ -25,9 +25,8 @@ class SambanovaProvider(OpenAICompatibleChatProvider):
 
     @classmethod
     def list_models(cls, api_key: Optional[str] = None, base_url: str = BASE_URL) -> list[ModelInfo]:
-        """
-        List available models from SambaNova.
-        """
+        from ..core import ModelInfo
+        """List available models from SambaNova."""
         if api_key is None:
             try:
                 from credgoo.credgoo import get_api_key
@@ -52,6 +51,27 @@ class SambanovaProvider(OpenAICompatibleChatProvider):
                     response_body=response.text,
                 )
             data = response.json()
-            return [ModelInfo(id=model["id"], owned_by=model.get("owned_by"), raw=model) for model in data.get("data", []) if isinstance(model, dict) and model.get("id")]
+            results = []
+            for model in data.get("data", []):
+                if not isinstance(model, dict) or not model.get("id"):
+                    continue
+                pricing = model.get("pricing", {})
+                cost = None
+                if pricing.get("prompt") or pricing.get("completion"):
+                    cost = {}
+                    if pricing.get("prompt"):
+                        cost["input"] = float(pricing["prompt"]) * 1_000_000
+                    if pricing.get("completion"):
+                        cost["output"] = float(pricing["completion"]) * 1_000_000
+                results.append(ModelInfo(
+                    id=model["id"],
+                    type="chat",
+                    context_window=model.get("context_length"),
+                    max_output=model.get("max_completion_tokens"),
+                    cost=cost,
+                    owned_by=model.get("owned_by"),
+                    raw=model,
+                ))
+            return results
         except Exception:
             return [ModelInfo(id=m) for m in ["Meta-Llama-3.1-8B-Instruct", "sambastudio-7b", "sambastudio-13b", "sambastudio-20b", "sambastudio-70b"]]

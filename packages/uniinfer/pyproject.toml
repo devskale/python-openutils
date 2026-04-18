@@ -73,5 +73,6 @@ credgoo = { path = "../credgoo", editable = true }
 [dependency-groups]
 dev = [
     "pytest>=8.4.2",
+    "pytest-asyncio>=1.2.0",
 ]
 
