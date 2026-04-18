@@ -1,3 +1,4 @@
+from __future__ import annotations
 """
 Google Gemini provider implementation with async support.
 """
@@ -70,7 +71,7 @@ class GeminiProvider(ChatProvider):
         await super().aclose()
 
     @classmethod
-    def list_models(cls, api_key: Optional[str] = None) -> list:
+    def list_models(cls, api_key: Optional[str] = None) -> list[ModelInfo]:
         """
         List available models from Gemini.
 
@@ -79,13 +80,13 @@ class GeminiProvider(ChatProvider):
                                      it attempts to retrieve it using credgoo.
 
         Returns:
-            list: A list of available model IDs.
+            list[ModelInfo]: A list of model info objects.
 
         Raises:
             ValueError: If no API key is provided or found.
             Exception: If the API request fails.
         """
-        # Retrieve API key if not provided
+        from ..core import ModelInfo
         if not api_key:
             try:
                 from credgoo.credgoo import get_api_key
@@ -97,16 +98,33 @@ class GeminiProvider(ChatProvider):
             raise ValueError("Gemini API key is required for listing models")
 
         try:
-            # Create synchronous client for list_models
             client = genai.Client(api_key=api_key)
-            models = []
-            
-            # Query the actual API for available models
+            results = []
+
             for model in client.models.list():
-                if hasattr(model, 'name'):
-                    models.append(model.name)
-            
-            return models
+                model_name = getattr(model, 'name', None)
+                if not model_name:
+                    continue
+
+                capabilities = {}
+                if getattr(model, 'thinking', None):
+                    capabilities["thinking"] = True
+
+                supported_actions = getattr(model, 'supported_actions', None) or []
+                if supported_actions:
+                    capabilities["supported_actions"] = supported_actions
+
+                results.append(ModelInfo(
+                    id=model_name,
+                    name=getattr(model, 'display_name', None),
+                    type="chat",
+                    context_window=getattr(model, 'input_token_limit', None),
+                    max_output=getattr(model, 'output_token_limit', None),
+                    capabilities=capabilities or None,
+                    raw=model.model_dump() if hasattr(model, 'model_dump') else None,
+                ))
+
+            return results
 
         except Exception as e:
             status_code = getattr(e, 'status_code', None)

@@ -1,3 +1,4 @@
+from __future__ import annotations
 """
 OpenAI-compliant TU provider implementation.
 """
@@ -313,7 +314,8 @@ class TUProvider(ChatProvider):
             raise map_provider_error("tu", e)
 
     @classmethod
-    def list_models(cls, api_key: str | None = None, **kwargs) -> list[str]:
+    def list_models(cls, api_key: str | None = None, **kwargs) -> list[ModelInfo]:
+        from ..core import ModelInfo
         """List available models for TU.
         
         Args:
@@ -347,7 +349,7 @@ class TUProvider(ChatProvider):
             )
             if response.status_code == 200:
                 data = response.json()
-                return [model["id"] for model in data.get("data", [])]
+                return [ModelInfo(id=model["id"], owned_by=model.get("owned_by"), created=model.get("created"), raw=model) for model in data.get("data", [])]
         except Exception:
             pass
             

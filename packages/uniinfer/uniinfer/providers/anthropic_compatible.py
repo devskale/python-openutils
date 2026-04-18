@@ -1,3 +1,4 @@
+from __future__ import annotations
 import json
 import os
 from typing import Any, AsyncIterator, Optional
@@ -47,7 +48,8 @@ class AnthropicCompatibleProvider(ChatProvider):
         await super().aclose()
 
     @classmethod
-    def list_models(cls, api_key: Optional[str] = None, **kwargs) -> list[str]:
+    def list_models(cls, api_key: Optional[str] = None, **kwargs) -> list[ModelInfo]:
+        from ..core import ModelInfo
         if not HAS_ANTHROPIC:
             return []
         if not api_key and cls.CREDGOO_SERVICE:
@@ -66,7 +68,41 @@ class AnthropicCompatibleProvider(ChatProvider):
             client = Anthropic(api_key=api_key, base_url=base_url, default_headers=cls._class_default_headers())
             response = client.models.list()
             data = getattr(response, "data", []) or []
-            return [getattr(model, "id", None) for model in data if getattr(model, "id", None)]
+            results = []
+            for model in data:
+                model_id = getattr(model, "id", None)
+                if not model_id:
+                    continue
+                caps = getattr(model, "capabilities", None)
+                capabilities = {}
+                if caps:
+                    capabilities["thinking"] = getattr(caps, "thinking", None)
+                    capabilities["image_input"] = getattr(caps, "image_input", None)
+                    capabilities["pdf_input"] = getattr(caps, "pdf_input", None)
+                    capabilities["code_execution"] = getattr(caps, "code_execution", None)
+                    capabilities["structured_outputs"] = getattr(caps, "structured_outputs", None)
+                    capabilities["tool_call"] = capabilities.get("code_execution")
+                    capabilities["vision"] = capabilities.get("image_input")
+                    capabilities = {k: v for k, v in capabilities.items() if v is not None}
+
+                input_mods = ["text"]
+                if capabilities.get("vision"):
+                    input_mods.append("image")
+                if capabilities.get("pdf_input"):
+                    input_mods.append("pdf")
+
+                results.append(ModelInfo(
+                    id=model_id,
+                    name=getattr(model, "display_name", None),
+                    type="chat",
+                    context_window=getattr(model, "max_input_tokens", None),
+                    max_output=getattr(model, "max_tokens", None),
+                    modalities={"input": input_mods, "output": ["text"]},
+                    capabilities=capabilities or None,
+                    created=int(getattr(model, "created_at", 0).timestamp()) if getattr(model, "created_at", None) else None,
+                    raw=model.model_dump() if hasattr(model, "model_dump") else None,
+                ))
+            return results
         except Exception as e:
             raise map_provider_error(cls.ERROR_PROVIDER_NAME or cls.PROVIDER_ID, e)
 

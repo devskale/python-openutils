@@ -1,3 +1,4 @@
+from __future__ import annotations
 """
 TU STT provider implementation.
 """
@@ -28,7 +29,7 @@ class TuAISTTProvider(STTProvider):
         self.organization = organization
 
     @classmethod
-    def list_models(cls, api_key: str | None = None, **kwargs) -> list[str]:
+    def list_models(cls, api_key: str | None = None, **kwargs) -> list[ModelInfo]:
         """List available STT models from TU AI."""
         return []
 

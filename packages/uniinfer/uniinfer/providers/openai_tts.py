@@ -1,3 +1,4 @@
+from __future__ import annotations
 """
 OpenAI TTS provider implementation.
 """
@@ -28,9 +29,10 @@ class OpenAITTSProvider(TTSProvider):
         self.organization = organization
 
     @classmethod
-    def list_models(cls, api_key: Optional[str] = None, **kwargs) -> list[str]:
+    def list_models(cls, api_key: Optional[str] = None, **kwargs) -> list[ModelInfo]:
+        from ..core import ModelInfo
         """List available TTS models from OpenAI."""
-        return ["tts-1", "tts-1-hd"]
+        return [ModelInfo(id=m, type="tts") for m in ["tts-1", "tts-1-hd"]]
 
     async def agenerate_speech(
         self,

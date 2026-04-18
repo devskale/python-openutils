@@ -1,3 +1,4 @@
+from __future__ import annotations
 """
 Ollama provider implementation.
 """
@@ -70,7 +71,8 @@ class OllamaProvider(ChatProvider):
         return flattened_messages
 
     @classmethod
-    def list_models(cls, **kwargs) -> list:
+    def list_models(cls, **kwargs) -> list[ModelInfo]:
+        from ..core import ModelInfo
         """
         List available models from Ollama.
 

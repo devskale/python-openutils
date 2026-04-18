@@ -1,3 +1,4 @@
+from __future__ import annotations
 """
 Pollinations provider implementation.
 """
@@ -23,7 +24,8 @@ class PollinationsProvider(OpenAICompatibleChatProvider):
         super().__init__(api_key=api_key, base_url=base_url or self.BASE_URL)
 
     @classmethod
-    def list_models(cls, api_key: Optional[str] = None) -> list[str]:
+    def list_models(cls, api_key: Optional[str] = None) -> list[ModelInfo]:
+        from ..core import ModelInfo
         """
         List available models from Pollinations.
         """
@@ -52,9 +54,9 @@ class PollinationsProvider(OpenAICompatibleChatProvider):
 
                 data = response.json()
                 if isinstance(data, dict) and "data" in data:
-                    return [m.get("id", "") for m in data["data"] if isinstance(m, dict) and m.get("id")]
+                    return [ModelInfo(id=m.get("id", ""), raw=m) for m in data["data"] if isinstance(m, dict) and m.get("id")]
                 if isinstance(data, list):
-                    return [m.get("name", "") for m in data if isinstance(m, dict) and m.get("name")]
+                    return [ModelInfo(id=m.get("name", ""), raw=m) for m in data if isinstance(m, dict) and m.get("name")]
                 return []
             except Exception as e:
                 last_error = e

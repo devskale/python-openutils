@@ -1,3 +1,4 @@
+from __future__ import annotations
 """
 Cohere provider implementation.
 """
@@ -133,10 +134,11 @@ class CohereProvider(ChatProvider):
             raise map_provider_error("cohere", e, status_code=status_code, response_body=response_body)
 
     @classmethod
-    def list_models(cls, api_key: Optional[str] = None) -> list:
+    def list_models(cls, api_key: Optional[str] = None) -> list[ModelInfo]:
         """
         List available models from Cohere.
         """
+        from ..core import ModelInfo
         if not HAS_COHERE:
             raise ImportError(
                 "cohere package is required for the CohereProvider. "
@@ -151,14 +153,24 @@ class CohereProvider(ChatProvider):
                     api_key = get_api_key("cohere")
                 except ImportError:
                     pass
-        
+
         if not api_key:
             return []
 
         try:
             client = cohere.ClientV2(api_key=api_key)
             response = client.models.list()
-            return [model.name for model in response.models]
+            results = []
+            for model in response.models:
+                status = "deprecated" if getattr(model, "is_deprecated", None) else "active"
+                results.append(ModelInfo(
+                    id=getattr(model, "name", ""),
+                    type="chat",
+                    status=status,
+                    context_window=getattr(model, "context_length", None),
+                    raw=model.__dict__ if hasattr(model, "__dict__") else None,
+                ))
+            return results
         except Exception:
             return []
 

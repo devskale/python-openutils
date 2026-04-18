@@ -1,3 +1,4 @@
+from __future__ import annotations
 """
 TU TTS provider implementation.
 """
@@ -27,7 +28,7 @@ class TuAITTSProvider(TTSProvider):
         self.organization = organization
 
     @classmethod
-    def list_models(cls, api_key: str | None = None, **kwargs) -> list[str]:
+    def list_models(cls, api_key: str | None = None, **kwargs) -> list[ModelInfo]:
         """List available TTS models from TU AI."""
         return []
 

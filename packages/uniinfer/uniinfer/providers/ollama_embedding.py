@@ -1,3 +1,4 @@
+from __future__ import annotations
 """
 Ollama embedding provider implementation.
 """
@@ -27,7 +28,7 @@ class OllamaEmbeddingProvider(EmbeddingProvider):
         self.base_url = base_url
 
     @classmethod
-    def list_models(cls, **kwargs) -> List[str]:
+    def list_models(cls, **kwargs) -> list[ModelInfo]:
         """List available models from Ollama."""
         import requests
         try:
@@ -40,7 +41,7 @@ class OllamaEmbeddingProvider(EmbeddingProvider):
             response = requests.get(endpoint, headers=headers)
             response.raise_for_status()
             data = response.json()
-            return [model["name"] for model in data.get("models", [])]
+            return [ModelInfo(id=model["name"], type="embed", raw=model) for model in data.get("models", [])]
         except Exception:
             return []
 

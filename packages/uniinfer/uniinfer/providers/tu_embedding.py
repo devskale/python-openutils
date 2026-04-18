@@ -1,3 +1,4 @@
+from __future__ import annotations
 """
 TU embedding provider implementation.
 """
@@ -27,7 +28,8 @@ class TuAIEmbeddingProvider(EmbeddingProvider):
         self.organization = organization
 
     @classmethod
-    def list_models(cls, api_key: str | None = None, **kwargs) -> list[str]:
+    def list_models(cls, api_key: str | None = None, **kwargs) -> list[ModelInfo]:
+        from ..core import ModelInfo
         """List available models from TU AI using the API."""
         import requests
         if not api_key:
@@ -39,7 +41,7 @@ class TuAIEmbeddingProvider(EmbeddingProvider):
             response = requests.get(url, headers=headers)
             if response.status_code == 200:
                 data = response.json()
-                return [model["id"] for model in data.get("data", [])]
+                return [ModelInfo(id=model["id"], type="embed", owned_by=model.get("owned_by"), raw=model) for model in data.get("data", [])]
         except Exception:
             pass
         return []

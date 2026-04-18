@@ -1,3 +1,4 @@
+from __future__ import annotations
 """
 ArliAI provider implementation.
 """
@@ -38,7 +39,7 @@ class ArliAIProvider(OpenAICompatibleChatProvider):
         return params
 
     @classmethod
-    def list_models(cls, api_key: Optional[str] = None) -> list:
+    def list_models(cls, api_key: Optional[str] = None) -> list[ModelInfo]:
         """
         List available models from ArliAI.
 
@@ -46,8 +47,9 @@ class ArliAIProvider(OpenAICompatibleChatProvider):
             api_key (Optional[str]): The ArliAI API key.
 
         Returns:
-            list: A list of available model names.
+            list[ModelInfo]: A list of model info objects.
         """
+        from ..core import ModelInfo
         if not api_key:
             raise ValueError("API key is required to list models")
 
@@ -67,11 +69,37 @@ class ArliAIProvider(OpenAICompatibleChatProvider):
                     response = requests.get(endpoint, headers=headers, timeout=30)
                     if response.status_code == 200:
                         models_data = response.json()
-                        if isinstance(models_data, list):
-                            return [m.get("id") or m.get("name") for m in models_data if isinstance(m, dict) and (m.get("id") or m.get("name"))]
-                        data = models_data.get("data", models_data)
-                        if isinstance(data, list):
-                            return [m.get("id") or m.get("name") for m in data if isinstance(m, dict) and (m.get("id") or m.get("name"))]
+                        data = models_data
+                        if isinstance(models_data, dict):
+                            data = models_data.get("data", [])
+                        if not isinstance(data, list):
+                            continue
+                        results = []
+                        for m in data:
+                            if not isinstance(m, dict):
+                                continue
+                            mid = m.get("id") or m.get("name")
+                            if not mid:
+                                continue
+                            capabilities = {}
+                            if m.get("reasoning"):
+                                capabilities["reasoning"] = True
+                            if m.get("vlm"):
+                                capabilities["vision"] = True
+                            input_mods = ["text"]
+                            if capabilities.get("vision"):
+                                input_mods.append("image")
+                            results.append(ModelInfo(
+                                id=mid,
+                                type="chat",
+                                context_window=m.get("max_context"),
+                                modalities={"input": input_mods, "output": ["text"]},
+                                capabilities=capabilities or None,
+                                owned_by=m.get("owned_by"),
+                                raw=m,
+                            ))
+                        if results:
+                            return results
                 except Exception:
                     continue
             return []

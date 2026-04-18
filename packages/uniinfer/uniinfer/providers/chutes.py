@@ -1,3 +1,4 @@
+from __future__ import annotations
 """
 Chutes provider implementation.
 
@@ -26,7 +27,8 @@ class ChutesProvider(OpenAICompatibleChatProvider):
         super().__init__(api_key=api_key, base_url=self.BASE_URL)
 
     @classmethod
-    def list_models(cls, api_key: Optional[str] = None) -> list:
+    def list_models(cls, api_key: Optional[str] = None) -> list[ModelInfo]:
+        from ..core import ModelInfo
         """List available models from Chutes."""
         if not api_key:
             try:
@@ -43,6 +45,6 @@ class ChutesProvider(OpenAICompatibleChatProvider):
             response = requests.get("https://llm.chutes.ai/v1/models", headers=headers)
             response.raise_for_status()
             models = response.json().get("data", [])
-            return [model["id"] for model in models]
+            return [ModelInfo(id=model["id"], owned_by=model.get("owned_by"), raw=model) for model in models]
         except Exception:
             return []

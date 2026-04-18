@@ -1,3 +1,4 @@
+from __future__ import annotations
 """
 Groq provider implementation with async support.
 """
@@ -205,7 +206,7 @@ class GroqProvider(ChatProvider):
         return flattened
 
     @classmethod
-    def list_models(cls, api_key: Optional[str] = None) -> List[str]:
+    def list_models(cls, api_key: Optional[str] = None) -> list[ModelInfo]:
         """
         List available models from Groq.
 
@@ -240,20 +241,14 @@ class GroqProvider(ChatProvider):
             models = client.models.list()
 
             # Extract model IDs
-            return [model.id for model in models.data]
+            return [ModelInfo(id=model.id, owned_by=getattr(model, "owned_by", None), created=getattr(model, "created", None)) for model in models.data]
         except Exception as e:
             # Log the error for debugging
             import logging
             logging.warning(f"Failed to fetch Groq models: {str(e)}")
 
             # Fallback to default models if API call fails
-            return [
-                "llama-3.1-8b",
-                "llama-3.1-70b",
-                "llama-3.1-405b",
-                "mixtral-8x7b-32768",
-                "gemma-7b-it"
-            ]
+            return [ModelInfo(id=m) for m in ["llama-3.1-8b", "llama-3.1-70b", "llama-3.1-405b", "mixtral-8x7b-32768", "gemma-7b-it"]]
 
     def stream_complete(
         self,
