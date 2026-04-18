@@ -1,3 +1,4 @@
+from __future__ import annotations
 """
 Cloudflare Workers AI provider implementation.
 """
@@ -44,10 +45,11 @@ class CloudflareProvider(ChatProvider):
     def list_models(cls, api_key: Optional[str] = None, account_id: Optional[str] = None,
                     author: Optional[str] = None, hide_experimental: Optional[bool] = None,
                     page: Optional[int] = None, per_page: Optional[int] = None,
-                    search: Optional[str] = None, source: Optional[int] = None) -> list:
+                    search: Optional[str] = None, source: Optional[int] = None) -> list[ModelInfo]:
         """
         List available models from Cloudflare Workers AI.
         """
+        from ..core import ModelInfo
         import requests
         if api_key is None:
             try:
@@ -97,7 +99,7 @@ class CloudflareProvider(ChatProvider):
                     if isinstance(model, dict) and "name" in model:
                         model_name = model.get("name")
                         if model_name:
-                            model_list.append(model_name)
+                            model_list.append(ModelInfo(id=model_name, owned_by=model.get("author"), raw=model))
 
             return model_list
         except Exception as e:

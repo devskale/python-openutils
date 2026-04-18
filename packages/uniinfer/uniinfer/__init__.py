@@ -9,7 +9,8 @@ from .core import (
     ChatMessage, ChatCompletionRequest, ChatCompletionResponse, ChatProvider,
     EmbeddingRequest, EmbeddingResponse, EmbeddingProvider,
     TTSRequest, TTSResponse, TTSProvider,
-    STTRequest, STTResponse, STTProvider
+    STTRequest, STTResponse, STTProvider,
+    ModelInfo
 )
 from .factory import ProviderFactory
 from .embedding_factory import EmbeddingProviderFactory
@@ -133,6 +134,7 @@ __all__ = [
     'STTRequest',
     'STTResponse',
     'STTProvider',
+    'ModelInfo',
     'MistralProvider',
     'AnthropicProvider',
     'MiniMaxProvider',

@@ -1,3 +1,4 @@
+from __future__ import annotations
 """
 OpenRouter provider implementation.
 
@@ -33,7 +34,7 @@ class OpenRouterProvider(OpenAICompatibleChatProvider):
         }
 
     @classmethod
-    def list_models(cls, api_key: Optional[str] = None) -> list:
+    def list_models(cls, api_key: Optional[str] = None) -> list[ModelInfo]:
         """
         List available models from OpenRouter.
 
@@ -42,12 +43,13 @@ class OpenRouterProvider(OpenAICompatibleChatProvider):
                                      it attempts to retrieve it using credgoo.
 
         Returns:
-            list: A list of available free model IDs.
+            list[ModelInfo]: A list of free model info objects.
 
         Raises:
             ValueError: If no API key is provided or found.
             Exception: If the API request fails.
         """
+        from ..core import ModelInfo
         if not api_key:
             try:
                 from credgoo.credgoo import get_api_key
@@ -80,13 +82,42 @@ class OpenRouterProvider(OpenAICompatibleChatProvider):
                 )
 
             models = response.json().get("data", [])
-            free_models = [
-                model["id"]
-                for model in models
-                if model.get("pricing", {}).get("prompt") == "0"
-                and model.get("pricing", {}).get("completion") == "0"
-            ]
-            return free_models
+            results = []
+            for model in models:
+                pricing = model.get("pricing", {})
+                prompt_price = float(pricing["prompt"]) if pricing.get("prompt") else None
+                completion_price = float(pricing["completion"]) if pricing.get("completion") else None
+                if prompt_price is not None and prompt_price == 0 and completion_price is not None and completion_price == 0:
+                    cost = {"input": 0.0, "output": 0.0}
+                elif prompt_price is not None or completion_price is not None:
+                    cost = {}
+                    if prompt_price is not None:
+                        cost["input"] = prompt_price * 1_000_000
+                    if completion_price is not None:
+                        cost["output"] = completion_price * 1_000_000
+                else:
+                    cost = None
+
+                arch = model.get("architecture", {})
+                modalities = None
+                if arch.get("input_modalities") or arch.get("output_modalities"):
+                    modalities = {
+                        "input": arch.get("input_modalities", ["text"]),
+                        "output": arch.get("output_modalities", ["text"]),
+                    }
+
+                results.append(ModelInfo(
+                    id=model["id"],
+                    name=model.get("name"),
+                    type="chat",
+                    context_window=model.get("context_length"),
+                    cost=cost,
+                    modalities=modalities,
+                    owned_by=model.get("owned_by"),
+                    created=model.get("created"),
+                    raw=model,
+                ))
+            return results
         except Exception as e:
             status_code = getattr(e.response, "status_code", None) if hasattr(e, "response") else None
             response_body = getattr(e.response, "text", None) if hasattr(e, "response") else None

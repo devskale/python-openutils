@@ -2,6 +2,23 @@
 
 > **Meta repo**: [kontext.one](https://github.com/devskale/kontext.one) — deploy, release, cross-repo orchestration. See [GUIDE.md](https://github.com/devskale/kontext.one/blob/main/GUIDE.md).
 
+## Repo Map
+
+This repo can live standalone, but in the **kontext.one meta setup** it sits alongside:
+
+| Role | Repo | Local path (if in meta setup) |
+|------|------|-------------------------------|
+| **Meta** | kontext.one | `..` |
+| **Frontend** | klark0 (Next.js) | `../klark0` |
+| **Backend** | python-utils | `../python-utils` |
+| **LLM Proxy** | python-openutils | `.` (this repo) |
+
+If `../repos.yml` and `../scripts/` exist, you're in a meta setup. Otherwise this repo is standalone.
+
+**Typical local dev**: frontend on localhost, backend on pi5, LLM proxy on amd (see `../repos.yml` for hosts).
+
+---
+
 Monorepo for Python utility packages.
 
 ## Packages

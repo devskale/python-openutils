@@ -1,3 +1,4 @@
+from __future__ import annotations
 """
 HuggingFace Inference provider implementation.
 """
@@ -65,8 +66,9 @@ class HuggingFaceProvider(ChatProvider):
         return str(content) if content is not None else ""
 
     @classmethod
-    def list_models(cls, api_key: Optional[str] = None) -> List[str]:
+    def list_models(cls, api_key: Optional[str] = None) -> list[ModelInfo]:
         """List available models from HuggingFace."""
+        from ..core import ModelInfo
         try:
             if not HAS_HUGGINGFACE:
                 return []
@@ -78,14 +80,9 @@ class HuggingFaceProvider(ChatProvider):
             hf_api = HfApi(token=api_key)
             # Filter for conversational models as they are more likely to work with chat_completion
             models = hf_api.list_models(filter="conversational", sort="downloads", limit=100)
-            return [model.id for model in models if model.id]
+            return [ModelInfo(id=model.id, type="chat", raw=model) for model in models if model.id]
         except Exception:
-            return [
-                "meta-llama/Llama-3.1-8B-Instruct",
-                "Qwen/Qwen2.5-7B-Instruct",
-                "google/gemma-3-27b-it",
-                "mistralai/Mistral-7B-Instruct-v0.3"
-            ]
+            return [ModelInfo(id=m) for m in ["meta-llama/Llama-3.1-8B-Instruct", "Qwen/Qwen2.5-7B-Instruct", "google/gemma-3-27b-it", "mistralai/Mistral-7B-Instruct-v0.3"]]
 
     async def acomplete(
         self,

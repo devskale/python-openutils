@@ -1,3 +1,4 @@
+from __future__ import annotations
 """
 Bigmodel (Z.ai) provider implementation.
 """
@@ -81,7 +82,8 @@ class ZAIBaseProvider(ChatProvider):
         self.client = ZaiClient(api_key=self.api_key, base_url=self.base_url)
 
     @classmethod
-    def list_models(cls, api_key: Optional[str] = None, base_url: Optional[str] = None) -> list[str]:
+    def list_models(cls, api_key: Optional[str] = None, base_url: Optional[str] = None) -> list[ModelInfo]:
+        from ..core import ModelInfo
         if not api_key:
             raise ValueError("API key is required to list models")
         try:
@@ -102,7 +104,7 @@ class ZAIBaseProvider(ChatProvider):
                 model_id = _safe_get(model, "id")
                 if model_id:
                     api_models.append(model_id)
-            return list(dict.fromkeys(api_models))
+            return [ModelInfo(id=mid, owned_by="z-ai") for mid in list(dict.fromkeys(api_models))]
         except Exception as e:
             raise map_provider_error(cls.ERROR_PROVIDER_NAME, e)
 

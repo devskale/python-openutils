@@ -1,3 +1,4 @@
+from __future__ import annotations
 """
 OpenAI provider implementation.
 """
@@ -29,13 +30,15 @@ class OpenAIProvider(OpenAICompatibleChatProvider):
         return headers
 
     @classmethod
-    def list_models(cls, api_key: Optional[str] = None) -> list:
+    def list_models(cls, api_key: Optional[str] = None) -> list[ModelInfo]:
+        from ..core import ModelInfo
         """
         List available models from OpenAI using the API.
 
         Returns:
-            list: A list of available model IDs.
+            list[ModelInfo]: A list of model info objects.
         """
+        from ..core import ModelInfo
         if not api_key:
             raise ValueError("API key is required to list models")
 
@@ -54,7 +57,7 @@ class OpenAIProvider(OpenAICompatibleChatProvider):
                 )
 
             data = response.json()
-            return [model["id"] for model in data.get("data", [])]
+            return [ModelInfo(id=model["id"], owned_by=model.get("owned_by"), created=model.get("created"), raw=model) for model in data.get("data", [])]
         except Exception as e:
             status_code = getattr(e.response, "status_code", None) if hasattr(e, "response") else None
             response_body = getattr(e.response, "text", None) if hasattr(e, "response") else str(e)

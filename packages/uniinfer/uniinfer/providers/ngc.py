@@ -1,3 +1,4 @@
+from __future__ import annotations
 """
 NVIDIA GPU Cloud (NGC) provider implementation.
 Uses OpenAI-compatible API.
@@ -24,7 +25,7 @@ class NGCProvider(OpenAICompatibleChatProvider):
         super().__init__(api_key=api_key, base_url=base_url, **kwargs)
 
     @classmethod
-    def list_models(cls, api_key: Optional[str] = None, base_url: str = BASE_URL) -> List[str]:
+    def list_models(cls, api_key: Optional[str] = None, base_url: str = BASE_URL) -> list[ModelInfo]:
         """List available models from NGC catalog."""
         if api_key is None:
             try:
@@ -41,6 +42,6 @@ class NGCProvider(OpenAICompatibleChatProvider):
             response = requests.get(f"{base_url}/models", headers=headers)
             response.raise_for_status()
             models_data = response.json()
-            return [model["id"] for model in models_data.get("data", [])]
+            return [ModelInfo(id=model["id"], owned_by=model.get("owned_by"), raw=model) for model in models_data.get("data", [])]
         except Exception:
             return []

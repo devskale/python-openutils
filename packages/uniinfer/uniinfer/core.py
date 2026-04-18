@@ -3,8 +3,61 @@ Core classes for the UniInfer package.
 """
 import asyncio
 import httpx
+from dataclasses import dataclass, field
 from typing import Any, AsyncIterator, Optional
 from collections.abc import Iterator
+
+
+@dataclass
+class ModelInfo:
+    """
+    Rich model metadata returned by provider list_models() methods.
+
+    Attributes:
+        id: Unique model identifier within the provider.
+        name: Human-readable display name (if available).
+        type: Model type — "chat" | "embed" | "tts" | "stt".
+        status: "active" | "deprecated" | "alpha" | "beta".
+        context_window: Maximum context window in tokens.
+        max_output: Maximum output tokens.
+        modalities: Supported input/output modalities, e.g. {"input": ["text", "image"], "output": ["text"]}.
+        capabilities: Model capabilities, e.g. {"reasoning": true, "tool_call": true, "vision": true}.
+        cost: Pricing info, e.g. {"input": 2.5, "output": 10.0} (per 1M tokens USD).
+        owned_by: Provider or organisation that owns the model.
+        created: Unix timestamp of model creation.
+        raw: Full raw API response dict (for fields we don't explicitly parse).
+    """
+
+    id: str
+    name: str | None = None
+    type: str = "chat"
+    status: str = "active"
+    context_window: int | None = None
+    max_output: int | None = None
+    modalities: dict | None = None
+    capabilities: dict | None = None
+    cost: dict | None = None
+    owned_by: str | None = None
+    created: int | None = None
+    raw: dict | None = None
+
+    def __str__(self) -> str:
+        return self.id
+
+    def __repr__(self) -> str:
+        if self.context_window:
+            return f"ModelInfo(id={self.id!r}, type={self.type!r}, ctx={self.context_window})"
+        return f"ModelInfo(id={self.id!r}, type={self.type!r})"
+
+    def __eq__(self, other: object) -> bool:
+        if isinstance(other, str):
+            return self.id == other
+        if isinstance(other, ModelInfo):
+            return self.id == other.id
+        return NotImplemented
+
+    def __hash__(self) -> int:
+        return hash(self.id)
 
 
 class ChatMessage:
@@ -137,7 +190,7 @@ class ChatProvider:
             await self._async_client.aclose()
 
     @classmethod
-    def list_models(cls, api_key: str | None = None, **kwargs) -> list[str]:
+    def list_models(cls, api_key: str | None = None, **kwargs) -> list[ModelInfo]:
         """
         Standard interface for listing available models.
 
@@ -146,7 +199,7 @@ class ChatProvider:
             **kwargs: Additional provider-specific parameters
 
         Returns:
-            list[str]: List of available model names
+            list[ModelInfo]: List of available model info objects
         """
         raise NotImplementedError("Providers must implement list_models")
 
@@ -329,7 +382,7 @@ class EmbeddingProvider:
             await self._async_client.aclose()
 
     @classmethod
-    def list_models(cls, **kwargs) -> list[str]:
+    def list_models(cls, **kwargs) -> list[ModelInfo]:
         """
         Standard interface for listing available models.
 
@@ -337,7 +390,7 @@ class EmbeddingProvider:
             **kwargs: Additional provider-specific parameters
 
         Returns:
-            list[str]: List of available model names
+            list[ModelInfo]: List of available model info objects
         """
         raise NotImplementedError(
             "Embedding providers must implement list_models")
@@ -453,7 +506,7 @@ class TTSProvider:
         self.api_key = api_key
 
     @classmethod
-    def list_models(cls, api_key: str | None = None, **kwargs) -> list[str]:
+    def list_models(cls, api_key: str | None = None, **kwargs) -> list[ModelInfo]:
         """
         Standard interface for listing available TTS models.
 
@@ -462,7 +515,7 @@ class TTSProvider:
             **kwargs: Additional provider-specific parameters
 
         Returns:
-            list[str]: List of available model names
+            list[ModelInfo]: List of available model info objects
         """
         return []
 
@@ -600,7 +653,7 @@ class STTProvider:
         self.api_key = api_key
 
     @classmethod
-    def list_models(cls, api_key: str | None = None, **kwargs) -> list[str]:
+    def list_models(cls, api_key: str | None = None, **kwargs) -> list[ModelInfo]:
         """
         Standard interface for listing available STT models.
 
@@ -609,7 +662,7 @@ class STTProvider:
             **kwargs: Additional provider-specific parameters
 
         Returns:
-            list[str]: List of available model names
+            list[ModelInfo]: List of available model info objects
         """
         return []
 

@@ -1,3 +1,4 @@
+from __future__ import annotations
 """
 SambaNova provider implementation.
 """
@@ -23,7 +24,7 @@ class SambanovaProvider(OpenAICompatibleChatProvider):
         super().__init__(api_key=api_key, base_url=base_url, **kwargs)
 
     @classmethod
-    def list_models(cls, api_key: Optional[str] = None, base_url: str = BASE_URL) -> List[str]:
+    def list_models(cls, api_key: Optional[str] = None, base_url: str = BASE_URL) -> list[ModelInfo]:
         """
         List available models from SambaNova.
         """
@@ -35,13 +36,7 @@ class SambanovaProvider(OpenAICompatibleChatProvider):
                 api_key = None
 
         if api_key is None:
-            return [
-                "Meta-Llama-3.1-8B-Instruct",
-                "sambastudio-7b",
-                "sambastudio-13b",
-                "sambastudio-20b",
-                "sambastudio-70b",
-            ]
+            return [ModelInfo(id=m) for m in ["Meta-Llama-3.1-8B-Instruct", "sambastudio-7b", "sambastudio-13b", "sambastudio-20b", "sambastudio-70b"]]
 
         try:
             response = requests.get(
@@ -57,12 +52,6 @@ class SambanovaProvider(OpenAICompatibleChatProvider):
                     response_body=response.text,
                 )
             data = response.json()
-            return [model["id"] for model in data.get("data", []) if isinstance(model, dict) and model.get("id")]
+            return [ModelInfo(id=model["id"], owned_by=model.get("owned_by"), raw=model) for model in data.get("data", []) if isinstance(model, dict) and model.get("id")]
         except Exception:
-            return [
-                "Meta-Llama-3.1-8B-Instruct",
-                "sambastudio-7b",
-                "sambastudio-13b",
-                "sambastudio-20b",
-                "sambastudio-70b",
-            ]
+            return [ModelInfo(id=m) for m in ["Meta-Llama-3.1-8B-Instruct", "sambastudio-7b", "sambastudio-13b", "sambastudio-20b", "sambastudio-70b"]]

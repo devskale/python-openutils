@@ -1,3 +1,4 @@
+from __future__ import annotations
 """
 AI21 provider implementation.
 """
@@ -50,7 +51,8 @@ class AI21Provider(ChatProvider):
         await super().aclose()
 
     @staticmethod
-    def list_models(api_key: Optional[str] = None) -> list[str]:
+    def list_models(api_key: Optional[str] = None) -> list[ModelInfo]:
+        from ..core import ModelInfo
         """List available AI21 models."""
         return []
 

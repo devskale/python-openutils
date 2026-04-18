@@ -1,3 +1,4 @@
+from __future__ import annotations
 """
 InternLM provider implementation.
 """
@@ -28,7 +29,8 @@ class InternLMProvider(OpenAICompatibleChatProvider):
         }
 
     @classmethod
-    def list_models(cls, api_key: Optional[str] = None) -> list:
+    def list_models(cls, api_key: Optional[str] = None) -> list[ModelInfo]:
+        from ..core import ModelInfo
         """List available models from InternLM."""
         if not api_key:
             from credgoo.credgoo import get_api_key
@@ -40,6 +42,6 @@ class InternLMProvider(OpenAICompatibleChatProvider):
             headers = {"Authorization": f"Bearer {api_key}"}
             response = requests.get("https://chat.intern-ai.org.cn/api/v1/models", headers=headers)
             response.raise_for_status()
-            return [model["id"] for model in response.json().get("data", [])]
+            return [ModelInfo(id=model["id"], owned_by=model.get("owned_by"), raw=model) for model in response.json().get("data", [])]
         except Exception:
             return []
