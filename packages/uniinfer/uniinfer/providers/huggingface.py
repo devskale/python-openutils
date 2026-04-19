@@ -82,7 +82,7 @@ class HuggingFaceProvider(ChatProvider):
             models = hf_api.list_models(filter="conversational", sort="downloads", limit=100)
             return [ModelInfo(id=model.id, type="chat", raw=model) for model in models if model.id]
         except Exception:
-            return [ModelInfo(id=m) for m in ["meta-llama/Llama-3.1-8B-Instruct", "Qwen/Qwen2.5-7B-Instruct", "google/gemma-3-27b-it", "mistralai/Mistral-7B-Instruct-v0.3"]]
+            return []
 
     async def acomplete(
         self,
