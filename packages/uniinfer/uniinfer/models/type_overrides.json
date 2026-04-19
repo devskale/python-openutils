@@ -1,0 +1,33 @@
+{
+    "_meta": {
+        "description": "Curated model type assignments. Merged at runtime into models.json.",
+        "last_updated": null
+    },
+    "models": {
+        "e5-mistral-7b": "embed",
+        "qwen3-embedding-4b": "embed",
+        "z-image-turbo": "image",
+        "mistral-embed": "embed",
+        "mistral-embed-2312": "embed",
+        "codestral-embed": "embed",
+        "codestral-embed-2505": "embed",
+        "text-embedding-3-small": "embed",
+        "text-embedding-3-large": "embed",
+        "text-embedding-ada-002": "embed",
+        "dall-e-3": "image",
+        "dall-e-2": "image",
+        "tts-1-hd": "tts",
+        "tts-1": "tts",
+        "sora-2": "image",
+        "sora-2-pro": "image",
+        "kokoro": "tts",
+        "piper-thorsten": "tts",
+        "whisper-large": "stt",
+        "voxtral-mini-2602": "stt",
+        "voxtral-mini-latest": "stt",
+        "voxtral-mini-transcribe-2507": "stt",
+        "voxtral-mini-2507": "stt",
+        "voxtral-mini-tts-2603": "tts",
+        "voxtral-mini-tts-latest": "tts"
+    }
+}

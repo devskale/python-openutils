@@ -1,9 +1,9 @@
 {
   "_meta": {
     "version": "1.0.0",
-    "generated": "2026-04-19T12:14:27.618236+00:00",
+    "generated": "2026-04-19T12:23:42.592695+00:00",
     "source": "live provider APIs",
-    "total_models": 1081,
+    "total_models": 1096,
     "total_providers": 20
   },
   "providers": {
@@ -31,7 +31,7 @@
             "tool_call": true
           },
           "owned_by": "mistralai",
-          "created": 1776515038
+          "created": 1776601397
         },
         {
           "id": "mistral-medium-2508",
@@ -53,7 +53,7 @@
             "tool_call": true
           },
           "owned_by": "mistralai",
-          "created": 1776515038
+          "created": 1776601397
         },
         {
           "id": "mistral-medium-latest",
@@ -75,7 +75,7 @@
             "tool_call": true
           },
           "owned_by": "mistralai",
-          "created": 1776515038
+          "created": 1776601397
         },
         {
           "id": "mistral-medium",
@@ -97,7 +97,7 @@
             "tool_call": true
           },
           "owned_by": "mistralai",
-          "created": 1776515038
+          "created": 1776601397
         },
         {
           "id": "mistral-vibe-cli-with-tools",
@@ -119,7 +119,7 @@
             "tool_call": true
           },
           "owned_by": "mistralai",
-          "created": 1776515038
+          "created": 1776601397
         },
         {
           "id": "open-mistral-nemo",
@@ -140,7 +140,7 @@
             "tool_call": true
           },
           "owned_by": "mistralai",
-          "created": 1776515038
+          "created": 1776601397
         },
         {
           "id": "open-mistral-nemo-2407",
@@ -161,7 +161,7 @@
             "tool_call": true
           },
           "owned_by": "mistralai",
-          "created": 1776515038
+          "created": 1776601397
         },
         {
           "id": "mistral-tiny-2407",
@@ -182,7 +182,7 @@
             "tool_call": true
           },
           "owned_by": "mistralai",
-          "created": 1776515038
+          "created": 1776601397
         },
         {
           "id": "mistral-tiny-latest",
@@ -203,7 +203,7 @@
             "tool_call": true
           },
           "owned_by": "mistralai",
-          "created": 1776515038
+          "created": 1776601397
         },
         {
           "id": "codestral-2508",
@@ -224,7 +224,7 @@
             "tool_call": true
           },
           "owned_by": "mistralai",
-          "created": 1776515038
+          "created": 1776601397
         },
         {
           "id": "codestral-latest",
@@ -245,7 +245,7 @@
             "tool_call": true
           },
           "owned_by": "mistralai",
-          "created": 1776515038
+          "created": 1776601397
         },
         {
           "id": "devstral-2512",
@@ -266,7 +266,7 @@
             "tool_call": true
           },
           "owned_by": "mistralai",
-          "created": 1776515038
+          "created": 1776601397
         },
         {
           "id": "devstral-medium-latest",
@@ -287,7 +287,7 @@
             "tool_call": true
           },
           "owned_by": "mistralai",
-          "created": 1776515038
+          "created": 1776601397
         },
         {
           "id": "devstral-latest",
@@ -308,7 +308,7 @@
             "tool_call": true
           },
           "owned_by": "mistralai",
-          "created": 1776515038
+          "created": 1776601397
         },
         {
           "id": "mistral-vibe-cli-latest",
@@ -329,7 +329,7 @@
             "tool_call": true
           },
           "owned_by": "mistralai",
-          "created": 1776515038
+          "created": 1776601397
         },
         {
           "id": "mistral-small-2603",
@@ -352,7 +352,7 @@
             "tool_call": true
           },
           "owned_by": "mistralai",
-          "created": 1776515038
+          "created": 1776601397
         },
         {
           "id": "mistral-small-latest",
@@ -375,7 +375,7 @@
             "tool_call": true
           },
           "owned_by": "mistralai",
-          "created": 1776515038
+          "created": 1776601397
         },
         {
           "id": "mistral-vibe-cli-fast",
@@ -398,7 +398,7 @@
             "tool_call": true
           },
           "owned_by": "mistralai",
-          "created": 1776515038
+          "created": 1776601397
         },
         {
           "id": "mistral-small-2506",
@@ -420,7 +420,7 @@
             "tool_call": true
           },
           "owned_by": "mistralai",
-          "created": 1776515038
+          "created": 1776601397
         },
         {
           "id": "magistral-medium-2509",
@@ -443,7 +443,7 @@
             "tool_call": true
           },
           "owned_by": "mistralai",
-          "created": 1776515038
+          "created": 1776601397
         },
         {
           "id": "magistral-medium-latest",
@@ -466,7 +466,7 @@
             "tool_call": true
           },
           "owned_by": "mistralai",
-          "created": 1776515038
+          "created": 1776601397
         },
         {
           "id": "magistral-small-2509",
@@ -489,7 +489,7 @@
             "tool_call": true
           },
           "owned_by": "mistralai",
-          "created": 1776515038
+          "created": 1776601397
         },
         {
           "id": "magistral-small-latest",
@@ -512,7 +512,7 @@
             "tool_call": true
           },
           "owned_by": "mistralai",
-          "created": 1776515038
+          "created": 1776601397
         },
         {
           "id": "voxtral-small-2507",
@@ -534,7 +534,7 @@
             "tool_call": true
           },
           "owned_by": "mistralai",
-          "created": 1776515038
+          "created": 1776601397
         },
         {
           "id": "voxtral-small-latest",
@@ -556,7 +556,7 @@
             "tool_call": true
           },
           "owned_by": "mistralai",
-          "created": 1776515038
+          "created": 1776601397
         },
         {
           "id": "labs-leanstral-2603",
@@ -579,7 +579,7 @@
             "tool_call": true
           },
           "owned_by": "mistralai",
-          "created": 1776515038
+          "created": 1776601397
         },
         {
           "id": "mistral-large-2512",
@@ -601,7 +601,7 @@
             "tool_call": true
           },
           "owned_by": "mistralai",
-          "created": 1776515038
+          "created": 1776601397
         },
         {
           "id": "mistral-large-latest",
@@ -623,7 +623,7 @@
             "tool_call": true
           },
           "owned_by": "mistralai",
-          "created": 1776515038
+          "created": 1776601397
         },
         {
           "id": "ministral-3b-2512",
@@ -645,7 +645,7 @@
             "tool_call": true
           },
           "owned_by": "mistralai",
-          "created": 1776515038
+          "created": 1776601397
         },
         {
           "id": "ministral-3b-latest",
@@ -667,7 +667,7 @@
             "tool_call": true
           },
           "owned_by": "mistralai",
-          "created": 1776515038
+          "created": 1776601397
         },
         {
           "id": "ministral-8b-2512",
@@ -689,7 +689,7 @@
             "tool_call": true
           },
           "owned_by": "mistralai",
-          "created": 1776515038
+          "created": 1776601397
         },
         {
           "id": "ministral-8b-latest",
@@ -711,7 +711,7 @@
             "tool_call": true
           },
           "owned_by": "mistralai",
-          "created": 1776515038
+          "created": 1776601397
         },
         {
           "id": "ministral-14b-2512",
@@ -733,7 +733,7 @@
             "tool_call": true
           },
           "owned_by": "mistralai",
-          "created": 1776515038
+          "created": 1776601397
         },
         {
           "id": "ministral-14b-latest",
@@ -755,7 +755,7 @@
             "tool_call": true
           },
           "owned_by": "mistralai",
-          "created": 1776515038
+          "created": 1776601397
         },
         {
           "id": "mistral-large-2411",
@@ -776,7 +776,7 @@
             "tool_call": true
           },
           "owned_by": "mistralai",
-          "created": 1776515038
+          "created": 1776601397
         },
         {
           "id": "pixtral-large-2411",
@@ -798,7 +798,7 @@
             "tool_call": true
           },
           "owned_by": "mistralai",
-          "created": 1776515038
+          "created": 1776601397
         },
         {
           "id": "pixtral-large-latest",
@@ -820,7 +820,7 @@
             "tool_call": true
           },
           "owned_by": "mistralai",
-          "created": 1776515038
+          "created": 1776601397
         },
         {
           "id": "mistral-large-pixtral-2411",
@@ -842,7 +842,7 @@
             "tool_call": true
           },
           "owned_by": "mistralai",
-          "created": 1776515038
+          "created": 1776601397
         },
         {
           "id": "devstral-small-2507",
@@ -863,7 +863,7 @@
             "tool_call": true
           },
           "owned_by": "mistralai",
-          "created": 1776515038
+          "created": 1776601397
         },
         {
           "id": "devstral-medium-2507",
@@ -884,12 +884,12 @@
             "tool_call": true
           },
           "owned_by": "mistralai",
-          "created": 1776515038
+          "created": 1776601397
         },
         {
           "id": "voxtral-mini-2507",
           "name": "voxtral-mini-2507",
-          "type": "chat",
+          "type": "stt",
           "status": "deprecated",
           "context_window": 32768,
           "modalities": {
@@ -904,12 +904,12 @@
             "audio": true
           },
           "owned_by": "mistralai",
-          "created": 1776515038
+          "created": 1776601397
         },
         {
           "id": "voxtral-mini-latest",
           "name": "voxtral-mini-2507",
-          "type": "chat",
+          "type": "stt",
           "status": "deprecated",
           "context_window": 32768,
           "modalities": {
@@ -924,7 +924,7 @@
             "audio": true
           },
           "owned_by": "mistralai",
-          "created": 1776515038
+          "created": 1776601397
         },
         {
           "id": "labs-mistral-small-creative",
@@ -945,12 +945,12 @@
             "tool_call": true
           },
           "owned_by": "mistralai",
-          "created": 1776515038
+          "created": 1776601397
         },
         {
           "id": "mistral-embed-2312",
           "name": "mistral-embed-2312",
-          "type": "chat",
+          "type": "embed",
           "status": "active",
           "context_window": 8192,
           "modalities": {
@@ -962,12 +962,12 @@
             ]
           },
           "owned_by": "mistralai",
-          "created": 1776515038
+          "created": 1776601397
         },
         {
           "id": "mistral-embed",
           "name": "mistral-embed-2312",
-          "type": "chat",
+          "type": "embed",
           "status": "active",
           "context_window": 8192,
           "modalities": {
@@ -979,12 +979,12 @@
             ]
           },
           "owned_by": "mistralai",
-          "created": 1776515038
+          "created": 1776601397
         },
         {
           "id": "codestral-embed",
           "name": "codestral-embed",
-          "type": "chat",
+          "type": "embed",
           "status": "active",
           "context_window": 8192,
           "modalities": {
@@ -996,12 +996,12 @@
             ]
           },
           "owned_by": "mistralai",
-          "created": 1776515038
+          "created": 1776601397
         },
         {
           "id": "codestral-embed-2505",
           "name": "codestral-embed",
-          "type": "chat",
+          "type": "embed",
           "status": "active",
           "context_window": 8192,
           "modalities": {
@@ -1013,7 +1013,7 @@
             ]
           },
           "owned_by": "mistralai",
-          "created": 1776515038
+          "created": 1776601397
         },
         {
           "id": "mistral-moderation-2603",
@@ -1034,7 +1034,7 @@
             "moderation": true
           },
           "owned_by": "mistralai",
-          "created": 1776515038
+          "created": 1776601397
         },
         {
           "id": "mistral-moderation-2411",
@@ -1055,7 +1055,7 @@
             "moderation": true
           },
           "owned_by": "mistralai",
-          "created": 1776515038
+          "created": 1776601397
         },
         {
           "id": "mistral-moderation-latest",
@@ -1076,7 +1076,7 @@
             "moderation": true
           },
           "owned_by": "mistralai",
-          "created": 1776515038
+          "created": 1776601397
         },
         {
           "id": "mistral-ocr-2512",
@@ -1100,7 +1100,7 @@
             "tool_call": true
           },
           "owned_by": "mistralai",
-          "created": 1776515038
+          "created": 1776601397
         },
         {
           "id": "mistral-ocr-latest",
@@ -1124,7 +1124,7 @@
             "tool_call": true
           },
           "owned_by": "mistralai",
-          "created": 1776515038
+          "created": 1776601397
         },
         {
           "id": "mistral-ocr-2505",
@@ -1148,7 +1148,7 @@
             "tool_call": true
           },
           "owned_by": "mistralai",
-          "created": 1776515038
+          "created": 1776601397
         },
         {
           "id": "voxtral-mini-2602",
@@ -1165,7 +1165,7 @@
             ]
           },
           "owned_by": "mistralai",
-          "created": 1776515038
+          "created": 1776601397
         },
         {
           "id": "voxtral-mini-latest",
@@ -1182,7 +1182,7 @@
             ]
           },
           "owned_by": "mistralai",
-          "created": 1776515038
+          "created": 1776601397
         },
         {
           "id": "voxtral-mini-transcribe-realtime-2602",
@@ -1199,7 +1199,7 @@
             ]
           },
           "owned_by": "mistralai",
-          "created": 1776515038
+          "created": 1776601397
         },
         {
           "id": "voxtral-mini-realtime-2602",
@@ -1216,7 +1216,7 @@
             ]
           },
           "owned_by": "mistralai",
-          "created": 1776515038
+          "created": 1776601397
         },
         {
           "id": "voxtral-mini-realtime-latest",
@@ -1233,7 +1233,7 @@
             ]
           },
           "owned_by": "mistralai",
-          "created": 1776515038
+          "created": 1776601397
         },
         {
           "id": "voxtral-mini-transcribe-2507",
@@ -1250,7 +1250,7 @@
             ]
           },
           "owned_by": "mistralai",
-          "created": 1776515038
+          "created": 1776601397
         },
         {
           "id": "voxtral-mini-2507",
@@ -1267,7 +1267,7 @@
             ]
           },
           "owned_by": "mistralai",
-          "created": 1776515038
+          "created": 1776601397
         },
         {
           "id": "voxtral-mini-tts-2603",
@@ -1288,7 +1288,7 @@
             "tool_call": true
           },
           "owned_by": "mistralai",
-          "created": 1776515038
+          "created": 1776601397
         },
         {
           "id": "voxtral-mini-tts-latest",
@@ -1309,7 +1309,7 @@
             "tool_call": true
           },
           "owned_by": "mistralai",
-          "created": 1776515038
+          "created": 1776601397
         }
       ]
     },
@@ -1410,14 +1410,14 @@
         },
         {
           "id": "dall-e-3",
-          "type": "chat",
+          "type": "image",
           "status": "active",
           "owned_by": "system",
           "created": 1698785189
         },
         {
           "id": "dall-e-2",
-          "type": "chat",
+          "type": "image",
           "status": "active",
           "owned_by": "system",
           "created": 1698798177
@@ -1431,7 +1431,7 @@
         },
         {
           "id": "tts-1-hd",
-          "type": "chat",
+          "type": "tts",
           "status": "active",
           "owned_by": "system",
           "created": 1699046015
@@ -1452,14 +1452,14 @@
         },
         {
           "id": "text-embedding-3-small",
-          "type": "chat",
+          "type": "embed",
           "status": "active",
           "owned_by": "system",
           "created": 1705948997
         },
         {
           "id": "text-embedding-3-large",
-          "type": "chat",
+          "type": "embed",
           "status": "active",
           "owned_by": "system",
           "created": 1705953180
@@ -1851,14 +1851,14 @@
         },
         {
           "id": "sora-2",
-          "type": "chat",
+          "type": "image",
           "status": "active",
           "owned_by": "system",
           "created": 1759708615
         },
         {
           "id": "sora-2-pro",
-          "type": "chat",
+          "type": "image",
           "status": "active",
           "owned_by": "system",
           "created": 1759708663
@@ -2075,14 +2075,14 @@
         },
         {
           "id": "whisper-1",
-          "type": "chat",
+          "type": "stt",
           "status": "active",
           "owned_by": "openai-internal",
           "created": 1677532384
         },
         {
           "id": "tts-1",
-          "type": "chat",
+          "type": "tts",
           "status": "active",
           "owned_by": "openai-internal",
           "created": 1681940951
@@ -2096,7 +2096,7 @@
         },
         {
           "id": "text-embedding-ada-002",
-          "type": "chat",
+          "type": "embed",
           "status": "active",
           "owned_by": "openai-internal",
           "created": 1671217299
@@ -3638,7 +3638,8 @@
           "name": "MoonshotAI: Kimi K2.5",
           "type": "chat",
           "status": "active",
-          "context_window": 256000,
+          "context_window": 262144,
+          "max_output": 65535,
           "modalities": {
             "input": [
               "text",
@@ -3654,8 +3655,8 @@
             "reasoning": true
           },
           "cost": {
-            "input": 0.0,
-            "output": 0.0
+            "input": 0.3827,
+            "output": 1.72
           },
           "created": 1769487076
         },
@@ -6934,7 +6935,6 @@
           "capabilities": {
             "tool_call": true,
             "structured_outputs": true,
-            "reasoning": true,
             "knowledge_cutoff": "2025-06-30"
           },
           "cost": {
@@ -8188,7 +8188,6 @@
             ]
           },
           "capabilities": {
-            "tool_call": true,
             "structured_outputs": true,
             "knowledge_cutoff": "2024-08-31"
           },
@@ -8392,7 +8391,6 @@
             ]
           },
           "capabilities": {
-            "structured_outputs": true,
             "knowledge_cutoff": "2024-08-31"
           },
           "cost": {
@@ -8838,7 +8836,7 @@
           "name": "Google: Gemini 2.0 Flash",
           "type": "chat",
           "status": "active",
-          "context_window": 1000000,
+          "context_window": 1048576,
           "max_output": 8192,
           "modalities": {
             "input": [
@@ -9443,7 +9441,7 @@
           "type": "chat",
           "status": "active",
           "context_window": 131072,
-          "max_output": 16384,
+          "max_output": 131072,
           "modalities": {
             "input": [
               "text"
@@ -9458,8 +9456,8 @@
             "knowledge_cutoff": "2023-12-31"
           },
           "cost": {
-            "input": 0.09999999999999999,
-            "output": 0.32
+            "input": 0.12,
+            "output": 0.38
           },
           "created": 1733506137
         },
@@ -9794,8 +9792,8 @@
           "created": 1728950400
         },
         {
-          "id": "inflection/inflection-3-pi",
-          "name": "Inflection: Inflection 3 Pi",
+          "id": "inflection/inflection-3-productivity",
+          "name": "Inflection: Inflection 3 Productivity",
           "type": "chat",
           "status": "active",
           "context_window": 8000,
@@ -9818,8 +9816,8 @@
           "created": 1728604800
         },
         {
-          "id": "inflection/inflection-3-productivity",
-          "name": "Inflection: Inflection 3 Productivity",
+          "id": "inflection/inflection-3-pi",
+          "name": "Inflection: Inflection 3 Pi",
           "type": "chat",
           "status": "active",
           "context_window": 8000,
@@ -9868,6 +9866,52 @@
           "created": 1727654400
         },
         {
+          "id": "meta-llama/llama-3.2-3b-instruct:free",
+          "name": "Meta: Llama 3.2 3B Instruct (free)",
+          "type": "chat",
+          "status": "active",
+          "context_window": 131072,
+          "modalities": {
+            "input": [
+              "text"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "capabilities": {
+            "knowledge_cutoff": "2023-12-31"
+          },
+          "cost": {
+            "input": 0.0,
+            "output": 0.0
+          },
+          "created": 1727222400
+        },
+        {
+          "id": "meta-llama/llama-3.2-3b-instruct",
+          "name": "Meta: Llama 3.2 3B Instruct",
+          "type": "chat",
+          "status": "active",
+          "context_window": 80000,
+          "modalities": {
+            "input": [
+              "text"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "capabilities": {
+            "knowledge_cutoff": "2023-12-31"
+          },
+          "cost": {
+            "input": 0.051,
+            "output": 0.33999999999999997
+          },
+          "created": 1727222400
+        },
+        {
           "id": "meta-llama/llama-3.2-1b-instruct",
           "name": "Meta: Llama 3.2 1B Instruct",
           "type": "chat",
@@ -9912,52 +9956,6 @@
           "cost": {
             "input": 0.245,
             "output": 0.245
-          },
-          "created": 1727222400
-        },
-        {
-          "id": "meta-llama/llama-3.2-3b-instruct:free",
-          "name": "Meta: Llama 3.2 3B Instruct (free)",
-          "type": "chat",
-          "status": "active",
-          "context_window": 131072,
-          "modalities": {
-            "input": [
-              "text"
-            ],
-            "output": [
-              "text"
-            ]
-          },
-          "capabilities": {
-            "knowledge_cutoff": "2023-12-31"
-          },
-          "cost": {
-            "input": 0.0,
-            "output": 0.0
-          },
-          "created": 1727222400
-        },
-        {
-          "id": "meta-llama/llama-3.2-3b-instruct",
-          "name": "Meta: Llama 3.2 3B Instruct",
-          "type": "chat",
-          "status": "active",
-          "context_window": 80000,
-          "modalities": {
-            "input": [
-              "text"
-            ],
-            "output": [
-              "text"
-            ]
-          },
-          "capabilities": {
-            "knowledge_cutoff": "2023-12-31"
-          },
-          "cost": {
-            "input": 0.051,
-            "output": 0.33999999999999997
           },
           "created": 1727222400
         },
@@ -10227,6 +10225,7 @@
           },
           "capabilities": {
             "tool_call": true,
+            "structured_outputs": true,
             "knowledge_cutoff": "2023-12-31"
           },
           "cost": {
@@ -10262,8 +10261,8 @@
           "created": 1721347200
         },
         {
-          "id": "openai/gpt-4o-mini",
-          "name": "OpenAI: GPT-4o-mini",
+          "id": "openai/gpt-4o-mini-2024-07-18",
+          "name": "OpenAI: GPT-4o-mini (2024-07-18)",
           "type": "chat",
           "status": "active",
           "context_window": 128000,
@@ -10290,8 +10289,8 @@
           "created": 1721260800
         },
         {
-          "id": "openai/gpt-4o-mini-2024-07-18",
-          "name": "OpenAI: GPT-4o-mini (2024-07-18)",
+          "id": "openai/gpt-4o-mini",
+          "name": "OpenAI: GPT-4o-mini",
           "type": "chat",
           "status": "active",
           "context_window": 128000,
@@ -10393,62 +10392,6 @@
           "created": 1716768000
         },
         {
-          "id": "openai/gpt-4o",
-          "name": "OpenAI: GPT-4o",
-          "type": "chat",
-          "status": "active",
-          "context_window": 128000,
-          "max_output": 16384,
-          "modalities": {
-            "input": [
-              "text",
-              "image",
-              "file"
-            ],
-            "output": [
-              "text"
-            ]
-          },
-          "capabilities": {
-            "tool_call": true,
-            "structured_outputs": true,
-            "knowledge_cutoff": "2023-10-31"
-          },
-          "cost": {
-            "input": 2.5,
-            "output": 10.0
-          },
-          "created": 1715558400
-        },
-        {
-          "id": "openai/gpt-4o:extended",
-          "name": "OpenAI: GPT-4o (extended)",
-          "type": "chat",
-          "status": "active",
-          "context_window": 128000,
-          "max_output": 64000,
-          "modalities": {
-            "input": [
-              "text",
-              "image",
-              "file"
-            ],
-            "output": [
-              "text"
-            ]
-          },
-          "capabilities": {
-            "tool_call": true,
-            "structured_outputs": true,
-            "knowledge_cutoff": "2023-10-31"
-          },
-          "cost": {
-            "input": 6.0,
-            "output": 18.0
-          },
-          "created": 1715558400
-        },
-        {
           "id": "openai/gpt-4o-2024-05-13",
           "name": "OpenAI: GPT-4o (2024-05-13)",
           "type": "chat",
@@ -10473,6 +10416,34 @@
           "cost": {
             "input": 5.0,
             "output": 15.0
+          },
+          "created": 1715558400
+        },
+        {
+          "id": "openai/gpt-4o",
+          "name": "OpenAI: GPT-4o",
+          "type": "chat",
+          "status": "active",
+          "context_window": 128000,
+          "max_output": 16384,
+          "modalities": {
+            "input": [
+              "text",
+              "image",
+              "file"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "capabilities": {
+            "tool_call": true,
+            "structured_outputs": true,
+            "knowledge_cutoff": "2023-10-31"
+          },
+          "cost": {
+            "input": 2.5,
+            "output": 10.0
           },
           "created": 1715558400
         },
@@ -10653,32 +10624,6 @@
           "created": 1708905600
         },
         {
-          "id": "openai/gpt-3.5-turbo-0613",
-          "name": "OpenAI: GPT-3.5 Turbo (older v0613)",
-          "type": "chat",
-          "status": "active",
-          "context_window": 4095,
-          "max_output": 4096,
-          "modalities": {
-            "input": [
-              "text"
-            ],
-            "output": [
-              "text"
-            ]
-          },
-          "capabilities": {
-            "tool_call": true,
-            "structured_outputs": true,
-            "knowledge_cutoff": "2021-09-30"
-          },
-          "cost": {
-            "input": 1.0,
-            "output": 2.0
-          },
-          "created": 1706140800
-        },
-        {
           "id": "openai/gpt-4-turbo-preview",
           "name": "OpenAI: GPT-4 Turbo Preview",
           "type": "chat",
@@ -10701,6 +10646,32 @@
           "cost": {
             "input": 10.0,
             "output": 30.0
+          },
+          "created": 1706140800
+        },
+        {
+          "id": "openai/gpt-3.5-turbo-0613",
+          "name": "OpenAI: GPT-3.5 Turbo (older v0613)",
+          "type": "chat",
+          "status": "active",
+          "context_window": 4095,
+          "max_output": 4096,
+          "modalities": {
+            "input": [
+              "text"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "capabilities": {
+            "tool_call": true,
+            "structured_outputs": true,
+            "knowledge_cutoff": "2021-09-30"
+          },
+          "cost": {
+            "input": 1.0,
+            "output": 2.0
           },
           "created": 1706140800
         },
@@ -10958,8 +10929,8 @@
           "created": 1688256000
         },
         {
-          "id": "openai/gpt-4",
-          "name": "OpenAI: GPT-4",
+          "id": "openai/gpt-4-0314",
+          "name": "OpenAI: GPT-4 (older v0314)",
           "type": "chat",
           "status": "active",
           "context_window": 8191,
@@ -10984,8 +10955,8 @@
           "created": 1685232000
         },
         {
-          "id": "openai/gpt-4-0314",
-          "name": "OpenAI: GPT-4 (older v0314)",
+          "id": "openai/gpt-4",
+          "name": "OpenAI: GPT-4",
           "type": "chat",
           "status": "active",
           "context_window": 8191,
@@ -13952,12 +13923,6 @@
           "owned_by": "nvidia"
         },
         {
-          "id": "nvidia/vila",
-          "type": "chat",
-          "status": "active",
-          "owned_by": "nvidia"
-        },
-        {
           "id": "openai/gpt-oss-120b",
           "type": "chat",
           "status": "active",
@@ -14198,7 +14163,7 @@
         },
         {
           "id": "@cf/openai/whisper",
-          "type": "chat",
+          "type": "stt",
           "status": "active"
         },
         {
@@ -14458,12 +14423,12 @@
         },
         {
           "id": "@cf/openai/whisper-tiny-en",
-          "type": "chat",
+          "type": "stt",
           "status": "active"
         },
         {
           "id": "@cf/openai/whisper-large-v3-turbo",
-          "type": "chat",
+          "type": "stt",
           "status": "active"
         },
         {
@@ -14582,7 +14547,19 @@
           "owned_by": "sglang"
         },
         {
+          "id": "Qwen/Qwen3.5-397B-A17B-TEE",
+          "type": "chat",
+          "status": "active",
+          "owned_by": "sglang"
+        },
+        {
           "id": "MiniMaxAI/MiniMax-M2.5-TEE",
+          "type": "chat",
+          "status": "active",
+          "owned_by": "sglang"
+        },
+        {
+          "id": "deepseek-ai/DeepSeek-V3-0324-TEE",
           "type": "chat",
           "status": "active",
           "owned_by": "sglang"
@@ -14594,13 +14571,7 @@
           "owned_by": "vllm"
         },
         {
-          "id": "deepseek-ai/DeepSeek-V3-0324-TEE",
-          "type": "chat",
-          "status": "active",
-          "owned_by": "sglang"
-        },
-        {
-          "id": "Qwen/Qwen3.5-397B-A17B-TEE",
+          "id": "XiaomiMiMo/MiMo-V2-Flash-TEE",
           "type": "chat",
           "status": "active",
           "owned_by": "sglang"
@@ -14624,25 +14595,25 @@
           "owned_by": "sglang"
         },
         {
-          "id": "zai-org/GLM-5.1-TEE",
-          "type": "chat",
-          "status": "active",
-          "owned_by": "sglang"
-        },
-        {
           "id": "deepseek-ai/DeepSeek-R1-0528-TEE",
           "type": "chat",
           "status": "active",
           "owned_by": "sglang"
         },
         {
-          "id": "XiaomiMiMo/MiMo-V2-Flash-TEE",
+          "id": "zai-org/GLM-5.1-TEE",
           "type": "chat",
           "status": "active",
           "owned_by": "sglang"
         },
         {
           "id": "Qwen/Qwen3-235B-A22B-Instruct-2507-TEE",
+          "type": "chat",
+          "status": "active",
+          "owned_by": "vllm"
+        },
+        {
+          "id": "Qwen/Qwen3-Coder-Next-TEE",
           "type": "chat",
           "status": "active",
           "owned_by": "vllm"
@@ -14660,13 +14631,13 @@
           "owned_by": "sglang"
         },
         {
-          "id": "Qwen/Qwen3-Coder-Next-TEE",
+          "id": "zai-org/GLM-4.7-FP8",
           "type": "chat",
           "status": "active",
           "owned_by": "vllm"
         },
         {
-          "id": "zai-org/GLM-4.7-FP8",
+          "id": "unsloth/gemma-3-12b-it",
           "type": "chat",
           "status": "active",
           "owned_by": "vllm"
@@ -14678,12 +14649,6 @@
           "owned_by": "sglang"
         },
         {
-          "id": "unsloth/gemma-3-12b-it",
-          "type": "chat",
-          "status": "active",
-          "owned_by": "vllm"
-        },
-        {
           "id": "unsloth/gemma-3-4b-it",
           "type": "chat",
           "status": "active",
@@ -14691,12 +14656,6 @@
         },
         {
           "id": "Qwen/Qwen3-Next-80B-A3B-Instruct",
-          "type": "chat",
-          "status": "active",
-          "owned_by": "sglang"
-        },
-        {
-          "id": "NousResearch/Hermes-4-14B",
           "type": "chat",
           "status": "active",
           "owned_by": "sglang"
@@ -14720,19 +14679,31 @@
           "owned_by": "vllm"
         },
         {
+          "id": "NousResearch/Hermes-4-14B",
+          "type": "chat",
+          "status": "active",
+          "owned_by": "sglang"
+        },
+        {
           "id": "Qwen/Qwen3-235B-A22B-Thinking-2507",
           "type": "chat",
           "status": "active",
           "owned_by": "vllm"
         },
         {
-          "id": "deepseek-ai/DeepSeek-R1-Distill-Llama-70B",
+          "id": "Qwen/Qwen2.5-VL-32B-Instruct",
+          "type": "chat",
+          "status": "active",
+          "owned_by": "vllm"
+        },
+        {
+          "id": "unsloth/Mistral-Nemo-Instruct-2407",
           "type": "chat",
           "status": "active",
           "owned_by": "sglang"
         },
         {
-          "id": "unsloth/Mistral-Nemo-Instruct-2407",
+          "id": "deepseek-ai/DeepSeek-R1-Distill-Llama-70B",
           "type": "chat",
           "status": "active",
           "owned_by": "sglang"
@@ -14744,25 +14715,19 @@
           "owned_by": "sglang"
         },
         {
-          "id": "Qwen/Qwen2.5-VL-32B-Instruct",
-          "type": "chat",
-          "status": "active",
-          "owned_by": "vllm"
-        },
-        {
           "id": "unsloth/Llama-3.2-1B-Instruct",
           "type": "chat",
           "status": "active",
           "owned_by": "vllm"
         },
         {
-          "id": "rednote-hilab/dots.ocr",
+          "id": "Qwen/Qwen3Guard-Gen-0.6B",
           "type": "chat",
           "status": "active",
           "owned_by": "vllm"
         },
         {
-          "id": "Qwen/Qwen3Guard-Gen-0.6B",
+          "id": "rednote-hilab/dots.ocr",
           "type": "chat",
           "status": "active",
           "owned_by": "vllm"
@@ -15404,25 +15369,25 @@
         },
         {
           "id": "kokoro",
-          "type": "embed",
+          "type": "tts",
           "status": "active",
           "owned_by": "aqueduct"
         },
         {
           "id": "piper-thorsten",
-          "type": "embed",
+          "type": "tts",
           "status": "active",
           "owned_by": "aqueduct"
         },
         {
           "id": "whisper-large",
-          "type": "embed",
+          "type": "stt",
           "status": "active",
           "owned_by": "aqueduct"
         },
         {
           "id": "z-image-turbo",
-          "type": "embed",
+          "type": "image",
           "status": "active",
           "owned_by": "aqueduct"
         }
@@ -15432,6 +15397,38 @@
       "provider_class": "MoonshotProvider",
       "kind": "chat",
       "models": [
+        {
+          "id": "kimi-k2-0711-preview",
+          "type": "chat",
+          "status": "active",
+          "context_window": 131072,
+          "modalities": {
+            "input": [
+              "text"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "owned_by": "moonshot",
+          "created": 1776488929
+        },
+        {
+          "id": "kimi-k2-thinking-turbo",
+          "type": "chat",
+          "status": "active",
+          "context_window": 262144,
+          "modalities": {
+            "input": [
+              "text"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "owned_by": "moonshot",
+          "created": 1776488929
+        },
         {
           "id": "moonshot-v1-32k",
           "type": "chat",
@@ -15449,7 +15446,115 @@
           "created": 1776488929
         },
         {
-          "id": "kimi-k2-thinking-turbo",
+          "id": "moonshot-v1-32k-vision-preview",
+          "type": "chat",
+          "status": "active",
+          "context_window": 32768,
+          "modalities": {
+            "input": [
+              "text",
+              "image"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "capabilities": {
+            "vision": true
+          },
+          "owned_by": "moonshot",
+          "created": 1776488929
+        },
+        {
+          "id": "moonshot-v1-128k",
+          "type": "chat",
+          "status": "active",
+          "context_window": 131072,
+          "modalities": {
+            "input": [
+              "text"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "owned_by": "moonshot",
+          "created": 1776488929
+        },
+        {
+          "id": "kimi-latest",
+          "type": "chat",
+          "status": "active",
+          "context_window": 131072,
+          "modalities": {
+            "input": [
+              "text",
+              "image"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "capabilities": {
+            "vision": true
+          },
+          "owned_by": "moonshot",
+          "created": 1776488929
+        },
+        {
+          "id": "moonshot-v1-auto",
+          "type": "chat",
+          "status": "active",
+          "context_window": 131072,
+          "modalities": {
+            "input": [
+              "text"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "owned_by": "moonshot",
+          "created": 1776488929
+        },
+        {
+          "id": "moonshot-v1-8k-vision-preview",
+          "type": "chat",
+          "status": "active",
+          "context_window": 8192,
+          "modalities": {
+            "input": [
+              "text",
+              "image"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "capabilities": {
+            "vision": true
+          },
+          "owned_by": "moonshot",
+          "created": 1776488929
+        },
+        {
+          "id": "kimi-k2-thinking",
+          "type": "chat",
+          "status": "active",
+          "context_window": 262144,
+          "modalities": {
+            "input": [
+              "text"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "owned_by": "moonshot",
+          "created": 1776488929
+        },
+        {
+          "id": "kimi-k2-0905-preview",
           "type": "chat",
           "status": "active",
           "context_window": 262144,
@@ -15501,38 +15606,6 @@
           "created": 1776488929
         },
         {
-          "id": "moonshot-v1-auto",
-          "type": "chat",
-          "status": "active",
-          "context_window": 131072,
-          "modalities": {
-            "input": [
-              "text"
-            ],
-            "output": [
-              "text"
-            ]
-          },
-          "owned_by": "moonshot",
-          "created": 1776488929
-        },
-        {
-          "id": "kimi-k2-turbo-preview",
-          "type": "chat",
-          "status": "active",
-          "context_window": 262144,
-          "modalities": {
-            "input": [
-              "text"
-            ],
-            "output": [
-              "text"
-            ]
-          },
-          "owned_by": "moonshot",
-          "created": 1776488929
-        },
-        {
           "id": "moonshot-v1-128k-vision-preview",
           "type": "chat",
           "status": "active",
@@ -15553,27 +15626,7 @@
           "created": 1776488929
         },
         {
-          "id": "moonshot-v1-32k-vision-preview",
-          "type": "chat",
-          "status": "active",
-          "context_window": 32768,
-          "modalities": {
-            "input": [
-              "text",
-              "image"
-            ],
-            "output": [
-              "text"
-            ]
-          },
-          "capabilities": {
-            "vision": true
-          },
-          "owned_by": "moonshot",
-          "created": 1776488929
-        },
-        {
-          "id": "kimi-k2-thinking",
+          "id": "kimi-k2-turbo-preview",
           "type": "chat",
           "status": "active",
           "context_window": 262144,
@@ -15584,94 +15637,6 @@
             "output": [
               "text"
             ]
-          },
-          "owned_by": "moonshot",
-          "created": 1776488929
-        },
-        {
-          "id": "kimi-k2-0711-preview",
-          "type": "chat",
-          "status": "active",
-          "context_window": 131072,
-          "modalities": {
-            "input": [
-              "text"
-            ],
-            "output": [
-              "text"
-            ]
-          },
-          "owned_by": "moonshot",
-          "created": 1776488929
-        },
-        {
-          "id": "kimi-k2-0905-preview",
-          "type": "chat",
-          "status": "active",
-          "context_window": 262144,
-          "modalities": {
-            "input": [
-              "text"
-            ],
-            "output": [
-              "text"
-            ]
-          },
-          "owned_by": "moonshot",
-          "created": 1776488929
-        },
-        {
-          "id": "kimi-latest",
-          "type": "chat",
-          "status": "active",
-          "context_window": 131072,
-          "modalities": {
-            "input": [
-              "text",
-              "image"
-            ],
-            "output": [
-              "text"
-            ]
-          },
-          "capabilities": {
-            "vision": true
-          },
-          "owned_by": "moonshot",
-          "created": 1776488929
-        },
-        {
-          "id": "moonshot-v1-128k",
-          "type": "chat",
-          "status": "active",
-          "context_window": 131072,
-          "modalities": {
-            "input": [
-              "text"
-            ],
-            "output": [
-              "text"
-            ]
-          },
-          "owned_by": "moonshot",
-          "created": 1776488929
-        },
-        {
-          "id": "moonshot-v1-8k-vision-preview",
-          "type": "chat",
-          "status": "active",
-          "context_window": 8192,
-          "modalities": {
-            "input": [
-              "text",
-              "image"
-            ],
-            "output": [
-              "text"
-            ]
-          },
-          "capabilities": {
-            "vision": true
           },
           "owned_by": "moonshot",
           "created": 1776488929
