@@ -100,6 +100,8 @@ def main():
                         help="Show program's version number and exit")
     parser.add_argument('--new-models', type=int, nargs='?', const=7, metavar='DAYS',
                         help='List models first seen in the last N days (default: 7)')
+    parser.add_argument('--deprecated-models', action='store_true',
+                        help='List deprecated models and their deprecation info')
 
     args = parser.parse_args()
 
@@ -131,6 +133,34 @@ def main():
                 parts.append(f"ctx={ctx}")
             if cost:
                 parts.append(f"cost={cost}")
+            print(f"  {'  '.join(parts)}")
+        return
+
+    if args.deprecated_models:
+        from pathlib import Path
+        models_json = Path(__file__).parent / "models" / "models.json"
+        if not models_json.exists():
+            print("models.json not found. Run scripts/generate_models.py first.")
+            return
+        with open(models_json) as f:
+            data = json.load(f)
+        depr = []
+        for pid, pdata in data["providers"].items():
+            for m in pdata["models"]:
+                if m.get("status") == "deprecated" or m.get("deprecation_date"):
+                    depr.append((pid, m))
+        if not depr:
+            print("No deprecated models.")
+            return
+        print(f"Deprecated models ({len(depr)}):")
+        for pid, m in depr:
+            parts = [f"{pid}/{m['id']}", f"type={m.get('type', '?')}"]
+            if m.get("deprecation_date"):
+                parts.append(f"dep={m['deprecation_date']}")
+            if m.get("deprecation_replacement"):
+                parts.append(f"→ {m['deprecation_replacement']}")
+            if m.get("first_seen"):
+                parts.append(f"seen={m['first_seen']}")
             print(f"  {'  '.join(parts)}")
         return
 

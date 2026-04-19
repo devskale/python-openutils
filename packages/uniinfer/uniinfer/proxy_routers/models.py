@@ -61,6 +61,21 @@ def create_models_router(version: str) -> APIRouter:
         except Exception as e:
             raise HTTPException(status_code=500, detail=f"Failed to update models: {e}")
 
+    @router.get("/v1/models/deprecated")
+    async def list_deprecated_models():
+        """List deprecated models with deprecation info."""
+        await ensure_fresh_models_file()
+        models = list_all_models_from_factories()
+        deprecated = [
+            m for m in models
+            if m.get("status") == "deprecated" or m.get("deprecation_date")
+        ]
+        return {
+            "object": "list",
+            "data": deprecated,
+            "total": len(deprecated),
+        }
+
     @router.get("/v1/models/new")
     async def list_new_models(days: int = 7):
         """List models first seen in the last N days."""
