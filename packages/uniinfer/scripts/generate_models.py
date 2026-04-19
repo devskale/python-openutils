@@ -300,48 +300,43 @@ def merge_models_dev(models: list[dict], dev_provider: dict, type_overrides: dic
     return models
 
 
-def probe_embed_dimensions(provider_id, cls, credgoo_service, model_ids):
-    """Probe embedding endpoint to get vector dimensions for each model.
+def probe_ollama_show_metadata(base_url, api_key, model_ids):
+    """Probe Ollama /api/show for context_length and embedding_length.
 
-    Only used for providers whose /v1/models returns bare data (no dimensions).
-    Currently limited to TU which exposes embed models without dimension info.
+    Returns dict mapping model_id -> {context_window, dimensions}.
+    Only fills values that are missing (zero/None) from live API.
     """
-    dimensions = {}
-    if provider_id != "tu":
-        return dimensions
-
-    try:
-        from credgoo.credgoo import get_api_key
-        api_key = get_api_key(credgoo_service)
-    except Exception:
-        return dimensions
-
+    metadata = {}
     import requests
-    base_url = getattr(cls, "BASE_URL", None)
-    if not base_url:
-        return dimensions
-
-    # Strip trailing /v1 to get base, then re-add
-    base = base_url.rstrip("/")
-    if base.endswith("/v1"):
-        embed_url = base + "/embeddings"
-    else:
-        embed_url = base + "/v1/embeddings"
-
-    headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
+    show_url = base_url.rstrip("/") + "/api/show"
+    headers = {}
+    if api_key:
+        headers["Authorization"] = f"Bearer {api_key}"
 
     for mid in model_ids:
         try:
-            resp = requests.post(embed_url, json={"model": mid, "input": "hello"}, headers=headers, timeout=15)
-            if resp.status_code == 200:
-                data = resp.json()
-                emb = data["data"][0]["embedding"]
-                dimensions[mid] = len(emb)
-                log.info("    %s: dimensions=%d", mid, len(emb))
+            resp = requests.post(show_url, json={"model": mid}, headers=headers, timeout=15)
+            if resp.status_code != 200:
+                log.debug("    %s: /api/show returned %d", mid, resp.status_code)
+                continue
+            mi = resp.json().get("model_info", {})
+            if not mi:
+                continue
+            arch = mi.get("general.architecture", "")
+            ctx = mi.get(f"{arch}.context_length") or mi.get("general.context_length")
+            dims = mi.get(f"{arch}.embedding_length") or mi.get("general.embedding_length")
+            entry = {}
+            if ctx and ctx > 0:
+                entry["context_window"] = ctx
+            if dims and dims > 0:
+                entry["dimensions"] = dims
+            if entry:
+                metadata[mid] = entry
+                log.info("    %s: ctx=%s dims=%s", mid, entry.get("context_window", "-"), entry.get("dimensions", "-"))
         except Exception as e:
-            log.debug("    %s: probe failed: %s", mid, e)
+            log.debug("    %s: /api/show failed: %s", mid, e)
 
-    return dimensions
+    return metadata
 
 
 def main():
@@ -383,13 +378,26 @@ def main():
                 models = merge_models_dev(models, models_dev[dev_pid])
                 dev_providers_used.add(dev_pid)
 
-            # Probe embed models for dimensions (TU only)
+            # Probe Ollama embed models via /api/show for ctx + dims
             embed_ids = [m["id"] for m in models if m.get("type") == "embed"]
-            if embed_ids:
-                dims = probe_embed_dimensions(provider_id, cls, credgoo_service, embed_ids)
-                for m in models:
-                    if m["id"] in dims:
-                        m["dimensions"] = dims[m["id"]]  # live probe wins over models.dev
+            if embed_ids and provider_id == "ollama":
+                from uniinfer.config.providers import PROVIDER_CONFIGS
+                ollama_base = PROVIDER_CONFIGS.get("ollama", {}).get("extra_params", {}).get("base_url")
+                ollama_key = None
+                try:
+                    from credgoo.credgoo import get_api_key
+                    ollama_key = get_api_key(credgoo_service)
+                except Exception:
+                    pass
+                if ollama_base:
+                    meta = probe_ollama_show_metadata(ollama_base, ollama_key, embed_ids)
+                    for m in models:
+                        if m["id"] in meta:
+                            entry = meta[m["id"]]
+                            if not m.get("context_window") and "context_window" in entry:
+                                m["context_window"] = entry["context_window"]
+                            if not m.get("dimensions") and "dimensions" in entry:
+                                m["dimensions"] = entry["dimensions"]
 
             result[provider_id] = {
                 "provider_class": cls.__name__,
