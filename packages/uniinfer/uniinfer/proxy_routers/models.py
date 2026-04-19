@@ -55,7 +55,12 @@ def create_models_router(version: str) -> APIRouter:
         return {
             "object": "list",
             "data": models,
+            "version": version,
         }
+
+    @router.get("/v1/system/version")
+    async def get_version():
+        return {"version": version}
 
     @router.post("/v1/system/update-models")
     async def update_models():
