@@ -94,7 +94,8 @@ def _run_speedtest(provider_name, model, prompt, api_key, extra_params):
     tft = (first_token_time - start) if first_token_time else 0.0
     tft_think = (first_thinking_time - start) if first_thinking_time else None
 
-    if last_usage:
+    has_usage = last_usage and (last_usage.get("total_tokens") or last_usage.get("completion_tokens"))
+    if has_usage:
         total_tokens = last_usage.get("total_tokens", 0) or 0
         thinking_tokens = last_usage.get("completion_tokens_details", {}).get("reasoning_tokens", 0) or 0
         text_tokens = (last_usage.get("completion_tokens", 0) or 0) - thinking_tokens
