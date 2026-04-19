@@ -112,7 +112,7 @@
     </div>
 
     <!-- Models Browser Section -->
-    <div id="models-section" class="section section--models" style="display:none">
+    <div id="models-section" class="section" style="display:none">
       <div class="models-toolbar">
         <div class="models-search">
           <input type="text" id="models-browser-search" placeholder="Search models..." />
@@ -134,7 +134,24 @@
           <span id="models-deprecated-count" class="deprecated-badge" style="display:none"></span>
         </div>
       </div>
-      <div id="models-list" class="models-list"></div>
+      <div class="models-table-wrap">
+        <table id="models-table" class="models-table">
+          <thead>
+            <tr>
+              <th data-col="type" class="th-sm">Type</th>
+              <th data-col="id">Model</th>
+              <th data-col="provider">Provider</th>
+              <th data-col="context_window" class="th-num">Ctx</th>
+              <th data-col="max_output" class="th-num">Out</th>
+              <th data-col="cost_input" class="th-num">$/in</th>
+              <th data-col="cost_output" class="th-num">$/out</th>
+              <th data-col="capabilities">Caps</th>
+              <th data-col="status" class="th-sm">Status</th>
+            </tr>
+          </thead>
+          <tbody id="models-tbody"></tbody>
+        </table>
+      </div>
       <div id="models-detail-panel" class="models-detail-panel" style="display:none">
         <button id="models-detail-close" class="detail-close-btn">×</button>
         <div id="models-detail-content"></div>
@@ -501,24 +518,21 @@
       addMsg("Select a provider and model to start chatting.", "system"); updateStats();
     });
 
-    // ─── Models Browser ─────────────────────────────────────────────
+    // ─── Models Browser (Table) ─────────────────────────────────────
     let modelsBrowserLoaded = false;
+    let modelsSortCol = "id", modelsSortDir = 1; // 1=asc, -1=desc
+    let modelsFilter = "all", modelsSearchText = "", modelsProviderFilter = "";
+
     async function loadModelsBrowser() {
       if (modelsBrowserLoaded) return;
       modelsBrowserLoaded = true;
       const { data } = await apiJson("/v1/models", { headers: getHeaders() });
       store.allModels = data;
-      // Populate provider filter
-      const provs = [...new Set(data.map(m => {
-        // provider is the key in the response; models come flat with id like "provider/model" or just id
-        // We need to get provider from the data structure
-        return m.provider || "";
-      }))].filter(Boolean);
+      const provs = [...new Set(data.map(m => m.provider || ""))].filter(Boolean).sort();
       const sel = $("#models-browser-provider");
       sel.innerHTML = '<option value="">All providers</option>';
       provs.forEach(p => { const o = document.createElement("option"); o.value = p; o.textContent = p; sel.appendChild(o); });
-      renderModelsList();
-      // Load new/deprecated counts
+      renderModelsTable();
       try {
         const newD = await apiJson("/v1/models/new?days=7", { headers: getHeaders(), allowHttp: true });
         if (newD.total > 0) { $("#models-new-count").textContent = `${newD.total} new`; $("#models-new-count").style.display = "inline"; }
@@ -529,55 +543,102 @@
       } catch {}
     }
 
-    let modelsFilter = "all", modelsSearchText = "", modelsProviderFilter = "";
+    function capBadges(m) {
+      const caps = m.capabilities || {};
+      const badges = [];
+      if (caps.reasoning) badges.push('<span class="cb cb-reasoning">R</span>');
+      if (caps.vision) badges.push('<span class="cb cb-vision">V</span>');
+      if (caps.tool_call) badges.push('<span class="cb cb-tools">T</span>');
+      if (caps.code_exec) badges.push('<span class="cb cb-code">C</span>');
+      if (caps.thinking) badges.push('<span class="cb cb-thinking">💭</span>');
+      if (caps.audio) badges.push('<span class="cb cb-audio">🔊</span>');
+      if (caps.ocr) badges.push('<span class="cb cb-ocr">OCR</span>');
+      if (caps.pdf) badges.push('<span class="cb cb-pdf">PDF</span>');
+      return badges.join("") || "—";
+    }
 
-    function renderModelsList() {
+    function renderModelsTable() {
       let models = store.allModels || [];
       if (modelsProviderFilter) models = models.filter(m => (m.provider || "") === modelsProviderFilter);
       if (modelsFilter !== "all") models = models.filter(m => (m.type || "chat") === modelsFilter);
-      if (modelsSearchText) { const f = modelsSearchText.toLowerCase(); models = models.filter(m => m.id.toLowerCase().includes(f)); }
+      if (modelsSearchText) { const f = modelsSearchText.toLowerCase(); models = models.filter(m => m.id.toLowerCase().includes(f) || (m.provider||"").toLowerCase().includes(f)); }
+      // Sort
+      models.sort((a, b) => {
+        let va, vb;
+        const col = modelsSortCol;
+        if (col === "type") { va = a.type || "chat"; vb = b.type || "chat"; }
+        else if (col === "id") { va = a.id || ""; vb = b.id || ""; }
+        else if (col === "provider") { va = a.provider || ""; vb = b.provider || ""; }
+        else if (col === "context_window" || col === "max_output" || col === "dimensions") { va = a[col] || 0; vb = b[col] || 0; }
+        else if (col === "cost_input") { va = (a.cost?.input) || 0; vb = (b.cost?.input) || 0; }
+        else if (col === "cost_output") { va = (a.cost?.output) || 0; vb = (b.cost?.output) || 0; }
+        else if (col === "status") { va = a.status || ""; vb = b.status || ""; }
+        else if (col === "capabilities") { va = Object.keys(a.capabilities || {}).length; vb = Object.keys(b.capabilities || {}).length; }
+        else { va = a[col]; vb = b[col]; }
+        if (typeof va === "string") return va.localeCompare(vb) * modelsSortDir;
+        return ((va || 0) - (vb || 0)) * modelsSortDir;
+      });
       $("#models-count").textContent = `${models.length} models`;
-      const list = $("#models-list");
-      list.innerHTML = "";
-      if (!models.length) { list.innerHTML = '<div class="models-empty">No models match your filter.</div>'; return; }
-      models.forEach(m => {
+      const tbody = $("#models-tbody");
+      tbody.innerHTML = "";
+      if (!models.length) { tbody.innerHTML = '<tr><td colspan="9" class="models-empty">No models match your filter.</td></tr>'; return; }
+      // Render in chunks to keep UI responsive
+      const frag = document.createDocumentFragment();
+      for (const m of models) {
         const type = m.type || "chat";
-        const div = document.createElement("div");
-        div.className = "model-card";
-        if (m.status === "deprecated") div.classList.add("model-card--deprecated");
-        const provider = m.provider || "";
-        div.innerHTML = `
-          <div class="mc-header">
-            <span class="mc-type" style="color:${typeColor(type)}">${typeIcon(type)}</span>
-            <span class="mc-provider">${escapeHtml(provider)}</span>
-            ${m.status === "deprecated" ? '<span class="mc-deprecated">deprecated</span>' : ''}
-          </div>
-          <div class="mc-id">${escapeHtml(m.id)}</div>
-          <div class="mc-meta">
-            ${m.context_window ? `<span>ctx ${formatCtx(m.context_window)}</span>` : ""}
-            ${m.max_output ? `<span>out ${formatCtx(m.max_output)}</span>` : ""}
-            ${m.cost ? `<span>${formatCost(m.cost)}</span>` : ""}
-            ${m.dimensions ? `<span>${m.dimensions}d</span>` : ""}
-          </div>
-          <div class="mc-caps">${[...(m.capabilities ? Object.entries(m.capabilities).filter(([,v])=>v).map(([k])=>k) : []), ...(m.modalities ? [Object.values(m.modalities).flat().join("/")] : [])].join(" · ") || "—"}</div>
-          ${m.first_seen ? `<div class="mc-date">seen ${m.first_seen}</div>` : ""}
-          ${m.deprecation_date ? `<div class="mc-date mc-date--dep">dep ${m.deprecation_date}</div>` : ""}
-        `;
-        div.addEventListener("click", () => showModelDetail(provider, m.id));
-        list.appendChild(div);
+        const tr = document.createElement("tr");
+        tr.className = m.status === "deprecated" ? "tr-deprecated" : "";
+        tr.dataset.provider = m.provider || "";
+        tr.dataset.id = m.id;
+        tr.innerHTML =
+          `<td class="td-type"><span style="color:${typeColor(type)}">${typeIcon(type)}</span> <span class="td-type-label">${type}</span></td>` +
+          `<td class="td-id" title="${escapeHtml(m.id)}">${escapeHtml(m.id)}</td>` +
+          `<td class="td-provider">${escapeHtml(m.provider || "")}</td>` +
+          `<td class="td-num">${m.context_window ? m.context_window.toLocaleString() : ""}</td>` +
+          `<td class="td-num">${m.max_output ? m.max_output.toLocaleString() : ""}</td>` +
+          `<td class="td-num">${m.cost?.input != null ? m.cost.input : ""}</td>` +
+          `<td class="td-num">${m.cost?.output != null ? m.cost.output : ""}</td>` +
+          `<td class="td-caps">${capBadges(m)}</td>` +
+          `<td class="td-status">${m.status === "deprecated" ? '<span class="status-dep">dep</span>' : m.first_seen ? `<span class="status-new" title="First seen ${m.first_seen}">new</span>` : ""}</td>`;
+        tr.addEventListener("click", () => showModelDetail(m.provider || "", m.id));
+        frag.appendChild(tr);
+      }
+      tbody.appendChild(frag);
+      // Update sort indicators
+      $$("#models-table th").forEach(th => {
+        const col = th.dataset.col;
+        const arrow = th.querySelector(".sort-arrow");
+        if (arrow) arrow.remove();
+        if (col === modelsSortCol) {
+          const span = document.createElement("span");
+          span.className = "sort-arrow";
+          span.textContent = modelsSortDir === 1 ? " ▲" : " ▼";
+          th.appendChild(span);
+        }
       });
     }
+
+    // Column sort
+    $$("#models-table th").forEach(th => {
+      th.addEventListener("click", () => {
+        const col = th.dataset.col;
+        if (modelsSortCol === col) modelsSortDir *= -1;
+        else { modelsSortCol = col; modelsSortDir = 1; }
+        renderModelsTable();
+      });
+      th.style.cursor = "pointer";
+    });
 
     $$(".filter-btn").forEach(btn => {
       btn.addEventListener("click", () => {
         $$(".filter-btn").forEach(b => b.classList.remove("active"));
         btn.classList.add("active");
         modelsFilter = btn.dataset.filter;
-        renderModelsList();
+        renderModelsTable();
       });
     });
-    $("#models-browser-search").addEventListener("input", e => { modelsSearchText = e.target.value; renderModelsList(); });
-    $("#models-browser-provider").addEventListener("change", e => { modelsProviderFilter = e.target.value; renderModelsList(); });
+    $("#models-browser-search").addEventListener("input", e => { modelsSearchText = e.target.value; renderModelsTable(); });
+    $("#models-browser-provider").addEventListener("change", e => { modelsProviderFilter = e.target.value; renderModelsTable(); });
 
     function showModelDetail(provider, id) {
       const models = store.allModels || [];
