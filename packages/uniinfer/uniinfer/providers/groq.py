@@ -221,26 +221,29 @@ class GroqProvider(ChatProvider):
             ValueError: If no API key can be found.
             Exception: If the API request fails.
         """
+        if not HAS_GROQ:
+            import logging
+            logging.warning("groq package not installed — cannot list Groq models")
+            return []
+
+        # Prioritize the provided api_key parameter
+        if not api_key:
+            api_key = os.getenv("GROQ_API_KEY")
+        if not api_key:
+            try:
+                from credgoo.credgoo import get_api_key
+                api_key = get_api_key("groq")
+            except ImportError:
+                api_key = None  # credgoo not available
+
+        if not api_key:
+            import logging
+            logging.warning("No Groq API key found")
+            return []
+
         try:
-            # Prioritize the provided api_key parameter
-            if not api_key:
-                api_key = os.getenv("GROQ_API_KEY")
-            if not api_key:
-                try:
-                    from credgoo.credgoo import get_api_key
-                    api_key = get_api_key("groq")
-                except ImportError:
-                    api_key = None  # credgoo not available
-
-            if not api_key:
-                raise ValueError(
-                    "API key is required to list Groq models. Provide it as an argument, set GROQ_API_KEY, or configure credgoo.")
-
-            # Initialize client and fetch models
             client = Groq(api_key=api_key)
             models = client.models.list()
-
-            # Extract model IDs
             return [ModelInfo(
                 id=model.id,
                 owned_by=getattr(model, "owned_by", None),
@@ -249,12 +252,9 @@ class GroqProvider(ChatProvider):
                 status="active" if getattr(model, "active", True) else "deprecated",
             ) for model in models.data]
         except Exception as e:
-            # Log the error for debugging
             import logging
-            logging.warning(f"Failed to fetch Groq models: {str(e)}")
-
-            # Fallback to default models if API call fails
-            return [ModelInfo(id=m) for m in ["llama-3.1-8b", "llama-3.1-70b", "llama-3.1-405b", "mixtral-8x7b-32768", "gemma-7b-it"]]
+            logging.warning("Failed to fetch Groq models: %s", str(e))
+            return []
 
     def stream_complete(
         self,

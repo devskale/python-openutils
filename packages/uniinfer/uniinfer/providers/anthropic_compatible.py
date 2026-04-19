@@ -51,6 +51,8 @@ class AnthropicCompatibleProvider(ChatProvider):
     def list_models(cls, api_key: Optional[str] = None, **kwargs) -> list[ModelInfo]:
         from ..core import ModelInfo
         if not HAS_ANTHROPIC:
+            import logging
+            logging.warning("anthropic package not installed — cannot list %s models", cls.PROVIDER_ID)
             return []
         if not api_key and cls.CREDGOO_SERVICE:
             try:

@@ -38,7 +38,7 @@ class UpstageProvider(OpenAICompatibleChatProvider):
 
         try:
             headers = {"Authorization": f"Bearer {api_key}"}
-            response = requests.get(f"{base_url}/models", headers=headers)
+            response = requests.get(f"https://api.upstage.ai/v1/models", headers=headers)
             response.raise_for_status()
             models_data = response.json()
             return [ModelInfo(id=model["id"], owned_by=model.get("owned_by"), created=model.get("created"), raw=model) for model in models_data.get("data", [])]
