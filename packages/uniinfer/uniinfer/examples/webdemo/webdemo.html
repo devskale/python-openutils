@@ -1,6 +1,5 @@
 <!doctype html>
 <html lang="en">
-
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -12,2191 +11,765 @@
   <script src="https://cdn.jsdelivr.net/npm/dompurify@3.2.6/dist/purify.min.js"></script>
   <link rel="stylesheet" href="/webdemo/style.css" />
 </head>
-
 <body>
   <div class="app-container">
     <header>
       <h1>UniInfer</h1>
-      <div id="app-version" style="
-            font-size: 0.72rem;
-            color: #6b7280;
-            background: #f3f4f6;
-            padding: 3px 8px;
-            border-radius: 999px;
-            margin-left: 6px;
-          ">v...</div>
-
+      <div id="app-version" class="version-badge">v...</div>
       <div class="mode-switch">
         <button id="mode-chat" class="mode-btn active">Chat</button>
+        <button id="mode-models" class="mode-btn">Models</button>
         <button id="mode-image" class="mode-btn">Images</button>
         <button id="mode-audio" class="mode-btn">Audio</button>
       </div>
-
-      <div id="chat-stats" style="
-            display: none;
-            align-items: center;
-            gap: 8px;
-            font-size: 0.78rem;
-            color: #666;
-            background: #f5f5f5;
-            padding: 4px 10px;
-            border-radius: 16px;
-            margin-right: 8px;
-          ">
-        <span id="stats-text">0 turns • 0 tokens</span>
-        <button id="clear-chat-btn" title="Clear Chat History" style="
-              background: none;
-              border: none;
-              font-size: 0.88rem;
-              cursor: pointer;
-              padding: 0;
-              line-height: 1;
-              color: #999;
-              display: flex;
-              align-items: center;
-            " onmouseover="this.style.color = '#ff4444'" onmouseout="this.style.color = '#999'">
-          ❌
-        </button>
+      <div id="chat-stats" class="stats-bar">
+        <span id="stats-text">0 msgs</span>
+        <button id="clear-chat-btn" class="stats-clear-btn" title="Clear chat">✕</button>
       </div>
-
-      <button id="settings-button" title="Settings">⚙️</button>
+      <button id="settings-button" class="icon-btn-lg" title="Settings">⚙️</button>
     </header>
 
     <!-- Settings Modal -->
-    <div id="settings-modal" style="
-          display: none;
-          position: fixed;
-          top: 0;
-          left: 0;
-          width: 100%;
-          height: 100%;
-          z-index: 1000;
-          align-items: center;
-          justify-content: center;
-        ">
+    <div id="settings-modal" class="modal-overlay">
       <div class="modal-content">
-        <h2 style="margin-top: 0; margin-bottom: 24px">Settings</h2>
-
+        <h2>Settings</h2>
         <div class="form-group">
-          <label for="settings-api-base-url">API Base URL</label>
+          <label>API Base URL</label>
           <input type="text" id="settings-api-base-url" placeholder="https://api.example.com/v1" />
         </div>
-
         <div class="form-group">
-          <label for="settings-api-key">API Key</label>
-          <input type="password" id="settings-api-key" placeholder="Enter your key" />
+          <label>API Key</label>
+          <input type="password" id="settings-api-key" placeholder="Bearer token" />
         </div>
-
-        <div class="form-group" style="margin-top: -8px">
-          <label style="display: flex; align-items: center; gap: 8px; text-transform: none; letter-spacing: 0; font-family: inherit; font-size: 0.85rem; color: #374151;">
-            <input type="checkbox" id="settings-remember-key" />
-            Remember API key on this device
-          </label>
-          <div style="font-size: 0.75rem; color: #b45309; margin-top: 6px;">
-            Warning: Stored browser keys can be read by scripts running on this page.
-          </div>
-        </div>
-
         <div class="form-group">
-          <label for="settings-max-tokens">Max Tokens</label>
+          <label class="checkbox-label"><input type="checkbox" id="settings-remember-key" /> Remember key on this device</label>
+          <div class="form-hint">Stored browser keys can be read by scripts on this page.</div>
+        </div>
+        <div class="form-group">
+          <label>Max Tokens</label>
           <input type="number" id="settings-max-tokens" value="4000" />
         </div>
-
-        <div style="display: flex; gap: 10px; margin-top: 18px">
-          <button id="settings-save" class="btn-primary" style="flex: 1">
-            Save Changes
-          </button>
-          <button id="settings-cancel" style="
-                flex: 1;
-                background: #eee;
-                color: #333;
-                border: none;
-                border-radius: 12px;
-                cursor: pointer;
-              ">
-            Cancel
-          </button>
+        <div class="modal-actions">
+          <button id="settings-save" class="btn-primary">Save</button>
+          <button id="settings-cancel" class="btn-secondary">Cancel</button>
         </div>
-
-        <div style="
-              margin-top: 16px;
-              padding-top: 12px;
-              border-top: 1px solid #eee;
-              text-align: center;
-            ">
-          <button id="update-models-btn">Refresh Models List</button>
-          <div id="update-models-status"></div>
+        <div class="modal-footer">
+          <button id="update-models-btn" class="btn-link">⟳ Refresh Models</button>
+          <div id="update-models-status" class="form-hint"></div>
         </div>
       </div>
     </div>
 
-    <!-- Logic Containers -->
-    <div id="chat-section-container" style="
-          display: flex;
-          flex-direction: column;
-          flex: 1;
-          overflow: hidden;
-        ">
-      <div id="model-select-container">
-        <div>
+    <!-- Chat Section -->
+    <div id="chat-section" class="section">
+      <div id="model-select-bar">
+        <div class="select-group">
           <label>Provider</label>
-          <select id="provider-select" disabled>
-            <option value="" disabled selected>Loading...</option>
-          </select>
+          <select id="provider-select" disabled><option>Loading...</option></select>
         </div>
-        <div style="flex: 1">
+        <div class="select-group select-group--model">
           <label>Model</label>
-          <select id="model-select" disabled>
-            <option value="">Select provider first</option>
-          </select>
-          <button id="copy-model-btn" title="Copy model ID" style="
-                background: none;
-                border: none;
-                cursor: pointer;
-                padding: 2px;
-                display: flex;
-                align-items: center;
-                opacity: 0.6;
-                transition: opacity 0.2s;
-              " onmouseover="this.style.opacity = '1'" onmouseout="this.style.opacity = '0.6'">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-              stroke-linecap="round" stroke-linejoin="round">
-              <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
-              <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
-            </svg>
-          </button>
+          <div class="model-select-wrapper">
+            <input type="text" id="model-search" placeholder="Search models..." autocomplete="off" />
+            <div id="model-dropdown" class="model-dropdown"></div>
+          </div>
+          <button id="selected-model-info" class="model-info-btn" title="Model details" style="display:none">ⓘ</button>
         </div>
+      </div>
+
+      <!-- Model info bar (shows when a model is selected) -->
+      <div id="model-info-bar" class="model-info-bar" style="display:none">
+        <span id="model-info-type" class="model-tag"></span>
+        <span id="model-info-ctx" class="model-meta"></span>
+        <span id="model-info-cost" class="model-meta"></span>
+        <span id="model-info-caps" class="model-meta"></span>
+        <span id="model-info-status" class="model-meta"></span>
       </div>
 
       <div id="chat-container">
-        <div class="system-message">
-          Select a provider and model to start chatting.
-        </div>
+        <div class="system-message">Select a provider and model to start chatting.</div>
       </div>
 
       <div id="chat-input-wrapper">
-        <div id="image-preview-area" style="display: none">
-          <div style="position: relative">
+        <div id="image-preview-area" style="display:none">
+          <div style="position:relative">
             <img id="image-preview-img" class="preview-thumb" />
-            <button id="remove-image-btn" style="
-                  position: absolute;
-                  top: -8px;
-                  right: -8px;
-                  background: #ff4444;
-                  color: white;
-                  border: none;
-                  border-radius: 50%;
-                  width: 20px;
-                  height: 20px;
-                  cursor: pointer;
-                ">
-              ×
-            </button>
+            <button id="remove-image-btn" class="remove-preview-btn">×</button>
           </div>
         </div>
-
         <div id="input-area">
-          <button id="upload-image-btn" class="icon-btn" title="Upload Image">
-            📷
-          </button>
-          <input type="file" id="chat-file-input" accept="image/*" style="display: none" />
-
+          <button id="upload-image-btn" class="icon-btn" title="Upload Image">📷</button>
+          <input type="file" id="chat-file-input" accept="image/*" style="display:none" />
           <textarea id="message-input" placeholder="Type a message..." rows="1"></textarea>
-
-          <button id="predefined-button" class="icon-btn" title="Quick Prompts">
-            ✨
+          <button id="send-button" title="Send">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="19" x2="12" y2="5"></line><polyline points="5 12 12 5 19 12"></polyline></svg>
           </button>
-          <button id="send-button" title="Send message">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
-              stroke-linecap="round" stroke-linejoin="round">
-              <line x1="12" y1="19" x2="12" y2="5"></line>
-              <polyline points="5 12 12 5 19 12"></polyline>
-            </svg>
-          </button>
-          <button id="stop-button" title="Stop generating" style="display: none">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
-              <rect x="6" y="6" width="12" height="12" rx="2"></rect>
-            </svg>
+          <button id="stop-button" title="Stop" style="display:none">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="6" width="12" height="12" rx="2"></rect></svg>
           </button>
         </div>
       </div>
+    </div>
 
-      <!-- Floating Quick Prompts -->
-      <div id="predefined-messages" style="display: none">
-        <h3>Quick Suggestions</h3>
-        <div style="display: flex; flex-direction: column; gap: 4px">
-          <button class="predefined-message">Tell me a joke</button>
-          <button class="predefined-message">
-            Explain Quantum Computing
-          </button>
-          <button class="predefined-message">What is HSL Color?</button>
-          <button id="close-predefined" class="predefined-message">
-            Close
-          </button>
+    <!-- Models Browser Section -->
+    <div id="models-section" class="section section--models" style="display:none">
+      <div class="models-toolbar">
+        <div class="models-search">
+          <input type="text" id="models-browser-search" placeholder="Search models..." />
         </div>
+        <div class="models-filters">
+          <button class="filter-btn active" data-filter="all">All</button>
+          <button class="filter-btn" data-filter="chat">Chat</button>
+          <button class="filter-btn" data-filter="embed">Embed</button>
+          <button class="filter-btn" data-filter="tts">TTS</button>
+          <button class="filter-btn" data-filter="stt">STT</button>
+          <button class="filter-btn" data-filter="image">Image</button>
+        </div>
+        <div class="models-provider-filter">
+          <select id="models-browser-provider"><option value="">All providers</option></select>
+        </div>
+        <div class="models-stats">
+          <span id="models-count">0 models</span>
+          <span id="models-new-count" class="new-badge" style="display:none"></span>
+          <span id="models-deprecated-count" class="deprecated-badge" style="display:none"></span>
+        </div>
+      </div>
+      <div id="models-list" class="models-list"></div>
+      <div id="models-detail-panel" class="models-detail-panel" style="display:none">
+        <button id="models-detail-close" class="detail-close-btn">×</button>
+        <div id="models-detail-content"></div>
       </div>
     </div>
 
     <!-- Image Generation Section -->
-    <div id="image-area" class="panel panel-image">
+    <div id="image-section" class="section" style="display:none">
       <h3>Image Generation</h3>
       <div class="image-controls-grid">
         <textarea id="image-prompt" placeholder="A futuristic city with glass towers and neon lights..."></textarea>
-
-        <div style="
-              display: flex;
-              gap: 8px;
-              flex-wrap: wrap;
-              align-items: center;
-            ">
-          <div class="form-group" style="flex: 1; min-width: 120px; margin-bottom: 0">
+        <div class="image-controls-row">
+          <div class="form-group form-group--inline">
             <label>Provider</label>
-            <select id="image-provider" style="width: 100%">
-              <option value="pollinations" selected>pollinations</option>
-              <option value="tu">tu</option>
-            </select>
+            <select id="image-provider"><option value="pollinations">pollinations</option><option value="tu">tu</option></select>
           </div>
-
-          <div class="form-group" style="flex: 1; min-width: 120px; margin-bottom: 0">
+          <div class="form-group form-group--inline">
             <label>Model</label>
-            <select id="image-model" style="width: 100%"></select>
+            <select id="image-model"></select>
           </div>
-
-          <div class="form-group" style="width: 120px; margin-bottom: 0">
+          <div class="form-group form-group--inline form-group--sm">
             <label>Size</label>
-            <select id="image-size" style="width: 100%">
-              <option value="256x256">256x256</option>
-              <option value="512x512" selected>512x512</option>
-              <option value="768x768">768x768</option>
-              <option value="1024x1024">1024x1024</option>
-              <option value="1024x1536">1024x1536</option>
-              <option value="1536x1024">1536x1024</option>
-              <option value="1920x1080">1920x1080</option>
+            <select id="image-size">
+              <option value="256x256">256</option><option value="512x512" selected>512</option>
+              <option value="768x768">768</option><option value="1024x1024">1024</option>
+              <option value="1024x1536">1024×1536</option><option value="1536x1024">1536×1024</option>
+              <option value="1920x1080">1920×1080</option>
             </select>
           </div>
-
-          <button id="generate-image" class="btn-primary" style="margin-top: 14px">
-            Generate Image
-          </button>
-          <button id="stop-image" class="btn-primary" style="margin-top: 14px; background: #ff4444; display: none">
-            Stop
-          </button>
+          <button id="generate-image" class="btn-primary">Generate</button>
+          <button id="stop-image" class="btn-danger" style="display:none">Stop</button>
         </div>
       </div>
-
       <div id="image-status"></div>
-      <div id="image-results" style="
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-            gap: 24px;
-          "></div>
+      <div id="image-results"></div>
     </div>
 
     <!-- Audio Section -->
-    <div id="audio-area" class="panel panel-audio">
+    <div id="audio-section" class="section" style="display:none">
       <div class="audio-box">
-        <h3>Text-to-Speech (TTS)</h3>
-        <textarea id="tts-input" placeholder="Paste text here to convert to speech..." rows="4" style="
-              width: 100%;
-              border: 1px solid #eee;
-              border-radius: 12px;
-              padding: 12px;
-              margin-bottom: 10px;
-              font-family: inherit;
-            "></textarea>
-
-        <div style="
-              display: flex;
-              gap: 10px;
-              flex-wrap: wrap;
-              align-items: flex-end;
-            ">
-          <div class="form-group" style="flex: 1; min-width: 150px; margin-bottom: 0">
+        <h3>Text-to-Speech</h3>
+        <textarea id="tts-input" placeholder="Paste text here to convert to speech..." rows="3"></textarea>
+        <div class="audio-controls-row">
+          <div class="form-group form-group--inline">
             <label>Model</label>
-            <select id="tts-model" style="width: 100%">
-              <option value="tu@kokoro">Loading TU TTS models...</option>
-            </select>
+            <select id="tts-model"><option value="">Loading...</option></select>
           </div>
-
-          <div class="form-group" style="flex: 1; min-width: 150px; margin-bottom: 0">
+          <div class="form-group form-group--inline">
             <label>Voice</label>
-            <select id="tts-voice" style="width: 100%"></select>
+            <select id="tts-voice"></select>
           </div>
-
-          <button id="tts-generate-btn" class="btn-primary">
-            Generate Speech
-          </button>
+          <button id="tts-generate-btn" class="btn-primary">Generate Speech</button>
           <span id="tts-status"></span>
         </div>
-        <div id="tts-result" style="margin-top: 24px"></div>
+        <div id="tts-result"></div>
       </div>
-
       <div class="audio-box">
-        <h3>Speech-to-Text (STT)</h3>
-        <div style="
-              border: 2px dashed #eee;
-              border-radius: 12px;
-              padding: 18px;
-              text-align: center;
-            ">
-          <input type="file" id="stt-file" accept="audio/*" style="display: none" />
-          <button onclick="document.getElementById('stt-file').click()" style="
-                background: #f8f9fa;
-                border: 1px solid #ddd;
-                padding: 8px 14px;
-                border-radius: 10px;
-                cursor: pointer;
-              ">
-            Choose Audio File
-          </button>
-          <div id="selected-audio-name" style="margin-top: 12px; font-size: 0.8rem; color: #888">
-            No file selected
-          </div>
+        <h3>Speech-to-Text</h3>
+        <div class="stt-upload-area">
+          <input type="file" id="stt-file" accept="audio/*" style="display:none" />
+          <button class="btn-secondary" onclick="document.getElementById('stt-file').click()">Choose Audio File</button>
+          <div id="selected-audio-name" class="form-hint">No file selected</div>
         </div>
-
-        <div style="
-              display: flex;
-              gap: 10px;
-              align-items: center;
-              margin-top: 12px;
-            ">
-          <select id="stt-model" style="min-width: 200px">
-            <option value="tu@whisper-large">Loading TU STT models...</option>
-          </select>
-          <button id="stt-transcribe-btn" class="btn-primary">
-            Transcribe Audio
-          </button>
+        <div class="audio-controls-row">
+          <select id="stt-model" style="min-width:200px"><option value="">Loading...</option></select>
+          <button id="stt-transcribe-btn" class="btn-primary">Transcribe</button>
           <span id="stt-status"></span>
         </div>
-
-        <div id="stt-result" style="
-              margin-top: 12px;
-              padding: 10px;
-              background: #fbfbfb;
-              border-radius: 10px;
-              min-height: 44px;
-            "></div>
-      </div>
-
-      <!-- Streaming STT Box -->
-      <div class="audio-box" style="border: 2px solid #f59e0b; background: linear-gradient(135deg, #fffbeb 0%, #fff 100%);">
-        <h3>
-          🎤 Streaming Speech-to-Text
-          <span style="
-            display: inline-block;
-            background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
-            color: white;
-            font-size: 0.6rem;
-            font-weight: 700;
-            padding: 2px 8px;
-            border-radius: 4px;
-            margin-left: 8px;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-          ">Demo</span>
-        </h3>
-        <p style="font-size: 0.75rem; color: #92400e; margin: -8px 0 12px 0;">
-          Records mic audio with real-time transcription using browser's Web Speech API. Works entirely in browser (WebSocket optional).
-        </p>
-        
-        <div style="display: flex; gap: 10px; flex-wrap: wrap; align-items: flex-end; margin-bottom: 12px;">
-          <div class="form-group" style="flex: 1; min-width: 200px; margin-bottom: 0;">
-            <label>WebSocket URL <span style="color: #9ca3af; font-weight: normal;">(leave empty for demo mode)</span></label>
-            <input type="text" id="stream-stt-ws-url" 
-              placeholder="ws://localhost:8123/v1/audio/transcriptions/stream" 
-              style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 8px; font-size: 0.85rem;" />
-          </div>
-          
-          <div class="form-group" style="width: 150px; margin-bottom: 0;">
-            <label>Model</label>
-            <select id="stream-stt-model" style="width: 100%;">
-              <option value="tu@whisper-large">tu@whisper-large</option>
-              <option value="tu@whisper-small">tu@whisper-small</option>
-              <option value="tu@whisper-turbo">tu@whisper-turbo</option>
-            </select>
-          </div>
-          
-          <div class="form-group" style="width: 100px; margin-bottom: 0;">
-            <label>Chunk (ms)</label>
-            <select id="stream-stt-chunk-ms" style="width: 100%;">
-              <option value="100">100</option>
-              <option value="200">200</option>
-              <option value="250" selected>250</option>
-              <option value="300">300</option>
-              <option value="500">500</option>
-              <option value="1000">1000</option>
-            </select>
-          </div>
-        </div>
-
-        <!-- Audio Level Meter -->
-        <div style="margin-bottom: 12px;">
-          <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
-            <span style="font-size: 0.75rem; color: #6b7280;">Audio Level:</span>
-            <span id="stream-stt-level-text" style="font-size: 0.7rem; color: #9ca3af;">--</span>
-          </div>
-          <div style="background: #e5e7eb; border-radius: 4px; height: 8px; overflow: hidden;">
-            <div id="stream-stt-level-bar" style="background: linear-gradient(90deg, #22c55e 0%, #f59e0b 50%, #ef4444 100%); height: 100%; width: 0%; transition: width 0.05s;"></div>
-          </div>
-        </div>
-
-        <div style="display: flex; gap: 10px; align-items: center; margin-bottom: 12px;">
-          <button id="stream-stt-toggle" class="btn-primary" style="
-            background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
-            font-weight: 600;
-            padding: 10px 24px;
-            box-shadow: 0 2px 8px rgba(34, 197, 94, 0.3);
-            min-width: 160px;
-            transition: all 0.2s ease;
-          ">
-            🎙️ Start Recording
-          </button>
-          <span id="stream-stt-status" style="font-size: 0.8rem; color: #666;"></span>
-          <span id="stream-stt-indicator" style="display: none; margin-left: auto; align-items: center; gap: 4px;">
-            <span class="recording-dot"></span>
-            <span style="font-size: 0.75rem; color: #ef4444; font-weight: 700;">● LIVE</span>
-          </span>
-        </div>
-        
-        <!-- Stats Row -->
-        <div style="display: flex; gap: 16px; margin-bottom: 12px; font-size: 0.75rem; color: #6b7280; flex-wrap: wrap;">
-          <span>Chunks: <strong id="stream-stt-chunks" style="color: #1f2937;">0</strong></span>
-          <span>Bytes: <strong id="stream-stt-bytes" style="color: #1f2937;">0</strong></span>
-          <span>Duration: <strong id="stream-stt-duration" style="color: #1f2937;">0.0s</strong></span>
-          <span id="stream-stt-mode-badge" style="background: #dbeafe; color: #1d4ed8; padding: 1px 6px; border-radius: 4px;">Demo Mode</span>
-        </div>
-        
-        <!-- Debug Panel -->
-        <div id="stream-stt-debug" style="
-          margin-bottom: 12px;
-          padding: 10px;
-          background: #1e293b;
-          border-radius: 8px;
-          font-family: 'Monaco', 'Menlo', monospace;
-          font-size: 0.7rem;
-          color: #94a3b8;
-          max-height: 150px;
-          overflow-y: auto;
-        ">
-          <div style="color: #64748b; margin-bottom: 4px;">Debug Log:</div>
-          <div id="stream-stt-debug-log"></div>
-        </div>
-
-        <div id="stream-stt-transcript" style="
-          margin-top: 12px;
-          padding: 14px;
-          background: #f8fafc;
-          border-radius: 10px;
-          min-height: 60px;
-          border: 1px solid #e2e8f0;
-        ">
-          <div style="font-size: 0.7rem; color: #94a3b8;">Transcription will appear here...</div>
-        </div>
-        
-        <div style="margin-top: 8px; display: flex; gap: 8px; flex-wrap: wrap;">
-          <button id="stream-stt-clear" style="font-size: 0.75rem; background: #f1f5f9; border: 1px solid #e2e8f0; padding: 4px 10px; border-radius: 6px; cursor: pointer;">
-            Clear Log
-          </button>
-          <button id="stream-stt-playback" style="font-size: 0.75rem; background: #f1f5f9; border: 1px solid #e2e8f0; padding: 4px 10px; border-radius: 6px; cursor: pointer; display: none;">
-            ▶️ Playback Recording
-          </button>
-        </div>
+        <div id="stt-result" class="stt-result"></div>
       </div>
     </div>
   </div>
 
-  <!-- Scripts -->
   <script src="/webdemo/config.js"></script>
   <script>
-    // Initialize internal store for providers and models
-    window.uniinferStore = {
+  (() => {
+    "use strict";
+
+    // ─── Store ───────────────────────────────────────────────────────
+    const store = {
       providers: [],
-      models: [],
+      modelsByProvider: {},   // { provider: [{ id, type, context_window, cost, ... }] }
+      allModels: [],          // flat list
       chatHistory: [],
+      selectedProvider: null,
+      selectedModel: null,
     };
-    const HISTORY_MAX_MESSAGES = 30;
-    const HISTORY_MAX_CHARS = 24000;
+    const HISTORY_MAX = 30;
+    const HISTORY_CHARS = 24000;
 
-    // --- History Helpers ---
-    function saveChatHistory() {
-      localStorage.setItem(
-        "uniinfer_chat_history",
-        JSON.stringify(window.uniinferStore.chatHistory),
-      );
+    // ─── DOM refs ───────────────────────────────────────────────────
+    const $ = (s) => document.querySelector(s);
+    const $$ = (s) => document.querySelectorAll(s);
+
+    const providerSelect = $("#provider-select");
+    const modelSearch = $("#model-search");
+    const modelDropdown = $("#model-dropdown");
+    const chatContainer = $("#chat-container");
+    const messageInput = $("#message-input");
+    const sendButton = $("#send-button");
+    const stopButton = $("#stop-button");
+    const modelInfoBar = $("#model-info-bar");
+    const modelInfoBtn = $("#selected-model-info");
+    let abortController = null;
+
+    // ─── Util ───────────────────────────────────────────────────────
+    function escapeHtml(s) {
+      const t = s == null ? "" : String(s);
+      return t.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+    }
+    function sanitizeHtml(html) { return window.DOMPurify ? DOMPurify.sanitize(html) : escapeHtml(html); }
+    function renderMd(content) { return sanitizeHtml(marked.parse(content || "")); }
+    function formatCost(cost) {
+      if (!cost || typeof cost !== "object") return "";
+      const i = cost.input, o = cost.output;
+      if (i == null && o == null) return "";
+      return `$${i ?? "?"}/$${o ?? "?"}`;
+    }
+    function formatCtx(n) { return n ? `${(n/1000).toFixed(0)}k` : ""; }
+    function typeIcon(type) {
+      return { chat:"💬", embed:"📐", tts:"🔊", stt:"🎤", image:"🖼️" }[type] || "💬";
+    }
+    function typeColor(type) {
+      return { chat:"#3b82f6", embed:"#8b5cf6", tts:"#f59e0b", stt:"#10b981", image:"#ec4899" }[type] || "#6b7280";
     }
 
-    function estimateMessageChars(message) {
-      if (!message) return 0;
-      const content = message.content;
-      if (typeof content === "string") return content.length;
-      if (Array.isArray(content)) {
-        return content.reduce((acc, part) => {
-          if (!part) return acc;
-          if (part.type === "text") return acc + String(part.text || "").length;
-          if (part.type === "image_url") return acc + 1000;
-          return acc;
-        }, 0);
-      }
-      return 0;
-    }
-
-    function truncateChatHistory() {
-      let history = Array.isArray(window.uniinferStore.chatHistory)
-        ? [...window.uniinferStore.chatHistory]
-        : [];
-      if (history.length > HISTORY_MAX_MESSAGES) {
-        history = history.slice(history.length - HISTORY_MAX_MESSAGES);
-      }
-      let totalChars = history.reduce((acc, msg) => acc + estimateMessageChars(msg), 0);
-      while (history.length > 1 && totalChars > HISTORY_MAX_CHARS) {
-        const removed = history.shift();
-        totalChars -= estimateMessageChars(removed);
-      }
-      window.uniinferStore.chatHistory = history;
-    }
-
-    function loadChatHistory() {
-      console.log("Loading chat history...");
-      const saved = localStorage.getItem("uniinfer_chat_history");
-      if (saved) {
-        try {
-          const history = JSON.parse(saved);
-          console.log("Found history:", history.length, "items");
-          window.uniinferStore.chatHistory = history;
-          truncateChatHistory();
-          saveChatHistory();
-          if (window.uniinferStore.chatHistory.length > 0) {
-            chatContainer.innerHTML = ""; // Clear initial system message
-            window.uniinferStore.chatHistory.forEach((msg) => {
-              let content = msg.content;
-              if (Array.isArray(content)) {
-                const textItem = content.find((i) => i.type === "text");
-                content = textItem ? textItem.text : "[Image]";
-              }
-              addMessage(content, msg.role);
-            });
-            updateChatStats();
-          }
-        } catch (e) {
-          console.error("Failed to load chat history:", e);
-        }
-      } else {
-        console.log("No saved chat history found.");
-      }
-    }
-
-    function setCookie(name, value, hours) {
-      let expires = "";
-      if (hours) {
-        const date = new Date();
-        date.setTime(date.getTime() + hours * 60 * 60 * 1000);
-        expires = "; expires=" + date.toUTCString();
-      }
-      document.cookie = name + "=" + (value || "") + expires + "; path=/";
-    }
-
-    function getCookie(name) {
-      const nameEQ = name + "=";
-      const ca = document.cookie.split(";");
-      for (let i = 0; i < ca.length; i++) {
-        let c = ca[i];
-        while (c.charAt(0) === " ") c = c.substring(1, c.length);
-        if (c.indexOf(nameEQ) === 0)
-          return c.substring(nameEQ.length, c.length);
-      }
-      return null;
-    }
-
-    const rememberApiKey = localStorage.getItem("uniinfer_remember_api_key") === "1";
-    const savedKeyCookie = getCookie("uniinfer_api_key");
-    const savedKeyLocal = localStorage.getItem("uniinfer_api_key");
-
-    if (rememberApiKey) {
-      if (savedKeyLocal && savedKeyLocal.trim()) {
-        window.uniinferConfig.apiKey = savedKeyLocal.trim();
-      } else if (savedKeyCookie && savedKeyCookie.trim()) {
-        window.uniinferConfig.apiKey = savedKeyCookie.trim();
-      }
-    } else {
-      setCookie("uniinfer_api_key", "", -1);
-    }
-
-    // --- Settings/config modal logic ---
-    const settingsButton = document.getElementById("settings-button");
-    const settingsModal = document.getElementById("settings-modal");
-    const settingsApiBaseUrl = document.getElementById(
-      "settings-api-base-url",
-    );
-    const settingsApiKey = document.getElementById("settings-api-key");
-    const settingsRememberKey = document.getElementById("settings-remember-key");
-    const settingsMaxTokens = document.getElementById("settings-max-tokens");
-    const settingsSave = document.getElementById("settings-save");
-    const settingsCancel = document.getElementById("settings-cancel");
-    const updateModelsBtn = document.getElementById("update-models-btn");
-    const updateModelsStatus = document.getElementById("update-models-status");
-
-    function openSettings() {
-      settingsApiBaseUrl.value = window.uniinferConfig.apiBaseUrl;
-      settingsApiKey.value = window.uniinferConfig.apiKey;
-      settingsRememberKey.checked =
-        localStorage.getItem("uniinfer_remember_api_key") === "1";
-      settingsMaxTokens.value = window.uniinferConfig.maxTokens || 4000;
-      settingsModal.style.display = "flex";
-    }
-    function closeSettings() {
-      settingsModal.style.display = "none";
-    }
-    function formatRefreshTimestamp(ts) {
-      const d = new Date(ts);
-      return d.toLocaleString();
-    }
-
-    function setModelsRefreshStatus(text, isError = false) {
-      updateModelsStatus.textContent = text;
-      updateModelsStatus.style.color = isError ? "#b91c1c" : "#6b7280";
-    }
-
-    function loadLastRefreshStatus() {
-      const saved = localStorage.getItem("uniinfer_models_last_refreshed");
-      if (saved) {
-        setModelsRefreshStatus(`Last refreshed: ${formatRefreshTimestamp(saved)}`);
-      } else {
-        setModelsRefreshStatus("Never refreshed");
-      }
-    }
-
-    async function refreshAllModelLists() {
-      updateModelsBtn.disabled = true;
-      updateModelsStatus.innerHTML = '<span class="spinner"></span>Refreshing models...';
-      updateModelsStatus.style.color = "#6b7280";
-      try {
-        await loadProviders();
-        await updateImageModels();
-        await loadTuAudioModels();
-        const now = Date.now();
-        localStorage.setItem("uniinfer_models_last_refreshed", String(now));
-        setModelsRefreshStatus(`Last refreshed: ${formatRefreshTimestamp(now)}`);
-      } catch (error) {
-        console.error("Model refresh failed:", error);
-        setModelsRefreshStatus(`Refresh failed: ${error.message || error}`, true);
-      } finally {
-        updateModelsBtn.disabled = false;
-      }
-    }
-
-    settingsButton.addEventListener("click", openSettings);
-    settingsCancel.addEventListener("click", closeSettings);
-    settingsModal.addEventListener("click", (e) => {
-      if (e.target === settingsModal) closeSettings();
-    });
-    updateModelsBtn.addEventListener("click", refreshAllModelLists);
-    settingsSave.addEventListener("click", () => {
-      window.uniinferConfig.apiBaseUrl = settingsApiBaseUrl.value.trim();
-      const newKey = settingsApiKey.value.trim();
-      window.uniinferConfig.apiKey = newKey;
-      const shouldRememberKey = settingsRememberKey.checked;
-      localStorage.setItem(
-        "uniinfer_remember_api_key",
-        shouldRememberKey ? "1" : "0",
-      );
-      if (shouldRememberKey) {
-        localStorage.setItem("uniinfer_api_key", newKey);
-        setCookie("uniinfer_api_key", newKey, 48);
-      } else {
-        localStorage.removeItem("uniinfer_api_key");
-        setCookie("uniinfer_api_key", "", -1);
-      }
-
-      window.uniinferConfig.maxTokens =
-        parseInt(settingsMaxTokens.value) || 4000;
-      closeSettings();
-      loadProviders();
-      loadTuAudioModels();
-      addMessage("Settings updated.", "system");
-    });
-
-    // DOM elements
-    const providerSelect = document.getElementById("provider-select");
-    const modelSelect = document.getElementById("model-select");
-    const chatContainer = document.getElementById("chat-container");
-    const messageInput = document.getElementById("message-input");
-    const sendButton = document.getElementById("send-button");
-    const stopButton = document.getElementById("stop-button");
-    const predefinedButton = document.getElementById("predefined-button");
-    const uploadImageBtn = document.getElementById("upload-image-btn");
-    const chatFileInput = document.getElementById("chat-file-input");
-    const imagePreviewArea = document.getElementById("image-preview-area");
-    const imagePreviewImg = document.getElementById("image-preview-img");
-    const removeImageBtn = document.getElementById("remove-image-btn");
-    const predefinedMessages = document.getElementById("predefined-messages");
-    const closePredefinedBtn = document.getElementById("close-predefined");
-
-    const modeChatBtn = document.getElementById("mode-chat");
-    const modeImageBtn = document.getElementById("mode-image");
-    const modeAudioBtn = document.getElementById("mode-audio");
-
-    const chatSection = document.getElementById("chat-section-container");
-    const imageSection = document.getElementById("image-area");
-    const audioSection = document.getElementById("audio-area");
-
-    const chatStats = document.getElementById("chat-stats");
-    const statsText = document.getElementById("stats-text");
-    const appVersion = document.getElementById("app-version");
-
-    let currentAbortController = null;
-
-    function escapeHtml(value) {
-      const text = value == null ? "" : String(value);
-      return text
-        .replace(/&/g, "&amp;")
-        .replace(/</g, "&lt;")
-        .replace(/>/g, "&gt;")
-        .replace(/"/g, "&quot;")
-        .replace(/'/g, "&#39;");
-    }
-
-    function sanitizeHtml(html) {
-      if (window.DOMPurify) {
-        return window.DOMPurify.sanitize(html);
-      }
-      return escapeHtml(html);
-    }
-
-    function renderMarkdown(content) {
-      const raw = marked.parse(content || "");
-      return sanitizeHtml(raw);
-    }
-
-    function safeImageUrl(url) {
-      const value = (url || "").trim();
-      if (!value) return "";
-      if (value.startsWith("data:image/")) return value;
-      if (value.startsWith("https://")) return value;
-      if (value.startsWith("http://")) return value;
-      return "";
-    }
-
-    function updateChatStats() {
-      const history = window.uniinferStore.chatHistory || [];
-      const turns = history.length;
-
-      // Simple token estimation: ~4 chars per token
-      let totalChars = 0;
-      history.forEach((msg) => {
-        if (typeof msg.content === "string") {
-          totalChars += msg.content.length;
-        } else if (Array.isArray(msg.content)) {
-          msg.content.forEach((part) => {
-            if (part.type === "text") totalChars += part.text.length;
-            // Rough estimate for images
-            if (part.type === "image_url") totalChars += 1000;
-          });
-        }
-      });
-      const tokens = Math.ceil(totalChars / 4);
-
-      statsText.textContent = `${turns} msgs • ~${tokens} toks`;
-      chatStats.style.display = "flex";
-    }
-
-    function setMode(mode) {
-      [modeChatBtn, modeImageBtn, modeAudioBtn].forEach((b) =>
-        b.classList.remove("active"),
-      );
-      [chatSection, imageSection, audioSection].forEach(
-        (s) => (s.style.display = "none"),
-      );
-
-      if (mode === "chat") {
-        modeChatBtn.classList.add("active");
-        chatSection.style.display = "flex";
-      } else if (mode === "image") {
-        modeImageBtn.classList.add("active");
-        imageSection.style.display = "block";
-      } else if (mode === "audio") {
-        modeAudioBtn.classList.add("active");
-        audioSection.style.display = "block";
-      }
-    }
-
-    modeChatBtn.addEventListener("click", () => setMode("chat"));
-    modeImageBtn.addEventListener("click", () => setMode("image"));
-    modeAudioBtn.addEventListener("click", () => setMode("audio"));
-
-    // Auto-resize textarea
-    messageInput.addEventListener("input", () => {
-      messageInput.style.height = "auto";
-      messageInput.style.height = messageInput.scrollHeight + "px";
-    });
-
-    // Quick Prompts Toggle
-    predefinedButton.addEventListener("click", () => {
-      const isHidden = predefinedMessages.style.display === "none";
-      predefinedMessages.style.display = isHidden ? "block" : "none";
-    });
-    closePredefinedBtn.addEventListener(
-      "click",
-      () => (predefinedMessages.style.display = "none"),
-    );
-
-    // Shared Headers Helper
     function getHeaders() {
-      return {
-        Authorization: `Bearer ${window.uniinferConfig.apiKey}`,
-        "Content-Type": "application/json",
-      };
+      return { Authorization: `Bearer ${window.uniinferConfig.apiKey}`, "Content-Type": "application/json" };
     }
-
-    async function parseErrorBody(response) {
-      const text = await response.text();
-      if (!text) return response.statusText || `HTTP ${response.status}`;
-      try {
-        const data = JSON.parse(text);
-        return (
-          data?.error?.message ||
-          data?.detail ||
-          data?.message ||
-          text.substring(0, 500)
-        );
-      } catch {
-        return text.substring(0, 500);
-      }
-    }
-
-    async function apiFetch(path, options = {}) {
-      const {
-        method = "GET",
-        headers = {},
-        body,
-        signal,
-        allowHttpErrors = false,
-      } = options;
-      const isAbsolute =
-        path.startsWith("http://") || path.startsWith("https://");
-      const url = isAbsolute
-        ? path
-        : `${window.uniinferConfig.apiBaseUrl}${path}`;
-      const init = { method, headers: { ...headers }, signal };
+    async function apiFetch(path, opts = {}) {
+      const { method="GET", headers={}, body, signal, allowHttp=false } = opts;
+      const isAbs = path.startsWith("http");
+      const url = isAbs ? path : `${window.uniinferConfig.apiBaseUrl}${path}`;
+      const init = { method, headers: {...headers}, signal };
       if (body !== undefined) init.body = body;
-      const response = await fetch(url, init);
-      if (!response.ok && !allowHttpErrors) {
-        const detail = await parseErrorBody(response);
-        const error = new Error(detail || `HTTP ${response.status}`);
-        error.status = response.status;
-        error.statusText = response.statusText;
-        error.detail = detail;
-        throw error;
+      const resp = await fetch(url, init);
+      if (!resp.ok && !allowHttp) {
+        let detail;
+        try { const d = await resp.json(); detail = d?.error?.message || d?.detail || JSON.stringify(d).substring(0,300); }
+        catch { detail = resp.statusText || `HTTP ${resp.status}`; }
+        const err = new Error(detail); err.status = resp.status; err.detail = detail; throw err;
       }
-      return response;
+      return resp;
     }
+    async function apiJson(path, opts) { return (await apiFetch(path, opts)).json(); }
 
-    async function apiFetchJson(path, options = {}) {
-      const response = await apiFetch(path, options);
-      return response.json();
-    }
-
-    async function loadVersion() {
+    // ─── History ─────────────────────────────────────────────────────
+    function saveHistory() { localStorage.setItem("uniinfer_chat_history", JSON.stringify(store.chatHistory)); }
+    function loadHistory() {
       try {
-        const payload = await apiFetchJson("/v1/system/info");
-        appVersion.textContent = `v${payload.version || "unknown"}`;
-      } catch (_error) {
-        appVersion.textContent = "vunknown";
-      }
+        const h = JSON.parse(localStorage.getItem("uniinfer_chat_history") || "[]");
+        store.chatHistory = Array.isArray(h) ? h : [];
+      } catch { store.chatHistory = []; }
+    }
+    function truncateHistory() {
+      let h = [...store.chatHistory];
+      if (h.length > HISTORY_MAX) h = h.slice(h.length - HISTORY_MAX);
+      let chars = h.reduce((a, m) => a + (typeof m.content === "string" ? m.content.length : 500), 0);
+      while (h.length > 1 && chars > HISTORY_CHARS) { chars -= (typeof h[0].content === "string" ? h[0].content.length : 500); h.shift(); }
+      store.chatHistory = h;
+    }
+    function pushHistory(msg) { store.chatHistory.push(msg); truncateHistory(); saveHistory(); }
+    function updateStats() {
+      const n = store.chatHistory.length;
+      const chars = store.chatHistory.reduce((a,m) => a + (typeof m.content==="string"?m.content.length:500), 0);
+      $("#stats-text").textContent = `${n} msgs • ~${Math.ceil(chars/4)} toks`;
+      $("#chat-stats").style.display = n ? "flex" : "none";
+    }
+    function renderHistory() {
+      chatContainer.innerHTML = "";
+      store.chatHistory.forEach(m => {
+        let text = m.content;
+        if (Array.isArray(text)) { const t = text.find(i=>i.type==="text"); text = t ? t.text : "[Image]"; }
+        addMsg(text, m.role, true);
+      });
+      updateStats();
     }
 
-    // Load providers into dropdown
+    // ─── Messages ───────────────────────────────────────────────────
+    function addMsg(content, role, silent) {
+      const div = document.createElement("div");
+      div.className = `message ${role}-message`;
+      if (role === "assistant") div.innerHTML = renderMd(content);
+      else if (role === "error") div.innerHTML = `<div class="error-title">⚠️ Error</div><div class="error-detail">${escapeHtml(content)}</div>`;
+      else div.textContent = content;
+      if (!silent) chatContainer.appendChild(div);
+      chatContainer.scrollTo({ top: chatContainer.scrollHeight, behavior: "smooth" });
+      return div;
+    }
+
+    // ─── Mode Switch ────────────────────────────────────────────────
+    function setMode(mode) {
+      $$(".mode-btn").forEach(b => b.classList.remove("active"));
+      $$(".section").forEach(s => s.style.display = "none");
+      if (mode === "chat") { $("#mode-chat").classList.add("active"); $("#chat-section").style.display = "flex"; }
+      else if (mode === "models") { $("#mode-models").classList.add("active"); $("#models-section").style.display = "block"; loadModelsBrowser(); }
+      else if (mode === "image") { $("#mode-image").classList.add("active"); $("#image-section").style.display = "block"; }
+      else if (mode === "audio") { $("#mode-audio").classList.add("active"); $("#audio-section").style.display = "block"; loadAudioModels(); }
+    }
+    $("#mode-chat").onclick = () => setMode("chat");
+    $("#mode-models").onclick = () => setMode("models");
+    $("#mode-image").onclick = () => setMode("image");
+    $("#mode-audio").onclick = () => setMode("audio");
+
+    // ─── Load Providers ──────────────────────────────────────────────
     async function loadProviders() {
       try {
-        const payload = await apiFetchJson("/v1/providers", {
-          headers: getHeaders(),
-        });
-        const providers = Array.isArray(payload.data) ? payload.data : [];
-        window.uniinferStore.providers = providers;
-
-        providerSelect.innerHTML =
-          '<option value="" disabled selected>Select provider</option>';
-        providers.forEach((p) => {
-          const option = document.createElement("option");
-          option.value = p;
-          option.textContent = p;
-          providerSelect.appendChild(option);
-        });
+        const { data: providers } = await apiJson("/v1/providers", { headers: getHeaders() });
+        store.providers = providers;
+        providerSelect.innerHTML = '<option value="" disabled selected>Select provider</option>';
+        providers.forEach(p => { const o = document.createElement("option"); o.value = p; o.textContent = p; providerSelect.appendChild(o); });
         providerSelect.disabled = false;
-
-        if (providers.includes("zai")) {
-          providerSelect.value = "zai";
-          await loadModels("zai");
-        } else if (providers.includes("zai-code")) {
-          providerSelect.value = "zai-code";
-          await loadModels("zai-code");
-        } else if (providers.length > 0) {
-          providerSelect.value = providers[0];
-          await loadModels(providers[0]);
-        }
+        if (providers.length) { providerSelect.value = providers[0]; await loadModelsForProvider(providers[0]); }
       } catch (e) {
-        console.error(e);
-        const errorDiv = document.createElement("div");
-        errorDiv.className = "message error-message";
-        const errorDetail = e.status
-          ? `Status ${e.status}: ${e.detail || e.statusText || e.message}`
-          : e.message;
-        errorDiv.innerHTML = `
-          <div class="error-title">
-            <span>⚠️</span>
-            <span>Connection Error</span>
-          </div>
-          <div class="error-detail">${escapeHtml(errorDetail)}</div>
-        `;
-        chatContainer.innerHTML = "";
-        chatContainer.appendChild(errorDiv);
+        addMsg(`Connection error: ${e.detail || e.message}`, "error");
       }
     }
 
-    // Load models for provider
-    async function loadModels(provider) {
+    // ─── Load Models for Provider ───────────────────────────────────
+    async function loadModelsForProvider(provider) {
       try {
-        const data = await apiFetchJson(`/v1/models/${provider}`, {
-          headers: getHeaders(),
-        });
-        window.uniinferStore.models = data.data.map((m) => m.id);
-
-        modelSelect.innerHTML = "";
-        modelSelect.disabled = false;
-        data.data.forEach((model) => {
-          const option = document.createElement("option");
-          option.value = model.id;
-          option.textContent = model.id;
-          modelSelect.appendChild(option);
-        });
-        modelSelect.value = data.data[0]?.id || "";
-      } catch (error) {
-        console.error(error);
-        addMessage(`Failed to load models for ${provider}`, "error");
+        const { data } = await apiJson(`/v1/models/${provider}`, { headers: getHeaders() });
+        store.modelsByProvider[provider] = data;
+        store.selectedProvider = provider;
+        updateModelDropdown();
+        if (data.length) selectModel(data[0].id);
+        else { modelSearch.value = ""; hideDropdown(); }
+      } catch (e) {
+        console.error("Failed to load models for", provider, e);
       }
     }
 
-    function addMessage(content, role = "user") {
-      const messageDiv = document.createElement("div");
-      messageDiv.className = `message ${role}-message`;
-      if (role === "assistant") {
-        messageDiv.innerHTML = renderMarkdown(content);
-      } else {
-        messageDiv.textContent = content;
-      }
-      chatContainer.appendChild(messageDiv);
-      chatContainer.scrollTo({
-        top: chatContainer.scrollHeight,
-        behavior: "smooth",
+    // ─── Model Search Dropdown ──────────────────────────────────────
+    function updateModelDropdown(filter = "") {
+      const models = store.modelsByProvider[store.selectedProvider] || [];
+      const f = filter.toLowerCase();
+      const filtered = f ? models.filter(m => m.id.toLowerCase().includes(f)) : models;
+      modelDropdown.innerHTML = "";
+      if (!filtered.length) { modelDropdown.innerHTML = '<div class="dropdown-empty">No models found</div>'; }
+      filtered.forEach(m => {
+        const div = document.createElement("div");
+        div.className = "dropdown-item" + (m.id === store.selectedModel ? " active" : "");
+        const type = m.type || "chat";
+        div.innerHTML = `<span class="di-type" style="color:${typeColor(type)}">${typeIcon(type)}</span>
+          <span class="di-id">${escapeHtml(m.id)}</span>
+          <span class="di-meta">${formatCtx(m.context_window)}${m.cost ? " · " + formatCost(m.cost) : ""}</span>`;
+        div.onclick = () => { selectModel(m.id); hideDropdown(); modelSearch.blur(); };
+        modelDropdown.appendChild(div);
       });
-      return messageDiv;
+      modelDropdown.style.display = filtered.length ? "block" : "block";
+    }
+    function hideDropdown() { modelDropdown.style.display = "none"; }
+    function showDropdown() { updateModelDropdown(modelSearch.value); }
+
+    function selectModel(id) {
+      store.selectedModel = id;
+      modelSearch.value = id;
+      updateModelInfoBar();
     }
 
-    async function sendMessage(message) {
-      const provider = providerSelect.value;
-      const model = modelSelect.value;
-      if (!provider || !model) {
-        addMessage("Select provider and model first", "error");
-        return;
+    function updateModelInfoBar() {
+      const models = store.modelsByProvider[store.selectedProvider] || [];
+      const m = models.find(x => x.id === store.selectedModel);
+      if (!m) { modelInfoBar.style.display = "none"; modelInfoBtn.style.display = "none"; return; }
+      modelInfoBar.style.display = "flex";
+      modelInfoBtn.style.display = "flex";
+      const type = m.type || "chat";
+      $("#model-info-type").textContent = typeIcon(type) + " " + type;
+      $("#model-info-type").style.color = typeColor(type);
+      $("#model-info-ctx").textContent = m.context_window ? `ctx ${formatCtx(m.context_window)}` : "";
+      $("#model-info-cost").textContent = m.cost ? formatCost(m.cost) : "";
+      const caps = [];
+      if (m.capabilities) { if (m.capabilities.reasoning) caps.push("reasoning"); if (m.capabilities.vision) caps.push("vision"); if (m.capabilities.tool_call) caps.push("tools"); }
+      if (m.dimensions) caps.push(`${m.dimensions}d`);
+      $("#model-info-caps").textContent = caps.join(" · ");
+      const status = m.status || m.deprecation_date;
+      $("#model-info-status").textContent = status === "deprecated" ? "⚠ deprecated" : m.deprecation_date ? `deprecates ${m.deprecation_date}` : "";
+      $("#model-info-status").style.color = "#ef4444";
+    }
+
+    modelSearch.addEventListener("focus", showDropdown);
+    modelSearch.addEventListener("input", () => updateModelDropdown(modelSearch.value));
+    modelSearch.addEventListener("blur", () => setTimeout(hideDropdown, 150));
+    modelSearch.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") {
+        const first = modelDropdown.querySelector(".dropdown-item");
+        if (first) { first.click(); e.preventDefault(); }
+      } else if (e.key === "Escape") { hideDropdown(); modelSearch.blur(); }
+      else if (e.key === "Tab") { e.preventDefault(); const items = modelDropdown.querySelectorAll(".dropdown-item"); if (items.length) items[0].click(); }
+    });
+    providerSelect.addEventListener("change", () => loadModelsForProvider(providerSelect.value));
+    modelInfoBtn.addEventListener("click", () => {
+      if (store.selectedModel && store.selectedProvider) {
+        showModelDetail(store.selectedProvider, store.selectedModel);
       }
+    });
 
-      let apiMessageContent = message;
-      if (imagePreviewArea.style.display !== "none" && imagePreviewImg.src) {
-        apiMessageContent = [
-          { type: "text", text: message },
-          { type: "image_url", image_url: { url: imagePreviewImg.src } },
-        ];
-        imagePreviewArea.style.display = "none";
+    // ─── Send Message ───────────────────────────────────────────────
+    async function sendMessage(text) {
+      const provider = store.selectedProvider, model = store.selectedModel;
+      if (!provider || !model) { addMsg("Select provider and model first", "error"); return; }
+      let content = text;
+      if ($("#image-preview-area").style.display !== "none" && $("#image-preview-img").src) {
+        content = [{ type:"text", text }, { type:"image_url", image_url:{ url:$("#image-preview-img").src } }];
+        $("#image-preview-area").style.display = "none";
       }
-
-      addMessage(message, "user");
-      // Update history
-      window.uniinferStore.chatHistory.push({
-        role: "user",
-        content: apiMessageContent,
-      });
-      truncateChatHistory();
-      saveChatHistory();
-
-      messageInput.value = "";
-      messageInput.style.height = "auto";
-
-      sendButton.style.display = "none";
-      stopButton.style.display = "flex";
-
-      const assistantDiv = addMessage("...", "assistant");
-      currentAbortController = new AbortController();
-
-      let fullResponse = "";
-      let fullThinking = "";
-
+      addMsg(text, "user");
+      pushHistory({ role:"user", content });
+      messageInput.value = ""; messageInput.style.height = "auto";
+      sendButton.style.display = "none"; stopButton.style.display = "flex";
+      const assistantDiv = addMsg("...", "assistant");
+      abortController = new AbortController();
+      let fullResponse = "", fullThinking = "";
       try {
-        const response = await apiFetch("/v1/chat/completions", {
-          method: "POST",
-          headers: getHeaders(),
-          body: JSON.stringify({
-            model: `${provider}@${model}`,
-            messages: window.uniinferStore.chatHistory,
-            stream: true,
-            max_tokens: window.uniinferConfig.maxTokens || 4000,
-          }),
-          signal: currentAbortController.signal,
+        const resp = await apiFetch("/v1/chat/completions", {
+          method: "POST", headers: getHeaders(), signal: abortController.signal,
+          body: JSON.stringify({ model:`${provider}@${model}`, messages: store.chatHistory, stream:true, max_tokens: window.uniinferConfig.maxTokens || 4000 }),
         });
-        if (!response.body) {
-          throw new Error("Empty streaming response body");
-        }
-
-        const reader = response.body.getReader();
-        const decoder = new TextDecoder();
-
+        if (!resp.body) throw new Error("Empty response");
+        const reader = resp.body.getReader(), decoder = new TextDecoder();
         while (true) {
           const { done, value } = await reader.read();
           if (done) break;
-
-          const chunk = decoder.decode(value);
-          const lines = chunk
-            .split("\n")
-            .filter((l) => l.startsWith("data: "));
-
-          for (const line of lines) {
-            const dataStr = line.replace("data: ", "");
-            if (dataStr === "[DONE]") break;
-
+          for (const line of decoder.decode(value).split("\n").filter(l => l.startsWith("data: "))) {
+            const str = line.slice(6);
+            if (str === "[DONE]") break;
             try {
-              const data = JSON.parse(dataStr);
-              
-              // Check if this is an error chunk from streaming
-              if (data.error) {
-                // Remove loading indicator and show error
-                assistantDiv.remove();
-                
-                const errorDiv = document.createElement("div");
-                errorDiv.className = "message error-message";
-                errorDiv.innerHTML = `
-                  <div class="error-title">
-                    <span>⚠️</span>
-                    <span>Error ${data.error.code || ''}</span>
-                  </div>
-                  <div class="error-detail">${escapeHtml(data.error.message || JSON.stringify(data.error))}</div>
-                `;
-                chatContainer.appendChild(errorDiv);
-                chatContainer.scrollTo({
-                  top: chatContainer.scrollHeight,
-                  behavior: "smooth",
-                });
-                return; // Stop processing
-              }
-              
-              // Normal response chunk
-              const delta = data.choices?.[0]?.delta || {};
-              const content = delta.content || "";
-              const thinking = delta.thinking || delta.reasoning_content || "";
-              
-              if (content) {
-                fullResponse += content;
-              }
-              if (thinking) {
-                fullThinking += thinking;
-              }
-              
-              // Build the display HTML
-              let displayHtml = "";
-              if (fullThinking) {
-                displayHtml += `<details class="thinking-details"><summary class="thinking-badge">💭 Thinking...</summary><div class="thinking-content">${escapeHtml(fullThinking)}</div></details>`;
-              }
-              if (fullResponse) {
-                displayHtml += renderMarkdown(fullResponse);
-              }
-              assistantDiv.innerHTML = displayHtml || renderMarkdown("");
+              const d = JSON.parse(str);
+              if (d.error) { assistantDiv.remove(); addMsg(d.error.message || JSON.stringify(d.error), "error"); return; }
+              const delta = d.choices?.[0]?.delta || {};
+              if (delta.content) fullResponse += delta.content;
+              if (delta.thinking || delta.reasoning_content) fullThinking += (delta.thinking || delta.reasoning_content);
+              let html = "";
+              if (fullThinking) html += `<details class="thinking-details"><summary class="thinking-badge">💭 Thinking</summary><div class="thinking-content">${escapeHtml(fullThinking)}</div></details>`;
+              if (fullResponse) html += renderMd(fullResponse);
+              assistantDiv.innerHTML = html || "";
               chatContainer.scrollTop = chatContainer.scrollHeight;
-            } catch (e) {
-              console.error("Parse error", e);
-            }
+            } catch {}
           }
         }
-
-        // Save assistant response to history
-        if (fullResponse) {
-          window.uniinferStore.chatHistory.push({
-            role: "assistant",
-            content: fullResponse,
-          });
-          truncateChatHistory();
-          saveChatHistory();
-        }
+        if (fullResponse) pushHistory({ role:"assistant", content:fullResponse });
+        updateStats();
       } catch (e) {
-        if (e.name !== "AbortError") {
-          // Remove loading indicator
-          assistantDiv.remove();
-          
-          let errorTitle = "Error";
-          let errorDetail = e.detail || e.message;
-          if (e.status) {
-            errorTitle = `Error ${e.status}`;
-            errorDetail = e.detail || e.statusText || e.message;
-          }
-          
-          // Create error message element
-          const errorDiv = document.createElement("div");
-          errorDiv.className = "message error-message";
-          errorDiv.innerHTML = `
-            <div class="error-title">
-              <span>⚠️</span>
-              <span>${errorTitle}</span>
-            </div>
-            <div class="error-detail">${escapeHtml(errorDetail)}</div>
-          `;
-          chatContainer.appendChild(errorDiv);
-          chatContainer.scrollTo({
-            top: chatContainer.scrollHeight,
-            behavior: "smooth",
-          });
-        }
-      } finally {
-        sendButton.style.display = "flex";
-        stopButton.style.display = "none";
-        currentAbortController = null;
-      }
+        if (e.name !== "AbortError") { assistantDiv.remove(); addMsg(e.detail || e.message, "error"); }
+      } finally { sendButton.style.display = "flex"; stopButton.style.display = "none"; abortController = null; }
     }
 
-    // Event Listeners
-    providerSelect.addEventListener("change", () =>
-      loadModels(providerSelect.value),
-    );
-    sendButton.addEventListener("click", () =>
-      sendMessage(messageInput.value.trim()),
-    );
-    messageInput.addEventListener("keydown", (e) => {
-      if (e.key === "Enter" && !e.shiftKey) {
-        e.preventDefault();
-        sendMessage(messageInput.value.trim());
-      }
-    });
-    stopButton.addEventListener("click", () =>
-      currentAbortController?.abort(),
-    );
+    sendButton.addEventListener("click", () => sendMessage(messageInput.value.trim()));
+    messageInput.addEventListener("keydown", e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendMessage(messageInput.value.trim()); } });
+    messageInput.addEventListener("input", () => { messageInput.style.height = "auto"; messageInput.style.height = messageInput.scrollHeight + "px"; });
+    stopButton.addEventListener("click", () => abortController?.abort());
 
-    document
-      .getElementById("copy-model-btn")
-      .addEventListener("click", () => {
-        const p = providerSelect.value;
-        const m = modelSelect.value;
-        if (!p || !m) return;
-
-        const full = `${p}@${m}`;
-        navigator.clipboard.writeText(full).then(() => {
-          const btn = document.getElementById("copy-model-btn");
-          const original = btn.innerHTML;
-          // Show checkmark
-          btn.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>`;
-          setTimeout(() => {
-            btn.innerHTML = original;
-          }, 1500);
-        });
-      });
-
-    uploadImageBtn.addEventListener("click", () => chatFileInput.click());
-    chatFileInput.addEventListener("change", (e) => {
+    // Image upload
+    $("#upload-image-btn").addEventListener("click", () => $("#chat-file-input").click());
+    $("#chat-file-input").addEventListener("change", e => {
       const file = e.target.files[0];
-      if (file) {
-        const reader = new FileReader();
-        reader.onload = (ev) => {
-          imagePreviewImg.src = ev.target.result;
-          imagePreviewArea.style.display = "block";
-        };
-        reader.readAsDataURL(file);
-      }
+      if (file) { const r = new FileReader(); r.onload = ev => { $("#image-preview-img").src = ev.target.result; $("#image-preview-area").style.display = "block"; }; r.readAsDataURL(file); }
     });
-    removeImageBtn.addEventListener("click", () => {
-      imagePreviewArea.style.display = "none";
-      chatFileInput.value = "";
+    $("#remove-image-btn").addEventListener("click", () => { $("#image-preview-area").style.display = "none"; $("#chat-file-input").value = ""; });
+
+    // Clear chat
+    $("#clear-chat-btn").addEventListener("click", () => {
+      store.chatHistory = []; saveHistory(); chatContainer.innerHTML = "";
+      addMsg("Select a provider and model to start chatting.", "system"); updateStats();
     });
 
-    // Quick Prompt usage
-    document.querySelectorAll(".predefined-message").forEach((btn) => {
-      if (btn.id === "close-predefined") return;
-      btn.addEventListener("click", () => {
-        messageInput.value = btn.textContent;
-        predefinedMessages.style.display = "none";
-        messageInput.focus();
-      });
-    });
-
-    // Clear Chat Listener
-    document
-      .getElementById("clear-chat-btn")
-      .addEventListener("click", () => {
-        window.uniinferStore.chatHistory = [];
-        localStorage.removeItem("uniinfer_chat_history");
-        chatContainer.innerHTML = "";
-        addMessage(
-          "Select a provider and model to start chatting.",
-          "system",
-        );
-        updateChatStats();
-      });
-
-    // Load history on init (moved to end)
-
-    // --- PNG Metadata Helpers ---
-    const crcTable = [];
-    for (let n = 0; n < 256; n++) {
-      let c = n;
-      for (let k = 0; k < 8; k++) {
-        c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1;
-      }
-      crcTable[n] = c;
-    }
-    function crc32(buf) {
-      let c = 0xffffffff;
-      for (let i = 0; i < buf.length; i++) {
-        c = (c >>> 8) ^ crcTable[(c ^ buf[i]) & 0xff];
-      }
-      return (c ^ 0xffffffff) >>> 0;
-    }
-
-    function addPngMetadata(pngBuffer, key, value) {
-      if (!value) return pngBuffer;
-      // Verify PNG signature
-      if (
-        pngBuffer[0] !== 137 ||
-        pngBuffer[1] !== 80 ||
-        pngBuffer[2] !== 78 ||
-        pngBuffer[3] !== 71
-      ) {
-        return pngBuffer;
-      }
-
-      const keyBytes = new TextEncoder().encode(key);
-      const valueBytes = new TextEncoder().encode(value);
-      const len = keyBytes.length + 1 + valueBytes.length;
-      const chunk = new Uint8Array(12 + len);
-      const view = new DataView(chunk.buffer);
-
-      view.setUint32(0, len, false);
-      chunk.set([116, 69, 88, 116], 4); // "tEXt"
-      chunk.set(keyBytes, 8);
-      chunk[8 + keyBytes.length] = 0;
-      chunk.set(valueBytes, 9 + keyBytes.length);
-
-      const crc = crc32(chunk.subarray(4, 8 + len));
-      view.setUint32(8 + len, crc, false);
-
-      // Insert after IHDR (33 bytes)
-      const newPng = new Uint8Array(pngBuffer.length + chunk.length);
-      newPng.set(pngBuffer.subarray(0, 33), 0);
-      newPng.set(chunk, 33);
-      newPng.set(pngBuffer.subarray(33), 33 + chunk.length);
-      return newPng;
-    }
-
-    function base64ToUint8Array(base64) {
-      const binary_string = window.atob(base64.split(",")[1]);
-      const len = binary_string.length;
-      const bytes = new Uint8Array(len);
-      for (let i = 0; i < len; i++) {
-        bytes[i] = binary_string.charCodeAt(i);
-      }
-      return bytes;
-    }
-
-    // --- Image Gen Logic ---
-    const imageProvider = document.getElementById("image-provider");
-    const imageModel = document.getElementById("image-model");
-    const generateImgBtn = document.getElementById("generate-image");
-    const imagePrompt = document.getElementById("image-prompt");
-    const imageResults = document.getElementById("image-results");
-
-    async function updateImageModels() {
-      const prov = imageProvider.value;
+    // ─── Models Browser ─────────────────────────────────────────────
+    let modelsBrowserLoaded = false;
+    async function loadModelsBrowser() {
+      if (modelsBrowserLoaded) return;
+      modelsBrowserLoaded = true;
+      const { data } = await apiJson("/v1/models", { headers: getHeaders() });
+      store.allModels = data;
+      // Populate provider filter
+      const provs = [...new Set(data.map(m => {
+        // provider is the key in the response; models come flat with id like "provider/model" or just id
+        // We need to get provider from the data structure
+        return m.provider || "";
+      }))].filter(Boolean);
+      const sel = $("#models-browser-provider");
+      sel.innerHTML = '<option value="">All providers</option>';
+      provs.forEach(p => { const o = document.createElement("option"); o.value = p; o.textContent = p; sel.appendChild(o); });
+      renderModelsList();
+      // Load new/deprecated counts
       try {
-        const json = await apiFetchJson(`/v1/image/models/${prov}`, {
-          headers: getHeaders(),
-        });
-        imageModel.innerHTML = "";
-        (json.data || []).forEach((m) => {
-          const option = document.createElement("option");
-          option.value = m.id;
-          option.textContent = m.id;
-          imageModel.appendChild(option);
-        });
-      } catch (error) {
-        console.error("Error fetching image models:", error);
-      }
+        const newD = await apiJson("/v1/models/new?days=7", { headers: getHeaders(), allowHttp: true });
+        if (newD.total > 0) { $("#models-new-count").textContent = `${newD.total} new`; $("#models-new-count").style.display = "inline"; }
+      } catch {}
+      try {
+        const depD = await apiJson("/v1/models/deprecated", { headers: getHeaders(), allowHttp: true });
+        if (depD.total > 0) { $("#models-deprecated-count").textContent = `${depD.total} deprecated`; $("#models-deprecated-count").style.display = "inline"; }
+      } catch {}
     }
-    imageProvider.addEventListener("change", updateImageModels);
-    // Load initial models for default provider
-    updateImageModels();
 
-    generateImgBtn.addEventListener("click", async () => {
-      const prompt = imagePrompt.value.trim();
-      if (!prompt) return;
-      const fullModelId = `${imageProvider.value}@${imageModel.value}`;
+    let modelsFilter = "all", modelsSearchText = "", modelsProviderFilter = "";
 
-      generateImgBtn.disabled = true;
-      const status = document.getElementById("image-status");
-      let imageGenSucceeded = false;
-      status.innerHTML = '<div class="spinner"></div> Generating...';
+    function renderModelsList() {
+      let models = store.allModels || [];
+      if (modelsProviderFilter) models = models.filter(m => (m.provider || "") === modelsProviderFilter);
+      if (modelsFilter !== "all") models = models.filter(m => (m.type || "chat") === modelsFilter);
+      if (modelsSearchText) { const f = modelsSearchText.toLowerCase(); models = models.filter(m => m.id.toLowerCase().includes(f)); }
+      $("#models-count").textContent = `${models.length} models`;
+      const list = $("#models-list");
+      list.innerHTML = "";
+      if (!models.length) { list.innerHTML = '<div class="models-empty">No models match your filter.</div>'; return; }
+      models.forEach(m => {
+        const type = m.type || "chat";
+        const div = document.createElement("div");
+        div.className = "model-card";
+        if (m.status === "deprecated") div.classList.add("model-card--deprecated");
+        const provider = m.provider || "";
+        div.innerHTML = `
+          <div class="mc-header">
+            <span class="mc-type" style="color:${typeColor(type)}">${typeIcon(type)}</span>
+            <span class="mc-provider">${escapeHtml(provider)}</span>
+            ${m.status === "deprecated" ? '<span class="mc-deprecated">deprecated</span>' : ''}
+          </div>
+          <div class="mc-id">${escapeHtml(m.id)}</div>
+          <div class="mc-meta">
+            ${m.context_window ? `<span>ctx ${formatCtx(m.context_window)}</span>` : ""}
+            ${m.max_output ? `<span>out ${formatCtx(m.max_output)}</span>` : ""}
+            ${m.cost ? `<span>${formatCost(m.cost)}</span>` : ""}
+            ${m.dimensions ? `<span>${m.dimensions}d</span>` : ""}
+          </div>
+          <div class="mc-caps">${[...(m.capabilities ? Object.entries(m.capabilities).filter(([,v])=>v).map(([k])=>k) : []), ...(m.modalities ? [Object.values(m.modalities).flat().join("/")] : [])].join(" · ") || "—"}</div>
+          ${m.first_seen ? `<div class="mc-date">seen ${m.first_seen}</div>` : ""}
+          ${m.deprecation_date ? `<div class="mc-date mc-date--dep">dep ${m.deprecation_date}</div>` : ""}
+        `;
+        div.addEventListener("click", () => showModelDetail(provider, m.id));
+        list.appendChild(div);
+      });
+    }
 
+    $$(".filter-btn").forEach(btn => {
+      btn.addEventListener("click", () => {
+        $$(".filter-btn").forEach(b => b.classList.remove("active"));
+        btn.classList.add("active");
+        modelsFilter = btn.dataset.filter;
+        renderModelsList();
+      });
+    });
+    $("#models-browser-search").addEventListener("input", e => { modelsSearchText = e.target.value; renderModelsList(); });
+    $("#models-browser-provider").addEventListener("change", e => { modelsProviderFilter = e.target.value; renderModelsList(); });
+
+    function showModelDetail(provider, id) {
+      const models = store.allModels || [];
+      const m = models.find(x => x.id === id && (x.provider || "") === provider) || models.find(x => x.id === id);
+      if (!m) return;
+      const panel = $("#models-detail-panel");
+      const type = m.type || "chat";
+      const caps = m.capabilities || {};
+      const capList = Object.entries(caps).filter(([,v])=>v).map(([k])=>k);
+      const mod = m.modalities || {};
+      $("#models-detail-content").innerHTML = `
+        <div class="detail-header">
+          <span class="detail-type" style="color:${typeColor(type)}">${typeIcon(type)} ${type}</span>
+          <span class="detail-id">${escapeHtml(m.id)}</span>
+          ${m.provider ? `<span class="detail-provider">${escapeHtml(m.provider)}</span>` : ""}
+        </div>
+        ${m.name && m.name !== m.id ? `<div class="detail-name">${escapeHtml(m.name)}</div>` : ""}
+        <div class="detail-grid">
+          ${m.context_window ? `<div class="dg-item"><span class="dg-label">Context</span><span class="dg-value">${m.context_window.toLocaleString()}</span></div>` : ""}
+          ${m.max_output ? `<div class="dg-item"><span class="dg-label">Max Output</span><span class="dg-value">${m.max_output.toLocaleString()}</span></div>` : ""}
+          ${m.dimensions ? `<div class="dg-item"><span class="dg-label">Dimensions</span><span class="dg-value">${m.dimensions}</span></div>` : ""}
+          ${m.cost ? `<div class="dg-item"><span class="dg-label">Cost ($/1M)</span><span class="dg-value">in: ${m.cost.input ?? "?"} · out: ${m.cost.output ?? "?"}</span></div>` : ""}
+          ${m.owned_by ? `<div class="dg-item"><span class="dg-label">Owner</span><span class="dg-value">${escapeHtml(m.owned_by)}</span></div>` : ""}
+          ${m.first_seen ? `<div class="dg-item"><span class="dg-label">First Seen</span><span class="dg-value">${m.first_seen}</span></div>` : ""}
+          ${m.release_date ? `<div class="dg-item"><span class="dg-label">Release</span><span class="dg-value">${m.release_date}</span></div>` : ""}
+          ${m.knowledge_cutoff ? `<div class="dg-item"><span class="dg-label">Knowledge</span><span class="dg-value">${m.knowledge_cutoff}</span></div>` : ""}
+          ${m.deprecation_date ? `<div class="dg-item"><span class="dg-label">Deprecation</span><span class="dg-value" style="color:#ef4444">${m.deprecation_date}</span></div>` : ""}
+          ${m.deprecation_replacement ? `<div class="dg-item"><span class="dg-label">Replacement</span><span class="dg-value">${escapeHtml(m.deprecation_replacement)}</span></div>` : ""}
+          ${m.status ? `<div class="dg-item"><span class="dg-label">Status</span><span class="dg-value">${m.status}</span></div>` : ""}
+        </div>
+        ${capList.length ? `<div class="detail-section"><h4>Capabilities</h4><div class="detail-tags">${capList.map(c=>`<span class="tag">${c}</span>`).join("")}</div></div>` : ""}
+        ${mod.input || mod.output ? `<div class="detail-section"><h4>Modalities</h4><div class="detail-tags">${[...(mod.input||[]), ...(mod.output||[])].map(m=>`<span class="tag">${m}</span>`).join("")}</div></div>` : ""}
+      `;
+      panel.style.display = "flex";
+    }
+    $("#models-detail-close").addEventListener("click", () => { $("#models-detail-panel").style.display = "none"; });
+
+    // ─── Image Generation ───────────────────────────────────────────
+    async function updateImageModels() {
+      try {
+        const json = await apiJson(`/v1/image/models/${$("#image-provider").value}`, { headers: getHeaders() });
+        const sel = $("#image-model"); sel.innerHTML = "";
+        (json.data || []).forEach(m => { const o = document.createElement("option"); o.value = m.id; o.textContent = m.id; sel.appendChild(o); });
+      } catch {}
+    }
+    $("#image-provider").addEventListener("change", updateImageModels);
+
+    $("#generate-image").addEventListener("click", async () => {
+      const prompt = $("#image-prompt").value.trim(); if (!prompt) return;
+      const btn = $("#generate-image"); btn.disabled = true;
+      const status = $("#image-status"); status.innerHTML = '<span class="spinner"></span> Generating...';
+      let ok = false;
       try {
         const resp = await apiFetch("/v1/images/generations", {
-          method: "POST",
-          headers: getHeaders(),
-          body: JSON.stringify({
-            model: fullModelId,
-            prompt,
-            size: document.getElementById("image-size").value,
-          }),
+          method:"POST", headers:getHeaders(),
+          body: JSON.stringify({ model:`${$("#image-provider").value}@${$("#image-model").value}`, prompt, size:$("#image-size").value }),
         });
         const data = await resp.json();
         const item = data.data?.[0];
-
         if (item) {
-          let imgSrc = item.url;
-          if (item.b64_json) {
-            // Detection based on base64 headers: /9j/ is JPEG, iVBOR is PNG
-            const isJpeg = item.b64_json.startsWith("/9j/");
-            const prefix = isJpeg ? "data:image/jpeg;base64," : "data:image/png;base64,";
-            imgSrc = prefix + item.b64_json;
+          let src = item.url || "";
+          if (item.b64_json) { const pfx = item.b64_json.startsWith("/9j/") ? "data:image/jpeg;base64," : "data:image/png;base64,"; src = pfx + item.b64_json; }
+          if (src) {
+            const card = document.createElement("div"); card.className = "image-card";
+            card.innerHTML = `<img src="${escapeHtml(src)}" /><div class="image-card-label">${escapeHtml(prompt)}</div>`;
+            card.querySelector("img").addEventListener("click", () => window.open(src, "_blank"));
+            $("#image-results").prepend(card); ok = true;
           }
-          imgSrc = safeImageUrl(imgSrc);
-
-          if (imgSrc) {
-            const card = document.createElement("div");
-            card.style.background = "white";
-            card.style.padding = "8px";
-            card.style.borderRadius = "16px";
-            card.style.boxShadow = "0 4px 12px rgba(0,0,0,0.1)";
-            card.innerHTML = `
-                <div style="position: relative;">
-                  <img src="${escapeHtml(imgSrc)}" style="width:100%; border-radius:12px;" />
-                  <button class="download-btn" style="
-                      position: absolute;
-                      bottom: 12px;
-                      right: 12px;
-                      background: rgba(255, 255, 255, 0.95);
-                      border: 1px solid rgba(0,0,0,0.1);
-                      border-radius: 50%;
-                      width: 36px;
-                      height: 36px;
-                      display: flex;
-                      align-items: center;
-                      justify-content: center;
-                      cursor: pointer;
-                      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-                      transition: all 0.2s ease;
-                      z-index: 10;
-                  " onmouseover="this.style.transform='scale(1.1)'; this.style.background='#fff'" 
-                    onmouseout="this.style.transform='scale(1)'; this.style.background='rgba(255, 255, 255, 0.95)'"
-                    title="Download Image">
-                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#333" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-                          <polyline points="7 10 12 15 17 10"></polyline>
-                          <line x1="12" y1="15" x2="12" y2="3"></line>
-                      </svg>
-                  </button>
-                </div>
-                <div style="padding:12px; font-size:0.8rem; color:#666;">${escapeHtml(prompt)}</div>`;
-
-            const btn = card.querySelector(".download-btn");
-            btn.addEventListener("click", async () => {
-              try {
-                let pngBytes;
-                if (imgSrc.startsWith("data:")) {
-                  pngBytes = base64ToUint8Array(imgSrc);
-                } else {
-                  const r = await fetch(imgSrc);
-                  const b = await r.arrayBuffer();
-                  pngBytes = new Uint8Array(b);
-                }
-
-                // Add Metadata
-                pngBytes = addPngMetadata(pngBytes, "Description", prompt);
-                pngBytes = addPngMetadata(pngBytes, "Software", fullModelId);
-                pngBytes = addPngMetadata(
-                  pngBytes,
-                  "Source",
-                  "UniInfer WebDemo",
-                );
-
-                const blob = new Blob([pngBytes], { type: "image/png" });
-                const url = URL.createObjectURL(blob);
-
-                const a = document.createElement("a");
-                a.href = url;
-                a.download = `uniinfer-image-${Date.now()}.png`;
-                document.body.appendChild(a);
-                a.click();
-                document.body.removeChild(a);
-                URL.revokeObjectURL(url);
-              } catch (e) {
-                console.error("Download failed or metadata error", e);
-                const a = document.createElement("a");
-                a.href = imgSrc;
-                a.download = `uniinfer-image-${Date.now()}.png`;
-                document.body.appendChild(a);
-                a.click();
-                document.body.removeChild(a);
-              }
-            });
-
-            imageResults.prepend(card);
-            imageGenSucceeded = true;
-          }
-        } else {
-          status.innerHTML = `
-            <div class="error-status">
-              <div class="error-title">
-                <span>⚠️</span>
-                <span>Error</span>
-              </div>
-              <div class="error-detail">No image generated</div>
-            </div>
-          `;
         }
-      } catch (e) {
-        const title = e.status ? `Error ${e.status}` : "Error";
-        const detail = e.detail || e.statusText || e.message;
-        status.innerHTML = `
-          <div class="error-status">
-            <div class="error-title">
-              <span>⚠️</span>
-              <span>${title}</span>
-            </div>
-            <div class="error-detail">${escapeHtml(detail)}</div>
-          </div>
-        `;
-      } finally {
-        generateImgBtn.disabled = false;
-        if (imageGenSucceeded) {
-          status.innerHTML = "";
-        }
-      }
+        if (!ok) status.innerHTML = '<div class="error-status"><span>⚠️</span> No image generated</div>';
+      } catch (e) { status.innerHTML = `<div class="error-status"><span>⚠️</span> ${escapeHtml(e.detail || e.message)}</div>`; }
+      finally { btn.disabled = false; if (ok) status.innerHTML = ""; }
     });
 
-    // --- TTS/STT Logic ---
-    const ttsGenerateBtn = document.getElementById("tts-generate-btn");
-    const ttsModel = document.getElementById("tts-model");
-    const ttsVoice = document.getElementById("tts-voice");
-    const ttsInput = document.getElementById("tts-input");
-    const ttsResult = document.getElementById("tts-result");
-
-    async function loadTuAudioModels() {
+    // ─── Audio ───────────────────────────────────────────────────────
+    async function loadAudioModels() {
       try {
-        const data = await apiFetchJson(`/v1/models/tu`, {
-          headers: getHeaders(),
-        });
-        const ids = (data.data || []).map((m) => m.id || "");
-
-        const ttsIds = ids.filter((id) => {
-          const low = id.toLowerCase();
-          return low.includes("kokoro") || low.includes("piper");
-        });
-
-        const sttIds = ids.filter((id) => {
-          const low = id.toLowerCase();
-          return low.includes("whisper") || low.includes("stt");
-        });
-
-        // TTS models (provider-prefixed for proxy calls)
-        ttsModel.innerHTML = "";
-        (ttsIds.length ? ttsIds : ["kokoro", "piper-thorsten"]).forEach((id) => {
-          const option = document.createElement("option");
-          option.value = `tu@${id}`;
-          option.textContent = `tu@${id}`;
-          ttsModel.appendChild(option);
-        });
-
-        // STT models (provider-prefixed for proxy calls)
-        const sttModel = document.getElementById("stt-model");
-        sttModel.innerHTML = "";
-        (sttIds.length ? sttIds : ["whisper-large"]).forEach((id) => {
-          const option = document.createElement("option");
-          option.value = `tu@${id}`;
-          option.textContent = `tu@${id}`;
-          sttModel.appendChild(option);
-        });
-      } catch (error) {
-        console.error("Failed to load TU audio models dynamically:", error);
-        // Keep sane defaults
-        ttsModel.innerHTML = `
-          <option value="tu@kokoro">tu@kokoro</option>
-          <option value="tu@piper-thorsten">tu@piper-thorsten</option>
-        `;
-        const sttModel = document.getElementById("stt-model");
-        sttModel.innerHTML = `<option value="tu@whisper-large">tu@whisper-large</option>`;
-      }
-
-      // voices depend on selected TTS model
-      updateVoices();
+        // Load all models and filter for TTS/STT types
+        const { data } = await apiJson("/v1/models", { headers: getHeaders() });
+        const ttsModels = data.filter(m => m.type === "tts" || (m.id && (m.id.toLowerCase().includes("kokoro") || m.id.toLowerCase().includes("piper"))));
+        const sttModels = data.filter(m => m.type === "stt" || (m.id && (m.id.toLowerCase().includes("whisper") || m.id.toLowerCase().includes("stt"))));
+        const ttsSel = $("#tts-model"); ttsSel.innerHTML = "";
+        if (ttsModels.length) ttsModels.forEach(m => { const o = document.createElement("option"); o.value = `${m.provider}@${m.id}`; o.textContent = `${m.provider}/${m.id}`; ttsSel.appendChild(o); });
+        else { const o = document.createElement("option"); o.value = "tu@kokoro"; o.textContent = "tu/kokoro"; ttsSel.appendChild(o); }
+        const sttSel = $("#stt-model"); sttSel.innerHTML = "";
+        if (sttModels.length) sttModels.forEach(m => { const o = document.createElement("option"); o.value = `${m.provider}@${m.id}`; o.textContent = `${m.provider}/${m.id}`; sttSel.appendChild(o); });
+        else { const o = document.createElement("option"); o.value = "tu@whisper-large"; o.textContent = "tu/whisper-large"; sttSel.appendChild(o); }
+        updateVoices();
+      } catch {}
     }
-
-    async function updateVoices() {
-      let voices = [];
-      if (ttsModel.value === "tu@kokoro") {
-        // TU kokoro-compatible voices
-        voices = ["af_alloy", "af_heart", "af_bella", "af_nicole"];
-      } else if (ttsModel.value === "tu@piper-thorsten") {
-        // TU piper-thorsten expects thorsten voice
-        voices = ["thorsten"];
-      } else {
-        // OpenAI voices
-        voices = ["alloy", "echo", "fable", "onyx", "nova", "shimmer"];
-      }
-
-      ttsVoice.innerHTML = voices
-        .map((v) => `<option value="${v}">${v}</option>`)
-        .join("");
+    function updateVoices() {
+      const v = $("#tts-model").value;
+      const voices = v.includes("piper") ? ["thorsten"] : v.includes("kokoro") ? ["af_alloy","af_heart","af_bella","af_nicole"] : ["alloy","echo","fable","onyx","nova","shimmer"];
+      $("#tts-voice").innerHTML = voices.map(x => `<option value="${x}">${x}</option>`).join("");
     }
-    ttsModel.addEventListener("change", updateVoices);
-    updateVoices();
+    $("#tts-model").addEventListener("change", updateVoices);
 
-    ttsGenerateBtn.addEventListener("click", async () => {
-      const text = ttsInput.value.trim();
-      if (!text) return;
-
-      ttsGenerateBtn.disabled = true;
-      const ttsStatusEl = document.getElementById("tts-status");
-      let ttsSucceeded = false;
-      ttsStatusEl.innerHTML =
-        '<div class="spinner"></div> Creating audio...';
-
+    $("#tts-generate-btn").addEventListener("click", async () => {
+      const text = $("#tts-input").value.trim(); if (!text) return;
+      const btn = $("#tts-generate-btn"); btn.disabled = true;
+      const status = $("#tts-status"); status.innerHTML = '<span class="spinner"></span> Creating...';
+      let ok = false;
       try {
-        const resp = await apiFetch("/v1/audio/speech", {
-          method: "POST",
-          headers: getHeaders(),
-          body: JSON.stringify({
-            model: ttsModel.value,
-            input: text,
-            voice: ttsVoice.value,
-          }),
-        });
+        const resp = await apiFetch("/v1/audio/speech", { method:"POST", headers:getHeaders(),
+          body: JSON.stringify({ model:$("#tts-model").value, input:text, voice:$("#tts-voice").value }) });
         const blob = await resp.blob();
-        const url = URL.createObjectURL(blob);
-        const audio = document.createElement("audio");
-        audio.controls = true;
-        audio.src = url;
-        audio.style.width = "100%";
-        ttsResult.prepend(audio);
-        ttsSucceeded = true;
-      } catch (e) {
-        const statusEl = ttsStatusEl;
-        const errorDetail = e.detail || e.statusText || e.message;
-        
-        statusEl.innerHTML = `
-          <div class="error-status">
-            <div class="error-title">
-              <span>⚠️</span>
-              <span>Error ${e.status || ""}</span>
-            </div>
-            <div class="error-detail">${escapeHtml(errorDetail)}</div>
-          </div>
-        `;
-      } finally {
-        ttsGenerateBtn.disabled = false;
-        if (ttsSucceeded) {
-          ttsStatusEl.innerHTML = "";
-        }
-      }
+        const audio = document.createElement("audio"); audio.controls = true; audio.src = URL.createObjectURL(blob); audio.style.width = "100%";
+        $("#tts-result").prepend(audio); ok = true;
+      } catch (e) { status.innerHTML = `<span style="color:#ef4444">${escapeHtml(e.detail || e.message)}</span>`; }
+      finally { btn.disabled = false; if (ok) status.innerHTML = ""; }
     });
 
-    // --- STT Logic ---
-    const sttTranscribeBtn = document.getElementById("stt-transcribe-btn");
-    const sttFile = document.getElementById("stt-file");
-    const sttResult = document.getElementById("stt-result");
-
-    sttFile.addEventListener("change", () => {
-      document.getElementById("selected-audio-name").textContent =
-        sttFile.files[0]?.name || "No file selected";
-    });
-
-    sttTranscribeBtn.addEventListener("click", async () => {
-      const file = sttFile.files[0];
-      if (!file) return;
-
-      sttTranscribeBtn.disabled = true;
-      const sttStatusEl = document.getElementById("stt-status");
-      let sttSucceeded = false;
-      sttStatusEl.innerHTML =
-        '<div class="spinner"></div> Transcribing...';
-
+    $("#stt-file").addEventListener("change", () => { $("#selected-audio-name").textContent = $("#stt-file").files[0]?.name || "No file selected"; });
+    $("#stt-transcribe-btn").addEventListener("click", async () => {
+      const file = $("#stt-file").files[0]; if (!file) return;
+      const btn = $("#stt-transcribe-btn"); btn.disabled = true;
+      const status = $("#stt-status"); status.innerHTML = '<span class="spinner"></span> Transcribing...';
+      let ok = false;
       try {
-        const formData = new FormData();
-        formData.append("file", file);
-        formData.append("model", document.getElementById("stt-model").value);
-
-        const resp = await apiFetch("/v1/audio/transcriptions", {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${window.uniinferConfig.apiKey}`,
-          },
-          body: formData,
-        });
+        const fd = new FormData(); fd.append("file", file); fd.append("model", $("#stt-model").value);
+        const resp = await apiFetch("/v1/audio/transcriptions", { method:"POST", headers:{ Authorization:`Bearer ${window.uniinferConfig.apiKey}` }, body:fd });
         const data = await resp.json();
-        sttResult.innerHTML = `<div style="font-weight:600; margin-bottom:8px; font-size:0.7rem; color:#888;">Transcription:</div>${escapeHtml(data.text || "No text found")}`;
-        sttSucceeded = true;
-      } catch (e) {
-        const statusEl = sttStatusEl;
-        const errorDetail = e.detail || e.statusText || e.message;
-        
-        statusEl.innerHTML = `
-          <div class="error-status">
-            <div class="error-title">
-              <span>⚠️</span>
-              <span>Error ${e.status || ""}</span>
-            </div>
-            <div class="error-detail">${escapeHtml(errorDetail)}</div>
-          </div>
-        `;
-      } finally {
-        sttTranscribeBtn.disabled = false;
-        if (sttSucceeded) {
-          sttStatusEl.innerHTML = "";
-        }
-      }
+        $("#stt-result").innerHTML = `<div class="stt-label">Transcription:</div>${escapeHtml(data.text || "No text found")}`;
+        ok = true;
+      } catch (e) { status.innerHTML = `<span style="color:#ef4444">${escapeHtml(e.detail || e.message)}</span>`; }
+      finally { btn.disabled = false; if (ok) status.innerHTML = ""; }
     });
 
-    // --- Streaming STT Logic ---
-    const streamSttToggleBtn = document.getElementById("stream-stt-toggle");
-    const streamSttStatus = document.getElementById("stream-stt-status");
-    const streamSttIndicator = document.getElementById("stream-stt-indicator");
-    const streamSttTranscript = document.getElementById("stream-stt-transcript");
-    const streamSttClearBtn = document.getElementById("stream-stt-clear");
-    const streamSttPlaybackBtn = document.getElementById("stream-stt-playback");
-    const streamSttChunksSpan = document.getElementById("stream-stt-chunks");
-    const streamSttBytesSpan = document.getElementById("stream-stt-bytes");
-    const streamSttDurationSpan = document.getElementById("stream-stt-duration");
-    const streamSttModeBadge = document.getElementById("stream-stt-mode-badge");
-    const streamSttWsUrlInput = document.getElementById("stream-stt-ws-url");
-    const streamSttModelSelect = document.getElementById("stream-stt-model");
-    const streamSttChunkMsSelect = document.getElementById("stream-stt-chunk-ms");
-    const streamSttDebugLog = document.getElementById("stream-stt-debug-log");
-    const streamSttLevelBar = document.getElementById("stream-stt-level-bar");
-    const streamSttLevelText = document.getElementById("stream-stt-level-text");
+    // ─── Settings ────────────────────────────────────────────────────
+    function setCookie(n,v,h) { let e=""; if(h){const d=new Date();d.setTime(d.getTime()+h*36e5);e=";expires="+d.toUTCString();}document.cookie=n+"="+(v||"")+e+";path=/"; }
+    function getCookie(n) { const eq=n+"="; for(let c of document.cookie.split(";")){c=c.trim();if(c.startsWith(eq))return c.substring(eq.length);} return null; }
 
-    let streamSttWs = null;
-    let streamSttAudioContext = null;
-    let streamSttMediaStream = null;
-    let streamSttWorkletNode = null;
-    let streamSttAnalyser = null;
-    let streamSttAnalyserInterval = null;
-    let streamSttChunkCount = 0;
-    let streamSttByteCount = 0;
-    let streamSttStartTime = 0;
-    let streamSttDurationInterval = null;
-    let streamSttSessionId = null;
-    let streamSttFullTranscript = "";
-    let streamSttIsRecording = false;
-    let streamSttRecordedChunks = []; // For playback in demo mode
-    let streamSttSpeechRecognition = null; // Web Speech API for demo mode
-
-    // Add recording dot animation styles
-    const recordingStyles = document.createElement("style");
-    recordingStyles.textContent = `
-      .recording-dot {
-        display: inline-block;
-        width: 8px;
-        height: 8px;
-        background: #ef4444;
-        border-radius: 50%;
-        margin-right: 6px;
-        animation: recording-pulse 1s ease-in-out infinite;
-      }
-      @keyframes recording-pulse {
-        0%, 100% { opacity: 1; transform: scale(1); }
-        50% { opacity: 0.5; transform: scale(1.2); }
-      }
-    `;
-    document.head.appendChild(recordingStyles);
-
-    function debugLog(msg, type = "info") {
-      const time = new Date().toLocaleTimeString();
-      const colors = {
-        info: "#94a3b8",
-        success: "#22c55e",
-        error: "#ef4444",
-        warn: "#f59e0b",
-        send: "#3b82f6",
-        recv: "#8b5cf6"
-      };
-      const line = document.createElement("div");
-      line.style.color = colors[type] || colors.info;
-      line.textContent = `[${time}] ${msg}`;
-      streamSttDebugLog.appendChild(line);
-      streamSttDebugLog.scrollTop = streamSttDebugLog.scrollHeight;
-      
-      while (streamSttDebugLog.children.length > 50) {
-        streamSttDebugLog.removeChild(streamSttDebugLog.firstChild);
-      }
-      
-      console.log(`[StreamSTT] ${msg}`);
+    function openSettings() {
+      $("#settings-api-base-url").value = window.uniinferConfig.apiBaseUrl;
+      $("#settings-api-key").value = window.uniinferConfig.apiKey;
+      $("#settings-remember-key").checked = localStorage.getItem("uniinfer_remember_api_key") === "1";
+      $("#settings-max-tokens").value = window.uniinferConfig.maxTokens || 4000;
+      $("#settings-modal").style.display = "flex";
     }
+    function closeSettings() { $("#settings-modal").style.display = "none"; }
 
-    function updateStreamSttStatus(text, isError = false) {
-      streamSttStatus.textContent = text;
-      streamSttStatus.style.color = isError ? "#ef4444" : "#666";
-    }
+    $("#settings-button").addEventListener("click", openSettings);
+    $("#settings-cancel").addEventListener("click", closeSettings);
+    $("#settings-modal").addEventListener("click", e => { if (e.target === $("#settings-modal")) closeSettings(); });
 
-    function setRecordingUI(isRecording) {
-      streamSttIsRecording = isRecording;
-      if (isRecording) {
-        streamSttToggleBtn.innerHTML = "⏹️ Stop Recording";
-        streamSttToggleBtn.style.background = "linear-gradient(135deg, #ef4444 0%, #dc2626 100%)";
-        streamSttToggleBtn.style.boxShadow = "0 2px 8px rgba(239, 68, 68, 0.3)";
-        streamSttIndicator.style.display = "flex";
-      } else {
-        streamSttToggleBtn.innerHTML = "🎙️ Start Recording";
-        streamSttToggleBtn.style.background = "linear-gradient(135deg, #22c55e 0%, #16a34a 100%)";
-        streamSttToggleBtn.style.boxShadow = "0 2px 8px rgba(34, 197, 94, 0.3)";
-        streamSttIndicator.style.display = "none";
-      }
-    }
+    $("#settings-save").addEventListener("click", () => {
+      window.uniinferConfig.apiBaseUrl = $("#settings-api-base-url").value.trim();
+      const key = $("#settings-api-key").value.trim();
+      window.uniinferConfig.apiKey = key;
+      const remember = $("#settings-remember-key").checked;
+      localStorage.setItem("uniinfer_remember_api_key", remember ? "1" : "0");
+      if (remember) { localStorage.setItem("uniinfer_api_key", key); setCookie("uniinfer_api_key", key, 48); }
+      else { localStorage.removeItem("uniinfer_api_key"); setCookie("uniinfer_api_key", "", -1); }
+      window.uniinferConfig.maxTokens = parseInt($("#settings-max-tokens").value) || 4000;
+      closeSettings(); loadProviders(); loadAudioModels();
+    });
 
-    function updateAudioLevel() {
-      if (!streamSttAnalyser) return;
-      
-      const dataArray = new Uint8Array(streamSttAnalyser.frequencyBinCount);
-      streamSttAnalyser.getByteFrequencyData(dataArray);
-      
-      // Calculate average level
-      let sum = 0;
-      for (let i = 0; i < dataArray.length; i++) {
-        sum += dataArray[i];
-      }
-      const avg = sum / dataArray.length;
-      const percent = Math.min(100, (avg / 128) * 100);
-      
-      streamSttLevelBar.style.width = percent + "%";
-      streamSttLevelText.textContent = Math.round(percent) + "%";
-    }
-
-    function updateDuration() {
-      if (!streamSttStartTime) return;
-      const elapsed = (Date.now() - streamSttStartTime) / 1000;
-      streamSttDurationSpan.textContent = elapsed.toFixed(1) + "s";
-    }
-
-    function formatBytes(bytes) {
-      if (bytes < 1024) return bytes + " B";
-      if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + " KB";
-      return (bytes / (1024 * 1024)).toFixed(2) + " MB";
-    }
-
-    function appendTranscript(text, isPartial = false) {
-      if (!text || !text.trim()) return;
-      
-      const trimmed = text.trim();
-      
-      if (isPartial) {
-        streamSttTranscript.innerHTML = `
-          <div style="font-size: 0.85rem; color: #1f2937;">${escapeHtml(streamSttFullTranscript)}</div>
-          <div style="font-size: 0.85rem; color: #9ca3af; font-style: italic;">${escapeHtml(trimmed)}</div>
-        `;
-        debugLog(`Partial: "${trimmed.substring(0, 50)}${trimmed.length > 50 ? '...' : ''}"`, "recv");
-      } else {
-        streamSttFullTranscript += (streamSttFullTranscript ? " " : "") + trimmed;
-        streamSttTranscript.innerHTML = `
-          <div style="font-size: 0.85rem; color: #1f2937;">${escapeHtml(streamSttFullTranscript)}</div>
-        `;
-        debugLog(`Final: "${trimmed.substring(0, 50)}${trimmed.length > 50 ? '...' : ''}"`, "success");
-      }
-      
-      streamSttTranscript.scrollTop = streamSttTranscript.scrollHeight;
-    }
-
-    async function startStreamingStt() {
-      const wsUrl = streamSttWsUrlInput.value.trim();
-      const model = streamSttModelSelect.value;
-      const chunkMs = parseInt(streamSttChunkMsSelect.value) || 250;
-      const isDemoMode = !wsUrl;
-
-      if (isDemoMode) {
-        debugLog("Starting in DEMO mode (no WebSocket)", "info");
-        streamSttModeBadge.textContent = "Demo Mode";
-        streamSttModeBadge.style.background = "#dbeafe";
-        streamSttModeBadge.style.color = "#1d4ed8";
-      } else {
-        debugLog(`Starting... WS: ${wsUrl}`, "info");
-        streamSttModeBadge.textContent = "WS Mode";
-        streamSttModeBadge.style.background = "#dcfce7";
-        streamSttModeBadge.style.color = "#16a34a";
-      }
-      debugLog(`Model: ${model}, Chunk: ${chunkMs}ms`, "info");
-
+    async function refreshModels() {
+      const btn = $("#update-models-btn"); btn.disabled = true;
+      $("#update-models-status").textContent = "Refreshing...";
       try {
-        debugLog("Requesting microphone access...", "info");
-        
-        streamSttMediaStream = await navigator.mediaDevices.getUserMedia({
-          audio: {
-            echoCancellation: true,
-            noiseSuppression: true,
-            autoGainControl: true,
-          }
-        });
-        
-        debugLog("Microphone access granted", "success");
-
-        // Setup AudioContext at 16kHz
-        streamSttAudioContext = new AudioContext({ sampleRate: 16000 });
-        debugLog(`AudioContext created (sampleRate: ${streamSttAudioContext.sampleRate})`, "info");
-        
-        const source = streamSttAudioContext.createMediaStreamSource(streamSttMediaStream);
-
-        // Create analyser for audio level meter
-        streamSttAnalyser = streamSttAudioContext.createAnalyser();
-        streamSttAnalyser.fftSize = 256;
-        source.connect(streamSttAnalyser);
-        
-        // Start audio level updates
-        streamSttAnalyserInterval = setInterval(updateAudioLevel, 50);
-
-        // Create AudioWorklet for chunking
-        const workletCode = `
-          class StreamSttProcessor extends AudioWorkletProcessor {
-            constructor() {
-              super();
-              this.buffer = [];
-              this.chunkSize = Math.floor(16000 * 250 / 1000);
-              this.chunkCount = 0;
-              
-              this.port.onmessage = (e) => {
-                if (e.data.chunkMs) {
-                  this.chunkSize = Math.floor(16000 * e.data.chunkMs / 1000);
-                  this.chunkCount = 0;
-                }
-              };
-            }
-
-            process(inputs, outputs, parameters) {
-              const input = inputs[0];
-              if (!input || !input[0]) return true;
-
-              const channel = input[0];
-              
-              for (let i = 0; i < channel.length; i++) {
-                this.buffer.push(channel[i]);
-              }
-
-              while (this.buffer.length >= this.chunkSize) {
-                const chunk = this.buffer.splice(0, this.chunkSize);
-                const pcm16 = new Int16Array(chunk.length);
-                for (let i = 0; i < chunk.length; i++) {
-                  const s = Math.max(-1, Math.min(1, chunk[i]));
-                  pcm16[i] = s < 0 ? s * 0x8000 : s * 0x7FFF;
-                }
-                
-                this.chunkCount++;
-                this.port.postMessage({ 
-                  audio: pcm16.buffer, 
-                  chunkNum: this.chunkCount,
-                  samples: chunk.length 
-                }, [pcm16.buffer]);
-              }
-
-              return true;
-            }
-          }
-          registerProcessor('stream-stt-processor', StreamSttProcessor);
-        `;
-
-        const blob = new Blob([workletCode], { type: 'application/javascript' });
-        const workletUrl = URL.createObjectURL(blob);
-        
-        debugLog("Loading AudioWorklet...", "info");
-        await streamSttAudioContext.audioWorklet.addModule(workletUrl);
-        URL.revokeObjectURL(workletUrl);
-        debugLog("AudioWorklet loaded", "success");
-
-        streamSttWorkletNode = new AudioWorkletNode(streamSttAudioContext, 'stream-stt-processor');
-        source.connect(streamSttWorkletNode);
-        streamSttWorkletNode.connect(streamSttAudioContext.destination);
-        debugLog("Audio pipeline connected", "success");
-
-        // Reset counters
-        streamSttChunkCount = 0;
-        streamSttByteCount = 0;
-        streamSttFullTranscript = "";
-        streamSttRecordedChunks = [];
-        streamSttStartTime = Date.now();
-        streamSttSessionId = crypto.randomUUID();
-
-        // Start duration counter
-        streamSttDurationInterval = setInterval(updateDuration, 100);
-
-        // In demo mode, use Web Speech API for transcription
-        if (isDemoMode) {
-          const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-          if (SpeechRecognition) {
-            streamSttSpeechRecognition = new SpeechRecognition();
-            streamSttSpeechRecognition.continuous = true;
-            streamSttSpeechRecognition.interimResults = true;
-            streamSttSpeechRecognition.lang = 'en-US';
-            
-            streamSttSpeechRecognition.onresult = (event) => {
-              let interimTranscript = '';
-              let finalTranscript = '';
-              
-              for (let i = event.resultIndex; i < event.results.length; i++) {
-                const transcript = event.results[i][0].transcript;
-                if (event.results[i].isFinal) {
-                  finalTranscript += transcript;
-                } else {
-                  interimTranscript += transcript;
-                }
-              }
-              
-              if (finalTranscript) {
-                appendTranscript(finalTranscript, false);
-              }
-              if (interimTranscript) {
-                appendTranscript(interimTranscript, true);
-              }
-            };
-            
-            streamSttSpeechRecognition.onerror = (event) => {
-              debugLog(`Speech recognition error: ${event.error}`, "error");
-            };
-            
-            streamSttSpeechRecognition.onend = () => {
-              // Auto-restart if still recording
-              if (streamSttIsRecording && streamSttSpeechRecognition) {
-                debugLog("Speech recognition auto-restarting...", "info");
-                try {
-                  streamSttSpeechRecognition.start();
-                } catch (e) {
-                  debugLog(`Failed to restart speech recognition: ${e.message}`, "error");
-                }
-              }
-            };
-            
-            streamSttSpeechRecognition.start();
-            debugLog("Web Speech API started (browser transcription)", "success");
-          } else {
-            debugLog("Web Speech API not supported in this browser", "warn");
-            streamSttTranscript.innerHTML = `<div style="font-size: 0.75rem; color: #f59e0b;">⚠️ Browser doesn't support Web Speech API. Try Chrome/Edge.</div>`;
-          }
-        }
-
-        // Connect WebSocket if URL provided
-        if (!isDemoMode) {
-          debugLog(`Connecting to WebSocket: ${wsUrl}`, "info");
-          streamSttWs = new WebSocket(wsUrl);
-
-          streamSttWs.onopen = () => {
-            debugLog("WebSocket connected", "success");
-            updateStreamSttStatus("Connected, recording...");
-            
-            const startMsg = {
-              type: "start",
-              session_id: streamSttSessionId,
-              model: model,
-              sample_rate: 16000,
-              format: "pcm_s16le",
-              channels: 1
-            };
-            streamSttWs.send(JSON.stringify(startMsg));
-            debugLog(`Sent start: ${JSON.stringify(startMsg)}`, "send");
-          };
-
-          streamSttWs.onmessage = (event) => {
-            debugLog(`Received: ${event.data.substring(0, 100)}...`, "recv");
-            try {
-              const data = JSON.parse(event.data);
-              
-              if (data.type === "partial" && data.text) {
-                appendTranscript(data.text, true);
-              } else if (data.type === "final" && data.text) {
-                appendTranscript(data.text, false);
-              } else if (data.type === "error") {
-                debugLog(`Server error: ${data.message}`, "error");
-                updateStreamSttStatus(data.message || "Error", true);
-              }
-            } catch (e) {
-              debugLog(`Parse error: ${e.message}`, "error");
-            }
-          };
-
-          streamSttWs.onerror = (err) => {
-            debugLog("WebSocket error!", "error");
-            updateStreamSttStatus("WebSocket error", true);
-          };
-
-          streamSttWs.onclose = (event) => {
-            debugLog(`WebSocket closed (code: ${event.code})`, "warn");
-            updateStreamSttStatus("Disconnected");
-            if (streamSttIsRecording) {
-              stopStreamingStt();
-            }
-          };
-        }
-
-        // Handle audio chunks from worklet
-        streamSttWorkletNode.port.onmessage = (event) => {
-          if (event.data.audio) {
-            streamSttChunkCount++;
-            streamSttByteCount += event.data.audio.byteLength;
-            
-            streamSttChunksSpan.textContent = streamSttChunkCount;
-            streamSttBytesSpan.textContent = formatBytes(streamSttByteCount);
-            
-            // Store chunk for demo playback
-            if (isDemoMode) {
-              streamSttRecordedChunks.push(new Int16Array(event.data.audio));
-              debugLog(`Chunk #${streamSttChunkCount} captured (${event.data.samples} samples, ${event.data.audio.byteLength} bytes)`, "success");
-            } else if (streamSttWs && streamSttWs.readyState === WebSocket.OPEN) {
-              streamSttWs.send(event.data.audio);
-              debugLog(`Sent chunk #${streamSttChunkCount} (${event.data.samples} samples, ${event.data.audio.byteLength} bytes)`, "send");
-            } else {
-              debugLog(`Chunk #${streamSttChunkCount} dropped (WS not ready)`, "warn");
-            }
-          }
-        };
-
-        // Update chunk size in worklet
-        streamSttWorkletNode.port.postMessage({ chunkMs: chunkMs });
-
-        // Update UI
-        setRecordingUI(true);
-        streamSttTranscript.innerHTML = `<div style="font-size: 0.7rem; color: #94a3b8;">${isDemoMode ? 'Listening... (browser transcription)' : 'Listening...'}</div>`;
-        updateStreamSttStatus(isDemoMode ? "Recording with transcription..." : "Recording...");
-
-      } catch (err) {
-        debugLog(`Failed to start: ${err.message}`, "error");
-        console.error("Failed to start streaming STT:", err);
-        updateStreamSttStatus(err.message || "Failed to start", true);
-        stopStreamingStt();
-      }
+        modelsBrowserLoaded = false;
+        await loadProviders();
+        if (store.selectedProvider) await loadModelsForProvider(store.selectedProvider);
+        loadAudioModels();
+        const now = Date.now();
+        localStorage.setItem("uniinfer_models_last_refreshed", String(now));
+        $("#update-models-status").textContent = `Last refreshed: ${new Date(now).toLocaleString()}`;
+      } catch (e) { $("#update-models-status").textContent = `Failed: ${e.message}`; }
+      finally { btn.disabled = false; }
     }
+    $("#update-models-btn").addEventListener("click", refreshModels);
 
-    function stopStreamingStt() {
-      debugLog("Stopping...", "info");
-      
-      // Stop Web Speech API if active
-      if (streamSttSpeechRecognition) {
-        streamSttSpeechRecognition.onend = null; // Prevent auto-restart
-        streamSttSpeechRecognition.stop();
-        streamSttSpeechRecognition = null;
-        debugLog("Web Speech API stopped", "info");
-      }
-      
-      // Stop duration counter
-      if (streamSttDurationInterval) {
-        clearInterval(streamSttDurationInterval);
-        streamSttDurationInterval = null;
-      }
-      
-      // Stop audio level meter
-      if (streamSttAnalyserInterval) {
-        clearInterval(streamSttAnalyserInterval);
-        streamSttAnalyserInterval = null;
-      }
-      streamSttLevelBar.style.width = "0%";
-      streamSttLevelText.textContent = "--";
-      
-      // Send end message and close WS
-      if (streamSttWs && streamSttWs.readyState === WebSocket.OPEN) {
-        const endMsg = { type: "end", session_id: streamSttSessionId };
-        streamSttWs.send(JSON.stringify(endMsg));
-        debugLog(`Sent end: ${JSON.stringify(endMsg)}`, "send");
-        streamSttWs.close();
-      }
-      streamSttWs = null;
-
-      // Cleanup audio
-      if (streamSttWorkletNode) {
-        streamSttWorkletNode.disconnect();
-        streamSttWorkletNode = null;
-      }
-      if (streamSttAudioContext) {
-        streamSttAudioContext.close();
-        streamSttAudioContext = null;
-      }
-      if (streamSttMediaStream) {
-        streamSttMediaStream.getTracks().forEach(t => t.stop());
-        streamSttMediaStream = null;
-      }
-      streamSttAnalyser = null;
-
-      // Update UI
-      setRecordingUI(false);
-      
-      const duration = ((Date.now() - streamSttStartTime) / 1000).toFixed(1);
-      updateStreamSttStatus(`Stopped. ${streamSttChunkCount} chunks, ${formatBytes(streamSttByteCount)}, ${duration}s`);
-      debugLog(`Stopped. Total: ${streamSttChunkCount} chunks, ${formatBytes(streamSttByteCount)}`, "info");
-      
-      // Show playback button if we recorded chunks
-      if (streamSttRecordedChunks.length > 0) {
-        streamSttPlaybackBtn.style.display = "inline-block";
-      }
+    // Restore saved key
+    if (localStorage.getItem("uniinfer_remember_api_key") === "1") {
+      const k = localStorage.getItem("uniinfer_api_key") || getCookie("uniinfer_api_key");
+      if (k) window.uniinferConfig.apiKey = k.trim();
     }
+    const lastRefresh = localStorage.getItem("uniinfer_models_last_refreshed");
+    if (lastRefresh) $("#update-models-status").textContent = `Last refreshed: ${new Date(parseInt(lastRefresh)).toLocaleString()}`;
 
-    function toggleStreamingStt() {
-      if (streamSttIsRecording) {
-        stopStreamingStt();
-      } else {
-        startStreamingStt();
-      }
+    // ─── Init ───────────────────────────────────────────────────────
+    async function init() {
+      try { const { version } = await apiJson("/v1/system/info"); $("#app-version").textContent = `v${version||"?"}`; } catch { $("#app-version").textContent = "v?"; }
+      loadHistory(); renderHistory();
+      loadProviders();
+      loadAudioModels();
+      updateImageModels();
+      setMode("chat");
     }
-
-    function playRecording() {
-      if (streamSttRecordedChunks.length === 0) return;
-      
-      debugLog(`Playing back ${streamSttRecordedChunks.length} chunks...`, "info");
-      
-      // Concatenate all chunks
-      const totalLength = streamSttRecordedChunks.reduce((sum, chunk) => sum + chunk.length, 0);
-      const allSamples = new Int16Array(totalLength);
-      let offset = 0;
-      for (const chunk of streamSttRecordedChunks) {
-        allSamples.set(chunk, offset);
-        offset += chunk.length;
-      }
-      
-      // Convert Int16 to Float32 for Web Audio
-      const float32 = new Float32Array(allSamples.length);
-      for (let i = 0; i < allSamples.length; i++) {
-        float32[i] = allSamples[i] / (allSamples[i] < 0 ? 0x8000 : 0x7FFF);
-      }
-      
-      // Play
-      const ctx = new AudioContext({ sampleRate: 16000 });
-      const buffer = ctx.createBuffer(1, float32.length, 16000);
-      buffer.getChannelData(0).set(float32);
-      
-      const source = ctx.createBufferSource();
-      source.buffer = buffer;
-      source.connect(ctx.destination);
-      source.start();
-      
-      source.onended = () => {
-        ctx.close();
-        debugLog("Playback finished", "info");
-      };
-    }
-
-    streamSttToggleBtn.addEventListener("click", toggleStreamingStt);
-
-    streamSttClearBtn.addEventListener("click", () => {
-      streamSttDebugLog.innerHTML = "";
-      streamSttFullTranscript = "";
-      streamSttRecordedChunks = [];
-      streamSttPlaybackBtn.style.display = "none";
-      streamSttChunksSpan.textContent = "0";
-      streamSttBytesSpan.textContent = "0";
-      streamSttDurationSpan.textContent = "0.0s";
-      streamSttTranscript.innerHTML = `<div style="font-size: 0.7rem; color: #94a3b8;">Transcription will appear here...</div>`;
-    });
-
-    streamSttPlaybackBtn.addEventListener("click", playRecording);
-
-    // Init
-    loadChatHistory();
-    loadVersion();
-    loadLastRefreshStatus();
-    loadProviders();
-    updateImageModels();
-    loadTuAudioModels();
-    setMode("chat");
+    init();
+  })();
   </script>
 </body>
-
 </html>
