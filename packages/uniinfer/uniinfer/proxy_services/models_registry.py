@@ -108,6 +108,7 @@ def list_all_models_from_factories() -> list[dict]:
                 "id": model["id"],
                 "object": "model",
                 "owned_by": model.get("owned_by", "skaledev"),
+                "provider": provider_id,
             }
             # Derive type from name/modalities if stored type is generic
             stored_type = model.get("type", "chat")
