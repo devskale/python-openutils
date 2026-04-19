@@ -173,6 +173,27 @@ class GeminiProvider(ChatProvider):
             config_params["temperature"] = request.temperature
         if request.max_tokens is not None:
             config_params["max_output_tokens"] = request.max_tokens
+        if request.tools:
+            tool_choice = request.tool_choice
+            if tool_choice is None or tool_choice == "auto":
+                config_params["tool_config"] = types.ToolConfig(
+                    function_calling_config=types.FunctionCallingConfig(mode="AUTO")
+                )
+            elif tool_choice == "required":
+                config_params["tool_config"] = types.ToolConfig(
+                    function_calling_config=types.FunctionCallingConfig(mode="ANY")
+                )
+            elif tool_choice == "none":
+                config_params["tool_config"] = types.ToolConfig(
+                    function_calling_config=types.FunctionCallingConfig(mode="NONE")
+                )
+            elif isinstance(tool_choice, dict) and tool_choice.get("type") == "function":
+                config_params["tool_config"] = types.ToolConfig(
+                    function_calling_config=types.FunctionCallingConfig(
+                        mode="ANY",
+                        allowed_function_names=[tool_choice["function"]["name"]]
+                    )
+                )
 
         # Create a config object using new types structure
         config = types.GenerateContentConfig(**config_params)
