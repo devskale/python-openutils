@@ -369,6 +369,10 @@ class GeminiProvider(ChatProvider):
 
         usage, finish_reason = self._extract_usage_and_finish_reason(response)
 
+        # Gemini returns STOP even when function calls are present
+        if tool_calls and finish_reason != "tool_calls":
+            finish_reason = "tool_calls"
+
         message = ChatMessage(
             role="assistant",
             content=content_text if content_text else None,
@@ -522,6 +526,8 @@ class GeminiProvider(ChatProvider):
                         tool_calls=tool_calls
                     )
                     usage, finish_reason = self._extract_usage_and_finish_reason(chunk)
+                    if tool_calls and finish_reason != "tool_calls":
+                        finish_reason = "tool_calls"
                     yield ChatCompletionResponse(
                         message=message,
                         provider='gemini',
