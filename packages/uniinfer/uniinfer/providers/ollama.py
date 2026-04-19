@@ -103,13 +103,7 @@ class OllamaProvider(ChatProvider):
             response.raise_for_status()
 
             data = response.json()
-            models = [model["name"] for model in data.get("models", [])]
-            if not models:
-                # Fallback to tags if models are not available
-                models = [model["id"] for model in data.get("data", [])]
-            print(f"Found {len(models)} available models")
-            return models
-
+            return [ModelInfo(id=model["name"], owned_by=model.get("details", {}).get("family"), raw=model) for model in data.get("models", [])]
         except Exception as e:
             print(f"Error listing models from Ollama: {str(e)}")
             # Fallback to default models if API call fails
