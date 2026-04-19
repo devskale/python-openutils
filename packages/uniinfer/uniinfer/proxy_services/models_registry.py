@@ -109,6 +109,14 @@ def list_all_models_from_factories() -> list[dict]:
                 "object": "model",
                 "owned_by": model.get("owned_by", "skaledev"),
             }
+            # Derive type from name/modalities if stored type is generic
+            stored_type = model.get("type", "chat")
+            mi = ModelInfo(id=model["id"], modalities=model.get("modalities"))
+            derived_type = mi.derive_type()
+            if derived_type != "chat":
+                entry["type"] = derived_type
+            elif stored_type and stored_type != "chat":
+                entry["type"] = stored_type
             if model.get("context_window"):
                 entry["context_window"] = model["context_window"]
             if model.get("max_output"):

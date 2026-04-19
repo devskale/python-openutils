@@ -3,6 +3,7 @@
 import json
 import sys
 import dataclasses
+from uniinfer.core import ModelInfo
 import logging
 from datetime import datetime, timezone
 from pathlib import Path
@@ -99,10 +100,26 @@ def fetch_provider_models(provider_id, cls, credgoo_service, kind):
     return [model_info_to_dict(m) for m in models]
 
 
+def load_type_overrides() -> dict:
+    """Load curated type overrides from type_overrides.json."""
+    overrides_path = PROJECT_ROOT / "uniinfer" / "models" / "type_overrides.json"
+    if not overrides_path.exists():
+        return {}
+    try:
+        with open(overrides_path) as f:
+            data = json.load(f)
+        return data.get("models", {})
+    except Exception:
+        return {}
+
+
 def main():
     log.info("Discovering providers...")
     providers = discover_providers()
     log.info("Found %d providers\n", len(providers))
+
+    type_overrides = load_type_overrides()
+    log.info("Loaded %d type overrides\n", len(type_overrides))
 
     result = {}
     total_models = 0
@@ -111,6 +128,17 @@ def main():
         log.info("Fetching %s (%s) ...", provider_id, kind)
         models = fetch_provider_models(provider_id, cls, credgoo_service, kind)
         if models:
+            # Apply type overrides (always wins), then derive_type as fallback
+            for m in models:
+                mid = m["id"]
+                if mid in type_overrides:
+                    m["type"] = type_overrides[mid]
+                elif m.get("type", "chat") == "chat":
+                    mi = ModelInfo(id=mid, modalities=m.get("modalities"))
+                    derived = mi.derive_type()
+                    if derived != "chat":
+                        m["type"] = derived
+
             result[provider_id] = {
                 "provider_class": cls.__name__,
                 "kind": kind,

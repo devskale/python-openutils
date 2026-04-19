@@ -59,6 +59,31 @@ class ModelInfo:
     def __hash__(self) -> int:
         return hash(self.id)
 
+    def derive_type(self) -> str:
+        """Infer model type from ID and available metadata.
+
+        Only catches unambiguous cases. Returns "chat" for anything uncertain.
+        The authoritative source is the curated model type database.
+        """
+        mid = self.id.lower()
+
+        # Explicit modalities check — high confidence
+        if self.modalities:
+            out = self.modalities.get("output", [])
+            inp = self.modalities.get("input", [])
+            if out == ["audio"] and set(inp) <= {"text"}:
+                return "tts"
+            if set(inp) <= {"audio"} and set(out) <= {"text"}:
+                return "stt"
+
+        # Name-based — only high-confidence patterns
+        if "whisper" in mid:
+            return "stt"
+        if "kokoro" in mid or "piper-" in mid:
+            return "tts"
+
+        return "chat"
+
 
 class ChatMessage:
     """
