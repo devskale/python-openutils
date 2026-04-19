@@ -9,13 +9,13 @@ This repo can live standalone, but in the **kontext.one meta setup** it sits alo
 | Role | Repo | Local path (if in meta setup) |
 |------|------|-------------------------------|
 | **Meta** | kontext.one | `..` |
-| **Frontend** | klark0 (Next.js) | `../klark0` |
-| **Backend** | python-utils | `../python-utils` |
-| **LLM Proxy** | python-openutils | `.` (this repo) |
+| **klark0** | klark0 (Next.js) | `../klark0` |
+| **utils** | python-utils | `../python-utils` |
+| **openutils** | python-openutils | `.` (this repo) |
 
 If `../repos.yml` and `../scripts/` exist, you're in a meta setup. Otherwise this repo is standalone.
 
-**Typical local dev**: frontend on localhost, backend on pi5, LLM proxy on amd (see `../repos.yml` for hosts).
+**Typical local dev**: klark0 on localhost, utils on pi5, openutils on amd (see `../repos.yml` for servers).
 
 ---
 
