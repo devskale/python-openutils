@@ -1,0 +1,20 @@
+# Test exclusions
+!tests/
+!uniinfer/tests/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.mypy_cache/
+.venv/
+venv/
+dist/
+build/
+*.egg-info/
+
+# Runtime-generated (server-local, not source)
+uniinfer/models/_speed_results.json
+uniinfer/models/model_overrides.json
+uniinfer/models/_model_history.json
