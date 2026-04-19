@@ -977,6 +977,37 @@ select:disabled { color: var(--text-muted); opacity: 0.5; cursor: not-allowed; }
   font-size: 0.9rem;
   font-weight: 600;
 }
+.dg-input,
+.dg-select {
+  display: block;
+  width: 100%;
+  background: white;
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  padding: 5px 8px;
+  font-size: 0.85rem;
+  font-family: var(--font-main);
+  font-weight: 500;
+  color: var(--text-color);
+}
+.dg-input:focus,
+.dg-select:focus {
+  outline: none;
+  border-color: var(--accent-color);
+  box-shadow: 0 0 0 1px var(--accent-color);
+}
+.detail-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border-color);
+}
+.override-timestamp {
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  color: var(--text-muted);
+}
 
 .detail-section { margin-bottom: 16px; }
 .detail-section h4 {

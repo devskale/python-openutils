@@ -85,6 +85,68 @@ async def ensure_fresh_models_file() -> None:
         logger.warning("Failed to refresh stale models file: %s", e)
 
 
+def _overrides_file() -> str:
+    return os.path.join(PACKAGE_ROOT, "models", "model_overrides.json")
+
+
+def load_model_overrides() -> dict:
+    """Load all model overrides from model_overrides.json."""
+    path = _overrides_file()
+    if not os.path.exists(path):
+        return {"models": {}}
+    try:
+        import json
+        with open(path) as f:
+            return json.load(f)
+    except Exception:
+        return {"models": {}}
+
+
+def save_model_override(model_id: str, fields: dict) -> None:
+    """Save fields for a model into model_overrides.json.
+    
+    Also updates type_overrides.json if 'type' field is present.
+    """
+    import json
+    from datetime import datetime, timezone
+
+    data = load_model_overrides()
+    if model_id not in data["models"]:
+        data["models"][model_id] = {}
+    data["models"][model_id].update(fields)
+    data["models"][model_id]["_updated"] = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+    os.makedirs(os.path.dirname(_overrides_file()), exist_ok=True)
+    with open(_overrides_file(), "w") as f:
+        json.dump(data, f, indent=2, ensure_ascii=False)
+
+    # If type changed, also update type_overrides.json
+    if "type" in fields:
+        type_path = os.path.join(PACKAGE_ROOT, "models", "type_overrides.json")
+        try:
+            with open(type_path) as f:
+                td = json.load(f)
+        except Exception:
+            td = {"_meta": {"description": "Curated model type assignments."}, "models": {}}
+        td["models"][model_id] = fields["type"]
+        with open(type_path, "w") as f:
+            json.dump(td, f, indent=2, ensure_ascii=False)
+
+    logger.info("Saved override for %s: %s", model_id, list(fields.keys()))
+
+
+def delete_model_override(model_id: str) -> bool:
+    """Delete all overrides for a model. Returns True if anything was deleted."""
+    import json
+    data = load_model_overrides()
+    if model_id not in data["models"]:
+        return False
+    del data["models"][model_id]
+    with open(_overrides_file(), "w") as f:
+        json.dump(data, f, indent=2, ensure_ascii=False)
+    return True
+
+
 def list_all_models_from_factories() -> list[dict]:
     """Build a flat OpenAI-compatible model list from models.json."""
     from uniinfer.core import ModelInfo
@@ -111,18 +173,31 @@ def list_all_models_from_factories() -> list[dict]:
     except Exception:
         pass
 
+    # Load model overrides (context, dimensions, cost, etc.)
+    model_overrides = {}
+    mo_path = os.path.join(PACKAGE_ROOT, "models", "model_overrides.json")
+    try:
+        import json
+        with open(mo_path) as f:
+            model_overrides = json.load(f).get("models", {})
+    except Exception:
+        pass
+
     result = []
     for provider_id, provider_data in data.get("providers", {}).items():
         for model in provider_data.get("models", []):
+            override = model_overrides.get(model["id"], {})
             entry = {
                 "id": model["id"],
                 "object": "model",
                 "owned_by": model.get("owned_by", "skaledev"),
                 "provider": provider_id,
             }
-            # Resolve type: overrides > stored > derive
+            # Resolve type: overrides > type_overrides > stored > derive
             model_type = None
-            if model["id"] in type_overrides:
+            if override.get("type"):
+                model_type = override["type"]
+            elif model["id"] in type_overrides:
                 model_type = type_overrides[model["id"]]
             elif model.get("type") and model["type"] != "chat":
                 model_type = model["type"]
@@ -130,30 +205,13 @@ def list_all_models_from_factories() -> list[dict]:
                 mi = ModelInfo(id=model["id"], modalities=model.get("modalities"))
                 model_type = mi.derive_type()
             entry["type"] = model_type
-            if model.get("context_window"):
-                entry["context_window"] = model["context_window"]
-            if model.get("max_output"):
-                entry["max_output"] = model["max_output"]
-            if model.get("dimensions"):
-                entry["dimensions"] = model["dimensions"]
-            if model.get("capabilities"):
-                entry["capabilities"] = model["capabilities"]
-            if model.get("modalities"):
-                entry["modalities"] = model["modalities"]
-            if model.get("cost"):
-                entry["cost"] = model["cost"]
-            if model.get("first_seen"):
-                entry["first_seen"] = model["first_seen"]
-            if model.get("deprecation_date"):
-                entry["deprecation_date"] = model["deprecation_date"]
-            if model.get("deprecation_replacement"):
-                entry["deprecation_replacement"] = model["deprecation_replacement"]
-            if model.get("status"):
-                entry["status"] = model["status"]
-            if model.get("release_date"):
-                entry["release_date"] = model["release_date"]
-            if model.get("knowledge_cutoff"):
-                entry["knowledge_cutoff"] = model["knowledge_cutoff"]
+            # Fields: override > models.json > skip
+            for field in ("context_window", "max_output", "dimensions", "cost", "capabilities",
+                          "modalities", "first_seen", "deprecation_date", "deprecation_replacement",
+                          "status", "release_date", "knowledge_cutoff", "name"):
+                val = override.get(field) if field in override else model.get(field)
+                if val is not None:
+                    entry[field] = val
             result.append(entry)
     return result
 
