@@ -28,8 +28,6 @@ class MiniMaxProvider(AnthropicCompatibleProvider):
         MiniMax Anthropic-compatible API may not expose Anthropic model-list endpoint.
         Return known supported models as stable fallback.
         """
-        default_models = ["MiniMax-M2.1", "MiniMax-M2.1-lightning", "MiniMax-M2"]
-        return [ModelInfo(id=m) for m in default_models]
         try:
             return super().list_models(api_key=api_key, **kwargs) or []
         except Exception:

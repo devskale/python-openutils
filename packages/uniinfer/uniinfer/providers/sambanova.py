@@ -35,7 +35,7 @@ class SambanovaProvider(OpenAICompatibleChatProvider):
                 api_key = None
 
         if api_key is None:
-            return [ModelInfo(id=m) for m in ["Meta-Llama-3.1-8B-Instruct", "sambastudio-7b", "sambastudio-13b", "sambastudio-20b", "sambastudio-70b"]]
+            return []
 
         try:
             response = requests.get(
@@ -74,4 +74,4 @@ class SambanovaProvider(OpenAICompatibleChatProvider):
                 ))
             return results
         except Exception:
-            return [ModelInfo(id=m) for m in ["Meta-Llama-3.1-8B-Instruct", "sambastudio-7b", "sambastudio-13b", "sambastudio-20b", "sambastudio-70b"]]
+            return []

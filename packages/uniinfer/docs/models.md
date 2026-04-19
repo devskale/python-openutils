@@ -15,6 +15,24 @@ scripts/
   _models_dev_cache.json # Cached models.dev API response
 ```
 
+## Provider Guidelines
+
+### No hardcoded model lists
+
+When a provider's API key is missing or the API call fails, `list_models()` **must return `[]`** — never fall back to a hardcoded list of model IDs. Hardcoded lists go stale and pollute the catalog with non-existent models.
+
+```python
+# ❌ Wrong
+if api_key is None:
+    return [ModelInfo(id=m) for m in ["Meta-Llama-3.1-8B-Instruct", "sambastudio-7b"]]
+
+# ✅ Correct
+if api_key is None:
+    return []
+```
+
+The generator script (`generate_models.py`) already logs a warning when a provider returns 0 models.
+
 ## Model Types
 
 Each model has a `type` field: `chat | embed | tts | stt | image`.
