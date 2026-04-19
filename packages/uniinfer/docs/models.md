@@ -82,9 +82,9 @@ Backward compat: `str(m)` returns `m.id`, `m == "model-id"` works, hashable.
 ### Embedding-Specific Metadata
 
 Embed models have a `dimensions` field (vector size). Sources:
-- **TU**: probed live via `POST /v1/embeddings` during generation
+- **Ollama**: `POST /api/show` returns `model_info.{arch}.context_length` and `model_info.{arch}.embedding_length` — free, no embed call
 - **models.dev**: `limit.output` mapped to dimensions during merge
-- **Other providers**: not available from `/v1/models`, would need per-provider probing
+- **Other providers**: dimensions from provider's `/v1/models` response or models.dev merge
 
 ## Provider Metadata Richness
 
@@ -101,8 +101,9 @@ Embed models have a `dimensions` field (vector size). Sources:
 | **SambaNova** | ✅ | ✅ | — | — | ✅ | — |
 | **AI21** | ✅ | ✅ | — | — | ✅ | — |
 | **Pollinations** | — | — | ✅ | ✅ reasoning, vision, tools | — | — |
-| **TU** | — | — | — | — | — | ✅ (probed live) |
-| OpenAI, NGC, Stepfun, Upstage, InternLM, Chutes, Cloudflare, Ollama, BigModel, HuggingFace | bare (id only) | | | | | |
+| **TU** | — | — | — | — | — | — |
+| **Ollama** | — | — | — | — | — | ✅ (`/api/show` probe) |
+| OpenAI, NGC, Stepfun, Upstage, InternLM, Chutes, Cloudflare, BigModel, HuggingFace | bare (id only) | | | | | |
 
 ## Generating models.json
 
@@ -115,7 +116,7 @@ Pipeline:
 1. Calls `list_models()` on all installed providers
 2. Applies type overrides from `type_overrides.json`, then `derive_type()` fallback
 3. Merges enrichment from models.dev (context, cost, modalities, capabilities, dimensions, release_date, knowledge_cutoff)
-4. Probes TU embed models for dimensions (live `POST /v1/embeddings`)
+4. Probes Ollama embed models via `/api/show` for context_window + dimensions (free metadata read, no embed call)
 5. Tracks `first_seen` via `_model_history.json`, reports new and disappeared models
 
 ### models.dev Merge
