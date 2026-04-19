@@ -225,7 +225,7 @@ def update_model_history(
     return history, deprecated
 
 
-def merge_models_dev(models: list[dict], dev_provider: dict) -> list[dict]:
+def merge_models_dev(models: list[dict], dev_provider: dict, type_overrides: dict = None) -> list[dict]:
     """Enrich models with models.dev data.
 
     Priority: live API data wins over models.dev.
@@ -278,6 +278,11 @@ def merge_models_dev(models: list[dict], dev_provider: dict) -> list[dict]:
             m["capabilities"] = merged
 
         if m.get("type") == "embed" and not m.get("dimensions"):
+            dim = dev.get("limit", {}).get("output")
+            if dim and dim > 0:
+                m["dimensions"] = dim
+        # Also check type_overrides for embed detection
+        if not m.get("dimensions") and type_overrides and type_overrides.get(m["id"]) == "embed":
             dim = dev.get("limit", {}).get("output")
             if dim and dim > 0:
                 m["dimensions"] = dim

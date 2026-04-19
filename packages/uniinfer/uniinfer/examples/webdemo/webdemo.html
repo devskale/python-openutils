@@ -143,6 +143,7 @@
               <th data-col="provider">Provider</th>
               <th data-col="context_window" class="th-num">Ctx</th>
               <th data-col="max_output" class="th-num">Out</th>
+              <th data-col="dimensions" class="th-num">Dims</th>
               <th data-col="cost_input" class="th-num">$/in</th>
               <th data-col="cost_output" class="th-num">$/out</th>
               <th data-col="capabilities">Caps</th>
@@ -595,7 +596,7 @@
       $("#models-count").textContent = `${models.length} models`;
       const tbody = $("#models-tbody");
       tbody.innerHTML = "";
-      if (!models.length) { tbody.innerHTML = '<tr><td colspan="9" class="models-empty">No models match your filter.</td></tr>'; return; }
+      if (!models.length) { tbody.innerHTML = '<tr><td colspan="10" class="models-empty">No models match your filter.</td></tr>'; return; }
       // Render in chunks to keep UI responsive
       const frag = document.createDocumentFragment();
       for (const m of models) {
@@ -610,6 +611,7 @@
           `<td class="td-provider">${escapeHtml(m.provider || "")}</td>` +
           `<td class="td-num">${m.context_window ? m.context_window.toLocaleString() : ""}</td>` +
           `<td class="td-num">${m.max_output ? m.max_output.toLocaleString() : ""}</td>` +
+          `<td class="td-num td-dims">${m.dimensions ? m.dimensions.toLocaleString() : ""}</td>` +
           `<td class="td-num">${m.cost?.input != null ? m.cost.input : ""}</td>` +
           `<td class="td-num">${m.cost?.output != null ? m.cost.output : ""}</td>` +
           `<td class="td-caps">${capBadges(m)}</td>` +
