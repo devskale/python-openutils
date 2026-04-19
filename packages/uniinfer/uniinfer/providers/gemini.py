@@ -217,19 +217,19 @@ class GeminiProvider(ChatProvider):
                     "parts": [{"text": _flatten_text(msg.content)}]
                 })
 
-            # Convert OpenAI tools format to Gemini function declarations
-            if request.tools:
-                gemini_tools = []
-                for tool in request.tools:
-                    if tool.get('type') == 'function':
-                        func = tool.get('function', {})
-                        gemini_func = {
-                            "name": func.get('name'),
-                            "description": func.get('description', ''),
-                        }
-                        if 'parameters' in func:
-                            gemini_func["parameters"] = func['parameters']
-                        gemini_tools.append(gemini_func)
+        # Convert OpenAI tools format to Gemini function declarations
+        if request.tools:
+            gemini_tools = []
+            for tool in request.tools:
+                if tool.get('type') == 'function':
+                    func = tool.get('function', {})
+                    gemini_func = {
+                        "name": func.get('name'),
+                        "description": func.get('description', ''),
+                    }
+                    if 'parameters' in func:
+                        gemini_func["parameters"] = func['parameters']
+                    gemini_tools.append(gemini_func)
 
         if system_message:
             # Prepend system message to the first user message, or add it as the first message
