@@ -22,6 +22,7 @@ usage() {
   echo "  -h            Show help"
   echo "  [package]     Optional substring to filter packages by directory name"
   echo "  -s            Silent mode (no prompts, concise output)"
+  echo "  --extra NAME   Pass --extra NAME to uv sync (repeatable)"
   echo ""
   echo "Packages are auto-discovered from subdirectories containing pyproject.toml."
   echo ""
@@ -144,7 +145,7 @@ process_dirs() {
     case "$MODE" in
       init)
         log_info "Init: $d"
-        if (cd "$d" && uv sync >>"$LOG_FILE" 2>&1); then
+        if (cd "$d" && uv sync $UV_EXTRAS >>"$LOG_FILE" 2>&1); then
           log_info "Synced: $d"
           SUCCESS_COUNT=$((SUCCESS_COUNT+1)); SUCCESS_LIST+=("$d")
         else
@@ -160,7 +161,7 @@ process_dirs() {
           continue
         fi
         log_info "Lock updated: $d"
-        if (cd "$d" && uv sync >>"$LOG_FILE" 2>&1); then
+        if (cd "$d" && uv sync $UV_EXTRAS >>"$LOG_FILE" 2>&1); then
           log_info "Synced: $d"
           SUCCESS_COUNT=$((SUCCESS_COUNT+1)); SUCCESS_LIST+=("$d")
         else
@@ -221,15 +222,13 @@ parse_args() {
     esac
   done
   shift $((OPTIND -1))
-  if [ "$#" -gt 0 ]; then
+  while [ "$#" -gt 0 ]; do
     case "$1" in
       -s) SILENT=1; shift ;;
+      --extra) [ "$#" -ge 2 ] && { UV_EXTRAS="$UV_EXTRAS --extra $2"; shift 2; } || shift ;;
       *) PACKAGE_FILTER="$1"; shift ;;
     esac
-  fi
-  if [ "$#" -gt 0 ] && [ "$1" = "-s" ]; then
-    SILENT=1; shift
-  fi
+  done
   [ -z "$MODE" ] && MODE="init"
 }
 
