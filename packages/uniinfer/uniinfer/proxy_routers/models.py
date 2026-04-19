@@ -10,9 +10,9 @@ from uniinfer.uniioai import (
 from uniinfer.errors import AuthenticationError
 from uniinfer.proxy_services.models_registry import (
     ensure_fresh_models_file,
-    parse_models_file,
     refresh_models_file,
     list_all_models_from_factories,
+    update_provider_in_cache,
 )
 from uniinfer.core import ModelInfo
 import dataclasses

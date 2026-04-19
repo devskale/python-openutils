@@ -396,6 +396,9 @@ def list_embedding_models_for_provider(
     # get the provider class and list models
     provider_cls = EmbeddingProviderFactory.get_provider_class(provider_name)
     modellist = provider_cls.list_models(api_key=api_key, **extra)
+    # update models.json cache
+    from uniinfer.proxy_services.models_registry import update_provider_in_cache
+    update_provider_in_cache(provider_name, modellist)
     return modellist
 
 
@@ -411,6 +414,7 @@ def list_providers() -> list[str]:
 def list_models_for_provider(provider_name: str, api_bearer_token: str) -> list[str]:
     """
     Return available model names for the given provider, using the bearer token.
+    Updates models.json cache for subsequent /v1/models calls.
     """
     # retrieve actual api key
     api_key = get_provider_api_key(api_bearer_token, provider_name)
@@ -422,6 +426,9 @@ def list_models_for_provider(provider_name: str, api_bearer_token: str) -> list[
     provider_cls = ProviderFactory.get_provider_class(provider_name)
     modellist = provider_cls.list_models(api_key=api_key, **extra)
     update_models(modellist, provider_name)
+    # update models.json cache so /v1/models reflects fresh data
+    from uniinfer.proxy_services.models_registry import update_provider_in_cache
+    update_provider_in_cache(provider_name, modellist)
     return modellist
 
 

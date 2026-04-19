@@ -32,16 +32,6 @@ def _resolve_credgoo_service(provider: str) -> str:
     return provider
 
 
-def _models_file_path() -> str:
-    package_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    return os.path.join(package_root, "models.txt")
-
-
-def _write_models_output(lines: list[str]) -> None:
-    output = "\n".join(lines).rstrip() + "\n"
-    with open(_models_file_path(), "w") as f:
-        f.write(output)
-
 
 def main():
     # Initialize argument parser
@@ -158,7 +148,6 @@ def main():
                 row = f"\nError listing models for {provider}: {str(e)}"
                 print(row)
                 output_lines.append(row)
-        _write_models_output(output_lines)
         return
 
     if args.list_providers:
@@ -182,7 +171,6 @@ def main():
                 row = f"- {model}"
                 print(row)
                 output_lines.append(row)
-            _write_models_output(output_lines)
             return
         except Exception as e:
             print(f"Error listing models for {args.provider}: {str(e)}")

@@ -89,7 +89,7 @@ discover_projects() {
   while IFS= read -r -d '' f; do
     results+=("$f")
   done < <(find "$root" -type f \( -name "pyproject.toml" -o -name "setup.py" \) \
-    -not -path "*/.venv/*" -not -path "*/venv/*" -not -path "*/site-packages/*" -not -path "*/node_modules/*" -print0)
+    -not -path "*/.venv/*" -not -path "*/venv/*" -not -path "*/site-packages/*" -not -path "*/node_modules/*" -not -path "*/scaffolding/*" -print0)
   for f in "${results[@]}"; do
     dirs+=("$(dirname "$f")")
   done
