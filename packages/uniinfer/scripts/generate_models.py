@@ -13,6 +13,30 @@ log = logging.getLogger("generate_models")
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 OUTPUT_PATH = PROJECT_ROOT / "uniinfer" / "models" / "models.json"
+MODELS_DEV_CACHE = PROJECT_ROOT / "scripts" / "_models_dev_cache.json"
+MODELS_DEV_URL = "https://models.dev/api.json"
+
+UNIINFER_TO_MODELS_DEV = {
+    "openai": "openai",
+    "anthropic": "anthropic",
+    "gemini": "google",
+    "mistral": "mistral",
+    "groq": "groq",
+    "cohere": "cohere",
+    "openrouter": "openrouter",
+    "ollama": "ollama-cloud",
+    "chutes": "chutes",
+    "cloudflare": "cloudflare-workers-ai",
+    "minimax": "minimax",
+    "upstage": "upstage",
+    "stepfun": "stepfun",
+    "moonshot": "moonshotai",
+    "huggingface": "huggingface",
+    "zai": "zai",
+    "zai-code": "zai",
+    "sambanova": "nova",
+    "ngc": "nvidia",
+}
 
 
 def discover_providers():
@@ -113,13 +137,136 @@ def load_type_overrides() -> dict:
         return {}
 
 
+def fetch_models_dev() -> dict:
+    """Load models.dev data from cache, or fetch fresh."""
+    if MODELS_DEV_CACHE.exists():
+        log.info("Using cached models.dev data")
+        with open(MODELS_DEV_CACHE) as f:
+            return json.load(f)
+
+    log.info("Fetching models.dev ...")
+    import urllib.request
+    req = urllib.request.Request(MODELS_DEV_URL, headers={"User-Agent": "uniinfer-generate/1.0"})
+    with urllib.request.urlopen(req, timeout=30) as resp:
+        raw = resp.read()
+    MODELS_DEV_CACHE.write_bytes(raw)
+    return json.loads(raw)
+
+
+def merge_models_dev(models: list[dict], dev_provider: dict) -> list[dict]:
+    """Enrich models with models.dev data.
+
+    Priority: live API data wins over models.dev.
+    models.dev fills: name, context_window, max_output, cost, modalities,
+    capabilities, dimensions (for embed), release_date, knowledge_cutoff.
+    """
+    dev_models = dev_provider.get("models", {})
+    enriched = 0
+
+    for m in models:
+        dev = dev_models.get(m["id"])
+        if not dev:
+            continue
+
+        if not m.get("name") and dev.get("name"):
+            m["name"] = dev["name"]
+
+        if not m.get("context_window"):
+            ctx = dev.get("limit", {}).get("context")
+            if ctx:
+                m["context_window"] = ctx
+
+        if not m.get("max_output"):
+            out = dev.get("limit", {}).get("output")
+            if out:
+                m["max_output"] = out
+
+        if not m.get("cost") and dev.get("cost"):
+            m["cost"] = dev["cost"]
+
+        if not m.get("modalities") and dev.get("modalities"):
+            m["modalities"] = dev["modalities"]
+
+        dev_caps = {}
+        for key in ("reasoning", "tool_call", "structured_output", "vision"):
+            if dev.get(key) is not None:
+                dev_caps[key] = dev[key]
+        if dev_caps:
+            existing = m.get("capabilities") or {}
+            merged = {**dev_caps, **existing}
+            m["capabilities"] = merged
+
+        if m.get("type") == "embed" and not m.get("dimensions"):
+            dim = dev.get("limit", {}).get("output")
+            if dim:
+                m["dimensions"] = dim
+
+        if dev.get("release_date"):
+            m["release_date"] = dev["release_date"]
+        if dev.get("knowledge"):
+            m["knowledge_cutoff"] = dev["knowledge"]
+
+        enriched += 1
+
+    if enriched:
+        log.info("  models.dev: enriched %d/%d models", enriched, len(models))
+    return models
+
+
+def probe_embed_dimensions(provider_id, cls, credgoo_service, model_ids):
+    """Probe embedding endpoint to get vector dimensions for each model.
+
+    Only used for providers whose /v1/models returns bare data (no dimensions).
+    Currently limited to TU which exposes embed models without dimension info.
+    """
+    dimensions = {}
+    if provider_id != "tu":
+        return dimensions
+
+    try:
+        from credgoo.credgoo import get_api_key
+        api_key = get_api_key(credgoo_service)
+    except Exception:
+        return dimensions
+
+    import requests
+    base_url = getattr(cls, "BASE_URL", None)
+    if not base_url:
+        return dimensions
+
+    # Strip trailing /v1 to get base, then re-add
+    base = base_url.rstrip("/")
+    if base.endswith("/v1"):
+        embed_url = base + "/embeddings"
+    else:
+        embed_url = base + "/v1/embeddings"
+
+    headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
+
+    for mid in model_ids:
+        try:
+            resp = requests.post(embed_url, json={"model": mid, "input": "hello"}, headers=headers, timeout=15)
+            if resp.status_code == 200:
+                data = resp.json()
+                emb = data["data"][0]["embedding"]
+                dimensions[mid] = len(emb)
+                log.info("    %s: dimensions=%d", mid, len(emb))
+        except Exception as e:
+            log.debug("    %s: probe failed: %s", mid, e)
+
+    return dimensions
+
+
 def main():
     log.info("Discovering providers...")
     providers = discover_providers()
     log.info("Found %d providers\n", len(providers))
 
     type_overrides = load_type_overrides()
-    log.info("Loaded %d type overrides\n", len(type_overrides))
+    log.info("Loaded %d type overrides", len(type_overrides))
+
+    models_dev = fetch_models_dev()
+    dev_providers_used = set()
 
     result = {}
     total_models = 0
@@ -139,6 +286,20 @@ def main():
                     if derived != "chat":
                         m["type"] = derived
 
+            # Merge models.dev enrichment
+            dev_pid = UNIINFER_TO_MODELS_DEV.get(provider_id)
+            if dev_pid and dev_pid in models_dev:
+                models = merge_models_dev(models, models_dev[dev_pid])
+                dev_providers_used.add(dev_pid)
+
+            # Probe embed models for dimensions (TU only)
+            embed_ids = [m["id"] for m in models if m.get("type") == "embed"]
+            if embed_ids:
+                dims = probe_embed_dimensions(provider_id, cls, credgoo_service, embed_ids)
+                for m in models:
+                    if m["id"] in dims:
+                        m["dimensions"] = dims[m["id"]]  # live probe wins over models.dev
+
             result[provider_id] = {
                 "provider_class": cls.__name__,
                 "kind": kind,
@@ -153,7 +314,8 @@ def main():
         "_meta": {
             "version": "1.0.0",
             "generated": datetime.now(timezone.utc).isoformat(),
-            "source": "live provider APIs",
+            "source": "live provider APIs + models.dev",
+            "models_dev_providers": sorted(dev_providers_used),
             "total_models": total_models,
             "total_providers": len(result),
         },

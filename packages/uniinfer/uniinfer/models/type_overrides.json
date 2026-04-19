@@ -23,6 +23,7 @@
         "kokoro": "tts",
         "piper-thorsten": "tts",
         "whisper-large": "stt",
+        "qwen3.5:0.8b": "chat",
         "voxtral-mini-2602": "stt",
         "voxtral-mini-latest": "stt",
         "voxtral-mini-transcribe-2507": "stt",

@@ -20,6 +20,7 @@ class ModelInfo:
         status: "active" | "deprecated" | "alpha" | "beta".
         context_window: Maximum context window in tokens.
         max_output: Maximum output tokens.
+        dimensions: Embedding vector dimensions (only for embed models).
         modalities: Supported input/output modalities, e.g. {"input": ["text", "image"], "output": ["text"]}.
         capabilities: Model capabilities, e.g. {"reasoning": true, "tool_call": true, "vision": true}.
         cost: Pricing info, e.g. {"input": 2.5, "output": 10.0} (per 1M tokens USD).
@@ -34,6 +35,7 @@ class ModelInfo:
     status: str = "active"
     context_window: int | None = None
     max_output: int | None = None
+    dimensions: int | None = None
     modalities: dict | None = None
     capabilities: dict | None = None
     cost: dict | None = None
