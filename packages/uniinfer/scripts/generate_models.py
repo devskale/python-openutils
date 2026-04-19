@@ -26,7 +26,7 @@ UNIINFER_TO_MODELS_DEV = {
     "openrouter": "openrouter",
     "ollama": "ollama-cloud",
     "chutes": "chutes",
-    "cloudflare": "cloudflare-workers-ai",
+    "cloudflare": "cloudflare-ai-gateway",
     "minimax": "minimax",
     "upstage": "upstage",
     "stepfun": "stepfun",
@@ -153,18 +153,55 @@ def fetch_models_dev() -> dict:
     return json.loads(raw)
 
 
+import re
+
+
+def _normalize_model_id(mid: str) -> str:
+    """Strip date suffixes and prefixes for fuzzy matching.
+
+    Examples:
+        gpt-5.4-nano-2026-03-17 → gpt-5.4-nano
+        step-2-16k-202411 → step-2-16k
+        @cf/baai/bge-m3 → baai/bge-m3
+    """
+    # Strip @cf/ or workers-ai/@cf/ prefix
+    mid = re.sub(r'^(?:workers-ai/)?@cf/', '', mid)
+    # Strip date suffixes like -2026-03-17, -202411, -20250605
+    mid = re.sub(r'-\d{4}(?:-\d{2}(?:-\d{2})?)?$', '', mid)
+    return mid
+
+
+def _build_dev_lookup(dev_models: dict) -> dict[str, dict]:
+    """Build a lookup dict keyed by normalized model ID."""
+    lookup = {}
+    for mid, data in dev_models.items():
+        norm = _normalize_model_id(mid)
+        if norm not in lookup:
+            lookup[norm] = data
+    return lookup
+
+
 def merge_models_dev(models: list[dict], dev_provider: dict) -> list[dict]:
     """Enrich models with models.dev data.
 
     Priority: live API data wins over models.dev.
     models.dev fills: name, context_window, max_output, cost, modalities,
     capabilities, dimensions (for embed), release_date, knowledge_cutoff.
+
+    Matching: exact ID first, then normalized (strip date suffixes, @cf/ prefix).
     """
     dev_models = dev_provider.get("models", {})
+    dev_lookup = _build_dev_lookup(dev_models)
     enriched = 0
+    fuzzy_matched = 0
 
     for m in models:
         dev = dev_models.get(m["id"])
+        if not dev:
+            norm = _normalize_model_id(m["id"])
+            dev = dev_lookup.get(norm)
+            if dev:
+                fuzzy_matched += 1
         if not dev:
             continue
 
@@ -173,12 +210,12 @@ def merge_models_dev(models: list[dict], dev_provider: dict) -> list[dict]:
 
         if not m.get("context_window"):
             ctx = dev.get("limit", {}).get("context")
-            if ctx:
+            if ctx and ctx > 0:
                 m["context_window"] = ctx
 
         if not m.get("max_output"):
             out = dev.get("limit", {}).get("output")
-            if out:
+            if out and out > 0:
                 m["max_output"] = out
 
         if not m.get("cost") and dev.get("cost"):
@@ -198,7 +235,7 @@ def merge_models_dev(models: list[dict], dev_provider: dict) -> list[dict]:
 
         if m.get("type") == "embed" and not m.get("dimensions"):
             dim = dev.get("limit", {}).get("output")
-            if dim:
+            if dim and dim > 0:
                 m["dimensions"] = dim
 
         if dev.get("release_date"):
@@ -209,7 +246,8 @@ def merge_models_dev(models: list[dict], dev_provider: dict) -> list[dict]:
         enriched += 1
 
     if enriched:
-        log.info("  models.dev: enriched %d/%d models", enriched, len(models))
+        log.info("  models.dev: enriched %d/%d models (exact: %d, fuzzy: %d)",
+                 enriched, len(models), enriched - fuzzy_matched, fuzzy_matched)
     return models
 
 
