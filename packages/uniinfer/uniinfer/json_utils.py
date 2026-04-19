@@ -50,10 +50,11 @@ def update_models(models, provider_name, json_file='models.json'):
     now = datetime.datetime.now().isoformat()
     model_entries = []
     for m in models:
-        if m in old_map:
-            model_entries.append(old_map[m])
+        model_id = str(m) if hasattr(m, '__str__') and not isinstance(m, str) else m
+        if model_id in old_map:
+            model_entries.append(old_map[model_id])
         else:
-            model_entries.append({"name": m, "created": now, "accessed": None})
+            model_entries.append({"name": model_id, "created": now, "accessed": None})
 
     providers[provider_name] = {"modellist": model_entries}
     existing_models["providers"] = providers
