@@ -53,7 +53,7 @@ class CloudflareProvider(ChatProvider):
         import requests
         if api_key is None:
             try:
-                from credgoo.credgoo import get_api_key
+                from credgoo import get_api_key
                 api_key = get_api_key("cloudflare")
                 if api_key is None:
                     raise ValueError(

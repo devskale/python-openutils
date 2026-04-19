@@ -32,7 +32,7 @@ class ChutesProvider(OpenAICompatibleChatProvider):
         """List available models from Chutes."""
         if not api_key:
             try:
-                from credgoo.credgoo import get_api_key
+                from credgoo import get_api_key
                 api_key = get_api_key("chutes")
             except ImportError:
                 return []

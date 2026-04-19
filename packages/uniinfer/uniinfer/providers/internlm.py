@@ -33,7 +33,7 @@ class InternLMProvider(OpenAICompatibleChatProvider):
         from ..core import ModelInfo
         """List available models from InternLM."""
         if not api_key:
-            from credgoo.credgoo import get_api_key
+            from credgoo import get_api_key
             api_key = get_api_key("internlm")
             if not api_key:
                 return []

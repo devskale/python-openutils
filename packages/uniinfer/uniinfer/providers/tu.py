@@ -40,7 +40,7 @@ class TUProvider(ChatProvider):
         self.api_key = api_key or os.getenv("TU_API_KEY")
         if not self.api_key:
             try:
-                from credgoo.credgoo import get_api_key
+                from credgoo import get_api_key
                 self.api_key = get_api_key("tu")
             except (ImportError, Exception):
                 pass
@@ -330,7 +330,7 @@ class TUProvider(ChatProvider):
         
         if not api_key:
             try:
-                from credgoo.credgoo import get_api_key
+                from credgoo import get_api_key
                 api_key = get_api_key("tu")
             except (ImportError, Exception):
                 pass

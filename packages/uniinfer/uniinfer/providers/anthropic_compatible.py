@@ -26,7 +26,7 @@ class AnthropicCompatibleProvider(ChatProvider):
             raise ImportError("anthropic package is required. Install with: uv pip install anthropic")
         if not api_key and self.CREDGOO_SERVICE:
             try:
-                from credgoo.credgoo import get_api_key
+                from credgoo import get_api_key
                 api_key = get_api_key(self.CREDGOO_SERVICE)
             except Exception:
                 api_key = None
@@ -56,7 +56,7 @@ class AnthropicCompatibleProvider(ChatProvider):
             return []
         if not api_key and cls.CREDGOO_SERVICE:
             try:
-                from credgoo.credgoo import get_api_key
+                from credgoo import get_api_key
                 api_key = get_api_key(cls.CREDGOO_SERVICE)
             except Exception:
                 api_key = None

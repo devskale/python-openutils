@@ -8,7 +8,7 @@ import tempfile
 import wave
 import pytest
 
-from credgoo.credgoo import get_api_key
+from credgoo import get_api_key
 from uniinfer import TTSRequest, STTRequest
 from uniinfer.providers.tu_tts import TuAITTSProvider
 from uniinfer.providers.tu_stt import TuAISTTProvider

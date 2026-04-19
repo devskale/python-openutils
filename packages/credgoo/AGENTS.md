@@ -1,264 +1,104 @@
 # AGENTS.md - Credgoo
 
-This file provides guidelines for agentic coding agents operating in the credgoo package.
+Secure API key manager. Keys live in an encrypted Google Sheet, are fetched over HTTPS, and cached locally at `~/.config/api_keys/`.
 
-## Quick Reference for Coding Agents
+## Usage — you only need these two things
 
-**What it does:** Retrieves API keys from encrypted Google Sheets with local caching.
+### Python: get a key
 
-**Setup:**
-```bash
-cd packages/credgoo && uv sync
-```
-
-**One-line usage:**
 ```python
 from credgoo import get_api_key
-api_key = get_api_key("openai")  # uses cached key if available
+
+api_key = get_api_key("openai")
 ```
 
-**Public API (everything you need):**
+That's it. Returns the plaintext key as a string, or `None` if not found.
+No arguments besides the service name are needed — credentials are read from the local cache file.
+
+**Always handle `None`:**
+
 ```python
-from credgoo import get_api_key        # main function — get a key by service name
-from credgoo import decrypt_key        # decrypt an encrypted key string
-from credgoo import get_api_key_from_google  # fetch directly from Google Sheets (no cache)
-from credgoo import cache_api_key      # manually cache a key locally
+api_key = get_api_key("openai")
+if not api_key:
+    raise RuntimeError("No API key for openai. Run 'credgoo --setup' first.")
 ```
 
-**How it works:**
-1. On first call, `get_api_key("openai")` reads credentials from `~/.config/api_keys/credgoo.txt` (bearer token + encryption key)
-2. Fetches the encrypted key from your Google Sheet via Apps Script
-3. Decrypts it in memory and caches it locally at `~/.config/api_keys/api_keys.json` (permissions 0o600)
-4. Subsequent calls return from cache instantly — no network needed
+### CLI: update a cached key
 
-**Required setup (one-time, by the user, not you):**
+```bash
+credgoo SERVICE --update
+```
+
+Forces a fresh fetch from Google Sheets and updates the local cache.
+Use this when a key has been rotated in the sheet and the old cached one is stale.
+
+```bash
+credgoo SERVICE --no-cache    # fetch fresh but don't update cache
+credgoo SERVICE                # print cached key (or fetch if not cached)
+```
+
+### First-time setup (user does this, not you)
+
 ```bash
 credgoo --setup
 ```
-This walks the user through setting up the Google Sheet and storing their bearer token + encryption key. After this, all `get_api_key()` calls work automatically.
 
-**If credentials aren't set up:** `get_api_key()` returns `None`. Always handle this:
+Interactive prompt for bearer token + encryption key + Apps Script URL.
+After setup, all `get_api_key()` calls work automatically — no config needed in code.
+
+## Import — always use this form
+
 ```python
-api_key = get_api_key("openai")
-if api_key is None:
-    raise RuntimeError("API key not found. Run 'credgoo --setup' to configure.")
+from credgoo import get_api_key
 ```
 
-**Security rules for agents:**
-- Never log, print, or commit plaintext API keys or encryption keys
-- Never hardcode credentials in source code
-- Cache files use 0o600 permissions — don't change them
+**Never** use `from credgoo.credgoo import get_api_key` — that's an internal import path.
 
-## Package Overview
+## How it works
 
-Credgoo is a secure credential manager for retrieving API keys from Google Sheets with local caching. It provides both a CLI tool and Python API for accessing credentials securely across environments.
+```
+get_api_key("openai")
+  1. Check ~/.config/api_keys/api_keys.json for cached key
+  2. If cached → decrypt with stored encryption key → return plaintext
+  3. If not cached → fetch encrypted key from Google Sheets via Apps Script
+  4. Decrypt → cache locally → return plaintext
+```
 
-## Environment Setup
+Cache files use `0o600` permissions. Keys are XOR-encrypted before caching.
+
+## Full Python API
+
+```python
+from credgoo import get_api_key       # main function — get a key by service name
+```
+
+All other functions are internal. You should only ever call `get_api_key()`.
+
+`get_api_key()` signature for reference:
+```python
+get_api_key(
+    service: str,                  # e.g. "openai", "groq", "gemini"
+    bearer_token: str = None,      # override stored token (rarely needed)
+    encryption_key: str = None,    # override stored key (rarely needed)
+    api_url: str = None,           # override Apps Script URL (rarely needed)
+    cache_dir: str = None,         # override cache dir (default: ~/.config/api_keys)
+    no_cache: bool = False,        # force fresh fetch
+) -> str | None
+```
+
+## Common service names
+
+`openai`, `groq`, `gemini`, `anthropic`, `mistral`, `openrouter`, `cloudflare`,
+`cohere`, `huggingface`, `sambanova`, `moonshot`, `upstage`, `chutes`, `tu`
+
+## Security rules
+
+- **Never** log, print, or commit plaintext API keys
+- **Never** hardcode credentials in source code
+- Cache files use 0o600 permissions — don't change this
+
+## Setup
 
 ```bash
-cd packages/credgoo && uv sync   # creates venv, installs deps from lockfile
-```
-
-## Build/Lint/Test Commands
-
-### Testing
-
-No tests exist yet - add tests when fixing bugs or adding features.
-
-```bash
-# Run pytest (when tests are added)
-pytest
-
-# Run specific test file
-pytest tests/test_credgoo.py
-
-# Run specific test with full path
-pytest tests/test_credgoo.py::TestClass::test_method
-
-# Run specific test function by name
-pytest -k "test_function_name"
-
-# Verbose output with coverage
-pytest -v --cov=credgoo --cov-report=term-mit
-```
-
-### Code Formatting
-
-Apply to package directory:
-
-```bash
-# Format code
-black credgoo/
-
-# Sort imports
-isort credgoo/
-
-# Run linter
-ruff check credgoo/
-ruff check credgoo/ --fix  # Auto-fix issues
-
-# Run all validations together
-black credgoo/ && isort credgoo/ && ruff check credgoo/
-```
-
-### Package Distribution
-
-```bash
-uv build
-```
-
-## Code Style Guidelines
-
-### General
-
-- Follow PEP 8 style guidelines
-- Write docstrings for all functions
-- Use type hints where appropriate (Python 3.9+)
-- Security-first approach when handling credentials
-
-### Imports
-
-Group imports: stdlib, third-party, local. Use absolute imports.
-
-```python
-import requests
-import base64
-import json
-import os
-import sys
-import time
-from pathlib import Path
-from importlib.metadata import version
-
-# Current package imports use relative
-from .credgoo import decrypt_key, get_api_key
-```
-
-Run `isort credgoo/` before committing.
-
-### Naming Conventions
-
-- **Classes**: PascalCase (e.g., `ChatProvider` - though credgoo is function-oriented)
-- **Functions/variables**: snake_case (`get_api_key()`, `api_key`, `cache_dir`)
-- **Constants**: UPPER_SNAKE_CASE - not currently used but should be for magic values
-- **Private methods/functions**: leading underscore (e.g., `_normalize()`)
-
-### Type Hints
-
-```python
-def get_api_key(
-    service: str,
-    bearer_token: str = None,
-    encryption_key: str = None,
-    api_url: str = None,
-    cache_dir = None,
-    no_cache: bool = False
-):
-
-from typing import Optional
-from pathlib import Path
-
-def decrypt_local_key(encrypted_api_key: str, encryption_key: str) -> Optional[str]:
-```
-
-### Error Handling
-
-Use exception chaining with context - but never log plaintext keys:
-
-```python
-try:
-    response = requests.get(url, params=params, timeout=10)
-    data = response.json()
-    if data.get("status") == "success":
-        encrypted_key = data.get("encryptedKey")
-        if encrypted_key:
-            api_key = decrypt_key(encrypted_key, encryption_key)
-            return api_key
-except Exception as e:
-    print(f"Error processing request: {e}")
-    return None
-```
-
-### Security Requirements
-
-CRITICAL - Credgoo handles sensitive credentials:
-
-1. **Never log plaintext** API keys or encryption keys
-2. **Use restrictive file permissions** (0o600) for all credential files
-3. **Encrypt before storage** - keys are encrypted (XOR + Base64) before caching
-4. **Decrypt only in memory** - decrypt keys only when needed for API calls
-5. **No secrets in code** - never commit hardcoded tokens or keys
-6. **Validate inputs** - validate URLs and paths before use
-7. **Handle errors gracefully** - return None on errors, don't expose internal state
-
-### File Structure
-
-```
-credgoo/
-├── credgoo/
-│   ├── __init__.py       # Package exports
-│   └── credgoo.py        # Main implementation (all functions)
-├── example/              # Usage examples
-├── appscript/            # Google Apps Script code
-├── pyproject.toml        # Package configuration
-├── README.md             # User documentation
-└── AGENTS.md             # This file
-```
-
-### Adding Features
-
-When adding features:
-
-1. Update `credgoo/__init__.py` to export new public functions
-2. Update version in `pyproject.toml` (patch bump: 0.1.5 → 0.1.6)
-3. Add tests in `tests/` directory
-4. Update docstrings and type hints
-5. Ensure security requirements are met
-
-### Version Management
-
-When asked to update version in `pyproject.toml`:
-- **Minor bump** (default): Increment patch (0.1.5 → 0.1.6)
-- **Major bump**: Increment minor, reset patch (0.1.5 → 0.2.0)
-
-### Testing Strategy
-
-- Use `unittest.mock` for external HTTP requests (Google Sheets API)
-- Test encryption/decryption cycles with various inputs
-- Test file permission handling (0o600)
-- Test cache behavior (cache hit, miss, update)
-- Test error conditions (invalid keys, network failures)
-- Test with various credential configurations
-
-### Common Patterns
-
-**File operations with security**:
-```python
-try:
-    cache_file = cache_dir / 'api_keys.json'
-    cache_dir.mkdir(parents=True, exist_ok=True)
-    with open(cache_file, 'w') as f:
-        json.dump(data, f, indent=2)
-    os.chmod(cache_file, 0o600)  # Critical: owner-only
-except Exception as e:
-    print(f"Warning: Failed to write cache: {e}")
-    return None  # Don't expose error details
-```
-
-**Accessing optional config**:
-```python
-stored_token, stored_key, stored_url = load_credentials(cred_file)
-final_token = bearer_token if bearer_token else stored_token
-```
-
-**Cache-first approach**:
-```python
-if not no_cache:
-    cached_key = get_cached_api_key(service, key, cache_dir)
-    if cached_key:
-        return cached_key
-api_key = fetch_from_source(service, key)
-if api_key and not no_cache:
-    cache_api_key(service, api_key, key, cache_dir)
-return api_key
+cd packages/credgoo && uv sync
 ```

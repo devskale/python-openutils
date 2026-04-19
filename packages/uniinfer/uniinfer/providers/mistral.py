@@ -41,7 +41,7 @@ class MistralProvider(OpenAICompatibleChatProvider):
         from ..core import ModelInfo
         if not api_key:
             try:
-                from credgoo.credgoo import get_api_key
+                from credgoo import get_api_key
                 api_key = get_api_key("mistral")
             except ImportError:
                 raise ValueError("credgoo not installed. Please provide an API key or install credgoo.")

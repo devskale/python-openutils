@@ -98,7 +98,7 @@ def fetch_provider_models(provider_id, cls, credgoo_service, kind):
     """Call list_models() on a provider, return list of dicts."""
     kwargs = {}
     try:
-        from credgoo.credgoo import get_api_key
+        from credgoo import get_api_key
         api_key = get_api_key(credgoo_service)
         kwargs["api_key"] = api_key
     except Exception:
@@ -406,7 +406,7 @@ def main():
                 ollama_base = PROVIDER_CONFIGS.get("ollama", {}).get("extra_params", {}).get("base_url")
                 ollama_key = None
                 try:
-                    from credgoo.credgoo import get_api_key
+                    from credgoo import get_api_key
                     ollama_key = get_api_key(credgoo_service)
                 except Exception:
                     pass
