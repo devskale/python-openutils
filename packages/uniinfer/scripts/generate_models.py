@@ -16,6 +16,7 @@ OUTPUT_PATH = PROJECT_ROOT / "uniinfer" / "models" / "models.json"
 MODELS_DEV_CACHE = PROJECT_ROOT / "scripts" / "_models_dev_cache.json"
 MODELS_DEV_URL = "https://models.dev/api.json"
 MODEL_HISTORY_PATH = PROJECT_ROOT / "uniinfer" / "models" / "_model_history.json"
+SPEED_RESULTS_PATH = PROJECT_ROOT / "uniinfer" / "models" / "_speed_results.json"
 
 UNIINFER_TO_MODELS_DEV = {
     "openai": "openai",
@@ -195,6 +196,26 @@ def save_model_history(history: dict[str, str]) -> None:
     MODEL_HISTORY_PATH.parent.mkdir(parents=True, exist_ok=True)
     with open(MODEL_HISTORY_PATH, "w") as f:
         json.dump(history, f, indent=2, sort_keys=True)
+
+
+def merge_speed_results(models: list[dict], provider_id: str) -> list[dict]:
+    """Merge speed test results from _speed_results.json into model dicts."""
+    if not SPEED_RESULTS_PATH.exists():
+        return models
+    with open(SPEED_RESULTS_PATH) as f:
+        speed_data = json.load(f)
+    if not speed_data:
+        return models
+    enriched = 0
+    for m in models:
+        key = f"{provider_id}/{m['id']}"
+        if key in speed_data:
+            sr = speed_data[key]
+            m["speed"] = sr
+            enriched += 1
+    if enriched:
+        log.info("  speed: merged results for %d/%d models", enriched, len(models))
+    return models
 
 
 def update_model_history(
@@ -398,6 +419,9 @@ def main():
                                 m["context_window"] = entry["context_window"]
                             if not m.get("dimensions") and "dimensions" in entry:
                                 m["dimensions"] = entry["dimensions"]
+
+            # Merge speed test results
+            models = merge_speed_results(models, provider_id)
 
             result[provider_id] = {
                 "provider_class": cls.__name__,

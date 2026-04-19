@@ -208,7 +208,7 @@ def list_all_models_from_factories() -> list[dict]:
             # Fields: override > models.json > skip
             for field in ("context_window", "max_output", "dimensions", "cost", "capabilities",
                           "modalities", "first_seen", "deprecation_date", "deprecation_replacement",
-                          "status", "release_date", "knowledge_cutoff", "name"):
+                          "status", "release_date", "knowledge_cutoff", "name", "speed"):
                 val = override.get(field) if field in override else model.get(field)
                 if val is not None:
                     entry[field] = val
