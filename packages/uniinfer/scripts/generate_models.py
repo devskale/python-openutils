@@ -109,10 +109,11 @@ def fetch_provider_models(provider_id, cls, credgoo_service, kind):
             return []
         return [model_info_to_dict(m) for m in models]
 
-    # Provider-specific extra params (e.g. cloudflare account_id, ollama base_url)
+    # Provider-specific extra params for list_models (only infra params, not chat params)
     from uniinfer.config.providers import PROVIDER_CONFIGS
     extra = PROVIDER_CONFIGS.get(provider_id, {}).get("extra_params", {})
-    kwargs.update(extra)
+    list_models_params = {k: v for k, v in extra.items() if k in ("base_url", "account_id", "api_key")}
+    kwargs.update(list_models_params)
 
     try:
         models = cls.list_models(**kwargs)
@@ -215,7 +216,7 @@ def update_model_history(
                 history[key] = today
 
     deprecated = []
-    for key, first_seen in history.items():
+    for key, first_seen in list(history.items()):
         if key not in current_keys:
             pid, mid = key.split("/", 1)
             deprecated.append({"id": mid, "provider": pid, "first_seen": first_seen, "last_seen": today})

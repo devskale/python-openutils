@@ -1,7 +1,7 @@
 {
   "_meta": {
     "version": "1.0.0",
-    "generated": "2026-04-19T12:48:46.705974+00:00",
+    "generated": "2026-04-19T13:11:36.287889+00:00",
     "source": "live provider APIs + models.dev",
     "models_dev_providers": [
       "chutes",
@@ -17,11 +17,12 @@
       "openai",
       "openrouter",
       "stepfun",
+      "upstage",
       "zai"
     ],
-    "total_models": 1097,
-    "total_providers": 20,
-    "new_models": 1075,
+    "total_models": 1137,
+    "total_providers": 22,
+    "new_models": 1115,
     "deprecated_models": 0
   },
   "providers": {
@@ -50,7 +51,7 @@
             "function_calling": true
           },
           "owned_by": "mistralai",
-          "created": 1776602894,
+          "created": 1776604261,
           "max_output": 131072,
           "cost": {
             "input": 0.4,
@@ -81,7 +82,7 @@
             "function_calling": true
           },
           "owned_by": "mistralai",
-          "created": 1776602894,
+          "created": 1776604261,
           "max_output": 262144,
           "cost": {
             "input": 0.4,
@@ -112,7 +113,7 @@
             "function_calling": true
           },
           "owned_by": "mistralai",
-          "created": 1776602894,
+          "created": 1776604261,
           "max_output": 16384,
           "cost": {
             "input": 0.4,
@@ -143,7 +144,7 @@
             "function_calling": true
           },
           "owned_by": "mistralai",
-          "created": 1776602894,
+          "created": 1776604261,
           "max_output": 131072,
           "cost": {
             "input": 0.4,
@@ -173,7 +174,7 @@
             "tool_call": true
           },
           "owned_by": "mistralai",
-          "created": 1776602894,
+          "created": 1776604261,
           "first_seen": "2026-04-19"
         },
         {
@@ -195,7 +196,7 @@
             "tool_call": true
           },
           "owned_by": "mistralai",
-          "created": 1776602894,
+          "created": 1776604261,
           "first_seen": "2026-04-19"
         },
         {
@@ -217,7 +218,7 @@
             "tool_call": true
           },
           "owned_by": "mistralai",
-          "created": 1776602894,
+          "created": 1776604261,
           "first_seen": "2026-04-19"
         },
         {
@@ -239,7 +240,7 @@
             "tool_call": true
           },
           "owned_by": "mistralai",
-          "created": 1776602894,
+          "created": 1776604261,
           "first_seen": "2026-04-19"
         },
         {
@@ -261,7 +262,7 @@
             "tool_call": true
           },
           "owned_by": "mistralai",
-          "created": 1776602894,
+          "created": 1776604261,
           "first_seen": "2026-04-19"
         },
         {
@@ -283,7 +284,7 @@
             "tool_call": true
           },
           "owned_by": "mistralai",
-          "created": 1776602894,
+          "created": 1776604261,
           "first_seen": "2026-04-19"
         },
         {
@@ -306,7 +307,7 @@
             "function_calling": true
           },
           "owned_by": "mistralai",
-          "created": 1776602894,
+          "created": 1776604261,
           "max_output": 4096,
           "cost": {
             "input": 0.3,
@@ -336,7 +337,7 @@
             "function_calling": true
           },
           "owned_by": "mistralai",
-          "created": 1776602894,
+          "created": 1776604261,
           "max_output": 262144,
           "cost": {
             "input": 0.4,
@@ -366,7 +367,7 @@
             "function_calling": true
           },
           "owned_by": "mistralai",
-          "created": 1776602894,
+          "created": 1776604261,
           "max_output": 262144,
           "cost": {
             "input": 0.4,
@@ -395,7 +396,7 @@
             "tool_call": true
           },
           "owned_by": "mistralai",
-          "created": 1776602894,
+          "created": 1776604261,
           "first_seen": "2026-04-19"
         },
         {
@@ -417,7 +418,7 @@
             "tool_call": true
           },
           "owned_by": "mistralai",
-          "created": 1776602894,
+          "created": 1776604261,
           "first_seen": "2026-04-19"
         },
         {
@@ -441,7 +442,7 @@
             "function_calling": true
           },
           "owned_by": "mistralai",
-          "created": 1776602894,
+          "created": 1776604261,
           "max_output": 256000,
           "cost": {
             "input": 0.15,
@@ -472,7 +473,7 @@
             "function_calling": true
           },
           "owned_by": "mistralai",
-          "created": 1776602894,
+          "created": 1776604261,
           "max_output": 256000,
           "cost": {
             "input": 0.15,
@@ -503,7 +504,7 @@
             "tool_call": true
           },
           "owned_by": "mistralai",
-          "created": 1776602894,
+          "created": 1776604261,
           "first_seen": "2026-04-19"
         },
         {
@@ -527,7 +528,7 @@
             "function_calling": true
           },
           "owned_by": "mistralai",
-          "created": 1776602894,
+          "created": 1776604261,
           "max_output": 16384,
           "cost": {
             "input": 0.1,
@@ -558,7 +559,7 @@
             "tool_call": true
           },
           "owned_by": "mistralai",
-          "created": 1776602894,
+          "created": 1776604261,
           "first_seen": "2026-04-19"
         },
         {
@@ -582,7 +583,7 @@
             "function_calling": true
           },
           "owned_by": "mistralai",
-          "created": 1776602894,
+          "created": 1776604261,
           "max_output": 16384,
           "cost": {
             "input": 2,
@@ -613,7 +614,7 @@
             "function_calling": true
           },
           "owned_by": "mistralai",
-          "created": 1776602894,
+          "created": 1776604261,
           "max_output": 128000,
           "cost": {
             "input": 0.5,
@@ -644,7 +645,7 @@
             "tool_call": true
           },
           "owned_by": "mistralai",
-          "created": 1776602894,
+          "created": 1776604261,
           "first_seen": "2026-04-19"
         },
         {
@@ -667,7 +668,7 @@
             "tool_call": true
           },
           "owned_by": "mistralai",
-          "created": 1776602894,
+          "created": 1776604261,
           "first_seen": "2026-04-19"
         },
         {
@@ -690,7 +691,7 @@
             "tool_call": true
           },
           "owned_by": "mistralai",
-          "created": 1776602894,
+          "created": 1776604261,
           "first_seen": "2026-04-19"
         },
         {
@@ -714,7 +715,7 @@
             "tool_call": true
           },
           "owned_by": "mistralai",
-          "created": 1776602894,
+          "created": 1776604261,
           "first_seen": "2026-04-19"
         },
         {
@@ -738,7 +739,7 @@
             "function_calling": true
           },
           "owned_by": "mistralai",
-          "created": 1776602894,
+          "created": 1776604261,
           "max_output": 262144,
           "cost": {
             "input": 0.5,
@@ -769,7 +770,7 @@
             "function_calling": true
           },
           "owned_by": "mistralai",
-          "created": 1776602894,
+          "created": 1776604261,
           "max_output": 262144,
           "cost": {
             "input": 0.5,
@@ -799,7 +800,7 @@
             "tool_call": true
           },
           "owned_by": "mistralai",
-          "created": 1776602894,
+          "created": 1776604261,
           "first_seen": "2026-04-19"
         },
         {
@@ -823,7 +824,7 @@
             "function_calling": true
           },
           "owned_by": "mistralai",
-          "created": 1776602894,
+          "created": 1776604261,
           "max_output": 128000,
           "cost": {
             "input": 0.04,
@@ -853,7 +854,7 @@
             "tool_call": true
           },
           "owned_by": "mistralai",
-          "created": 1776602894,
+          "created": 1776604261,
           "first_seen": "2026-04-19"
         },
         {
@@ -877,7 +878,7 @@
             "function_calling": true
           },
           "owned_by": "mistralai",
-          "created": 1776602894,
+          "created": 1776604261,
           "max_output": 128000,
           "cost": {
             "input": 0.1,
@@ -907,7 +908,7 @@
             "tool_call": true
           },
           "owned_by": "mistralai",
-          "created": 1776602894,
+          "created": 1776604261,
           "first_seen": "2026-04-19"
         },
         {
@@ -930,7 +931,7 @@
             "tool_call": true
           },
           "owned_by": "mistralai",
-          "created": 1776602894,
+          "created": 1776604261,
           "first_seen": "2026-04-19"
         },
         {
@@ -955,7 +956,7 @@
             "function_calling": true
           },
           "owned_by": "mistralai",
-          "created": 1776602894,
+          "created": 1776604261,
           "max_output": 16384,
           "cost": {
             "input": 2,
@@ -987,7 +988,7 @@
             "tool_call": true
           },
           "owned_by": "mistralai",
-          "created": 1776602894,
+          "created": 1776604261,
           "first_seen": "2026-04-19"
         },
         {
@@ -1013,7 +1014,7 @@
             "function_calling": true
           },
           "owned_by": "mistralai",
-          "created": 1776602894,
+          "created": 1776604261,
           "max_output": 128000,
           "cost": {
             "input": 2,
@@ -1045,7 +1046,7 @@
             "tool_call": true
           },
           "owned_by": "mistralai",
-          "created": 1776602894,
+          "created": 1776604261,
           "first_seen": "2026-04-19"
         },
         {
@@ -1070,7 +1071,7 @@
             "function_calling": true
           },
           "owned_by": "mistralai",
-          "created": 1776602894,
+          "created": 1776604261,
           "max_output": 128000,
           "cost": {
             "input": 0.1,
@@ -1102,7 +1103,7 @@
             "function_calling": true
           },
           "owned_by": "mistralai",
-          "created": 1776602894,
+          "created": 1776604261,
           "max_output": 128000,
           "cost": {
             "input": 0.4,
@@ -1132,7 +1133,7 @@
             "audio": true
           },
           "owned_by": "mistralai",
-          "created": 1776602894,
+          "created": 1776604261,
           "first_seen": "2026-04-19"
         },
         {
@@ -1155,7 +1156,7 @@
             "audio": true
           },
           "owned_by": "mistralai",
-          "created": 1776602894,
+          "created": 1776604261,
           "first_seen": "2026-04-19"
         },
         {
@@ -1179,7 +1180,7 @@
             "tool_call": true
           },
           "owned_by": "mistralai",
-          "created": 1776602894,
+          "created": 1776604261,
           "first_seen": "2026-04-19"
         },
         {
@@ -1197,7 +1198,7 @@
             ]
           },
           "owned_by": "mistralai",
-          "created": 1776602894,
+          "created": 1776604261,
           "max_output": 3072,
           "cost": {
             "input": 0.1,
@@ -1226,7 +1227,7 @@
             ]
           },
           "owned_by": "mistralai",
-          "created": 1776602894,
+          "created": 1776604261,
           "max_output": 3072,
           "cost": {
             "input": 0.1,
@@ -1255,7 +1256,7 @@
             ]
           },
           "owned_by": "mistralai",
-          "created": 1776602894,
+          "created": 1776604261,
           "first_seen": "2026-04-19"
         },
         {
@@ -1273,7 +1274,7 @@
             ]
           },
           "owned_by": "mistralai",
-          "created": 1776602894,
+          "created": 1776604261,
           "first_seen": "2026-04-19"
         },
         {
@@ -1295,7 +1296,7 @@
             "moderation": true
           },
           "owned_by": "mistralai",
-          "created": 1776602894,
+          "created": 1776604261,
           "first_seen": "2026-04-19"
         },
         {
@@ -1319,7 +1320,7 @@
             "moderation": true
           },
           "owned_by": "mistralai",
-          "created": 1776602894,
+          "created": 1776604261,
           "first_seen": "2026-04-19"
         },
         {
@@ -1343,7 +1344,7 @@
             "moderation": true
           },
           "owned_by": "mistralai",
-          "created": 1776602894,
+          "created": 1776604261,
           "first_seen": "2026-04-19"
         },
         {
@@ -1368,7 +1369,7 @@
             "tool_call": true
           },
           "owned_by": "mistralai",
-          "created": 1776602894,
+          "created": 1776604261,
           "first_seen": "2026-04-19"
         },
         {
@@ -1393,7 +1394,7 @@
             "tool_call": true
           },
           "owned_by": "mistralai",
-          "created": 1776602894,
+          "created": 1776604261,
           "first_seen": "2026-04-19"
         },
         {
@@ -1420,7 +1421,7 @@
             "tool_call": true
           },
           "owned_by": "mistralai",
-          "created": 1776602894,
+          "created": 1776604261,
           "first_seen": "2026-04-19"
         },
         {
@@ -1438,7 +1439,7 @@
             ]
           },
           "owned_by": "mistralai",
-          "created": 1776602894,
+          "created": 1776604261,
           "first_seen": "2026-04-19"
         },
         {
@@ -1456,7 +1457,7 @@
             ]
           },
           "owned_by": "mistralai",
-          "created": 1776602894,
+          "created": 1776604261,
           "first_seen": "2026-04-19"
         },
         {
@@ -1474,7 +1475,7 @@
             ]
           },
           "owned_by": "mistralai",
-          "created": 1776602894,
+          "created": 1776604261,
           "first_seen": "2026-04-19"
         },
         {
@@ -1492,7 +1493,7 @@
             ]
           },
           "owned_by": "mistralai",
-          "created": 1776602894,
+          "created": 1776604261,
           "first_seen": "2026-04-19"
         },
         {
@@ -1510,7 +1511,7 @@
             ]
           },
           "owned_by": "mistralai",
-          "created": 1776602894,
+          "created": 1776604261,
           "first_seen": "2026-04-19"
         },
         {
@@ -1530,7 +1531,7 @@
             ]
           },
           "owned_by": "mistralai",
-          "created": 1776602894,
+          "created": 1776604261,
           "first_seen": "2026-04-19"
         },
         {
@@ -1550,7 +1551,7 @@
             ]
           },
           "owned_by": "mistralai",
-          "created": 1776602894,
+          "created": 1776604261,
           "first_seen": "2026-04-19"
         },
         {
@@ -1572,7 +1573,7 @@
             "tool_call": true
           },
           "owned_by": "mistralai",
-          "created": 1776602894,
+          "created": 1776604261,
           "first_seen": "2026-04-19"
         },
         {
@@ -1594,7 +1595,7 @@
             "tool_call": true
           },
           "owned_by": "mistralai",
-          "created": 1776602894,
+          "created": 1776604261,
           "first_seen": "2026-04-19"
         }
       ]
@@ -12489,8 +12490,8 @@
           "first_seen": "2026-04-19"
         },
         {
-          "id": "inflection/inflection-3-productivity",
-          "name": "Inflection: Inflection 3 Productivity",
+          "id": "inflection/inflection-3-pi",
+          "name": "Inflection: Inflection 3 Pi",
           "type": "chat",
           "status": "active",
           "context_window": 8000,
@@ -12514,8 +12515,8 @@
           "first_seen": "2026-04-19"
         },
         {
-          "id": "inflection/inflection-3-pi",
-          "name": "Inflection: Inflection 3 Pi",
+          "id": "inflection/inflection-3-productivity",
+          "name": "Inflection: Inflection 3 Productivity",
           "type": "chat",
           "status": "active",
           "context_window": 8000,
@@ -12563,59 +12564,6 @@
             "output": 0.43
           },
           "created": 1727654400,
-          "first_seen": "2026-04-19"
-        },
-        {
-          "id": "meta-llama/llama-3.2-3b-instruct:free",
-          "name": "Meta: Llama 3.2 3B Instruct (free)",
-          "type": "chat",
-          "status": "active",
-          "context_window": 131072,
-          "modalities": {
-            "input": [
-              "text"
-            ],
-            "output": [
-              "text"
-            ]
-          },
-          "capabilities": {
-            "reasoning": false,
-            "tool_call": false,
-            "knowledge_cutoff": "2023-12-31"
-          },
-          "cost": {
-            "input": 0.0,
-            "output": 0.0
-          },
-          "created": 1727222400,
-          "max_output": 131072,
-          "release_date": "2024-09-25",
-          "knowledge_cutoff": "2023-12",
-          "first_seen": "2026-04-19"
-        },
-        {
-          "id": "meta-llama/llama-3.2-3b-instruct",
-          "name": "Meta: Llama 3.2 3B Instruct",
-          "type": "chat",
-          "status": "active",
-          "context_window": 80000,
-          "modalities": {
-            "input": [
-              "text"
-            ],
-            "output": [
-              "text"
-            ]
-          },
-          "capabilities": {
-            "knowledge_cutoff": "2023-12-31"
-          },
-          "cost": {
-            "input": 0.051,
-            "output": 0.33999999999999997
-          },
-          "created": 1727222400,
           "first_seen": "2026-04-19"
         },
         {
@@ -12670,6 +12618,59 @@
           "created": 1727222400,
           "release_date": "2024-09-25",
           "knowledge_cutoff": "2023-12",
+          "first_seen": "2026-04-19"
+        },
+        {
+          "id": "meta-llama/llama-3.2-3b-instruct:free",
+          "name": "Meta: Llama 3.2 3B Instruct (free)",
+          "type": "chat",
+          "status": "active",
+          "context_window": 131072,
+          "modalities": {
+            "input": [
+              "text"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "capabilities": {
+            "reasoning": false,
+            "tool_call": false,
+            "knowledge_cutoff": "2023-12-31"
+          },
+          "cost": {
+            "input": 0.0,
+            "output": 0.0
+          },
+          "created": 1727222400,
+          "max_output": 131072,
+          "release_date": "2024-09-25",
+          "knowledge_cutoff": "2023-12",
+          "first_seen": "2026-04-19"
+        },
+        {
+          "id": "meta-llama/llama-3.2-3b-instruct",
+          "name": "Meta: Llama 3.2 3B Instruct",
+          "type": "chat",
+          "status": "active",
+          "context_window": 80000,
+          "modalities": {
+            "input": [
+              "text"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "capabilities": {
+            "knowledge_cutoff": "2023-12-31"
+          },
+          "cost": {
+            "input": 0.051,
+            "output": 0.33999999999999997
+          },
+          "created": 1727222400,
           "first_seen": "2026-04-19"
         },
         {
@@ -12991,8 +12992,8 @@
           "first_seen": "2026-04-19"
         },
         {
-          "id": "openai/gpt-4o-mini-2024-07-18",
-          "name": "OpenAI: GPT-4o-mini (2024-07-18)",
+          "id": "openai/gpt-4o-mini",
+          "name": "OpenAI: GPT-4o-mini",
           "type": "chat",
           "status": "active",
           "context_window": 128000,
@@ -13024,8 +13025,8 @@
           "first_seen": "2026-04-19"
         },
         {
-          "id": "openai/gpt-4o-mini",
-          "name": "OpenAI: GPT-4o-mini",
+          "id": "openai/gpt-4o-mini-2024-07-18",
+          "name": "OpenAI: GPT-4o-mini (2024-07-18)",
           "type": "chat",
           "status": "active",
           "context_window": 128000,
@@ -13135,35 +13136,6 @@
           "first_seen": "2026-04-19"
         },
         {
-          "id": "openai/gpt-4o-2024-05-13",
-          "name": "OpenAI: GPT-4o (2024-05-13)",
-          "type": "chat",
-          "status": "active",
-          "context_window": 128000,
-          "max_output": 4096,
-          "modalities": {
-            "input": [
-              "text",
-              "image",
-              "file"
-            ],
-            "output": [
-              "text"
-            ]
-          },
-          "capabilities": {
-            "tool_call": true,
-            "structured_outputs": true,
-            "knowledge_cutoff": "2023-10-31"
-          },
-          "cost": {
-            "input": 5.0,
-            "output": 15.0
-          },
-          "created": 1715558400,
-          "first_seen": "2026-04-19"
-        },
-        {
           "id": "openai/gpt-4o",
           "name": "OpenAI: GPT-4o",
           "type": "chat",
@@ -13188,6 +13160,35 @@
           "cost": {
             "input": 2.5,
             "output": 10.0
+          },
+          "created": 1715558400,
+          "first_seen": "2026-04-19"
+        },
+        {
+          "id": "openai/gpt-4o-2024-05-13",
+          "name": "OpenAI: GPT-4o (2024-05-13)",
+          "type": "chat",
+          "status": "active",
+          "context_window": 128000,
+          "max_output": 4096,
+          "modalities": {
+            "input": [
+              "text",
+              "image",
+              "file"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "capabilities": {
+            "tool_call": true,
+            "structured_outputs": true,
+            "knowledge_cutoff": "2023-10-31"
+          },
+          "cost": {
+            "input": 5.0,
+            "output": 15.0
           },
           "created": 1715558400,
           "first_seen": "2026-04-19"
@@ -13376,33 +13377,6 @@
           "first_seen": "2026-04-19"
         },
         {
-          "id": "openai/gpt-4-turbo-preview",
-          "name": "OpenAI: GPT-4 Turbo Preview",
-          "type": "chat",
-          "status": "active",
-          "context_window": 128000,
-          "max_output": 4096,
-          "modalities": {
-            "input": [
-              "text"
-            ],
-            "output": [
-              "text"
-            ]
-          },
-          "capabilities": {
-            "tool_call": true,
-            "structured_outputs": true,
-            "knowledge_cutoff": "2023-12-31"
-          },
-          "cost": {
-            "input": 10.0,
-            "output": 30.0
-          },
-          "created": 1706140800,
-          "first_seen": "2026-04-19"
-        },
-        {
           "id": "openai/gpt-3.5-turbo-0613",
           "name": "OpenAI: GPT-3.5 Turbo (older v0613)",
           "type": "chat",
@@ -13425,6 +13399,33 @@
           "cost": {
             "input": 1.0,
             "output": 2.0
+          },
+          "created": 1706140800,
+          "first_seen": "2026-04-19"
+        },
+        {
+          "id": "openai/gpt-4-turbo-preview",
+          "name": "OpenAI: GPT-4 Turbo Preview",
+          "type": "chat",
+          "status": "active",
+          "context_window": 128000,
+          "max_output": 4096,
+          "modalities": {
+            "input": [
+              "text"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "capabilities": {
+            "tool_call": true,
+            "structured_outputs": true,
+            "knowledge_cutoff": "2023-12-31"
+          },
+          "cost": {
+            "input": 10.0,
+            "output": 30.0
           },
           "created": 1706140800,
           "first_seen": "2026-04-19"
@@ -13693,8 +13694,8 @@
           "first_seen": "2026-04-19"
         },
         {
-          "id": "openai/gpt-4-0314",
-          "name": "OpenAI: GPT-4 (older v0314)",
+          "id": "openai/gpt-4",
+          "name": "OpenAI: GPT-4",
           "type": "chat",
           "status": "active",
           "context_window": 8191,
@@ -13720,8 +13721,8 @@
           "first_seen": "2026-04-19"
         },
         {
-          "id": "openai/gpt-4",
-          "name": "OpenAI: GPT-4",
+          "id": "openai/gpt-4-0314",
+          "name": "OpenAI: GPT-4 (older v0314)",
           "type": "chat",
           "status": "active",
           "context_window": 8191,
@@ -15815,6 +15816,61 @@
         }
       ]
     },
+    "internlm": {
+      "provider_class": "InternLMProvider",
+      "kind": "chat",
+      "models": [
+        {
+          "id": "intern-s1-pro",
+          "type": "chat",
+          "status": "active",
+          "owned_by": "SH-AILab",
+          "first_seen": "2026-04-19"
+        },
+        {
+          "id": "intern-latest",
+          "type": "chat",
+          "status": "active",
+          "owned_by": "SH-AILab",
+          "first_seen": "2026-04-19"
+        },
+        {
+          "id": "intern-s1-mini",
+          "type": "chat",
+          "status": "active",
+          "owned_by": "SH-AILab",
+          "first_seen": "2026-04-19"
+        },
+        {
+          "id": "internvl3.5-241b-a28b",
+          "type": "chat",
+          "status": "active",
+          "owned_by": "SH-AILab",
+          "first_seen": "2026-04-19"
+        },
+        {
+          "id": "internvl3.5-latest",
+          "type": "chat",
+          "status": "active",
+          "owned_by": "SH-AILab",
+          "first_seen": "2026-04-19"
+        },
+        {
+          "id": "internvl-latest",
+          "type": "chat",
+          "status": "active",
+          "owned_by": "SH-AILab",
+          "first_seen": "2026-04-19"
+        },
+        {
+          "id": "intern-s1",
+          "type": "chat",
+          "status": "active",
+          "owned_by": "SH-AILab",
+          "first_seen": "2026-04-19"
+        }
+      ]
+    },
     "stepfun": {
       "provider_class": "StepFunProvider",
       "kind": "chat",
@@ -16287,6 +16343,251 @@
             "output": 0.59
           },
           "owned_by": "no-reply@sambanova.ai",
+          "first_seen": "2026-04-19"
+        }
+      ]
+    },
+    "upstage": {
+      "provider_class": "UpstageProvider",
+      "kind": "chat",
+      "models": [
+        {
+          "id": "solar-mini",
+          "type": "chat",
+          "status": "active",
+          "owned_by": "system",
+          "created": 1685577600,
+          "name": "solar-mini",
+          "context_window": 32768,
+          "max_output": 4096,
+          "cost": {
+            "input": 0.15,
+            "output": 0.15
+          },
+          "modalities": {
+            "input": [
+              "text"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "capabilities": {
+            "reasoning": false,
+            "tool_call": true
+          },
+          "release_date": "2024-06-12",
+          "knowledge_cutoff": "2024-09",
+          "first_seen": "2026-04-19"
+        },
+        {
+          "id": "solar-mini-250422",
+          "type": "chat",
+          "status": "active",
+          "owned_by": "system",
+          "created": 1685577600,
+          "first_seen": "2026-04-19"
+        },
+        {
+          "id": "solar-pro",
+          "type": "chat",
+          "status": "active",
+          "owned_by": "system",
+          "created": 1685577600,
+          "first_seen": "2026-04-19"
+        },
+        {
+          "id": "solar-pro-250422",
+          "type": "chat",
+          "status": "active",
+          "owned_by": "system",
+          "created": 1685577600,
+          "first_seen": "2026-04-19"
+        },
+        {
+          "id": "solar-pro2",
+          "type": "chat",
+          "status": "active",
+          "owned_by": "system",
+          "created": 1685577600,
+          "name": "solar-pro2",
+          "context_window": 65536,
+          "max_output": 8192,
+          "cost": {
+            "input": 0.25,
+            "output": 0.25
+          },
+          "modalities": {
+            "input": [
+              "text"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "capabilities": {
+            "reasoning": true,
+            "tool_call": true
+          },
+          "release_date": "2025-05-20",
+          "knowledge_cutoff": "2025-03",
+          "first_seen": "2026-04-19"
+        },
+        {
+          "id": "solar-pro2-sagemaker",
+          "type": "chat",
+          "status": "active",
+          "owned_by": "system",
+          "created": 1685577600,
+          "first_seen": "2026-04-19"
+        },
+        {
+          "id": "solar-pro2-nightly",
+          "type": "chat",
+          "status": "active",
+          "owned_by": "system",
+          "created": 1685577600,
+          "first_seen": "2026-04-19"
+        },
+        {
+          "id": "solar-pro2-251215",
+          "type": "chat",
+          "status": "active",
+          "owned_by": "system",
+          "created": 1685577600,
+          "first_seen": "2026-04-19"
+        },
+        {
+          "id": "syn-pro",
+          "type": "chat",
+          "status": "active",
+          "owned_by": "system",
+          "created": 1685577600,
+          "first_seen": "2026-04-19"
+        },
+        {
+          "id": "syn-pro-251021",
+          "type": "chat",
+          "status": "active",
+          "owned_by": "system",
+          "created": 1685577600,
+          "first_seen": "2026-04-19"
+        },
+        {
+          "id": "solar-open",
+          "type": "chat",
+          "status": "active",
+          "owned_by": "system",
+          "created": 1685577600,
+          "first_seen": "2026-04-19"
+        },
+        {
+          "id": "tripod",
+          "type": "chat",
+          "status": "active",
+          "owned_by": "system",
+          "created": 1685577600,
+          "first_seen": "2026-04-19"
+        },
+        {
+          "id": "tripod-test",
+          "type": "chat",
+          "status": "active",
+          "owned_by": "system",
+          "created": 1685577600,
+          "first_seen": "2026-04-19"
+        },
+        {
+          "id": "solar-pro3",
+          "type": "chat",
+          "status": "active",
+          "owned_by": "system",
+          "created": 1685577600,
+          "name": "solar-pro3",
+          "context_window": 131072,
+          "max_output": 8192,
+          "cost": {
+            "input": 0.25,
+            "output": 0.25
+          },
+          "modalities": {
+            "input": [
+              "text"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "capabilities": {
+            "reasoning": true,
+            "tool_call": true
+          },
+          "release_date": "2026-01",
+          "knowledge_cutoff": "2025-03",
+          "first_seen": "2026-04-19"
+        },
+        {
+          "id": "solar-pro3-260126",
+          "type": "chat",
+          "status": "active",
+          "owned_by": "system",
+          "created": 1685577600,
+          "first_seen": "2026-04-19"
+        },
+        {
+          "id": "solar-pro3-260323",
+          "type": "chat",
+          "status": "active",
+          "owned_by": "system",
+          "created": 1685577600,
+          "first_seen": "2026-04-19"
+        },
+        {
+          "id": "solar-pro3-nightly",
+          "type": "chat",
+          "status": "active",
+          "owned_by": "system",
+          "created": 1685577600,
+          "first_seen": "2026-04-19"
+        },
+        {
+          "id": "solar-pro3-preview",
+          "type": "chat",
+          "status": "active",
+          "owned_by": "system",
+          "created": 1685577600,
+          "first_seen": "2026-04-19"
+        },
+        {
+          "id": "solar-embedding-1-large-query",
+          "type": "chat",
+          "status": "active",
+          "owned_by": "system",
+          "created": 1685577600,
+          "first_seen": "2026-04-19"
+        },
+        {
+          "id": "solar-embedding-1-large-passage",
+          "type": "chat",
+          "status": "active",
+          "owned_by": "system",
+          "created": 1685577600,
+          "first_seen": "2026-04-19"
+        },
+        {
+          "id": "embedding-query",
+          "type": "chat",
+          "status": "active",
+          "owned_by": "system",
+          "created": 1685577600,
+          "first_seen": "2026-04-19"
+        },
+        {
+          "id": "embedding-passage",
+          "type": "chat",
+          "status": "active",
+          "owned_by": "system",
+          "created": 1685577600,
           "first_seen": "2026-04-19"
         }
       ]
@@ -20081,6 +20382,13 @@
           "first_seen": "2026-04-19"
         },
         {
+          "id": "Qwen/Qwen3-Coder-Next-TEE",
+          "type": "chat",
+          "status": "active",
+          "owned_by": "vllm",
+          "first_seen": "2026-04-19"
+        },
+        {
           "id": "Qwen/Qwen3-235B-A22B-Instruct-2507-TEE",
           "type": "chat",
           "status": "active",
@@ -20107,13 +20415,6 @@
             "structured_output": true
           },
           "release_date": "2025-12-29",
-          "first_seen": "2026-04-19"
-        },
-        {
-          "id": "Qwen/Qwen3-Coder-Next-TEE",
-          "type": "chat",
-          "status": "active",
-          "owned_by": "vllm",
           "first_seen": "2026-04-19"
         },
         {
@@ -20603,35 +20904,6 @@
           "first_seen": "2026-04-19"
         },
         {
-          "id": "Qwen/Qwen3Guard-Gen-0.6B",
-          "type": "chat",
-          "status": "active",
-          "owned_by": "vllm",
-          "name": "Qwen3Guard Gen 0.6B",
-          "context_window": 32768,
-          "max_output": 8192,
-          "cost": {
-            "input": 0.01,
-            "output": 0.01,
-            "cache_read": 0.005
-          },
-          "modalities": {
-            "input": [
-              "text"
-            ],
-            "output": [
-              "text"
-            ]
-          },
-          "capabilities": {
-            "reasoning": false,
-            "tool_call": false,
-            "structured_output": false
-          },
-          "release_date": "2025-12-29",
-          "first_seen": "2026-04-19"
-        },
-        {
           "id": "rednote-hilab/dots.ocr",
           "type": "chat",
           "status": "active",
@@ -20688,6 +20960,35 @@
             "structured_output": false
           },
           "release_date": "2025-02-12",
+          "first_seen": "2026-04-19"
+        },
+        {
+          "id": "Qwen/Qwen3Guard-Gen-0.6B",
+          "type": "chat",
+          "status": "active",
+          "owned_by": "vllm",
+          "name": "Qwen3Guard Gen 0.6B",
+          "context_window": 32768,
+          "max_output": 8192,
+          "cost": {
+            "input": 0.01,
+            "output": 0.01,
+            "cache_read": 0.005
+          },
+          "modalities": {
+            "input": [
+              "text"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "capabilities": {
+            "reasoning": false,
+            "tool_call": false,
+            "structured_output": false
+          },
+          "release_date": "2025-12-29",
           "first_seen": "2026-04-19"
         }
       ]
@@ -21724,7 +22025,24 @@
       "kind": "chat",
       "models": [
         {
-          "id": "kimi-k2-turbo-preview",
+          "id": "moonshot-v1-8k",
+          "type": "chat",
+          "status": "active",
+          "context_window": 8192,
+          "modalities": {
+            "input": [
+              "text"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "owned_by": "moonshot",
+          "created": 1776488930,
+          "first_seen": "2026-04-19"
+        },
+        {
+          "id": "kimi-k2-0905-preview",
           "type": "chat",
           "status": "active",
           "context_window": 262144,
@@ -21737,13 +22055,13 @@
             ]
           },
           "owned_by": "moonshot",
-          "created": 1776488929,
-          "name": "Kimi K2 Turbo",
+          "created": 1776488930,
+          "name": "Kimi K2 0905",
           "max_output": 262144,
           "cost": {
-            "input": 2.4,
-            "output": 10,
-            "cache_read": 0.6
+            "input": 0.6,
+            "output": 2.5,
+            "cache_read": 0.15
           },
           "capabilities": {
             "reasoning": false,
@@ -21751,6 +22069,57 @@
           },
           "release_date": "2025-09-05",
           "knowledge_cutoff": "2024-10",
+          "first_seen": "2026-04-19"
+        },
+        {
+          "id": "kimi-latest",
+          "type": "chat",
+          "status": "active",
+          "context_window": 131072,
+          "modalities": {
+            "input": [
+              "text",
+              "image"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "capabilities": {
+            "vision": true
+          },
+          "owned_by": "moonshot",
+          "created": 1776488930,
+          "first_seen": "2026-04-19"
+        },
+        {
+          "id": "kimi-k2-thinking",
+          "type": "chat",
+          "status": "active",
+          "context_window": 262144,
+          "modalities": {
+            "input": [
+              "text"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "owned_by": "moonshot",
+          "created": 1776488930,
+          "name": "Kimi K2 Thinking",
+          "max_output": 262144,
+          "cost": {
+            "input": 0.6,
+            "output": 2.5,
+            "cache_read": 0.15
+          },
+          "capabilities": {
+            "reasoning": true,
+            "tool_call": true
+          },
+          "release_date": "2025-11-06",
+          "knowledge_cutoff": "2024-08",
           "first_seen": "2026-04-19"
         },
         {
@@ -21771,24 +22140,7 @@
             "vision": true
           },
           "owned_by": "moonshot",
-          "created": 1776488929,
-          "first_seen": "2026-04-19"
-        },
-        {
-          "id": "moonshot-v1-32k",
-          "type": "chat",
-          "status": "active",
-          "context_window": 32768,
-          "modalities": {
-            "input": [
-              "text"
-            ],
-            "output": [
-              "text"
-            ]
-          },
-          "owned_by": "moonshot",
-          "created": 1776488929,
+          "created": 1776488930,
           "first_seen": "2026-04-19"
         },
         {
@@ -21805,7 +22157,7 @@
             ]
           },
           "owned_by": "moonshot",
-          "created": 1776488929,
+          "created": 1776488930,
           "first_seen": "2026-04-19"
         },
         {
@@ -21822,7 +22174,7 @@
             ]
           },
           "owned_by": "moonshot",
-          "created": 1776488929,
+          "created": 1776488930,
           "name": "Kimi K2 Thinking Turbo",
           "max_output": 262144,
           "cost": {
@@ -21839,7 +22191,7 @@
           "first_seen": "2026-04-19"
         },
         {
-          "id": "kimi-k2-thinking",
+          "id": "kimi-k2-turbo-preview",
           "type": "chat",
           "status": "active",
           "context_window": 262144,
@@ -21852,58 +22204,20 @@
             ]
           },
           "owned_by": "moonshot",
-          "created": 1776488929,
-          "name": "Kimi K2 Thinking",
+          "created": 1776488930,
+          "name": "Kimi K2 Turbo",
           "max_output": 262144,
           "cost": {
-            "input": 0.6,
-            "output": 2.5,
-            "cache_read": 0.15
+            "input": 2.4,
+            "output": 10,
+            "cache_read": 0.6
           },
           "capabilities": {
-            "reasoning": true,
+            "reasoning": false,
             "tool_call": true
           },
-          "release_date": "2025-11-06",
-          "knowledge_cutoff": "2024-08",
-          "first_seen": "2026-04-19"
-        },
-        {
-          "id": "moonshot-v1-8k",
-          "type": "chat",
-          "status": "active",
-          "context_window": 8192,
-          "modalities": {
-            "input": [
-              "text"
-            ],
-            "output": [
-              "text"
-            ]
-          },
-          "owned_by": "moonshot",
-          "created": 1776488929,
-          "first_seen": "2026-04-19"
-        },
-        {
-          "id": "moonshot-v1-32k-vision-preview",
-          "type": "chat",
-          "status": "active",
-          "context_window": 32768,
-          "modalities": {
-            "input": [
-              "text",
-              "image"
-            ],
-            "output": [
-              "text"
-            ]
-          },
-          "capabilities": {
-            "vision": true
-          },
-          "owned_by": "moonshot",
-          "created": 1776488929,
+          "release_date": "2025-09-05",
+          "knowledge_cutoff": "2024-10",
           "first_seen": "2026-04-19"
         },
         {
@@ -21927,7 +22241,7 @@
             "vision": true
           },
           "owned_by": "moonshot",
-          "created": 1776488929,
+          "created": 1776488930,
           "name": "Kimi K2.5",
           "max_output": 262144,
           "cost": {
@@ -21940,10 +22254,10 @@
           "first_seen": "2026-04-19"
         },
         {
-          "id": "kimi-k2-0905-preview",
+          "id": "moonshot-v1-128k",
           "type": "chat",
           "status": "active",
-          "context_window": 262144,
+          "context_window": 131072,
           "modalities": {
             "input": [
               "text"
@@ -21953,9 +22267,26 @@
             ]
           },
           "owned_by": "moonshot",
-          "created": 1776488929,
-          "name": "Kimi K2 0905",
-          "max_output": 262144,
+          "created": 1776488930,
+          "first_seen": "2026-04-19"
+        },
+        {
+          "id": "kimi-k2-0711-preview",
+          "type": "chat",
+          "status": "active",
+          "context_window": 131072,
+          "modalities": {
+            "input": [
+              "text"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "owned_by": "moonshot",
+          "created": 1776488930,
+          "name": "Kimi K2 0711",
+          "max_output": 16384,
           "cost": {
             "input": 0.6,
             "output": 2.5,
@@ -21965,8 +22296,25 @@
             "reasoning": false,
             "tool_call": true
           },
-          "release_date": "2025-09-05",
+          "release_date": "2025-07-14",
           "knowledge_cutoff": "2024-10",
+          "first_seen": "2026-04-19"
+        },
+        {
+          "id": "moonshot-v1-32k",
+          "type": "chat",
+          "status": "active",
+          "context_window": 32768,
+          "modalities": {
+            "input": [
+              "text"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "owned_by": "moonshot",
+          "created": 1776488930,
           "first_seen": "2026-04-19"
         },
         {
@@ -21987,14 +22335,14 @@
             "vision": true
           },
           "owned_by": "moonshot",
-          "created": 1776488929,
+          "created": 1776488930,
           "first_seen": "2026-04-19"
         },
         {
-          "id": "kimi-latest",
+          "id": "moonshot-v1-32k-vision-preview",
           "type": "chat",
           "status": "active",
-          "context_window": 131072,
+          "context_window": 32768,
           "modalities": {
             "input": [
               "text",
@@ -22008,54 +22356,7 @@
             "vision": true
           },
           "owned_by": "moonshot",
-          "created": 1776488929,
-          "first_seen": "2026-04-19"
-        },
-        {
-          "id": "kimi-k2-0711-preview",
-          "type": "chat",
-          "status": "active",
-          "context_window": 131072,
-          "modalities": {
-            "input": [
-              "text"
-            ],
-            "output": [
-              "text"
-            ]
-          },
-          "owned_by": "moonshot",
-          "created": 1776488929,
-          "name": "Kimi K2 0711",
-          "max_output": 16384,
-          "cost": {
-            "input": 0.6,
-            "output": 2.5,
-            "cache_read": 0.15
-          },
-          "capabilities": {
-            "reasoning": false,
-            "tool_call": true
-          },
-          "release_date": "2025-07-14",
-          "knowledge_cutoff": "2024-10",
-          "first_seen": "2026-04-19"
-        },
-        {
-          "id": "moonshot-v1-128k",
-          "type": "chat",
-          "status": "active",
-          "context_window": 131072,
-          "modalities": {
-            "input": [
-              "text"
-            ],
-            "output": [
-              "text"
-            ]
-          },
-          "owned_by": "moonshot",
-          "created": 1776488929,
+          "created": 1776488930,
           "first_seen": "2026-04-19"
         }
       ]
@@ -22065,33 +22366,469 @@
       "kind": "chat",
       "models": [
         {
-          "id": "llama-3.1-8b",
-          "type": "chat",
+          "id": "whisper-large-v3-turbo",
+          "type": "stt",
           "status": "active",
+          "context_window": 448,
+          "owned_by": "OpenAI",
+          "created": 1728413088,
+          "name": "Whisper Large v3 Turbo",
+          "max_output": 448,
+          "cost": {
+            "input": 0,
+            "output": 0
+          },
+          "modalities": {
+            "input": [
+              "audio"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "capabilities": {
+            "reasoning": false,
+            "tool_call": false
+          },
+          "release_date": "2024-10-01",
+          "knowledge_cutoff": "2024-10",
           "first_seen": "2026-04-19"
         },
         {
-          "id": "llama-3.1-70b",
+          "id": "llama-3.3-70b-versatile",
           "type": "chat",
           "status": "active",
+          "context_window": 131072,
+          "owned_by": "Meta",
+          "created": 1733447754,
+          "name": "Llama 3.3 70B Versatile",
+          "max_output": 32768,
+          "cost": {
+            "input": 0.59,
+            "output": 0.79
+          },
+          "modalities": {
+            "input": [
+              "text"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "capabilities": {
+            "reasoning": false,
+            "tool_call": true
+          },
+          "release_date": "2024-12-06",
+          "knowledge_cutoff": "2023-12",
           "first_seen": "2026-04-19"
         },
         {
-          "id": "llama-3.1-405b",
+          "id": "qwen/qwen3-32b",
           "type": "chat",
           "status": "active",
+          "context_window": 131072,
+          "owned_by": "Alibaba Cloud",
+          "created": 1748396646,
+          "name": "Qwen3 32B",
+          "max_output": 40960,
+          "cost": {
+            "input": 0.29,
+            "output": 0.59
+          },
+          "modalities": {
+            "input": [
+              "text"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "capabilities": {
+            "reasoning": true,
+            "tool_call": true
+          },
+          "release_date": "2024-12-23",
+          "knowledge_cutoff": "2024-11-08",
           "first_seen": "2026-04-19"
         },
         {
-          "id": "mixtral-8x7b-32768",
+          "id": "meta-llama/llama-4-scout-17b-16e-instruct",
           "type": "chat",
           "status": "active",
+          "context_window": 131072,
+          "owned_by": "Meta",
+          "created": 1743874824,
+          "name": "Llama 4 Scout 17B",
+          "max_output": 8192,
+          "cost": {
+            "input": 0.11,
+            "output": 0.34
+          },
+          "modalities": {
+            "input": [
+              "text",
+              "image"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "capabilities": {
+            "reasoning": false,
+            "tool_call": true,
+            "structured_output": true
+          },
+          "release_date": "2025-04-05",
+          "knowledge_cutoff": "2024-08",
           "first_seen": "2026-04-19"
         },
         {
-          "id": "gemma-7b-it",
+          "id": "canopylabs/orpheus-v1-english",
           "type": "chat",
           "status": "active",
+          "context_window": 4000,
+          "owned_by": "Canopy Labs",
+          "created": 1766186316,
+          "name": "Orpheus V1 English",
+          "max_output": 50000,
+          "cost": {
+            "input": 0,
+            "output": 0
+          },
+          "modalities": {
+            "input": [
+              "text"
+            ],
+            "output": [
+              "audio"
+            ]
+          },
+          "capabilities": {
+            "reasoning": false,
+            "tool_call": false
+          },
+          "release_date": "2025-12-19",
+          "knowledge_cutoff": "2025-12-19",
+          "first_seen": "2026-04-19"
+        },
+        {
+          "id": "whisper-large-v3",
+          "type": "stt",
+          "status": "active",
+          "context_window": 448,
+          "owned_by": "OpenAI",
+          "created": 1693721698,
+          "name": "Whisper Large V3",
+          "max_output": 448,
+          "cost": {
+            "input": 0,
+            "output": 0
+          },
+          "modalities": {
+            "input": [
+              "audio"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "capabilities": {
+            "reasoning": false,
+            "tool_call": false
+          },
+          "release_date": "2023-09-01",
+          "knowledge_cutoff": "2023-09",
+          "first_seen": "2026-04-19"
+        },
+        {
+          "id": "openai/gpt-oss-20b",
+          "type": "chat",
+          "status": "active",
+          "context_window": 131072,
+          "owned_by": "OpenAI",
+          "created": 1754407957,
+          "name": "GPT OSS 20B",
+          "max_output": 65536,
+          "cost": {
+            "input": 0.075,
+            "output": 0.3
+          },
+          "modalities": {
+            "input": [
+              "text"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "capabilities": {
+            "reasoning": true,
+            "tool_call": true,
+            "structured_output": true
+          },
+          "release_date": "2025-08-05",
+          "first_seen": "2026-04-19"
+        },
+        {
+          "id": "allam-2-7b",
+          "type": "chat",
+          "status": "active",
+          "context_window": 4096,
+          "owned_by": "SDAIA",
+          "created": 1737672203,
+          "name": "ALLaM-2-7b",
+          "max_output": 4096,
+          "cost": {
+            "input": 0,
+            "output": 0
+          },
+          "modalities": {
+            "input": [
+              "text"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "capabilities": {
+            "reasoning": false,
+            "tool_call": false
+          },
+          "release_date": "2024-09",
+          "knowledge_cutoff": "2024-09",
+          "first_seen": "2026-04-19"
+        },
+        {
+          "id": "meta-llama/llama-prompt-guard-2-22m",
+          "type": "chat",
+          "status": "active",
+          "context_window": 512,
+          "owned_by": "Meta",
+          "created": 1748632101,
+          "name": "Llama Prompt Guard 2 22M",
+          "max_output": 512,
+          "cost": {
+            "input": 0.03,
+            "output": 0.03
+          },
+          "modalities": {
+            "input": [
+              "text"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "capabilities": {
+            "reasoning": false,
+            "tool_call": false
+          },
+          "release_date": "2024-10-01",
+          "knowledge_cutoff": "2024-10",
+          "first_seen": "2026-04-19"
+        },
+        {
+          "id": "meta-llama/llama-prompt-guard-2-86m",
+          "type": "chat",
+          "status": "active",
+          "context_window": 512,
+          "owned_by": "Meta",
+          "created": 1748632165,
+          "name": "Llama Prompt Guard 2 86M",
+          "max_output": 512,
+          "cost": {
+            "input": 0.04,
+            "output": 0.04
+          },
+          "modalities": {
+            "input": [
+              "text"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "capabilities": {
+            "reasoning": false,
+            "tool_call": false
+          },
+          "release_date": "2024-10-01",
+          "knowledge_cutoff": "2024-10",
+          "first_seen": "2026-04-19"
+        },
+        {
+          "id": "canopylabs/orpheus-arabic-saudi",
+          "type": "chat",
+          "status": "active",
+          "context_window": 4000,
+          "owned_by": "Canopy Labs",
+          "created": 1765926439,
+          "name": "Orpheus Arabic Saudi",
+          "max_output": 50000,
+          "cost": {
+            "input": 40,
+            "output": 0
+          },
+          "modalities": {
+            "input": [
+              "text"
+            ],
+            "output": [
+              "audio"
+            ]
+          },
+          "capabilities": {
+            "reasoning": false,
+            "tool_call": false
+          },
+          "release_date": "2025-12-16",
+          "knowledge_cutoff": "2025-12-16",
+          "first_seen": "2026-04-19"
+        },
+        {
+          "id": "groq/compound",
+          "type": "chat",
+          "status": "active",
+          "context_window": 131072,
+          "owned_by": "Groq",
+          "created": 1756949530,
+          "name": "Compound",
+          "max_output": 8192,
+          "cost": {
+            "input": 0,
+            "output": 0
+          },
+          "modalities": {
+            "input": [
+              "text"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "capabilities": {
+            "reasoning": true,
+            "tool_call": true
+          },
+          "release_date": "2025-09-04",
+          "knowledge_cutoff": "2025-09-04",
+          "first_seen": "2026-04-19"
+        },
+        {
+          "id": "openai/gpt-oss-safeguard-20b",
+          "type": "chat",
+          "status": "active",
+          "context_window": 131072,
+          "owned_by": "OpenAI",
+          "created": 1761708789,
+          "name": "Safety GPT OSS 20B",
+          "max_output": 65536,
+          "cost": {
+            "input": 0.075,
+            "output": 0.3,
+            "cache_read": 0.037
+          },
+          "modalities": {
+            "input": [
+              "text"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "capabilities": {
+            "reasoning": true,
+            "tool_call": true
+          },
+          "release_date": "2025-03-05",
+          "first_seen": "2026-04-19"
+        },
+        {
+          "id": "llama-3.1-8b-instant",
+          "type": "chat",
+          "status": "active",
+          "context_window": 131072,
+          "owned_by": "Meta",
+          "created": 1693721698,
+          "name": "Llama 3.1 8B Instant",
+          "max_output": 131072,
+          "cost": {
+            "input": 0.05,
+            "output": 0.08
+          },
+          "modalities": {
+            "input": [
+              "text"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "capabilities": {
+            "reasoning": false,
+            "tool_call": true
+          },
+          "release_date": "2024-07-23",
+          "knowledge_cutoff": "2023-12",
+          "first_seen": "2026-04-19"
+        },
+        {
+          "id": "groq/compound-mini",
+          "type": "chat",
+          "status": "active",
+          "context_window": 131072,
+          "owned_by": "Groq",
+          "created": 1756949707,
+          "name": "Compound Mini",
+          "max_output": 8192,
+          "cost": {
+            "input": 0,
+            "output": 0
+          },
+          "modalities": {
+            "input": [
+              "text"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "capabilities": {
+            "reasoning": true,
+            "tool_call": true
+          },
+          "release_date": "2025-09-04",
+          "knowledge_cutoff": "2025-09-04",
+          "first_seen": "2026-04-19"
+        },
+        {
+          "id": "openai/gpt-oss-120b",
+          "type": "chat",
+          "status": "active",
+          "context_window": 131072,
+          "owned_by": "OpenAI",
+          "created": 1754408224,
+          "name": "GPT OSS 120B",
+          "max_output": 65536,
+          "cost": {
+            "input": 0.15,
+            "output": 0.6
+          },
+          "modalities": {
+            "input": [
+              "text"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "capabilities": {
+            "reasoning": true,
+            "tool_call": true,
+            "structured_output": true
+          },
+          "release_date": "2025-08-05",
           "first_seen": "2026-04-19"
         }
       ]
