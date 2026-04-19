@@ -15,6 +15,7 @@ import random
 import time
 import base64
 import requests
+from pathlib import Path
 # Cloudflare API Details
 from dotenv import load_dotenv
 import os
@@ -27,6 +28,188 @@ found_dotenv = load_dotenv(dotenv_path=dotenv_path,
 
 # print(f"DEBUG: Attempted to load .env from: {dotenv_path}")  # Debug print
 # print(f"DEBUG: .env file found and loaded: {found_dotenv}")  # Debug print
+
+
+SPEED_QUESTIONS = [
+    "Erkläre mir bitte Transformer in maschinellem Lernen in einfachen Worten und auf deutsch.",
+    "Was ist der Unterschied zwischen Supervised und Unsupervised Learning? Erkläre kurz.",
+    "Beschreibe kurz, wie ein neuronales Netzwerk funktioniert.",
+    "Was ist Transfer Learning und warum ist es nützlich?",
+    "Erkläre den Begriff Gradient Descent in einfachen Worten.",
+    "Was ist der Unterschied zwischen CNN und RNN? Nenne je ein Anwendungsgebiet.",
+    "Was sind Embeddings im Kontext von NLP? Erkläre kurz.",
+    "Erkläre den Attention-Mechanismus in einfachen Worten.",
+    "Was ist Fine-Tuning und wann verwendet man es?",
+    "Was ist der Unterschied zwischen Batch und Stochastic Gradient Descent?",
+]
+
+SPEED_RESULTS_PATH = Path(__file__).parent / "models" / "_speed_results.json"
+
+
+def _run_speedtest(provider_name, model, prompt, api_key, extra_params):
+    from uniinfer import ChatMessage, ChatCompletionRequest
+    from uniinfer.providers import ChatProvider
+
+    kwargs = {k: v for k, v in extra_params.items() if k in ("base_url", "account_id")}
+    kwargs["api_key"] = api_key
+
+    try:
+        cls = PROVIDER_CONFIGS.get(provider_name, {}).get("provider_class")
+        if cls:
+            prov = cls(**kwargs)
+        else:
+            prov = ProviderFactory().get_provider(name=provider_name, **kwargs)
+    except Exception as e:
+        return {"error": f"provider init: {e}"}
+
+    messages = [ChatMessage(role="user", content=prompt)]
+    request = ChatCompletionRequest(messages=messages, model=model, streaming=True)
+
+    start = time.time()
+    first_token_time = None
+    first_thinking_time = None
+    text = ""
+    thinking = ""
+    last_usage = None
+    finish_reason = None
+
+    try:
+        for chunk in prov.stream_complete(request):
+            if chunk.message.content:
+                if first_token_time is None:
+                    first_token_time = time.time()
+                text += chunk.message.content
+            if chunk.thinking:
+                if first_thinking_time is None:
+                    first_thinking_time = time.time()
+                thinking += chunk.thinking
+            if chunk.usage:
+                last_usage = chunk.usage
+            if chunk.finish_reason:
+                finish_reason = chunk.finish_reason
+    except Exception as e:
+        if not text and not thinking:
+            return {"error": str(e)}
+
+    end = time.time()
+    tft = (first_token_time - start) if first_token_time else 0.0
+    tft_think = (first_thinking_time - start) if first_thinking_time else None
+
+    if last_usage:
+        total_tokens = last_usage.get("total_tokens", 0) or 0
+        thinking_tokens = last_usage.get("completion_tokens_details", {}).get("reasoning_tokens", 0) or 0
+        text_tokens = (last_usage.get("completion_tokens", 0) or 0) - thinking_tokens
+        if total_tokens == 0:
+            total_tokens = thinking_tokens + text_tokens
+    else:
+        thinking_tokens = len(thinking) // 4
+        text_tokens = len(text) // 4
+        total_tokens = thinking_tokens + text_tokens
+
+    gen_time = (end - first_token_time) if first_token_time else 0.0
+    tok_per_sec = total_tokens / gen_time if gen_time > 0 else 0.0
+
+    return {
+        "tft": round(tft, 3),
+        "tft_thinking": round(tft_think, 3) if tft_think is not None else None,
+        "thinking_tokens": thinking_tokens,
+        "text_tokens": text_tokens,
+        "total_tokens": total_tokens,
+        "tok_per_sec": round(tok_per_sec, 1),
+        "wall_time": round(end - start, 3),
+        "finish_reason": finish_reason,
+    }
+
+
+def _speedtest(args):
+    provider = args.provider
+    models = args.models or ([args.model] if args.model else None)
+    if not models:
+        models = [PROVIDER_CONFIGS.get(provider, {}).get("default_model", "")]
+        if not models[0]:
+            print(f"Error: no model specified and no default for provider '{provider}'")
+            return
+
+    credgoo_service = _resolve_credgoo_service(provider)
+    try:
+        api_key = get_api_key(
+            service=credgoo_service,
+            encryption_key=args.encryption_key,
+            bearer_token=args.bearer_token)
+    except Exception as e:
+        print(f"Error: no API key for '{provider}': {e}")
+        return
+
+    extra_params = PROVIDER_CONFIGS.get(provider, {}).get("extra_params", {})
+    runs = args.runs
+    print(f"Speed test: {provider} | models: {', '.join(models)} | runs: {runs}")
+    print()
+
+    all_results = {}
+    for model in models:
+        print(f"── {provider}/{model} ──")
+        run_results = []
+        for run in range(1, runs + 1):
+            prompt = random.choice(SPEED_QUESTIONS)
+            r = _run_speedtest(provider, model, prompt, api_key, extra_params)
+            if "error" in r:
+                print(f"  run {run}: ERROR - {r['error']}")
+                run_results.append(None)
+                continue
+            parts = [f"run {run}", f"tft={r['tft']:.2f}s"]
+            if r["tft_thinking"] is not None:
+                parts.append(f"tft_think={r['tft_thinking']:.2f}s")
+            if r["thinking_tokens"]:
+                parts.append(f"think_tok={r['thinking_tokens']}")
+            parts.append(f"text_tok={r['text_tokens']}")
+            parts.append(f"total={r['total_tokens']}")
+            parts.append(f"tok/s={r['tok_per_sec']:.1f}")
+            parts.append(f"wall={r['wall_time']:.2f}s")
+            if r["finish_reason"]:
+                parts.append(f"({r['finish_reason']})")
+            print(f"  {' | '.join(parts)}")
+            run_results.append(r)
+
+        ok = [r for r in run_results if r]
+        if ok:
+            avg = {}
+            for key in ("tft", "tok_per_sec", "thinking_tokens", "text_tokens", "total_tokens", "wall_time"):
+                vals = [r[key] for r in ok if r.get(key)]
+                if vals:
+                    avg[key] = round(sum(vals) / len(vals), 3 if key == "tft" else 1 if key == "tok_per_sec" else 0)
+            tft_think_vals = [r["tft_thinking"] for r in ok if r.get("tft_thinking") is not None]
+            if tft_think_vals:
+                avg["tft_thinking"] = round(sum(tft_think_vals) / len(tft_think_vals), 3)
+            avg["runs"] = len(ok)
+            avg["finish_reason"] = ok[-1]["finish_reason"]
+            avg["tested_at"] = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+            all_results[f"{provider}/{model}"] = avg
+
+            print(f"  ── avg ({avg['runs']} runs) ──")
+            parts = [f"tft={avg['tft']:.2f}s"]
+            if "tft_thinking" in avg:
+                parts.append(f"tft_think={avg['tft_thinking']:.2f}s")
+            if avg.get("thinking_tokens"):
+                parts.append(f"think_tok={avg['thinking_tokens']:.0f}")
+            parts.append(f"text_tok={avg['text_tokens']:.0f}")
+            parts.append(f"total={avg['total_tokens']:.0f}")
+            parts.append(f"tok/s={avg['tok_per_sec']:.1f}")
+            parts.append(f"wall={avg['wall_time']:.2f}s")
+            if avg.get("finish_reason"):
+                parts.append(f"({avg['finish_reason']})")
+            print(f"  {' | '.join(parts)}")
+        print()
+
+    if all_results:
+        existing = {}
+        if SPEED_RESULTS_PATH.exists():
+            with open(SPEED_RESULTS_PATH) as f:
+                existing = json.load(f)
+        existing.update(all_results)
+        SPEED_RESULTS_PATH.parent.mkdir(parents=True, exist_ok=True)
+        with open(SPEED_RESULTS_PATH, "w") as f:
+            json.dump(existing, f, indent=2, ensure_ascii=False)
+        print(f"Saved speed results for {len(all_results)} model(s) to {SPEED_RESULTS_PATH}")
 
 
 def _resolve_credgoo_service(provider: str) -> str:
@@ -102,8 +285,19 @@ def main():
                         help='List models first seen in the last N days (default: 7)')
     parser.add_argument('--deprecated-models', action='store_true',
                         help='List deprecated models and their deprecation info')
+    parser.add_argument('--speedtest', action='store_true',
+                        help='Run smoke speed test on model(s)')
+    parser.add_argument('--models', type=str, nargs='+',
+                        help='Multiple models to test (use with --speedtest)')
+    parser.add_argument('--runs', type=int, default=1,
+                        help='Number of runs per model for speed test (default: 1)')
 
     args = parser.parse_args()
+
+    if args.speedtest:
+        from pathlib import Path as _Path
+        _speedtest(args)
+        return
 
     if args.new_models:
         from datetime import datetime, timezone, timedelta
