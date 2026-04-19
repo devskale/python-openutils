@@ -12,7 +12,34 @@ from uniinfer.proxy_services.models_registry import (
     ensure_fresh_models_file,
     parse_models_file,
     refresh_models_file,
+    list_all_models_from_factories,
 )
+from uniinfer.core import ModelInfo
+import dataclasses
+
+
+def _model_info_to_dict(m) -> dict:
+    """Convert a ModelInfo or plain string to an OpenAI-compatible model dict."""
+    if isinstance(m, ModelInfo):
+        d = {"id": m.id, "object": "model"}
+        if m.owned_by:
+            d["owned_by"] = m.owned_by
+        else:
+            d["owned_by"] = "skaledev"
+        if m.context_window:
+            d["context_window"] = m.context_window
+        if m.max_output:
+            d["max_output"] = m.max_output
+        if m.type and m.type != "chat":
+            d["type"] = m.type
+        if m.capabilities:
+            d["capabilities"] = m.capabilities
+        if m.modalities:
+            d["modalities"] = m.modalities
+        if m.cost:
+            d["cost"] = m.cost
+        return d
+    return {"id": str(m), "object": "model", "owned_by": "skaledev"}
 
 
 def create_models_router(version: str) -> APIRouter:
@@ -21,13 +48,10 @@ def create_models_router(version: str) -> APIRouter:
     @router.get("/v1/models")
     async def list_models():
         await ensure_fresh_models_file()
-        models = parse_models_file()
+        models = list_all_models_from_factories()
         return {
             "object": "list",
-            "data": [
-                {"id": model_id, "object": "model", "owned_by": "skaledev"}
-                for model_id in models
-            ],
+            "data": models,
         }
 
     @router.post("/v1/system/update-models")
@@ -49,13 +73,12 @@ def create_models_router(version: str) -> APIRouter:
     async def dynamic_list_models(provider_name: str, api_bearer_token: str = Depends(validate_proxy_token)):
         try:
             raw_models = list_models_for_provider(provider_name, api_bearer_token)
-            if provider_name == "zai" and "glm-4.5-flash" not in raw_models:
+            if provider_name == "zai" and "glm-4.5-flash" not in [str(m) for m in raw_models]:
                 raw_models.append("glm-4.5-flash")
             return {
                 "object": "list",
                 "data": [
-                    {"id": m, "object": "model", "owned_by": "skaledev"}
-                    for m in raw_models
+                    _model_info_to_dict(m) for m in raw_models
                 ],
             }
         except ValueError as e:
@@ -92,8 +115,7 @@ def create_models_router(version: str) -> APIRouter:
             return {
                 "object": "list",
                 "data": [
-                    {"id": m, "object": "model", "owned_by": "skaledev"}
-                    for m in raw_models
+                    _model_info_to_dict(m) for m in raw_models
                 ],
             }
         except ValueError as e:

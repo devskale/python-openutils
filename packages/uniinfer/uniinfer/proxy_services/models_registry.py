@@ -1,20 +1,15 @@
 import os
-import re
 import sys
 import time
 import logging
-import subprocess
+import dataclasses
 from typing import Any
 
 from starlette.concurrency import run_in_threadpool
 
 logger = logging.getLogger("uniioai_proxy")
 
-# The models.txt file is expected to be in the package root (one level up from uniioai_proxy.py)
-SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
-UNIINFER_DIR = os.path.dirname(SCRIPT_DIR)
-PACKAGE_ROOT = os.path.dirname(UNIINFER_DIR)
-MODELS_FILE_PATH = os.path.join(PACKAGE_ROOT, "models.txt")
+PACKAGE_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 PREDEFINED_MODELS = [
     "mistral@mistral-tiny-latest",
@@ -49,34 +44,35 @@ def get_refetch_interval_seconds() -> float:
 
 
 def models_file_is_stale() -> bool:
-    if not os.path.exists(MODELS_FILE_PATH):
+    models_json = os.path.join(PACKAGE_ROOT, "models", "models.json")
+    if not os.path.exists(models_json):
         return True
-    age_seconds = time.time() - os.path.getmtime(MODELS_FILE_PATH)
+    age_seconds = time.time() - os.path.getmtime(models_json)
     return age_seconds > get_refetch_interval_seconds()
 
 
 async def refresh_models_file() -> dict[str, Any]:
-    cmd = ["uniinfer", "-l", "--list-models"]
+    """Re-generate models.json by calling list_models() on all providers."""
+    cmd = [sys.executable, "-m", "scripts.generate_models"]
 
-    # Prefer installed CLI; fallback to module execution.
-    if not _which("uniinfer"):
-        cmd = [sys.executable, "-m", "uniinfer.uniinfer_cli", "-l", "--list-models"]
+    scripts_dir = os.path.join(PACKAGE_ROOT, "scripts")
+    if not os.path.exists(scripts_dir):
+        scripts_dir = os.path.join(os.path.dirname(PACKAGE_ROOT), "scripts")
 
     result = await run_in_threadpool(
         subprocess.run,
-        cmd,
+        [sys.executable, os.path.join(scripts_dir, "generate_models.py")],
         capture_output=True,
         text=True,
-        check=True,
+        check=False,
     )
 
-    with open(MODELS_FILE_PATH, "w") as f:
-        f.write(result.stdout)
+    if result.returncode != 0:
+        logger.error("generate_models.py failed: %s", result.stderr)
 
     return {
-        "status": "success",
-        "message": "Models updated successfully",
-        "output_length": len(result.stdout),
+        "status": "success" if result.returncode == 0 else "error",
+        "message": "Models updated successfully" if result.returncode == 0 else result.stderr,
     }
 
 
@@ -89,25 +85,68 @@ async def ensure_fresh_models_file() -> None:
         logger.warning("Failed to refresh stale models file: %s", e)
 
 
+def list_all_models_from_factories() -> list[dict]:
+    """Build a flat OpenAI-compatible model list from models.json."""
+    from uniinfer.core import ModelInfo
+
+    models_json = os.path.join(PACKAGE_ROOT, "models", "models.json")
+    if not os.path.exists(models_json):
+        return [{"id": m, "object": "model", "owned_by": "skaledev"} for m in PREDEFINED_MODELS]
+
+    try:
+        import json
+        with open(models_json) as f:
+            data = json.load(f)
+    except Exception as e:
+        logger.error("Error reading models.json: %s", e)
+        return [{"id": m, "object": "model", "owned_by": "skaledev"} for m in PREDEFINED_MODELS]
+
+    result = []
+    for provider_id, provider_data in data.get("providers", {}).items():
+        for model in provider_data.get("models", []):
+            entry = {
+                "id": model["id"],
+                "object": "model",
+                "owned_by": model.get("owned_by", "skaledev"),
+            }
+            if model.get("context_window"):
+                entry["context_window"] = model["context_window"]
+            if model.get("max_output"):
+                entry["max_output"] = model["max_output"]
+            if model.get("type") and model["type"] != "chat":
+                entry["type"] = model["type"]
+            if model.get("capabilities"):
+                entry["capabilities"] = model["capabilities"]
+            if model.get("modalities"):
+                entry["modalities"] = model["modalities"]
+            if model.get("cost"):
+                entry["cost"] = model["cost"]
+            result.append(entry)
+    return result
+
+
 def parse_models_file() -> list[str]:
-    """Parse models.txt and return provider@model entries."""
+    """Legacy: parse models.txt and return provider@model entries.
+
+    Used only as fallback when models.json doesn't exist.
+    """
+    models_txt = os.path.join(PACKAGE_ROOT, "models.txt")
     models: list[str] = []
-    if not os.path.exists(MODELS_FILE_PATH):
+    if not os.path.exists(models_txt):
         return PREDEFINED_MODELS
 
     current_provider = None
     try:
-        with open(MODELS_FILE_PATH, "r") as f:
+        import re
+        with open(models_txt, "r") as f:
             for line in f:
                 line = line.strip()
                 if not line:
                     continue
-
                 provider_match = re.match(r"Available models for (\w+):", line)
                 if provider_match:
                     current_provider = provider_match.group(1)
                     continue
-
                 if line.startswith("- ") and current_provider:
                     model_name = line[2:].strip()
                     models.append(f"{current_provider}@{model_name}")
@@ -118,10 +157,4 @@ def parse_models_file() -> list[str]:
     return models if models else PREDEFINED_MODELS
 
 
-def _which(binary: str) -> bool:
-    try:
-        import shutil
-
-        return shutil.which(binary) is not None
-    except Exception:
-        return False
+import subprocess
