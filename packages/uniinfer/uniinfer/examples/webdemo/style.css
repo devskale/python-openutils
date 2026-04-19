@@ -733,6 +733,7 @@ select:disabled { color: var(--text-muted); opacity: 0.5; cursor: not-allowed; }
   overflow: auto;
   margin-top: 8px;
   min-height: 0;
+  max-height: calc(100vh - 200px);
 }
 
 .models-table {
