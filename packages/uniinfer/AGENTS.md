@@ -149,7 +149,9 @@ def complete(
 - `uniinfer/providers/{provider_name}.py`: Provider implementations
 - `uniinfer/models/models.json`: Generated model catalog (rich metadata for all providers)
 - `uniinfer/models/type_overrides.json`: Curated model type assignments (edit this to fix types)
-- `scripts/generate_models.py`: Regenerates models.json from live provider APIs
+- `uniinfer/models/_model_history.json`: first_seen date tracking (auto-managed)
+- `scripts/generate_models.py`: Regenerates models.json from live provider APIs + models.dev
+- `uniinfer/proxy_routers/models.py`: Proxy endpoints for models, new models, deprecated models
 - `uniinfer/errors.py`: Error handling
 - `uniinfer/factory.py`, `embedding_factory.py`: Factories
 - `uniinfer/tests/test_*.py`: Tests
@@ -177,6 +179,19 @@ See `docs/models.md` for full details.
 - To fix a model's type, add it to `uniinfer/models/type_overrides.json`
 - To regenerate the catalog: `uv run python3 scripts/generate_models.py`
 - Provider metadata richness varies — see docs/models.md for the matrix
+
+**CLI commands:**
+```bash
+uniinfer --new-models           # models first seen in last 7 days
+uniinfer --new-models 30        # last 30 days
+uniinfer --deprecated-models   # deprecated models with dates + replacements
+```
+
+**Proxy endpoints:**
+- `GET /v1/models` — all models from cache
+- `GET /v1/models/{provider}` — live provider models
+- `GET /v1/models/new?days=7` — recently added models
+- `GET /v1/models/deprecated` — deprecated models
 
 ### Provider Implementation Pattern
 
