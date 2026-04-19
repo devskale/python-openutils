@@ -48,7 +48,6 @@ SPEED_RESULTS_PATH = Path(__file__).parent / "models" / "_speed_results.json"
 
 def _run_speedtest(provider_name, model, prompt, api_key, extra_params):
     from uniinfer import ChatMessage, ChatCompletionRequest
-    from uniinfer.providers import ChatProvider
 
     kwargs = {k: v for k, v in extra_params.items() if k in ("base_url", "account_id")}
     kwargs["api_key"] = api_key
