@@ -174,7 +174,7 @@ def _speedtest(args):
         if ok:
             avg = {}
             for key in ("tft", "tok_per_sec", "thinking_tokens", "text_tokens", "total_tokens", "wall_time"):
-                vals = [r[key] for r in ok if r.get(key)]
+                vals = [r[key] for r in ok if r.get(key) is not None]
                 if vals:
                     avg[key] = round(sum(vals) / len(vals), 3 if key == "tft" else 1 if key == "tok_per_sec" else 0)
             tft_think_vals = [r["tft_thinking"] for r in ok if r.get("tft_thinking") is not None]
