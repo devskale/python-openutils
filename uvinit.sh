@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+export PYTHONUNBUFFERED=1
 set -u
 
 MODE=""
@@ -9,393 +10,213 @@ LOG_FILE="$ROOT_DIR/uvinit.log"
 SUCCESS_COUNT=0
 FAIL_COUNT=0
 SKIP_COUNT=0
-declare -a SUCCESS_LIST
-declare -a FAIL_LIST
-declare -a SKIP_LIST
-ALL_DIRS=("packages/credgoo" "packages/uniinfer" )
-DISCOVER=0
+declare -a SUCCESS_LIST=()
+declare -a FAIL_LIST=()
+declare -a SKIP_LIST=()
 
 usage() {
-  echo "Usage: $0 [-x|-v|-p|-u|-c|-h] [package] [-s|-i|-D]"
-  echo "  -x            Initialize projects with uv (discover, venv, install, activate)"
-  echo "  -v            Create venvs with uv for matched projects"
-  echo "  -p            Install matched projects into their venvs via 'uv pip install .'"
-  echo "  -u            Upgrade installs via 'uv pip install -U .' and -U on requirements"
-  echo "  -c            Remove venvs for matched projects"
+  echo "Usage: $0 [-x|-u|-c|-h] [package] [-s]"
+  echo "  -x            Init packages (uv sync)"
+  echo "  -u            Upgrade packages (uv lock -U, uv sync)"
+  echo "  -c            Remove .venv for matched packages"
   echo "  -h            Show help"
-  echo "  [package]     Optional substring to filter projects by directory name"
+  echo "  [package]     Optional substring to filter packages by directory name"
   echo "  -s            Silent mode (no prompts, concise output)"
-  echo "  -i            Interactive mode (confirm per-project)"
-  echo "  -D            Use discovery mode (ignore predefined package list)"
+  echo ""
+  echo "Packages are auto-discovered from subdirectories containing pyproject.toml."
   echo ""
   echo "Examples:"
-  echo "  $0 -x                  Initialize all discovered projects with uv"
-  echo "  $0 -v md2              Create venvs only for projects matching 'md2'"
-  echo "  $0 -p uniinfer -s      Install uniinfer silently into its venv"
-  echo "  $0 -u                  Upgrade all projects using uv pip"
-  echo "  $0 -x credgoo          Initialize predefined package 'credgoo'"
-  echo "  $0 -x -D               Initialize all auto-discovered projects"
+  echo "  $0 -x                  Init all packages"
+  echo "  $0 -u                  Upgrade all packages (lock + sync)"
+  echo "  $0 -x credgoo          Init packages matching 'credgoo'"
+  echo "  $0 -c                  Clean all venvs"
 }
 
 log_init() {
   : > "$LOG_FILE"
   echo "uvinit start: $(date '+%Y-%m-%d %H:%M:%S')" | tee -a "$LOG_FILE"
+  local branch commit date tag
+  if branch=$(git -C "$ROOT_DIR" rev-parse --abbrev-ref HEAD 2>/dev/null); then
+    commit=$(git -C "$ROOT_DIR" log -1 --oneline 2>/dev/null)
+    date=$(git -C "$ROOT_DIR" log -1 --format='%ci' 2>/dev/null)
+    tag=$(git -C "$ROOT_DIR" describe --tags --exact-match 2>/dev/null || true)
+    {
+      echo "Branch : $branch"
+      echo "Commit : $commit"
+      echo "Date   : $date"
+      [ -n "$tag" ] && echo "Tag    : $tag"
+    } | tee -a "$LOG_FILE"
+  fi
 }
 
 log_info() {
-  local msg="$1"
   if [ "$SILENT" -eq 1 ]; then
-    echo "[INFO] $msg" >> "$LOG_FILE"
+    echo "[INFO] $1" >> "$LOG_FILE"
   else
-    echo "[INFO] $msg" | tee -a "$LOG_FILE"
+    echo "[INFO] $1" | tee -a "$LOG_FILE"
   fi
 }
 
 log_warn() {
-  local msg="$1"
   if [ "$SILENT" -eq 1 ]; then
-    echo "[WARN] $msg" >> "$LOG_FILE"
+    echo "[WARN] $1" >> "$LOG_FILE"
   else
-    echo "[WARN] $msg" | tee -a "$LOG_FILE"
+    echo "[WARN] $1" | tee -a "$LOG_FILE"
   fi
 }
 
 log_error() {
-  local msg="$1"
   if [ "$SILENT" -eq 1 ]; then
-    echo "[ERROR] $msg" >> "$LOG_FILE"
+    echo "[ERROR] $1" >> "$LOG_FILE"
   else
-    echo "[ERROR] $msg" | tee -a "$LOG_FILE"
+    echo "[ERROR] $1" | tee -a "$LOG_FILE"
   fi
 }
 
 confirm() {
-  local prompt="$1"
-  if [ "$SILENT" -eq 1 ]; then
-    return 0
-  fi
-  printf "%s [y/N]: " "$prompt"
+  [ "$SILENT" -eq 1 ] && return 0
+  printf "%s [y/N]: " "$1"
   read -r ans
-  case "$ans" in
-    y|Y|yes|YES) return 0 ;;
-    *) return 1 ;;
-  esac
+  case "$ans" in y|Y|yes|YES) return 0 ;; *) return 1 ;; esac
 }
 
 require_uv() {
-  if ! command -v uv >/dev/null 2>&1; then
-    log_error "uv not found. Install with: pipx install uv or brew install uv"
-    exit 127
-  fi
-}
-
-detect_python_bin() {
-  local dir="$1"
-  if [ -x "$dir/.venv/Scripts/python.exe" ]; then
-    echo "$dir/.venv/Scripts/python.exe"
-  elif [ -x "$dir/.venv/Scripts/python" ]; then
-    echo "$dir/.venv/Scripts/python"
-  elif [ -x "$dir/.venv/bin/python" ]; then
-    echo "$dir/.venv/bin/python"
-  elif [ -x "$dir/.venv/bin/python.exe" ]; then
-    echo "$dir/.venv/bin/python.exe"
-  else
-    echo ""
-  fi
-}
-
-detect_pip_bin() {
-  local dir="$1"
-  if [ -x "$dir/.venv/Scripts/pip.exe" ]; then
-    echo "$dir/.venv/Scripts/pip.exe"
-  elif [ -x "$dir/.venv/Scripts/pip" ]; then
-    echo "$dir/.venv/Scripts/pip"
-  elif [ -x "$dir/.venv/bin/pip" ]; then
-    echo "$dir/.venv/bin/pip"
-  elif [ -x "$dir/.venv/bin/pip.exe" ]; then
-    echo "$dir/.venv/bin/pip.exe"
-  else
-    echo ""
-  fi
-}
-
-create_activation_script() {
-  local dir="$1"
-  local script="$dir/activate_uv.sh"
-  cat > "$script" <<'EOF'
-#!/usr/bin/env bash
-set -u
-DIR="$(cd "$(dirname "$0")" && pwd)"
-if [ -f "$DIR/.venv/bin/activate" ]; then
-  . "$DIR/.venv/bin/activate"
-elif [ -f "$DIR/.venv/Scripts/activate" ]; then
-  . "$DIR/.venv/Scripts/activate"
-else
-  echo "Activation script not found in $DIR/.venv"
-  exit 1
-fi
-EOF
-  chmod +x "$script"
+  command -v uv >/dev/null 2>&1 || { log_error "uv not found. Install with: pipx install uv or brew install uv"; exit 127; }
 }
 
 discover_projects() {
-  local root="$(pwd)"
-  local results=()
+  local root="$1" results=() dirs=() unique=() seen=""
   while IFS= read -r -d '' f; do
     results+=("$f")
   done < <(find "$root" -type f \( -name "pyproject.toml" -o -name "setup.py" \) \
     -not -path "*/.venv/*" -not -path "*/venv/*" -not -path "*/site-packages/*" -not -path "*/node_modules/*" -print0)
-  local dirs=()
   for f in "${results[@]}"; do
-    local d
-    d="$(dirname "$f")"
-    dirs+=("$d")
+    dirs+=("$(dirname "$f")")
   done
-  local unique=()
-  local seen=""
   for d in "${dirs[@]}"; do
-    if [[ "$d" == *"/site-packages"* ]]; then
-      continue
-    fi
-    if [[ -n "$PACKAGE_FILTER" ]] && [[ "$d" != *"$PACKAGE_FILTER"* ]]; then
-      continue
-    fi
-    if [[ ":$seen:" != *":$d:"* ]]; then
-      unique+=("$d")
-      seen="$seen:$d"
-    fi
+    [[ "$d" == *"/site-packages"* ]] && continue
+    [[ -n "$PACKAGE_FILTER" ]] && [[ "$d" != *"$PACKAGE_FILTER"* ]] && continue
+    [[ ":$seen:" == *":$d:"* ]] && continue
+    unique+=("$d")
+    seen="$seen:$d"
   done
-  if [ "${#unique[@]}" -gt 0 ]; then
-    echo "${unique[@]}"
-  else
-    echo ""
-  fi
+  [ "${#unique[@]}" -gt 0 ] && echo "${unique[@]}"
 }
 
-resolve_dirs() {
-  local dirs=()
-  if [ "$DISCOVER" -eq 1 ]; then
-    IFS=' ' read -r -a dirs <<<"$(discover_projects)"
-  else
-    if [ -n "$PACKAGE_FILTER" ]; then
-      local matched=()
-      for dir in "${ALL_DIRS[@]}"; do
-        if [[ "$dir" == *"$PACKAGE_FILTER"* ]]; then
-          matched=("$dir")
-          break
-        fi
-      done
-      if [ "${#matched[@]}" -eq 0 ]; then
-        matched=("packages/$PACKAGE_FILTER")
-      fi
-      dirs=("${matched[@]}")
-    else
-      dirs=("${ALL_DIRS[@]}")
-    fi
-  fi
-  if [ "${#dirs[@]}" -gt 0 ]; then
-    echo "${dirs[@]}"
-  else
-    echo ""
-  fi
-}
-
-create_venv() {
+detect_python_bin() {
   local dir="$1"
-  if [ -d "$dir/.venv" ]; then
-    log_info "venv exists: $dir"
-    return 0
-  fi
-  if ! confirm "Create uv venv in $dir?"; then
-    log_warn "Skipped venv creation: $dir"
-    SKIP_COUNT=$((SKIP_COUNT+1)); SKIP_LIST+=("$dir")
-    return 0
-  fi
-  if uv venv "$dir/.venv" >>"$LOG_FILE" 2>&1; then
-    log_info "Created venv: $dir/.venv"
-    return 0
-  else
-    log_error "Failed to create venv: $dir"
-    return 1
-  fi
+  for p in "$dir/.venv/Scripts/python.exe" "$dir/.venv/Scripts/python" "$dir/.venv/bin/python" "$dir/.venv/bin/python.exe"; do
+    [ -x "$p" ] && echo "$p" && return
+  done
 }
 
-install_project() {
-  local dir="$1"
-  local upgrade_flag="$2"
-  local py
+get_installed_version() {
+  local dir="$1" py pkg_name ver
   py="$(detect_python_bin "$dir")"
-  if [ -z "$py" ]; then
-    log_error "Python not found in venv for $dir"
-    return 1
+  [ -z "$py" ] && return
+  if [ -f "$dir/pyproject.toml" ]; then
+    pkg_name=$(grep -E '^\s*name\s*=' "$dir/pyproject.toml" | head -1 \
+      | sed -E 's/.*name[[:space:]]*=[[:space:]]*"([^"]*)".*/\1/' | tr -d '[:space:]')
   fi
-  {
-    local abs_dir
-    if [[ "$dir" != /* ]]; then
-      abs_dir="$ROOT_DIR/$dir"
-    else
-      abs_dir="$dir"
-    fi
-    if [[ "${py:0:1}" != "/" ]]; then
-      if [[ "${py:0:2}" == "./" ]]; then
-        py="$abs_dir/${py#./}"
-      else
-        py="$ROOT_DIR/$py"
-      fi
-    fi
-  }
-  log_info "Interpreter: $py"
-  if ! uv pip install --python "$py" --upgrade pip >>"$LOG_FILE" 2>&1; then
-    log_warn "pip upgrade failed in $dir"
-  fi
-  if [ -f "$dir/requirements.txt" ]; then
-    if [ "$upgrade_flag" = "1" ]; then
-      if ! (cd "$dir" && uv pip install --python "$py" -U -r requirements.txt >>"$LOG_FILE" 2>&1); then
-        log_error "Requirements upgrade failed: $dir"
-        return 1
-      fi
-    else
-      if ! (cd "$dir" && uv pip install --python "$py" -r requirements.txt >>"$LOG_FILE" 2>&1); then
-        log_error "Requirements install failed: $dir"
-        return 1
-      fi
-    fi
-  fi
-  if [ -f "$dir/setup.py" ] || [ -f "$dir/pyproject.toml" ]; then
-    if [ "$upgrade_flag" = "1" ]; then
-      if ! (cd "$dir" && uv pip install --python "$py" -U . >>"$LOG_FILE" 2>&1); then
-        log_error "Project upgrade install failed: $dir"
-        return 1
-      fi
-    else
-      if ! (cd "$dir" && uv pip install --python "$py" . >>"$LOG_FILE" 2>&1); then
-        log_error "Project install failed: $dir"
-        return 1
-      fi
-    fi
+  [ -z "$pkg_name" ] && pkg_name="$(basename "$dir")"
+  ver=$("$py" -m pip show "$pkg_name" 2>/dev/null | grep -E '^Version:' | awk '{print $2}')
+  if [ -n "$ver" ]; then
+    echo "$pkg_name==$ver"
   else
-    log_warn "No installable project file in $dir"
-  fi
-  return 0
-}
-
-clean_venv() {
-  local dir="$1"
-  if [ -d "$dir/.venv" ]; then
-    if ! confirm "Remove venv in $dir?"; then
-      log_warn "Skipped removal: $dir"
-      SKIP_COUNT=$((SKIP_COUNT+1)); SKIP_LIST+=("$dir")
-      return 0
-    fi
-    rm -rf "$dir/.venv"
-    log_info "Removed venv: $dir"
-  else
-    log_warn "No venv found: $dir"
+    local src_ver
+    src_ver=$(grep -E '^\s*version\s*=' "$dir/pyproject.toml" 2>/dev/null | head -1 \
+      | sed -E 's/.*version[[:space:]]*=[[:space:]]*"([^"]*)".*/\1/' | tr -d '[:space:]')
+    [ -n "$src_ver" ] && echo "$pkg_name@$src_ver" || echo "$pkg_name"
   fi
 }
 
-process_init() {
-  local dirs=("$@")
+process_dirs() {
+  local discovered
+  discovered="$(discover_projects "$ROOT_DIR")"
+  if [ -z "$discovered" ]; then
+    log_warn "No packages found under $ROOT_DIR"; exit 2
+  fi
+
+  local -a dirs
+  IFS=' ' read -r -a dirs <<< "$discovered"
+
   for d in "${dirs[@]}"; do
-    log_info "Initializing: $d"
-    if create_venv "$d"; then
-      if install_project "$d" 0; then
-        create_activation_script "$d"
-        log_info "Initialized successfully: $d"
+    case "$MODE" in
+      init)
+        log_info "Init: $d"
+        if (cd "$d" && uv sync >>"$LOG_FILE" 2>&1); then
+          log_info "Synced: $d"
+          SUCCESS_COUNT=$((SUCCESS_COUNT+1)); SUCCESS_LIST+=("$d")
+        else
+          log_error "uv sync failed: $d"
+          FAIL_COUNT=$((FAIL_COUNT+1)); FAIL_LIST+=("$d")
+        fi
+        ;;
+      upgrade)
+        log_info "Upgrade: $d"
+        if ! (cd "$d" && uv lock -U >>"$LOG_FILE" 2>&1); then
+          log_error "uv lock -U failed: $d"
+          FAIL_COUNT=$((FAIL_COUNT+1)); FAIL_LIST+=("$d")
+          continue
+        fi
+        log_info "Lock updated: $d"
+        if (cd "$d" && uv sync >>"$LOG_FILE" 2>&1); then
+          log_info "Synced: $d"
+          SUCCESS_COUNT=$((SUCCESS_COUNT+1)); SUCCESS_LIST+=("$d")
+        else
+          log_error "uv sync failed: $d"
+          FAIL_COUNT=$((FAIL_COUNT+1)); FAIL_LIST+=("$d")
+        fi
+        ;;
+      clean)
+        log_info "Clean: $d"
+        if [ ! -d "$d/.venv" ]; then
+          log_warn "No venv: $d"
+          SKIP_COUNT=$((SKIP_COUNT+1)); SKIP_LIST+=("$d")
+          continue
+        fi
+        if ! confirm "Remove venv in $d?"; then
+          log_warn "Skipped: $d"
+          SKIP_COUNT=$((SKIP_COUNT+1)); SKIP_LIST+=("$d")
+          continue
+        fi
+        rm -rf "$d/.venv"
+        log_info "Removed: $d"
         SUCCESS_COUNT=$((SUCCESS_COUNT+1)); SUCCESS_LIST+=("$d")
-      else
-        log_error "Initialization failed during install: $d"
-        FAIL_COUNT=$((FAIL_COUNT+1)); FAIL_LIST+=("$d")
-      fi
-    else
-      log_error "Initialization failed during venv creation: $d"
-      FAIL_COUNT=$((FAIL_COUNT+1)); FAIL_LIST+=("$d")
-    fi
+        ;;
+    esac
   done
 }
 
-process_mode() {
-  local dirs
-  IFS=' ' read -r -a dirs <<<"$(resolve_dirs)"
-  if [ "${#dirs[@]}" -eq 0 ]; then
-    log_warn "No matching projects found"
-    exit 2
+summary() {
+  echo "----------- Summary -----------" | tee -a "$LOG_FILE"
+  echo "Success: $SUCCESS_COUNT" | tee -a "$LOG_FILE"
+  if [ "$SUCCESS_COUNT" -gt 0 ]; then
+    for s in "${SUCCESS_LIST[@]}"; do
+      echo "  OK  - $s  ($(get_installed_version "$s"))" | tee -a "$LOG_FILE"
+    done
   fi
-  case "$MODE" in
-    init)
-      process_init "${dirs[@]}"
-      ;;
-    venv)
-      for d in "${dirs[@]}"; do
-        log_info "Venv: $d"
-        if create_venv "$d"; then
-          SUCCESS_COUNT=$((SUCCESS_COUNT+1)); SUCCESS_LIST+=("$d")
-        else
-          FAIL_COUNT=$((FAIL_COUNT+1)); FAIL_LIST+=("$d")
-        fi
-      done
-      ;;
-    install)
-      for d in "${dirs[@]}"; do
-        log_info "Install: $d"
-        if [ ! -d "$d/.venv" ]; then
-          log_error "Missing venv, run -v first: $d"
-          FAIL_COUNT=$((FAIL_COUNT+1)); FAIL_LIST+=("$d")
-          continue
-        fi
-        if install_project "$d" 0; then
-          create_activation_script "$d"
-          SUCCESS_COUNT=$((SUCCESS_COUNT+1)); SUCCESS_LIST+=("$d")
-        else
-          FAIL_COUNT=$((FAIL_COUNT+1)); FAIL_LIST+=("$d")
-        fi
-      done
-      ;;
-    upgrade)
-      for d in "${dirs[@]}"; do
-        log_info "Upgrade: $d"
-        if [ ! -d "$d/.venv" ]; then
-          log_error "Missing venv, run -v first: $d"
-          FAIL_COUNT=$((FAIL_COUNT+1)); FAIL_LIST+=("$d")
-          continue
-        fi
-        if install_project "$d" 1; then
-          SUCCESS_COUNT=$((SUCCESS_COUNT+1)); SUCCESS_LIST+=("$d")
-        else
-          FAIL_COUNT=$((FAIL_COUNT+1)); FAIL_LIST+=("$d")
-        fi
-      done
-      ;;
-    clean)
-      for d in "${dirs[@]}"; do
-        log_info "Clean: $d"
-        clean_venv "$d"
-        SUCCESS_COUNT=$((SUCCESS_COUNT+1)); SUCCESS_LIST+=("$d")
-      done
-      ;;
-    *)
-      usage
-      exit 1
-      ;;
-  esac
+  echo "Failed: $FAIL_COUNT" | tee -a "$LOG_FILE"
+  if [ "$FAIL_COUNT" -gt 0 ]; then
+    for f in "${FAIL_LIST[@]}"; do echo "  ERR - $f" | tee -a "$LOG_FILE"; done
+  fi
+  echo "Skipped: $SKIP_COUNT" | tee -a "$LOG_FILE"
+  if [ "$SKIP_COUNT" -gt 0 ]; then
+    for k in "${SKIP_LIST[@]}"; do echo "  SKP - $k" | tee -a "$LOG_FILE"; done
+  fi
+  [ "$FAIL_COUNT" -gt 0 ] && exit 3
+  exit 0
 }
 
 parse_args() {
-  if [ "$#" -eq 0 ]; then
-    usage
-    exit 1
-  fi
-  while getopts ":xvpuchsD" opt; do
+  [ "$#" -eq 0 ] && { usage; exit 1; }
+  while getopts ":xuchs" opt; do
     case "$opt" in
       x) MODE="init" ;;
-      v) MODE="venv" ;;
-      p) MODE="install" ;;
       u) MODE="upgrade" ;;
       c) MODE="clean" ;;
       h) usage; exit 0 ;;
-      i) SILENT=0 ;;
       s) SILENT=1 ;;
-      D) DISCOVER=1 ;;
       \?) usage; exit 1 ;;
     esac
   done
@@ -406,36 +227,10 @@ parse_args() {
       *) PACKAGE_FILTER="$1"; shift ;;
     esac
   fi
-  if [ "$#" -gt 0 ]; then
-    if [ "$1" = "-s" ]; then
-      SILENT=1
-      shift
-    fi
+  if [ "$#" -gt 0 ] && [ "$1" = "-s" ]; then
+    SILENT=1; shift
   fi
-  if [ -z "$MODE" ]; then
-    MODE="init"
-  fi
-}
-
-summary() {
-  echo "----------- Summary -----------" | tee -a "$LOG_FILE"
-  echo "Success: $SUCCESS_COUNT" | tee -a "$LOG_FILE"
-  if [ "$SUCCESS_COUNT" -gt 0 ]; then
-    for s in "${SUCCESS_LIST[@]}"; do echo "  OK  - $s" | tee -a "$LOG_FILE"; done
-  fi
-  echo "Failed: $FAIL_COUNT" | tee -a "$LOG_FILE"
-  if [ "$FAIL_COUNT" -gt 0 ]; then
-    for f in "${FAIL_LIST[@]}"; do echo "  ERR - $f" | tee -a "$LOG_FILE"; done
-  fi
-  echo "Skipped: $SKIP_COUNT" | tee -a "$LOG_FILE"
-  if [ "$SKIP_COUNT" -gt 0 ]; then
-    for k in "${SKIP_LIST[@]}"; do echo "  SKP - $k" | tee -a "$LOG_FILE"; done
-  fi
-  if [ "$FAIL_COUNT" -gt 0 ]; then
-    exit 3
-  else
-    exit 0
-  fi
+  [ -z "$MODE" ] && MODE="init"
 }
 
 main() {
@@ -443,7 +238,7 @@ main() {
   log_init
   require_uv
   log_info "Mode: $MODE, Filter: '${PACKAGE_FILTER}', Silent: $SILENT"
-  process_mode
+  process_dirs
   summary
 }
 
