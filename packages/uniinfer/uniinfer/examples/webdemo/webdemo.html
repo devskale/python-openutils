@@ -98,8 +98,8 @@
           </div>
         </div>
         <div id="input-area">
-          <button id="web-search-btn" class="icon-btn" title="Web Search">🔍</button>
-          <button id="fetch-url-btn" class="icon-btn" title="Fetch URL">🌐</button>
+          <button id="web-search-btn" class="icon-btn tool-toggle" title="Toggle web search tool">🔍</button>
+          <button id="fetch-url-btn" class="icon-btn tool-toggle" title="Toggle fetch URL tool">🌐</button>
           <button id="upload-image-btn" class="icon-btn" title="Upload Image">📷</button>
           <input type="file" id="chat-file-input" accept="image/*" style="display:none" />
           <textarea id="message-input" placeholder="Type a message..." rows="1"></textarea>
@@ -111,33 +111,6 @@
           </button>
         </div>
       </div>
-    </div>
-
-    <!-- Web Search Popup -->
-    <div id="web-search-popup" class="tool-popup" style="display:none">
-      <div class="tool-popup-header">
-        <span>🔍 Web Search</span>
-        <button class="tool-popup-close" data-popup="web-search-popup">×</button>
-      </div>
-      <div class="tool-popup-body">
-        <input type="text" id="web-search-input" placeholder="Search the web..." />
-        <button id="web-search-go" class="btn-primary btn-sm">Search</button>
-      </div>
-      <div id="web-search-results" class="tool-popup-results"></div>
-    </div>
-
-    <!-- Fetch URL Popup -->
-    <div id="fetch-url-popup" class="tool-popup" style="display:none">
-      <div class="tool-popup-header">
-        <span>🌐 Fetch URL</span>
-        <button class="tool-popup-close" data-popup="fetch-url-popup">×</button>
-      </div>
-      <div class="tool-popup-body">
-        <input type="text" id="fetch-url-input" placeholder="https://example.com" />
-        <button id="fetch-url-go" class="btn-primary btn-sm">Fetch</button>
-      </div>
-      <div id="fetch-url-status" class="tool-popup-status"></div>
-      <div id="fetch-url-result" class="tool-popup-results"></div>
     </div>
 
     <!-- Models Browser Section -->
@@ -575,14 +548,14 @@
       sendButton.style.display = "none"; stopButton.style.display = "flex";
       const assistantDiv = addMsg("...", "assistant");
       abortController = new AbortController();
-      const useTools = modelSupportsTools();
 
       try {
         // Loop: send to model, handle tool calls, re-send with results
         let loopRound = 0;
         while (loopRound++ < 5) {
           const body = { model:`${provider}@${model}`, messages: store.chatHistory, stream:true, max_tokens: window.uniinferConfig.maxTokens || 4000 };
-          if (useTools) body.tools = WEB_TOOLS;
+          const activeTools = getActiveTools();
+          if (activeTools.length) body.tools = activeTools;
 
           const resp = await apiFetch("/v1/chat/completions", {
             method: "POST", headers: getHeaders(), signal: abortController.signal,
@@ -674,97 +647,31 @@
     });
     $("#remove-image-btn").addEventListener("click", () => { $("#image-preview-area").style.display = "none"; $("#chat-file-input").value = ""; });
 
-    // ─── Web Tools ─────────────────────────────────────────────────
-    function showToolPopup(id) {
-      $$(".tool-popup").forEach(p => p.style.display = "none");
-      const popup = $("#" + id);
-      const btn = id === "web-search-popup" ? $("#web-search-btn") : $("#fetch-url-btn");
-      const rect = btn.getBoundingClientRect();
-      popup.style.display = "block";
-      popup.style.bottom = (window.innerHeight - rect.top + 8) + "px";
-      popup.style.left = rect.left + "px";
-      const input = id === "web-search-popup" ? $("#web-search-input") : $("#fetch-url-input");
-      input.value = "";
-      input.focus();
-      if (id === "web-search-popup") { $("#web-search-results").innerHTML = ""; }
-      if (id === "fetch-url-popup") { $("#fetch-url-result").innerHTML = ""; $("#fetch-url-status").textContent = ""; }
-    }
-    function hideToolPopups() { $$(".tool-popup").forEach(p => p.style.display = "none"); }
+    // ─── Web Tool Toggles ────────────────────────────────────────
+    store.toolsEnabled = { web_search: true, fetch_url: true };
 
-    $("#web-search-btn").addEventListener("click", () => showToolPopup("web-search-popup"));
-    $("#fetch-url-btn").addEventListener("click", () => showToolPopup("fetch-url-popup"));
-    $$(".tool-popup-close").forEach(btn => btn.addEventListener("click", () => $("#" + btn.dataset.popup).style.display = "none"));
-    document.addEventListener("click", e => {
-      if (!e.target.closest(".tool-popup") && !e.target.closest("#web-search-btn") && !e.target.closest("#fetch-url-btn")) hideToolPopups();
+    function updateToolToggles() {
+      $("#web-search-btn").classList.toggle("tool-active", store.toolsEnabled.web_search);
+      $("#fetch-url-btn").classList.toggle("tool-active", store.toolsEnabled.fetch_url);
+    }
+
+    $("#web-search-btn").addEventListener("click", () => {
+      store.toolsEnabled.web_search = !store.toolsEnabled.web_search;
+      updateToolToggles();
+    });
+    $("#fetch-url-btn").addEventListener("click", () => {
+      store.toolsEnabled.fetch_url = !store.toolsEnabled.fetch_url;
+      updateToolToggles();
     });
 
-    $("#web-search-input").addEventListener("keydown", e => { if (e.key === "Enter") { e.preventDefault(); doWebSearch(); } });
-    $("#web-search-go").addEventListener("click", doWebSearch);
-    $("#fetch-url-input").addEventListener("keydown", e => { if (e.key === "Enter") { e.preventDefault(); doFetchUrl(); } });
-    $("#fetch-url-go").addEventListener("click", doFetchUrl);
-
-    async function doWebSearch() {
-      const q = $("#web-search-input").value.trim();
-      if (!q) return;
-      const results = $("#web-search-results");
-      results.innerHTML = '<span class="spinner"></span> Searching...';
-      try {
-        const d = await apiJson(`/v1/tools/search?q=${encodeURIComponent(q)}&max_results=10`);
-        if (!d.results.length) { results.innerHTML = '<div class="tool-empty">No results found.</div>'; return; }
-        results.innerHTML = d.results.map(r =>
-          `<a href="${escapeHtml(r.url)}" target="_blank" class="tool-result-item" data-url="${escapeHtml(r.url)}" data-title="${escapeHtml(r.title)}" data-snippet="${escapeHtml(r.snippet)}">` +
-            `<div class="tool-result-title">${escapeHtml(r.title)}</div>` +
-            `<div class="tool-result-url">${escapeHtml(r.url)}</div>` +
-            (r.snippet ? `<div class="tool-result-snippet">${escapeHtml(r.snippet)}</div>` : "") +
-          `</a>`
-        ).join("");
-        results.querySelectorAll(".tool-result-item").forEach(a => {
-          a.addEventListener("click", e => {
-            if (e.shiftKey || e.ctrlKey || e.metaKey) return;
-            e.preventDefault();
-            insertSearchResult(a.dataset.title, a.dataset.url, a.dataset.snippet);
-          });
-        });
-      } catch (e) {
-        results.innerHTML = `<div class="tool-error">${escapeHtml(e.detail || e.message)}</div>`;
-      }
+    function getActiveTools() {
+      if (!modelSupportsTools()) return [];
+      const tools = [];
+      if (store.toolsEnabled.web_search) tools.push(WEB_TOOLS[0]);
+      if (store.toolsEnabled.fetch_url) tools.push(WEB_TOOLS[1]);
+      return tools;
     }
-
-    function insertSearchResult(title, url, snippet) {
-      hideToolPopups();
-      const text = `[Search: ${title}](${url})\n${snippet || ""}\n\n`; 
-      messageInput.value += text;
-      messageInput.focus();
-      messageInput.style.height = "auto";
-      messageInput.style.height = messageInput.scrollHeight + "px";
-    }
-
-    async function doFetchUrl() {
-      const url = $("#fetch-url-input").value.trim();
-      if (!url) return;
-      const status = $("#fetch-url-status");
-      const result = $("#fetch-url-result");
-      status.innerHTML = '<span class="spinner"></span> Fetching...';
-      result.innerHTML = "";
-      try {
-        const d = await apiJson(`/v1/tools/fetch?url=${encodeURIComponent(url)}`);
-        status.textContent = `${d.length.toLocaleString()} chars`;
-        const truncated = d.content.length >= 50000;
-        result.innerHTML = `<button class="btn-secondary btn-sm" id="fetch-url-insert">Insert into chat</button>` +
-          (truncated ? '<div class="tool-truncated">Content truncated (50k chars). Click a link below for full page.</div>' : '') +
-          `<pre class="tool-fetch-preview">${escapeHtml(d.content.substring(0, 3000))}${d.content.length > 3000 ? "\n..." : ""}</pre>`;
-        $("#fetch-url-insert").addEventListener("click", () => {
-          hideToolPopups();
-          const text = `[Fetched: ${url}]\n${d.content}\n\n`;
-          messageInput.value += text;
-          messageInput.focus();
-          messageInput.style.height = "auto";
-          messageInput.style.height = messageInput.scrollHeight + "px";
-        });
-      } catch (e) {
-        status.innerHTML = `<span class="tool-error">${escapeHtml(e.detail || e.message)}</span>`;
-      }
-    }
+    updateToolToggles();
 
     // Clear chat
     $("#clear-chat-btn").addEventListener("click", () => {
