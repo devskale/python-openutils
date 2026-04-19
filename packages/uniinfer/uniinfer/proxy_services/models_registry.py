@@ -125,36 +125,76 @@ def list_all_models_from_factories() -> list[dict]:
     return result
 
 
-def parse_models_file() -> list[str]:
-    """Legacy: parse models.txt and return provider@model entries.
+def update_provider_in_cache(provider_name: str, models_list) -> None:
+    """Update a single provider's models in the models.json cache file.
 
-    Used only as fallback when models.json doesn't exist.
+    Called after a live API fetch so subsequent /v1/models calls get fresh data
+    for that provider without hitting the API again.
     """
-    models_txt = os.path.join(PACKAGE_ROOT, "models.txt")
-    models: list[str] = []
-    if not os.path.exists(models_txt):
-        return PREDEFINED_MODELS
+    import json
+    from datetime import datetime, timezone
+    from uniinfer.core import ModelInfo
+    import dataclasses
 
-    current_provider = None
+    models_json = os.path.join(PACKAGE_ROOT, "models", "models.json")
+
+    if not models_list:
+        return
+
+    # Serialize ModelInfo objects to dicts
+    model_dicts = []
+    for m in models_list:
+        if isinstance(m, ModelInfo):
+            d = {"id": m.id}
+            for field in dataclasses.fields(m):
+                val = getattr(m, field.name)
+                if val is None or field.name in ("id", "raw"):
+                    continue
+                d[field.name] = val
+            model_dicts.append(d)
+        else:
+            model_dicts.append({"id": str(m)})
+
+    # Load existing cache or create new structure
+    data = {}
+    if os.path.exists(models_json):
+        try:
+            with open(models_json) as f:
+                data = json.load(f)
+        except (json.JSONDecodeError, OSError) as e:
+            logger.warning("Failed to read models.json for update: %s", e)
+
+    # Ensure structure
+    if "_meta" not in data:
+        data["_meta"] = {"version": "1.0.0"}
+    if "providers" not in data:
+        data["providers"] = {}
+
+    data["_meta"]["generated"] = datetime.now(timezone.utc).isoformat()
+    data["providers"][provider_name] = {
+        "provider_class": "",
+        "kind": "chat",
+        "models": model_dicts,
+    }
+
+    # Recount totals
+    total = sum(len(p.get("models", [])) for p in data["providers"].values())
+    data["_meta"]["total_models"] = total
+    data["_meta"]["total_providers"] = len(data["providers"])
+
+    # Persist
     try:
-        import re
-        with open(models_txt, "r") as f:
-            for line in f:
-                line = line.strip()
-                if not line:
-                    continue
-                provider_match = re.match(r"Available models for (\w+):", line)
-                if provider_match:
-                    current_provider = provider_match.group(1)
-                    continue
-                if line.startswith("- ") and current_provider:
-                    model_name = line[2:].strip()
-                    models.append(f"{current_provider}@{model_name}")
-    except Exception as e:
-        logger.error("Error reading models file: %s", e)
-        return PREDEFINED_MODELS
+        os.makedirs(os.path.dirname(models_json), exist_ok=True)
+        with open(models_json, "w") as f:
+            json.dump(data, f, indent=2, ensure_ascii=False)
+        logger.info("Updated cache for provider %s: %d models", provider_name, len(model_dicts))
+    except OSError as e:
+        logger.warning("Failed to write models.json: %s", e)
 
-    return models if models else PREDEFINED_MODELS
+
+def parse_models_file() -> list[str]:
+    """Deprecated: models.txt is no longer used. Returns predefined fallback."""
+    return PREDEFINED_MODELS
 
 
 import subprocess
