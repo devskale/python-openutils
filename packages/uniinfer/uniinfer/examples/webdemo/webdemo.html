@@ -1012,6 +1012,7 @@
     async function init() {
       try { const { version } = await apiJson("/v1/system/info"); $("#app-version").textContent = `v${version||"?"}`; } catch { $("#app-version").textContent = "v?"; }
       loadHistory(); renderHistory();
+      if (!window.uniinferConfig.apiKey) { openSettings(); $("#chat-container").innerHTML = '<div class="system-message">Enter your API key in ⚙️ Settings to get started.</div>'; return; }
       loadProviders();
       loadAudioModels();
       updateImageModels();
