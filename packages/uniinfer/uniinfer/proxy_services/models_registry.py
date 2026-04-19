@@ -101,6 +101,16 @@ def list_all_models_from_factories() -> list[dict]:
         logger.error("Error reading models.json: %s", e)
         return [{"id": m, "object": "model", "owned_by": "skaledev"} for m in PREDEFINED_MODELS]
 
+    # Load type overrides (authoritative type database)
+    type_overrides = {}
+    overrides_path = os.path.join(PACKAGE_ROOT, "models", "type_overrides.json")
+    try:
+        import json
+        with open(overrides_path) as f:
+            type_overrides = json.load(f).get("models", {})
+    except Exception:
+        pass
+
     result = []
     for provider_id, provider_data in data.get("providers", {}).items():
         for model in provider_data.get("models", []):
@@ -110,26 +120,40 @@ def list_all_models_from_factories() -> list[dict]:
                 "owned_by": model.get("owned_by", "skaledev"),
                 "provider": provider_id,
             }
-            # Derive type from name/modalities if stored type is generic
-            stored_type = model.get("type", "chat")
-            mi = ModelInfo(id=model["id"], modalities=model.get("modalities"))
-            derived_type = mi.derive_type()
-            if derived_type != "chat":
-                entry["type"] = derived_type
-            elif stored_type and stored_type != "chat":
-                entry["type"] = stored_type
+            # Resolve type: overrides > stored > derive
+            model_type = None
+            if model["id"] in type_overrides:
+                model_type = type_overrides[model["id"]]
+            elif model.get("type") and model["type"] != "chat":
+                model_type = model["type"]
+            if not model_type:
+                mi = ModelInfo(id=model["id"], modalities=model.get("modalities"))
+                model_type = mi.derive_type()
+            entry["type"] = model_type
             if model.get("context_window"):
                 entry["context_window"] = model["context_window"]
             if model.get("max_output"):
                 entry["max_output"] = model["max_output"]
-            if model.get("type") and model["type"] != "chat":
-                entry["type"] = model["type"]
+            if model.get("dimensions"):
+                entry["dimensions"] = model["dimensions"]
             if model.get("capabilities"):
                 entry["capabilities"] = model["capabilities"]
             if model.get("modalities"):
                 entry["modalities"] = model["modalities"]
             if model.get("cost"):
                 entry["cost"] = model["cost"]
+            if model.get("first_seen"):
+                entry["first_seen"] = model["first_seen"]
+            if model.get("deprecation_date"):
+                entry["deprecation_date"] = model["deprecation_date"]
+            if model.get("deprecation_replacement"):
+                entry["deprecation_replacement"] = model["deprecation_replacement"]
+            if model.get("status"):
+                entry["status"] = model["status"]
+            if model.get("release_date"):
+                entry["release_date"] = model["release_date"]
+            if model.get("knowledge_cutoff"):
+                entry["knowledge_cutoff"] = model["knowledge_cutoff"]
             result.append(entry)
     return result
 
