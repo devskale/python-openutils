@@ -380,20 +380,25 @@
         providerSelect.innerHTML = '<option value="" disabled selected>Select provider</option>';
         providers.forEach(p => { const o = document.createElement("option"); o.value = p; o.textContent = p; providerSelect.appendChild(o); });
         providerSelect.disabled = false;
-        if (providers.length) { providerSelect.value = providers[0]; await loadModelsForProvider(providers[0]); }
+        const lastProvider = localStorage.getItem("uniinfer_last_provider");
+        const lastModel = localStorage.getItem("uniinfer_last_model");
+        const target = lastProvider && providers.includes(lastProvider) ? lastProvider : providers[0];
+        providerSelect.value = target;
+        await loadModelsForProvider(target, lastModel);
       } catch (e) {
         addMsg(`Connection error: ${e.detail || e.message}`, "error");
       }
     }
 
     // ─── Load Models for Provider ───────────────────────────────────
-    async function loadModelsForProvider(provider) {
+    async function loadModelsForProvider(provider, preferModel) {
       try {
         const { data } = await apiJson(`/v1/models/${provider}`, { headers: getHeaders() });
         store.modelsByProvider[provider] = data;
         store.selectedProvider = provider;
         updateModelDropdown();
-        if (data.length) selectModel(data[0].id);
+        const match = preferModel && data.find(m => m.id === preferModel);
+        if (data.length) selectModel(match ? match.id : data[0].id);
         else { modelSearch.value = ""; hideDropdown(); }
       } catch (e) {
         console.error("Failed to load models for", provider, e);
@@ -425,6 +430,8 @@
     function selectModel(id) {
       store.selectedModel = id;
       modelSearch.value = id;
+      localStorage.setItem("uniinfer_last_provider", store.selectedProvider);
+      localStorage.setItem("uniinfer_last_model", id);
       updateModelInfoBar();
     }
 
