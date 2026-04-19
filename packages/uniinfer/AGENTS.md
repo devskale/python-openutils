@@ -15,6 +15,7 @@ UniInfer is a unified LLM inference interface for Python providing a consistent 
 - `README.md` – user-facing usage, API examples, development commands
 - `ARCHITECTURE.md` – current proxy router/service/schema layout
 - `AGENTS.md` – contributor and agent workflow rules
+- `docs/models.md` – model catalog, types, metadata richness, generation
 
 ## Environment Setup
 
@@ -144,8 +145,11 @@ def complete(
 
 ### File Structure
 
-- `uniinfer/core.py`: Core classes (ChatMessage, ChatCompletionRequest, etc.)
+- `uniinfer/core.py`: Core classes (ChatMessage, ChatCompletionRequest, ModelInfo, etc.)
 - `uniinfer/providers/{provider_name}.py`: Provider implementations
+- `uniinfer/models/models.json`: Generated model catalog (rich metadata for all providers)
+- `uniinfer/models/type_overrides.json`: Curated model type assignments (edit this to fix types)
+- `scripts/generate_models.py`: Regenerates models.json from live provider APIs
 - `uniinfer/errors.py`: Error handling
 - `uniinfer/factory.py`, `embedding_factory.py`: Factories
 - `uniinfer/tests/test_*.py`: Tests
@@ -163,6 +167,16 @@ from uniinfer.errors import (
 mapped_error = map_provider_error("provider_name", original_error)
 raise mapped_error
 ```
+
+### Model Catalog
+
+See `docs/models.md` for full details.
+
+- All `list_models()` methods return `list[ModelInfo]` (not `list[str]`)
+- `ModelInfo` has `__str__` → returns `id` for backward compat, `__eq__` matches strings
+- To fix a model's type, add it to `uniinfer/models/type_overrides.json`
+- To regenerate the catalog: `uv run python3 scripts/generate_models.py`
+- Provider metadata richness varies — see docs/models.md for the matrix
 
 ### Provider Implementation Pattern
 
