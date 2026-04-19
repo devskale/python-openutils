@@ -1,11 +1,11 @@
 {
   "_meta": {
     "version": "1.0.0",
-    "generated": "2026-04-19T12:39:03.023554+00:00",
+    "generated": "2026-04-19T12:43:38.640856+00:00",
     "source": "live provider APIs + models.dev",
     "models_dev_providers": [
       "chutes",
-      "cloudflare-workers-ai",
+      "cloudflare-ai-gateway",
       "google",
       "groq",
       "minimax",
@@ -19,7 +19,7 @@
       "stepfun",
       "zai"
     ],
-    "total_models": 1096,
+    "total_models": 1097,
     "total_providers": 20
   },
   "providers": {
@@ -48,7 +48,7 @@
             "function_calling": true
           },
           "owned_by": "mistralai",
-          "created": 1776602313,
+          "created": 1776602586,
           "max_output": 131072,
           "cost": {
             "input": 0.4,
@@ -78,7 +78,7 @@
             "function_calling": true
           },
           "owned_by": "mistralai",
-          "created": 1776602313,
+          "created": 1776602586,
           "max_output": 262144,
           "cost": {
             "input": 0.4,
@@ -108,7 +108,7 @@
             "function_calling": true
           },
           "owned_by": "mistralai",
-          "created": 1776602313,
+          "created": 1776602586,
           "max_output": 16384,
           "cost": {
             "input": 0.4,
@@ -133,11 +133,19 @@
             ]
           },
           "capabilities": {
-            "function_calling": true,
-            "tool_call": true
+            "reasoning": false,
+            "tool_call": true,
+            "function_calling": true
           },
           "owned_by": "mistralai",
-          "created": 1776602313
+          "created": 1776602586,
+          "max_output": 131072,
+          "cost": {
+            "input": 0.4,
+            "output": 2
+          },
+          "release_date": "2025-05-07",
+          "knowledge_cutoff": "2025-05"
         },
         {
           "id": "mistral-vibe-cli-with-tools",
@@ -159,7 +167,7 @@
             "tool_call": true
           },
           "owned_by": "mistralai",
-          "created": 1776602313
+          "created": 1776602586
         },
         {
           "id": "open-mistral-nemo",
@@ -180,7 +188,7 @@
             "tool_call": true
           },
           "owned_by": "mistralai",
-          "created": 1776602313
+          "created": 1776602586
         },
         {
           "id": "open-mistral-nemo-2407",
@@ -201,7 +209,7 @@
             "tool_call": true
           },
           "owned_by": "mistralai",
-          "created": 1776602313
+          "created": 1776602586
         },
         {
           "id": "mistral-tiny-2407",
@@ -222,7 +230,7 @@
             "tool_call": true
           },
           "owned_by": "mistralai",
-          "created": 1776602313
+          "created": 1776602586
         },
         {
           "id": "mistral-tiny-latest",
@@ -243,7 +251,7 @@
             "tool_call": true
           },
           "owned_by": "mistralai",
-          "created": 1776602313
+          "created": 1776602586
         },
         {
           "id": "codestral-2508",
@@ -264,7 +272,7 @@
             "tool_call": true
           },
           "owned_by": "mistralai",
-          "created": 1776602313
+          "created": 1776602586
         },
         {
           "id": "codestral-latest",
@@ -286,7 +294,7 @@
             "function_calling": true
           },
           "owned_by": "mistralai",
-          "created": 1776602313,
+          "created": 1776602586,
           "max_output": 4096,
           "cost": {
             "input": 0.3,
@@ -315,7 +323,7 @@
             "function_calling": true
           },
           "owned_by": "mistralai",
-          "created": 1776602313,
+          "created": 1776602586,
           "max_output": 262144,
           "cost": {
             "input": 0.4,
@@ -344,7 +352,7 @@
             "function_calling": true
           },
           "owned_by": "mistralai",
-          "created": 1776602313,
+          "created": 1776602586,
           "max_output": 262144,
           "cost": {
             "input": 0.4,
@@ -372,7 +380,7 @@
             "tool_call": true
           },
           "owned_by": "mistralai",
-          "created": 1776602313
+          "created": 1776602586
         },
         {
           "id": "mistral-vibe-cli-latest",
@@ -393,7 +401,7 @@
             "tool_call": true
           },
           "owned_by": "mistralai",
-          "created": 1776602313
+          "created": 1776602586
         },
         {
           "id": "mistral-small-2603",
@@ -416,7 +424,7 @@
             "function_calling": true
           },
           "owned_by": "mistralai",
-          "created": 1776602313,
+          "created": 1776602586,
           "max_output": 256000,
           "cost": {
             "input": 0.15,
@@ -446,7 +454,7 @@
             "function_calling": true
           },
           "owned_by": "mistralai",
-          "created": 1776602313,
+          "created": 1776602586,
           "max_output": 256000,
           "cost": {
             "input": 0.15,
@@ -476,7 +484,7 @@
             "tool_call": true
           },
           "owned_by": "mistralai",
-          "created": 1776602313
+          "created": 1776602586
         },
         {
           "id": "mistral-small-2506",
@@ -499,7 +507,7 @@
             "function_calling": true
           },
           "owned_by": "mistralai",
-          "created": 1776602313,
+          "created": 1776602586,
           "max_output": 16384,
           "cost": {
             "input": 0.1,
@@ -529,7 +537,7 @@
             "tool_call": true
           },
           "owned_by": "mistralai",
-          "created": 1776602313
+          "created": 1776602586
         },
         {
           "id": "magistral-medium-latest",
@@ -552,7 +560,7 @@
             "function_calling": true
           },
           "owned_by": "mistralai",
-          "created": 1776602313,
+          "created": 1776602586,
           "max_output": 16384,
           "cost": {
             "input": 2,
@@ -578,11 +586,18 @@
           },
           "capabilities": {
             "reasoning": true,
-            "function_calling": true,
-            "tool_call": true
+            "tool_call": true,
+            "function_calling": true
           },
           "owned_by": "mistralai",
-          "created": 1776602313
+          "created": 1776602586,
+          "max_output": 128000,
+          "cost": {
+            "input": 0.5,
+            "output": 1.5
+          },
+          "release_date": "2025-03-17",
+          "knowledge_cutoff": "2025-06"
         },
         {
           "id": "magistral-small-latest",
@@ -605,7 +620,7 @@
             "tool_call": true
           },
           "owned_by": "mistralai",
-          "created": 1776602313
+          "created": 1776602586
         },
         {
           "id": "voxtral-small-2507",
@@ -627,7 +642,7 @@
             "tool_call": true
           },
           "owned_by": "mistralai",
-          "created": 1776602313
+          "created": 1776602586
         },
         {
           "id": "voxtral-small-latest",
@@ -649,7 +664,7 @@
             "tool_call": true
           },
           "owned_by": "mistralai",
-          "created": 1776602313
+          "created": 1776602586
         },
         {
           "id": "labs-leanstral-2603",
@@ -672,7 +687,7 @@
             "tool_call": true
           },
           "owned_by": "mistralai",
-          "created": 1776602313
+          "created": 1776602586
         },
         {
           "id": "mistral-large-2512",
@@ -695,7 +710,7 @@
             "function_calling": true
           },
           "owned_by": "mistralai",
-          "created": 1776602313,
+          "created": 1776602586,
           "max_output": 262144,
           "cost": {
             "input": 0.5,
@@ -725,7 +740,7 @@
             "function_calling": true
           },
           "owned_by": "mistralai",
-          "created": 1776602313,
+          "created": 1776602586,
           "max_output": 262144,
           "cost": {
             "input": 0.5,
@@ -754,7 +769,7 @@
             "tool_call": true
           },
           "owned_by": "mistralai",
-          "created": 1776602313
+          "created": 1776602586
         },
         {
           "id": "ministral-3b-latest",
@@ -777,7 +792,7 @@
             "function_calling": true
           },
           "owned_by": "mistralai",
-          "created": 1776602313,
+          "created": 1776602586,
           "max_output": 128000,
           "cost": {
             "input": 0.04,
@@ -806,7 +821,7 @@
             "tool_call": true
           },
           "owned_by": "mistralai",
-          "created": 1776602313
+          "created": 1776602586
         },
         {
           "id": "ministral-8b-latest",
@@ -829,7 +844,7 @@
             "function_calling": true
           },
           "owned_by": "mistralai",
-          "created": 1776602313,
+          "created": 1776602586,
           "max_output": 128000,
           "cost": {
             "input": 0.1,
@@ -858,7 +873,7 @@
             "tool_call": true
           },
           "owned_by": "mistralai",
-          "created": 1776602313
+          "created": 1776602586
         },
         {
           "id": "ministral-14b-latest",
@@ -880,7 +895,7 @@
             "tool_call": true
           },
           "owned_by": "mistralai",
-          "created": 1776602313
+          "created": 1776602586
         },
         {
           "id": "mistral-large-2411",
@@ -902,7 +917,7 @@
             "function_calling": true
           },
           "owned_by": "mistralai",
-          "created": 1776602313,
+          "created": 1776602586,
           "max_output": 16384,
           "cost": {
             "input": 2,
@@ -931,7 +946,7 @@
             "tool_call": true
           },
           "owned_by": "mistralai",
-          "created": 1776602313
+          "created": 1776602586
         },
         {
           "id": "pixtral-large-latest",
@@ -954,7 +969,7 @@
             "function_calling": true
           },
           "owned_by": "mistralai",
-          "created": 1776602313,
+          "created": 1776602586,
           "max_output": 128000,
           "cost": {
             "input": 2,
@@ -983,7 +998,7 @@
             "tool_call": true
           },
           "owned_by": "mistralai",
-          "created": 1776602313
+          "created": 1776602586
         },
         {
           "id": "devstral-small-2507",
@@ -1005,7 +1020,7 @@
             "function_calling": true
           },
           "owned_by": "mistralai",
-          "created": 1776602313,
+          "created": 1776602586,
           "max_output": 128000,
           "cost": {
             "input": 0.1,
@@ -1034,7 +1049,7 @@
             "function_calling": true
           },
           "owned_by": "mistralai",
-          "created": 1776602313,
+          "created": 1776602586,
           "max_output": 128000,
           "cost": {
             "input": 0.4,
@@ -1061,7 +1076,7 @@
             "audio": true
           },
           "owned_by": "mistralai",
-          "created": 1776602313
+          "created": 1776602586
         },
         {
           "id": "voxtral-mini-latest",
@@ -1081,7 +1096,7 @@
             "audio": true
           },
           "owned_by": "mistralai",
-          "created": 1776602313
+          "created": 1776602586
         },
         {
           "id": "labs-mistral-small-creative",
@@ -1102,7 +1117,7 @@
             "tool_call": true
           },
           "owned_by": "mistralai",
-          "created": 1776602313
+          "created": 1776602586
         },
         {
           "id": "mistral-embed-2312",
@@ -1119,7 +1134,18 @@
             ]
           },
           "owned_by": "mistralai",
-          "created": 1776602313
+          "created": 1776602586,
+          "max_output": 3072,
+          "cost": {
+            "input": 0.1,
+            "output": 0
+          },
+          "capabilities": {
+            "reasoning": false,
+            "tool_call": false
+          },
+          "dimensions": 3072,
+          "release_date": "2023-12-11"
         },
         {
           "id": "mistral-embed",
@@ -1136,7 +1162,7 @@
             ]
           },
           "owned_by": "mistralai",
-          "created": 1776602313,
+          "created": 1776602586,
           "max_output": 3072,
           "cost": {
             "input": 0.1,
@@ -1164,7 +1190,7 @@
             ]
           },
           "owned_by": "mistralai",
-          "created": 1776602313
+          "created": 1776602586
         },
         {
           "id": "codestral-embed-2505",
@@ -1181,7 +1207,7 @@
             ]
           },
           "owned_by": "mistralai",
-          "created": 1776602313
+          "created": 1776602586
         },
         {
           "id": "mistral-moderation-2603",
@@ -1202,7 +1228,7 @@
             "moderation": true
           },
           "owned_by": "mistralai",
-          "created": 1776602313
+          "created": 1776602586
         },
         {
           "id": "mistral-moderation-2411",
@@ -1223,7 +1249,7 @@
             "moderation": true
           },
           "owned_by": "mistralai",
-          "created": 1776602313
+          "created": 1776602586
         },
         {
           "id": "mistral-moderation-latest",
@@ -1244,7 +1270,7 @@
             "moderation": true
           },
           "owned_by": "mistralai",
-          "created": 1776602313
+          "created": 1776602586
         },
         {
           "id": "mistral-ocr-2512",
@@ -1268,7 +1294,7 @@
             "tool_call": true
           },
           "owned_by": "mistralai",
-          "created": 1776602313
+          "created": 1776602586
         },
         {
           "id": "mistral-ocr-latest",
@@ -1292,7 +1318,7 @@
             "tool_call": true
           },
           "owned_by": "mistralai",
-          "created": 1776602313
+          "created": 1776602586
         },
         {
           "id": "mistral-ocr-2505",
@@ -1316,7 +1342,7 @@
             "tool_call": true
           },
           "owned_by": "mistralai",
-          "created": 1776602313
+          "created": 1776602586
         },
         {
           "id": "voxtral-mini-2602",
@@ -1333,7 +1359,7 @@
             ]
           },
           "owned_by": "mistralai",
-          "created": 1776602313
+          "created": 1776602586
         },
         {
           "id": "voxtral-mini-latest",
@@ -1350,7 +1376,7 @@
             ]
           },
           "owned_by": "mistralai",
-          "created": 1776602313
+          "created": 1776602586
         },
         {
           "id": "voxtral-mini-transcribe-realtime-2602",
@@ -1367,7 +1393,7 @@
             ]
           },
           "owned_by": "mistralai",
-          "created": 1776602313
+          "created": 1776602586
         },
         {
           "id": "voxtral-mini-realtime-2602",
@@ -1384,7 +1410,7 @@
             ]
           },
           "owned_by": "mistralai",
-          "created": 1776602313
+          "created": 1776602586
         },
         {
           "id": "voxtral-mini-realtime-latest",
@@ -1401,7 +1427,7 @@
             ]
           },
           "owned_by": "mistralai",
-          "created": 1776602313
+          "created": 1776602586
         },
         {
           "id": "voxtral-mini-transcribe-2507",
@@ -1418,7 +1444,7 @@
             ]
           },
           "owned_by": "mistralai",
-          "created": 1776602313
+          "created": 1776602586
         },
         {
           "id": "voxtral-mini-2507",
@@ -1435,7 +1461,7 @@
             ]
           },
           "owned_by": "mistralai",
-          "created": 1776602313
+          "created": 1776602586
         },
         {
           "id": "voxtral-mini-tts-2603",
@@ -1456,7 +1482,7 @@
             "tool_call": true
           },
           "owned_by": "mistralai",
-          "created": 1776602313
+          "created": 1776602586
         },
         {
           "id": "voxtral-mini-tts-latest",
@@ -1477,7 +1503,7 @@
             "tool_call": true
           },
           "owned_by": "mistralai",
-          "created": 1776602313
+          "created": 1776602586
         }
       ]
     },
@@ -1649,7 +1675,31 @@
           "type": "chat",
           "status": "active",
           "owned_by": "system",
-          "created": 1773450837
+          "created": 1773450837,
+          "name": "GPT-5.4 nano",
+          "context_window": 400000,
+          "max_output": 128000,
+          "cost": {
+            "input": 0.2,
+            "output": 1.25,
+            "cache_read": 0.02
+          },
+          "modalities": {
+            "input": [
+              "text",
+              "image"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "capabilities": {
+            "reasoning": true,
+            "tool_call": true,
+            "structured_output": true
+          },
+          "release_date": "2026-03-17",
+          "knowledge_cutoff": "2025-08-31"
         },
         {
           "id": "gpt-5.4-nano",
@@ -1687,7 +1737,31 @@
           "type": "chat",
           "status": "active",
           "owned_by": "system",
-          "created": 1773451076
+          "created": 1773451076,
+          "name": "GPT-5.4 mini",
+          "context_window": 400000,
+          "max_output": 128000,
+          "cost": {
+            "input": 0.75,
+            "output": 4.5,
+            "cache_read": 0.075
+          },
+          "modalities": {
+            "input": [
+              "text",
+              "image"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "capabilities": {
+            "reasoning": true,
+            "tool_call": true,
+            "structured_output": true
+          },
+          "release_date": "2026-03-17",
+          "knowledge_cutoff": "2025-08-31"
         },
         {
           "id": "davinci-002",
@@ -1736,7 +1810,30 @@
           "type": "chat",
           "status": "active",
           "owned_by": "system",
-          "created": 1698959748
+          "created": 1698959748,
+          "name": "GPT-3.5-turbo",
+          "context_window": 16385,
+          "max_output": 4096,
+          "cost": {
+            "input": 0.5,
+            "output": 1.5,
+            "cache_read": 1.25
+          },
+          "modalities": {
+            "input": [
+              "text"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "capabilities": {
+            "reasoning": false,
+            "tool_call": false,
+            "structured_output": false
+          },
+          "release_date": "2023-03-01",
+          "knowledge_cutoff": "2021-09-01"
         },
         {
           "id": "tts-1-hd",
@@ -1822,7 +1919,30 @@
           "type": "chat",
           "status": "active",
           "owned_by": "system",
-          "created": 1706048358
+          "created": 1706048358,
+          "name": "GPT-3.5-turbo",
+          "context_window": 16385,
+          "max_output": 4096,
+          "cost": {
+            "input": 0.5,
+            "output": 1.5,
+            "cache_read": 1.25
+          },
+          "modalities": {
+            "input": [
+              "text"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "capabilities": {
+            "reasoning": false,
+            "tool_call": false,
+            "structured_output": false
+          },
+          "release_date": "2023-03-01",
+          "knowledge_cutoff": "2021-09-01"
         },
         {
           "id": "gpt-4o",
@@ -1891,7 +2011,32 @@
           "type": "chat",
           "status": "active",
           "owned_by": "system",
-          "created": 1721172717
+          "created": 1721172717,
+          "name": "GPT-4o mini",
+          "context_window": 128000,
+          "max_output": 16384,
+          "cost": {
+            "input": 0.15,
+            "output": 0.6,
+            "cache_read": 0.08
+          },
+          "modalities": {
+            "input": [
+              "text",
+              "image",
+              "pdf"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "capabilities": {
+            "reasoning": false,
+            "tool_call": true,
+            "structured_output": true
+          },
+          "release_date": "2024-07-18",
+          "knowledge_cutoff": "2023-09"
         },
         {
           "id": "gpt-4o-mini",
@@ -1996,7 +2141,32 @@
           "type": "chat",
           "status": "active",
           "owned_by": "system",
-          "created": 1734326976
+          "created": 1734326976,
+          "name": "o1",
+          "context_window": 200000,
+          "max_output": 100000,
+          "cost": {
+            "input": 15,
+            "output": 60,
+            "cache_read": 7.5
+          },
+          "modalities": {
+            "input": [
+              "text",
+              "image",
+              "pdf"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "capabilities": {
+            "reasoning": true,
+            "tool_call": true,
+            "structured_output": true
+          },
+          "release_date": "2024-12-05",
+          "knowledge_cutoff": "2023-09"
         },
         {
           "id": "o1",
@@ -2072,7 +2242,30 @@
           "type": "chat",
           "status": "active",
           "owned_by": "system",
-          "created": 1738010200
+          "created": 1738010200,
+          "name": "o3-mini",
+          "context_window": 200000,
+          "max_output": 100000,
+          "cost": {
+            "input": 1.1,
+            "output": 4.4,
+            "cache_read": 0.55
+          },
+          "modalities": {
+            "input": [
+              "text"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "capabilities": {
+            "reasoning": true,
+            "tool_call": true,
+            "structured_output": true
+          },
+          "release_date": "2024-12-20",
+          "knowledge_cutoff": "2024-05"
         },
         {
           "id": "gpt-4o-2024-11-20",
@@ -2145,14 +2338,63 @@
           "type": "chat",
           "status": "active",
           "owned_by": "system",
-          "created": 1744133301
+          "created": 1744133301,
+          "name": "o3",
+          "context_window": 200000,
+          "max_output": 100000,
+          "cost": {
+            "input": 2,
+            "output": 8,
+            "cache_read": 0.5
+          },
+          "modalities": {
+            "input": [
+              "text",
+              "image",
+              "pdf"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "capabilities": {
+            "reasoning": true,
+            "tool_call": true,
+            "structured_output": true
+          },
+          "release_date": "2025-04-16",
+          "knowledge_cutoff": "2024-05"
         },
         {
           "id": "o4-mini-2025-04-16",
           "type": "chat",
           "status": "active",
           "owned_by": "system",
-          "created": 1744133506
+          "created": 1744133506,
+          "name": "o4-mini",
+          "context_window": 200000,
+          "max_output": 100000,
+          "cost": {
+            "input": 1.1,
+            "output": 4.4,
+            "cache_read": 0.28
+          },
+          "modalities": {
+            "input": [
+              "text",
+              "image"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "capabilities": {
+            "reasoning": true,
+            "tool_call": true,
+            "structured_output": true
+          },
+          "release_date": "2025-04-16",
+          "knowledge_cutoff": "2024-05"
         },
         {
           "id": "o3",
@@ -2222,7 +2464,32 @@
           "type": "chat",
           "status": "active",
           "owned_by": "system",
-          "created": 1744315746
+          "created": 1744315746,
+          "name": "GPT-4.1",
+          "context_window": 1047576,
+          "max_output": 32768,
+          "cost": {
+            "input": 2,
+            "output": 8,
+            "cache_read": 0.5
+          },
+          "modalities": {
+            "input": [
+              "text",
+              "image",
+              "pdf"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "capabilities": {
+            "reasoning": false,
+            "tool_call": true,
+            "structured_output": true
+          },
+          "release_date": "2025-04-14",
+          "knowledge_cutoff": "2024-04"
         },
         {
           "id": "gpt-4.1",
@@ -2261,7 +2528,32 @@
           "type": "chat",
           "status": "active",
           "owned_by": "system",
-          "created": 1744317547
+          "created": 1744317547,
+          "name": "GPT-4.1 mini",
+          "context_window": 1047576,
+          "max_output": 32768,
+          "cost": {
+            "input": 0.4,
+            "output": 1.6,
+            "cache_read": 0.1
+          },
+          "modalities": {
+            "input": [
+              "text",
+              "image",
+              "pdf"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "capabilities": {
+            "reasoning": false,
+            "tool_call": true,
+            "structured_output": true
+          },
+          "release_date": "2025-04-14",
+          "knowledge_cutoff": "2024-04"
         },
         {
           "id": "gpt-4.1-mini",
@@ -2300,7 +2592,31 @@
           "type": "chat",
           "status": "active",
           "owned_by": "system",
-          "created": 1744321025
+          "created": 1744321025,
+          "name": "GPT-4.1 nano",
+          "context_window": 1047576,
+          "max_output": 32768,
+          "cost": {
+            "input": 0.1,
+            "output": 0.4,
+            "cache_read": 0.03
+          },
+          "modalities": {
+            "input": [
+              "text",
+              "image"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "capabilities": {
+            "reasoning": false,
+            "tool_call": true,
+            "structured_output": true
+          },
+          "release_date": "2025-04-14",
+          "knowledge_cutoff": "2024-04"
         },
         {
           "id": "gpt-4.1-nano",
@@ -2404,7 +2720,31 @@
           "type": "chat",
           "status": "active",
           "owned_by": "system",
-          "created": 1754075360
+          "created": 1754075360,
+          "name": "GPT-5",
+          "context_window": 400000,
+          "max_output": 128000,
+          "cost": {
+            "input": 1.25,
+            "output": 10,
+            "cache_read": 0.125
+          },
+          "modalities": {
+            "input": [
+              "text",
+              "image"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "capabilities": {
+            "reasoning": true,
+            "tool_call": true,
+            "structured_output": true
+          },
+          "release_date": "2025-08-07",
+          "knowledge_cutoff": "2024-09-30"
         },
         {
           "id": "gpt-5",
@@ -2442,7 +2782,31 @@
           "type": "chat",
           "status": "active",
           "owned_by": "system",
-          "created": 1754425867
+          "created": 1754425867,
+          "name": "GPT-5 Mini",
+          "context_window": 400000,
+          "max_output": 128000,
+          "cost": {
+            "input": 0.25,
+            "output": 2,
+            "cache_read": 0.025
+          },
+          "modalities": {
+            "input": [
+              "text",
+              "image"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "capabilities": {
+            "reasoning": true,
+            "tool_call": true,
+            "structured_output": true
+          },
+          "release_date": "2025-08-07",
+          "knowledge_cutoff": "2024-05-30"
         },
         {
           "id": "gpt-5-mini",
@@ -2480,7 +2844,31 @@
           "type": "chat",
           "status": "active",
           "owned_by": "system",
-          "created": 1754426303
+          "created": 1754426303,
+          "name": "GPT-5 Nano",
+          "context_window": 400000,
+          "max_output": 128000,
+          "cost": {
+            "input": 0.05,
+            "output": 0.4,
+            "cache_read": 0.005
+          },
+          "modalities": {
+            "input": [
+              "text",
+              "image"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "capabilities": {
+            "reasoning": true,
+            "tool_call": true,
+            "structured_output": true
+          },
+          "release_date": "2025-08-07",
+          "knowledge_cutoff": "2024-05-30"
         },
         {
           "id": "gpt-5-nano",
@@ -2600,7 +2988,30 @@
           "type": "chat",
           "status": "active",
           "owned_by": "system",
-          "created": 1759469707
+          "created": 1759469707,
+          "name": "GPT-5 Pro",
+          "context_window": 400000,
+          "max_output": 272000,
+          "cost": {
+            "input": 15,
+            "output": 120
+          },
+          "modalities": {
+            "input": [
+              "text",
+              "image"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "capabilities": {
+            "reasoning": true,
+            "tool_call": true,
+            "structured_output": true
+          },
+          "release_date": "2025-10-06",
+          "knowledge_cutoff": "2024-09-30"
         },
         {
           "id": "gpt-5-pro",
@@ -2724,7 +3135,31 @@
           "type": "chat",
           "status": "active",
           "owned_by": "system",
-          "created": 1762800353
+          "created": 1762800353,
+          "name": "GPT-5.1",
+          "context_window": 400000,
+          "max_output": 128000,
+          "cost": {
+            "input": 1.25,
+            "output": 10,
+            "cache_read": 0.13
+          },
+          "modalities": {
+            "input": [
+              "text",
+              "image"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "capabilities": {
+            "reasoning": true,
+            "tool_call": true,
+            "structured_output": true
+          },
+          "release_date": "2025-11-13",
+          "knowledge_cutoff": "2024-09-30"
         },
         {
           "id": "gpt-5.1",
@@ -2878,7 +3313,31 @@
           "type": "chat",
           "status": "active",
           "owned_by": "system",
-          "created": 1765313028
+          "created": 1765313028,
+          "name": "GPT-5.2",
+          "context_window": 400000,
+          "max_output": 128000,
+          "cost": {
+            "input": 1.75,
+            "output": 14,
+            "cache_read": 0.175
+          },
+          "modalities": {
+            "input": [
+              "text",
+              "image"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "capabilities": {
+            "reasoning": true,
+            "tool_call": true,
+            "structured_output": true
+          },
+          "release_date": "2025-12-11",
+          "knowledge_cutoff": "2025-08-31"
         },
         {
           "id": "gpt-5.2",
@@ -2916,7 +3375,30 @@
           "type": "chat",
           "status": "active",
           "owned_by": "system",
-          "created": 1765343959
+          "created": 1765343959,
+          "name": "GPT-5.2 Pro",
+          "context_window": 400000,
+          "max_output": 128000,
+          "cost": {
+            "input": 21,
+            "output": 168
+          },
+          "modalities": {
+            "input": [
+              "text",
+              "image"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "capabilities": {
+            "reasoning": true,
+            "tool_call": true,
+            "structured_output": false
+          },
+          "release_date": "2025-12-11",
+          "knowledge_cutoff": "2025-08-31"
         },
         {
           "id": "gpt-5.2-pro",
@@ -3172,7 +3654,37 @@
           "type": "chat",
           "status": "active",
           "owned_by": "system",
-          "created": 1772654062
+          "created": 1772654062,
+          "name": "GPT-5.4",
+          "context_window": 1050000,
+          "max_output": 128000,
+          "cost": {
+            "input": 2.5,
+            "output": 15,
+            "cache_read": 0.25,
+            "context_over_200k": {
+              "input": 5,
+              "output": 22.5,
+              "cache_read": 0.5
+            }
+          },
+          "modalities": {
+            "input": [
+              "text",
+              "image",
+              "pdf"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "capabilities": {
+            "reasoning": true,
+            "tool_call": true,
+            "structured_output": true
+          },
+          "release_date": "2026-03-05",
+          "knowledge_cutoff": "2025-08-31"
         },
         {
           "id": "gpt-5.4-pro",
@@ -3213,7 +3725,34 @@
           "type": "chat",
           "status": "active",
           "owned_by": "system",
-          "created": 1772659657
+          "created": 1772659657,
+          "name": "GPT-5.4 Pro",
+          "context_window": 1050000,
+          "max_output": 128000,
+          "cost": {
+            "input": 30,
+            "output": 180,
+            "context_over_200k": {
+              "input": 60,
+              "output": 270
+            }
+          },
+          "modalities": {
+            "input": [
+              "text",
+              "image"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "capabilities": {
+            "reasoning": true,
+            "tool_call": true,
+            "structured_output": false
+          },
+          "release_date": "2026-03-05",
+          "knowledge_cutoff": "2025-08-31"
         },
         {
           "id": "whisper-1",
@@ -8497,7 +9036,9 @@
             ]
           },
           "capabilities": {
+            "reasoning": false,
             "tool_call": true,
+            "structured_output": true,
             "structured_outputs": true,
             "knowledge_cutoff": "2025-06-30"
           },
@@ -8505,7 +9046,10 @@
             "input": 0.39999999999999997,
             "output": 2.0
           },
-          "created": 1752161321
+          "created": 1752161321,
+          "max_output": 131072,
+          "release_date": "2025-07-10",
+          "knowledge_cutoff": "2025-05"
         },
         {
           "id": "mistralai/devstral-small",
@@ -8522,6 +9066,7 @@
             ]
           },
           "capabilities": {
+            "reasoning": false,
             "tool_call": true,
             "structured_outputs": true,
             "knowledge_cutoff": "2025-03-31"
@@ -8530,7 +9075,10 @@
             "input": 0.09999999999999999,
             "output": 0.3
           },
-          "created": 1752160751
+          "created": 1752160751,
+          "max_output": 128000,
+          "release_date": "2025-05-07",
+          "knowledge_cutoff": "2025-05"
         },
         {
           "id": "cognitivecomputations/dolphin-mistral-24b-venice-edition:free",
@@ -9028,16 +9576,20 @@
             ]
           },
           "capabilities": {
-            "tool_call": true,
-            "structured_outputs": true,
             "reasoning": true,
+            "tool_call": true,
+            "structured_output": false,
+            "structured_outputs": true,
             "knowledge_cutoff": "2025-03-31"
           },
           "cost": {
             "input": 0.5,
             "output": 2.1500000000000004
           },
-          "created": 1748455170
+          "created": 1748455170,
+          "max_output": 16000,
+          "release_date": "2025-01-20",
+          "knowledge_cutoff": "2024-07"
         },
         {
           "id": "anthropic/claude-opus-4",
@@ -11933,7 +12485,9 @@
             ]
           },
           "capabilities": {
+            "reasoning": false,
             "tool_call": true,
+            "structured_output": true,
             "structured_outputs": true,
             "knowledge_cutoff": "2023-10-31"
           },
@@ -11941,7 +12495,9 @@
             "input": 0.15,
             "output": 0.6
           },
-          "created": 1721260800
+          "created": 1721260800,
+          "release_date": "2024-07-18",
+          "knowledge_cutoff": "2024-10"
         },
         {
           "id": "openai/gpt-4o-mini",
@@ -16597,6 +17153,12 @@
           "owned_by": "nvidia"
         },
         {
+          "id": "nvidia/vila",
+          "type": "chat",
+          "status": "active",
+          "owned_by": "nvidia"
+        },
+        {
           "id": "openai/gpt-oss-120b",
           "type": "chat",
           "status": "active",
@@ -16954,7 +17516,27 @@
         {
           "id": "@cf/pipecat-ai/smart-turn-v2",
           "type": "chat",
-          "status": "active"
+          "status": "active",
+          "name": "Pipecat Smart Turn v2",
+          "context_window": 128000,
+          "max_output": 16384,
+          "cost": {
+            "input": 0,
+            "output": 0
+          },
+          "modalities": {
+            "input": [
+              "text"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "capabilities": {
+            "reasoning": false,
+            "tool_call": false
+          },
+          "release_date": "2025-11-14"
         },
         {
           "id": "@cf/openai/gpt-oss-120b",
@@ -16976,8 +17558,8 @@
             ]
           },
           "capabilities": {
-            "reasoning": true,
-            "tool_call": true
+            "reasoning": false,
+            "tool_call": false
           },
           "release_date": "2025-08-05"
         },
@@ -16989,12 +17571,52 @@
         {
           "id": "@cf/baai/bge-m3",
           "type": "chat",
-          "status": "active"
+          "status": "active",
+          "name": "BGE M3",
+          "context_window": 128000,
+          "max_output": 16384,
+          "cost": {
+            "input": 0.012,
+            "output": 0
+          },
+          "modalities": {
+            "input": [
+              "text"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "capabilities": {
+            "reasoning": false,
+            "tool_call": false
+          },
+          "release_date": "2025-04-03"
         },
         {
           "id": "@cf/huggingface/distilbert-sst-2-int8",
           "type": "chat",
-          "status": "active"
+          "status": "active",
+          "name": "DistilBERT SST-2 INT8",
+          "context_window": 128000,
+          "max_output": 16384,
+          "cost": {
+            "input": 0.026,
+            "output": 0
+          },
+          "modalities": {
+            "input": [
+              "text"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "capabilities": {
+            "reasoning": false,
+            "tool_call": false
+          },
+          "release_date": "2025-04-03"
         },
         {
           "id": "@cf/google/gemma-2b-it-lora",
@@ -17014,12 +17636,52 @@
         {
           "id": "@cf/meta/llama-3-8b-instruct",
           "type": "chat",
-          "status": "active"
+          "status": "active",
+          "name": "Llama 3 8B Instruct",
+          "context_window": 128000,
+          "max_output": 16384,
+          "cost": {
+            "input": 0.28,
+            "output": 0.83
+          },
+          "modalities": {
+            "input": [
+              "text"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "capabilities": {
+            "reasoning": false,
+            "tool_call": false
+          },
+          "release_date": "2025-04-03"
         },
         {
           "id": "@cf/meta/llama-3.2-3b-instruct",
           "type": "chat",
-          "status": "active"
+          "status": "active",
+          "name": "Llama 3.2 3B Instruct",
+          "context_window": 128000,
+          "max_output": 16384,
+          "cost": {
+            "input": 0.051,
+            "output": 0.34
+          },
+          "modalities": {
+            "input": [
+              "text"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "capabilities": {
+            "reasoning": false,
+            "tool_call": false
+          },
+          "release_date": "2025-04-03"
         },
         {
           "id": "@cf/moonshotai/kimi-k2.5",
@@ -17058,27 +17720,127 @@
         {
           "id": "@cf/meta/llama-guard-3-8b",
           "type": "chat",
-          "status": "active"
+          "status": "active",
+          "name": "Llama Guard 3 8B",
+          "context_window": 128000,
+          "max_output": 16384,
+          "cost": {
+            "input": 0.48,
+            "output": 0.03
+          },
+          "modalities": {
+            "input": [
+              "text"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "capabilities": {
+            "reasoning": false,
+            "tool_call": false
+          },
+          "release_date": "2025-04-03"
         },
         {
           "id": "@cf/qwen/qwen3-embedding-0.6b",
           "type": "chat",
-          "status": "active"
+          "status": "active",
+          "name": "Qwen3 Embedding 0.6B",
+          "context_window": 128000,
+          "max_output": 16384,
+          "cost": {
+            "input": 0.012,
+            "output": 0
+          },
+          "modalities": {
+            "input": [
+              "text"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "capabilities": {
+            "reasoning": false,
+            "tool_call": false
+          },
+          "release_date": "2025-11-14"
         },
         {
           "id": "@cf/meta/llama-2-7b-chat-fp16",
           "type": "chat",
-          "status": "active"
+          "status": "active",
+          "name": "Llama 2 7B Chat FP16",
+          "context_window": 128000,
+          "max_output": 16384,
+          "cost": {
+            "input": 0.56,
+            "output": 6.67
+          },
+          "modalities": {
+            "input": [
+              "text"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "capabilities": {
+            "reasoning": false,
+            "tool_call": false
+          },
+          "release_date": "2025-04-03"
         },
         {
           "id": "@cf/mistral/mistral-7b-instruct-v0.1",
           "type": "chat",
-          "status": "active"
+          "status": "active",
+          "name": "Mistral 7B Instruct v0.1",
+          "context_window": 128000,
+          "max_output": 16384,
+          "cost": {
+            "input": 0.11,
+            "output": 0.19
+          },
+          "modalities": {
+            "input": [
+              "text"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "capabilities": {
+            "reasoning": false,
+            "tool_call": false
+          },
+          "release_date": "2025-04-03"
         },
         {
           "id": "@cf/myshell-ai/melotts",
           "type": "chat",
-          "status": "active"
+          "status": "active",
+          "name": "MyShell MeloTTS",
+          "context_window": 128000,
+          "max_output": 16384,
+          "cost": {
+            "input": 0,
+            "output": 0
+          },
+          "modalities": {
+            "input": [
+              "text"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "capabilities": {
+            "reasoning": false,
+            "tool_call": false
+          },
+          "release_date": "2025-11-14"
         },
         {
           "id": "@cf/mistral/mistral-7b-instruct-v0.2-lora",
@@ -17088,7 +17850,27 @@
         {
           "id": "@cf/deepgram/aura-2-es",
           "type": "chat",
-          "status": "active"
+          "status": "active",
+          "name": "Deepgram Aura 2 (ES)",
+          "context_window": 128000,
+          "max_output": 16384,
+          "cost": {
+            "input": 0,
+            "output": 0
+          },
+          "modalities": {
+            "input": [
+              "text"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "capabilities": {
+            "reasoning": false,
+            "tool_call": false
+          },
+          "release_date": "2025-11-14"
         },
         {
           "id": "@cf/openai/whisper",
@@ -17103,7 +17885,27 @@
         {
           "id": "@cf/pfnet/plamo-embedding-1b",
           "type": "chat",
-          "status": "active"
+          "status": "active",
+          "name": "PLaMo Embedding 1B",
+          "context_window": 128000,
+          "max_output": 16384,
+          "cost": {
+            "input": 0.019,
+            "output": 0
+          },
+          "modalities": {
+            "input": [
+              "text"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "capabilities": {
+            "reasoning": false,
+            "tool_call": false
+          },
+          "release_date": "2025-09-25"
         },
         {
           "id": "@hf/mistral/mistral-7b-instruct-v0.2",
@@ -17123,7 +17925,27 @@
         {
           "id": "@cf/deepseek-ai/deepseek-r1-distill-qwen-32b",
           "type": "chat",
-          "status": "active"
+          "status": "active",
+          "name": "DeepSeek R1 Distill Qwen 32B",
+          "context_window": 128000,
+          "max_output": 16384,
+          "cost": {
+            "input": 0.5,
+            "output": 4.88
+          },
+          "modalities": {
+            "input": [
+              "text"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "capabilities": {
+            "reasoning": false,
+            "tool_call": false
+          },
+          "release_date": "2025-04-03"
         },
         {
           "id": "@cf/runwayml/stable-diffusion-v1-5-inpainting",
@@ -17138,7 +17960,27 @@
         {
           "id": "@cf/deepgram/nova-3",
           "type": "chat",
-          "status": "active"
+          "status": "active",
+          "name": "Deepgram Nova 3",
+          "context_window": 128000,
+          "max_output": 16384,
+          "cost": {
+            "input": 0,
+            "output": 0
+          },
+          "modalities": {
+            "input": [
+              "text"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "capabilities": {
+            "reasoning": false,
+            "tool_call": false
+          },
+          "release_date": "2025-11-14"
         },
         {
           "id": "@cf/black-forest-labs/flux-1-schnell",
@@ -17158,7 +18000,27 @@
         {
           "id": "@cf/meta/llama-3.1-8b-instruct-fp8",
           "type": "chat",
-          "status": "active"
+          "status": "active",
+          "name": "Llama 3.1 8B Instruct FP8",
+          "context_window": 128000,
+          "max_output": 16384,
+          "cost": {
+            "input": 0.15,
+            "output": 0.29
+          },
+          "modalities": {
+            "input": [
+              "text"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "capabilities": {
+            "reasoning": false,
+            "tool_call": false
+          },
+          "release_date": "2025-04-03"
         },
         {
           "id": "@hf/thebloke/mistral-7b-instruct-v0.1-awq",
@@ -17173,7 +18035,27 @@
         {
           "id": "@cf/meta/llama-3.2-1b-instruct",
           "type": "chat",
-          "status": "active"
+          "status": "active",
+          "name": "Llama 3.2 1B Instruct",
+          "context_window": 128000,
+          "max_output": 16384,
+          "cost": {
+            "input": 0.027,
+            "output": 0.2
+          },
+          "modalities": {
+            "input": [
+              "text"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "capabilities": {
+            "reasoning": false,
+            "tool_call": false
+          },
+          "release_date": "2025-04-03"
         },
         {
           "id": "@cf/zai-org/glm-4.7-flash",
@@ -17229,12 +18111,52 @@
         {
           "id": "@cf/meta/llama-3.3-70b-instruct-fp8-fast",
           "type": "chat",
-          "status": "active"
+          "status": "active",
+          "name": "Llama 3.3 70B Instruct FP8 Fast",
+          "context_window": 128000,
+          "max_output": 16384,
+          "cost": {
+            "input": 0.29,
+            "output": 2.25
+          },
+          "modalities": {
+            "input": [
+              "text"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "capabilities": {
+            "reasoning": false,
+            "tool_call": false
+          },
+          "release_date": "2025-04-03"
         },
         {
           "id": "@cf/ibm-granite/granite-4.0-h-micro",
           "type": "chat",
-          "status": "active"
+          "status": "active",
+          "name": "IBM Granite 4.0 H Micro",
+          "context_window": 128000,
+          "max_output": 16384,
+          "cost": {
+            "input": 0.017,
+            "output": 0.11
+          },
+          "modalities": {
+            "input": [
+              "text"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "capabilities": {
+            "reasoning": false,
+            "tool_call": false
+          },
+          "release_date": "2025-10-15"
         },
         {
           "id": "@cf/lykon/dreamshaper-8-lcm",
@@ -17259,12 +18181,52 @@
         {
           "id": "@cf/meta/m2m100-1.2b",
           "type": "chat",
-          "status": "active"
+          "status": "active",
+          "name": "M2M100 1.2B",
+          "context_window": 128000,
+          "max_output": 16384,
+          "cost": {
+            "input": 0.34,
+            "output": 0.34
+          },
+          "modalities": {
+            "input": [
+              "text"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "capabilities": {
+            "reasoning": false,
+            "tool_call": false
+          },
+          "release_date": "2025-04-03"
         },
         {
           "id": "@cf/ai4bharat/indictrans2-en-indic-1B",
           "type": "chat",
-          "status": "active"
+          "status": "active",
+          "name": "IndicTrans2 EN-Indic 1B",
+          "context_window": 128000,
+          "max_output": 16384,
+          "cost": {
+            "input": 0.34,
+            "output": 0.34
+          },
+          "modalities": {
+            "input": [
+              "text"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "capabilities": {
+            "reasoning": false,
+            "tool_call": false
+          },
+          "release_date": "2025-09-25"
         },
         {
           "id": "@hf/thebloke/deepseek-coder-6.7b-instruct-awq",
@@ -17279,12 +18241,52 @@
         {
           "id": "@cf/baai/bge-small-en-v1.5",
           "type": "chat",
-          "status": "active"
+          "status": "active",
+          "name": "BGE Small EN v1.5",
+          "context_window": 128000,
+          "max_output": 16384,
+          "cost": {
+            "input": 0.02,
+            "output": 0
+          },
+          "modalities": {
+            "input": [
+              "text"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "capabilities": {
+            "reasoning": false,
+            "tool_call": false
+          },
+          "release_date": "2025-04-03"
         },
         {
           "id": "@cf/qwen/qwen2.5-coder-32b-instruct",
           "type": "chat",
-          "status": "active"
+          "status": "active",
+          "name": "Qwen 2.5 Coder 32B Instruct",
+          "context_window": 128000,
+          "max_output": 16384,
+          "cost": {
+            "input": 0.66,
+            "output": 1
+          },
+          "modalities": {
+            "input": [
+              "text"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "capabilities": {
+            "reasoning": false,
+            "tool_call": false
+          },
+          "release_date": "2025-04-11"
         },
         {
           "id": "@cf/deepseek-ai/deepseek-math-7b-instruct",
@@ -17329,22 +18331,102 @@
         {
           "id": "@cf/baai/bge-base-en-v1.5",
           "type": "chat",
-          "status": "active"
+          "status": "active",
+          "name": "BGE Base EN v1.5",
+          "context_window": 128000,
+          "max_output": 16384,
+          "cost": {
+            "input": 0.067,
+            "output": 0
+          },
+          "modalities": {
+            "input": [
+              "text"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "capabilities": {
+            "reasoning": false,
+            "tool_call": false
+          },
+          "release_date": "2025-04-03"
         },
         {
           "id": "@cf/aisingapore/gemma-sea-lion-v4-27b-it",
           "type": "chat",
-          "status": "active"
+          "status": "active",
+          "name": "Gemma SEA-LION v4 27B IT",
+          "context_window": 128000,
+          "max_output": 16384,
+          "cost": {
+            "input": 0.35,
+            "output": 0.56
+          },
+          "modalities": {
+            "input": [
+              "text"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "capabilities": {
+            "reasoning": false,
+            "tool_call": false
+          },
+          "release_date": "2025-09-25"
         },
         {
           "id": "@cf/qwen/qwen3-30b-a3b-fp8",
           "type": "chat",
-          "status": "active"
+          "status": "active",
+          "name": "Qwen3 30B A3B FP8",
+          "context_window": 128000,
+          "max_output": 16384,
+          "cost": {
+            "input": 0.051,
+            "output": 0.34
+          },
+          "modalities": {
+            "input": [
+              "text"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "capabilities": {
+            "reasoning": false,
+            "tool_call": false
+          },
+          "release_date": "2025-11-14"
         },
         {
           "id": "@cf/meta/llama-3.1-8b-instruct-awq",
           "type": "chat",
-          "status": "active"
+          "status": "active",
+          "name": "Llama 3.1 8B Instruct AWQ",
+          "context_window": 128000,
+          "max_output": 16384,
+          "cost": {
+            "input": 0.12,
+            "output": 0.27
+          },
+          "modalities": {
+            "input": [
+              "text"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "capabilities": {
+            "reasoning": false,
+            "tool_call": false
+          },
+          "release_date": "2025-04-03"
         },
         {
           "id": "@cf/unum/uform-gen2-qwen-500m",
@@ -17369,28 +18451,7 @@
         {
           "id": "@cf/google/gemma-4-26b-a4b-it",
           "type": "chat",
-          "status": "active",
-          "name": "Gemma 4 26B A4B IT",
-          "context_window": 256000,
-          "max_output": 16384,
-          "cost": {
-            "input": 0.1,
-            "output": 0.3
-          },
-          "modalities": {
-            "input": [
-              "text",
-              "image"
-            ],
-            "output": [
-              "text"
-            ]
-          },
-          "capabilities": {
-            "reasoning": true,
-            "tool_call": true
-          },
-          "release_date": "2025-12-15"
+          "status": "active"
         },
         {
           "id": "@cf/qwen/qwen1.5-1.8b-chat",
@@ -17400,17 +18461,77 @@
         {
           "id": "@cf/mistralai/mistral-small-3.1-24b-instruct",
           "type": "chat",
-          "status": "active"
+          "status": "active",
+          "name": "Mistral Small 3.1 24B Instruct",
+          "context_window": 128000,
+          "max_output": 16384,
+          "cost": {
+            "input": 0.35,
+            "output": 0.56
+          },
+          "modalities": {
+            "input": [
+              "text"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "capabilities": {
+            "reasoning": false,
+            "tool_call": false
+          },
+          "release_date": "2025-04-11"
         },
         {
           "id": "@cf/meta/llama-3-8b-instruct-awq",
           "type": "chat",
-          "status": "active"
+          "status": "active",
+          "name": "Llama 3 8B Instruct AWQ",
+          "context_window": 128000,
+          "max_output": 16384,
+          "cost": {
+            "input": 0.12,
+            "output": 0.27
+          },
+          "modalities": {
+            "input": [
+              "text"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "capabilities": {
+            "reasoning": false,
+            "tool_call": false
+          },
+          "release_date": "2025-04-03"
         },
         {
           "id": "@cf/meta/llama-3.2-11b-vision-instruct",
           "type": "chat",
-          "status": "active"
+          "status": "active",
+          "name": "Llama 3.2 11B Vision Instruct",
+          "context_window": 128000,
+          "max_output": 16384,
+          "cost": {
+            "input": 0.049,
+            "output": 0.68
+          },
+          "modalities": {
+            "input": [
+              "text"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "capabilities": {
+            "reasoning": false,
+            "tool_call": false
+          },
+          "release_date": "2025-04-03"
         },
         {
           "id": "@cf/openai/whisper-tiny-en",
@@ -17440,7 +18561,27 @@
         {
           "id": "@cf/facebook/bart-large-cnn",
           "type": "chat",
-          "status": "active"
+          "status": "active",
+          "name": "BART Large CNN",
+          "context_window": 128000,
+          "max_output": 16384,
+          "cost": {
+            "input": 0,
+            "output": 0
+          },
+          "modalities": {
+            "input": [
+              "text"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "capabilities": {
+            "reasoning": false,
+            "tool_call": false
+          },
+          "release_date": "2025-04-09"
         },
         {
           "id": "@cf/runwayml/stable-diffusion-v1-5-img2img",
@@ -17467,8 +18608,8 @@
             ]
           },
           "capabilities": {
-            "reasoning": true,
-            "tool_call": true
+            "reasoning": false,
+            "tool_call": false
           },
           "release_date": "2025-08-05"
         },
@@ -17480,7 +18621,27 @@
         {
           "id": "@cf/baai/bge-reranker-base",
           "type": "chat",
-          "status": "active"
+          "status": "active",
+          "name": "BGE Reranker Base",
+          "context_window": 128000,
+          "max_output": 16384,
+          "cost": {
+            "input": 0.0031,
+            "output": 0
+          },
+          "modalities": {
+            "input": [
+              "text"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "capabilities": {
+            "reasoning": false,
+            "tool_call": false
+          },
+          "release_date": "2025-04-09"
         },
         {
           "id": "@hf/google/gemma-7b-it",
@@ -17515,8 +18676,7 @@
           },
           "modalities": {
             "input": [
-              "text",
-              "image"
+              "text"
             ],
             "output": [
               "text"
@@ -17524,29 +18684,109 @@
           },
           "capabilities": {
             "reasoning": false,
-            "tool_call": true
+            "tool_call": false
           },
           "release_date": "2025-04-16"
         },
         {
           "id": "@cf/google/gemma-3-12b-it",
           "type": "chat",
-          "status": "active"
+          "status": "active",
+          "name": "Gemma 3 12B IT",
+          "context_window": 128000,
+          "max_output": 16384,
+          "cost": {
+            "input": 0.35,
+            "output": 0.56
+          },
+          "modalities": {
+            "input": [
+              "text"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "capabilities": {
+            "reasoning": false,
+            "tool_call": false
+          },
+          "release_date": "2025-04-11"
         },
         {
           "id": "@cf/qwen/qwq-32b",
           "type": "chat",
-          "status": "active"
+          "status": "active",
+          "name": "QwQ 32B",
+          "context_window": 128000,
+          "max_output": 16384,
+          "cost": {
+            "input": 0.66,
+            "output": 1
+          },
+          "modalities": {
+            "input": [
+              "text"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "capabilities": {
+            "reasoning": false,
+            "tool_call": false
+          },
+          "release_date": "2025-04-11"
         },
         {
           "id": "@cf/baai/bge-large-en-v1.5",
           "type": "chat",
-          "status": "active"
+          "status": "active",
+          "name": "BGE Large EN v1.5",
+          "context_window": 128000,
+          "max_output": 16384,
+          "cost": {
+            "input": 0.2,
+            "output": 0
+          },
+          "modalities": {
+            "input": [
+              "text"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "capabilities": {
+            "reasoning": false,
+            "tool_call": false
+          },
+          "release_date": "2025-04-03"
         },
         {
           "id": "@cf/deepgram/aura-2-en",
           "type": "chat",
-          "status": "active"
+          "status": "active",
+          "name": "Deepgram Aura 2 (EN)",
+          "context_window": 128000,
+          "max_output": 16384,
+          "cost": {
+            "input": 0,
+            "output": 0
+          },
+          "modalities": {
+            "input": [
+              "text"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "capabilities": {
+            "reasoning": false,
+            "tool_call": false
+          },
+          "release_date": "2025-11-14"
         }
       ]
     },
@@ -19449,71 +20689,10 @@
       "kind": "chat",
       "models": [
         {
-          "id": "kimi-k2-0905-preview",
-          "type": "chat",
-          "status": "active",
-          "context_window": 262144,
-          "modalities": {
-            "input": [
-              "text"
-            ],
-            "output": [
-              "text"
-            ]
-          },
-          "owned_by": "moonshot",
-          "created": 1776488929,
-          "name": "Kimi K2 0905",
-          "max_output": 262144,
-          "cost": {
-            "input": 0.6,
-            "output": 2.5,
-            "cache_read": 0.15
-          },
-          "capabilities": {
-            "reasoning": false,
-            "tool_call": true
-          },
-          "release_date": "2025-09-05",
-          "knowledge_cutoff": "2024-10"
-        },
-        {
-          "id": "moonshot-v1-128k",
+          "id": "moonshot-v1-128k-vision-preview",
           "type": "chat",
           "status": "active",
           "context_window": 131072,
-          "modalities": {
-            "input": [
-              "text"
-            ],
-            "output": [
-              "text"
-            ]
-          },
-          "owned_by": "moonshot",
-          "created": 1776488929
-        },
-        {
-          "id": "moonshot-v1-32k",
-          "type": "chat",
-          "status": "active",
-          "context_window": 32768,
-          "modalities": {
-            "input": [
-              "text"
-            ],
-            "output": [
-              "text"
-            ]
-          },
-          "owned_by": "moonshot",
-          "created": 1776488929
-        },
-        {
-          "id": "moonshot-v1-32k-vision-preview",
-          "type": "chat",
-          "status": "active",
-          "context_window": 32768,
           "modalities": {
             "input": [
               "text",
@@ -19546,10 +20725,68 @@
           "created": 1776488929
         },
         {
-          "id": "moonshot-v1-8k",
+          "id": "kimi-k2-thinking-turbo",
           "type": "chat",
           "status": "active",
-          "context_window": 8192,
+          "context_window": 262144,
+          "modalities": {
+            "input": [
+              "text"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "owned_by": "moonshot",
+          "created": 1776488929,
+          "name": "Kimi K2 Thinking Turbo",
+          "max_output": 262144,
+          "cost": {
+            "input": 1.15,
+            "output": 8,
+            "cache_read": 0.15
+          },
+          "capabilities": {
+            "reasoning": true,
+            "tool_call": true
+          },
+          "release_date": "2025-11-06",
+          "knowledge_cutoff": "2024-08"
+        },
+        {
+          "id": "kimi-k2-thinking",
+          "type": "chat",
+          "status": "active",
+          "context_window": 262144,
+          "modalities": {
+            "input": [
+              "text"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "owned_by": "moonshot",
+          "created": 1776488929,
+          "name": "Kimi K2 Thinking",
+          "max_output": 262144,
+          "cost": {
+            "input": 0.6,
+            "output": 2.5,
+            "cache_read": 0.15
+          },
+          "capabilities": {
+            "reasoning": true,
+            "tool_call": true
+          },
+          "release_date": "2025-11-06",
+          "knowledge_cutoff": "2024-08"
+        },
+        {
+          "id": "moonshot-v1-32k",
+          "type": "chat",
+          "status": "active",
+          "context_window": 32768,
           "modalities": {
             "input": [
               "text"
@@ -19614,35 +20851,6 @@
           "knowledge_cutoff": "2025-01"
         },
         {
-          "id": "kimi-k2-0711-preview",
-          "type": "chat",
-          "status": "active",
-          "context_window": 131072,
-          "modalities": {
-            "input": [
-              "text"
-            ],
-            "output": [
-              "text"
-            ]
-          },
-          "owned_by": "moonshot",
-          "created": 1776488929,
-          "name": "Kimi K2 0711",
-          "max_output": 16384,
-          "cost": {
-            "input": 0.6,
-            "output": 2.5,
-            "cache_read": 0.15
-          },
-          "capabilities": {
-            "reasoning": false,
-            "tool_call": true
-          },
-          "release_date": "2025-07-14",
-          "knowledge_cutoff": "2024-10"
-        },
-        {
           "id": "kimi-k2-turbo-preview",
           "type": "chat",
           "status": "active",
@@ -19672,7 +20880,72 @@
           "knowledge_cutoff": "2024-10"
         },
         {
-          "id": "kimi-k2-thinking",
+          "id": "kimi-k2-0711-preview",
+          "type": "chat",
+          "status": "active",
+          "context_window": 131072,
+          "modalities": {
+            "input": [
+              "text"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "owned_by": "moonshot",
+          "created": 1776488929,
+          "name": "Kimi K2 0711",
+          "max_output": 16384,
+          "cost": {
+            "input": 0.6,
+            "output": 2.5,
+            "cache_read": 0.15
+          },
+          "capabilities": {
+            "reasoning": false,
+            "tool_call": true
+          },
+          "release_date": "2025-07-14",
+          "knowledge_cutoff": "2024-10"
+        },
+        {
+          "id": "moonshot-v1-32k-vision-preview",
+          "type": "chat",
+          "status": "active",
+          "context_window": 32768,
+          "modalities": {
+            "input": [
+              "text",
+              "image"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "capabilities": {
+            "vision": true
+          },
+          "owned_by": "moonshot",
+          "created": 1776488929
+        },
+        {
+          "id": "moonshot-v1-128k",
+          "type": "chat",
+          "status": "active",
+          "context_window": 131072,
+          "modalities": {
+            "input": [
+              "text"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "owned_by": "moonshot",
+          "created": 1776488929
+        },
+        {
+          "id": "kimi-k2-0905-preview",
           "type": "chat",
           "status": "active",
           "context_window": 262144,
@@ -19686,7 +20959,7 @@
           },
           "owned_by": "moonshot",
           "created": 1776488929,
-          "name": "Kimi K2 Thinking",
+          "name": "Kimi K2 0905",
           "max_output": 262144,
           "cost": {
             "input": 0.6,
@@ -19694,11 +20967,11 @@
             "cache_read": 0.15
           },
           "capabilities": {
-            "reasoning": true,
+            "reasoning": false,
             "tool_call": true
           },
-          "release_date": "2025-11-06",
-          "knowledge_cutoff": "2024-08"
+          "release_date": "2025-09-05",
+          "knowledge_cutoff": "2024-10"
         },
         {
           "id": "moonshot-v1-8k-vision-preview",
@@ -19721,53 +20994,20 @@
           "created": 1776488929
         },
         {
-          "id": "moonshot-v1-128k-vision-preview",
+          "id": "moonshot-v1-8k",
           "type": "chat",
           "status": "active",
-          "context_window": 131072,
+          "context_window": 8192,
           "modalities": {
             "input": [
-              "text",
-              "image"
+              "text"
             ],
             "output": [
               "text"
             ]
-          },
-          "capabilities": {
-            "vision": true
           },
           "owned_by": "moonshot",
           "created": 1776488929
-        },
-        {
-          "id": "kimi-k2-thinking-turbo",
-          "type": "chat",
-          "status": "active",
-          "context_window": 262144,
-          "modalities": {
-            "input": [
-              "text"
-            ],
-            "output": [
-              "text"
-            ]
-          },
-          "owned_by": "moonshot",
-          "created": 1776488929,
-          "name": "Kimi K2 Thinking Turbo",
-          "max_output": 262144,
-          "cost": {
-            "input": 1.15,
-            "output": 8,
-            "cache_read": 0.15
-          },
-          "capabilities": {
-            "reasoning": true,
-            "tool_call": true
-          },
-          "release_date": "2025-11-06",
-          "knowledge_cutoff": "2024-08"
         }
       ]
     },
