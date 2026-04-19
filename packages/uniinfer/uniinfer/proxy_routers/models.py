@@ -13,6 +13,9 @@ from uniinfer.proxy_services.models_registry import (
     refresh_models_file,
     list_all_models_from_factories,
     update_provider_in_cache,
+    save_model_override,
+    load_model_overrides,
+    delete_model_override,
 )
 from uniinfer.core import ModelInfo
 import dataclasses
@@ -155,6 +158,27 @@ def create_models_router(version: str) -> APIRouter:
             raise HTTPException(status_code=401, detail=str(e))
         except Exception as e:
             raise HTTPException(status_code=500, detail=str(e))
+
+    @router.get("/v1/models/overrides")
+    async def get_model_overrides(api_bearer_token: str = Depends(validate_proxy_token)):
+        """Return all model overrides."""
+        return load_model_overrides()
+
+    @router.put("/v1/models/overrides/{model_id:path}")
+    async def put_model_override(model_id: str, body: dict, api_bearer_token: str = Depends(validate_proxy_token)):
+        """Save a model override. Fields: type, context_window, max_output, dimensions, cost, capabilities, name."""
+        allowed = {"type", "context_window", "max_output", "dimensions", "cost", "capabilities", "name", "modalities"}
+        override = {k: v for k, v in body.items() if k in allowed and v is not None}
+        if not override:
+            raise HTTPException(status_code=400, detail="No valid fields to update")
+        save_model_override(model_id, override)
+        return {"status": "ok", "model": model_id, "fields": list(override.keys())}
+
+    @router.delete("/v1/models/overrides/{model_id:path}")
+    async def del_model_override(model_id: str, api_bearer_token: str = Depends(validate_proxy_token)):
+        """Delete a model override."""
+        deleted = delete_model_override(model_id)
+        return {"status": "ok", "deleted": deleted}
 
     @router.get("/v1/system/info")
     async def get_system_info():
