@@ -21,6 +21,9 @@ class ModelInfo:
         context_window: Maximum context window in tokens.
         max_output: Maximum output tokens.
         dimensions: Embedding vector dimensions (only for embed models).
+        first_seen: Date (YYYY-MM-DD) when the model first appeared in our catalog.
+        deprecation_date: Date when the model was/will be deprecated (from provider API).
+        deprecation_replacement: Suggested replacement model ID (from provider API).
         modalities: Supported input/output modalities, e.g. {"input": ["text", "image"], "output": ["text"]}.
         capabilities: Model capabilities, e.g. {"reasoning": true, "tool_call": true, "vision": true}.
         cost: Pricing info, e.g. {"input": 2.5, "output": 10.0} (per 1M tokens USD).
@@ -36,6 +39,9 @@ class ModelInfo:
     context_window: int | None = None
     max_output: int | None = None
     dimensions: int | None = None
+    first_seen: str | None = None
+    deprecation_date: str | None = None
+    deprecation_replacement: str | None = None
     modalities: dict | None = None
     capabilities: dict | None = None
     cost: dict | None = None

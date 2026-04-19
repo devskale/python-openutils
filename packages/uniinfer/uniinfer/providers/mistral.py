@@ -108,6 +108,8 @@ class MistralProvider(OpenAICompatibleChatProvider):
                 name=model.get("name"),
                 type=mtype,
                 status=status,
+                deprecation_date=deprecation,
+                deprecation_replacement=model.get("deprecation_replacement_model"),
                 context_window=model.get("max_context_length"),
                 max_output=model.get("max_tokens"),
                 modalities={"input": input_mods, "output": output_mods},
