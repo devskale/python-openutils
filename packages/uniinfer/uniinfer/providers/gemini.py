@@ -264,6 +264,30 @@ class GeminiProvider(ChatProvider):
         api_params.update(provider_specific_kwargs)
         return api_params
 
+    def _extract_usage_and_finish_reason(self, response: Any) -> tuple[dict, str | None]:
+        """Extract usage and finish_reason from a Gemini response."""
+        usage = {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0}
+        finish_reason = None
+
+        # Usage from response.usage_metadata
+        um = getattr(response, 'usage_metadata', None)
+        if um:
+            usage["prompt_tokens"] = getattr(um, 'promptTokenCount', 0) or 0
+            usage["completion_tokens"] = getattr(um, 'candidatesTokenCount', 0) or 0
+            usage["total_tokens"] = getattr(um, 'totalTokenCount', 0) or 0
+            thoughts_tokens = getattr(um, 'thoughtsTokenCount', 0) or 0
+            if thoughts_tokens:
+                usage["completion_tokens_details"] = {"reasoning_tokens": thoughts_tokens}
+
+        # Finish reason from first candidate
+        candidates = getattr(response, 'candidates', None)
+        if candidates:
+            fr = getattr(candidates[0], 'finish_reason', None)
+            if fr:
+                finish_reason = fr.name if hasattr(fr, 'name') else str(fr)
+
+        return usage, finish_reason
+
     def _process_response_common(
         self,
         response: Any,
@@ -320,17 +344,13 @@ class GeminiProvider(ChatProvider):
             if function_calls:
                 tool_calls = function_calls
 
+        usage, finish_reason = self._extract_usage_and_finish_reason(response)
+
         message = ChatMessage(
             role="assistant",
             content=content_text if content_text else None,
             tool_calls=tool_calls
         )
-
-        usage = {
-            "prompt_tokens": 0,
-            "completion_tokens": 0,
-            "total_tokens": 0
-        }
 
         return ChatCompletionResponse(
             message=message,
@@ -338,7 +358,8 @@ class GeminiProvider(ChatProvider):
             model=model,
             usage=usage,
             raw_response=response,
-            thinking=thinking_content
+            thinking=thinking_content,
+            finish_reason=finish_reason
         )
 
     def _complete_impl(
@@ -477,14 +498,15 @@ class GeminiProvider(ChatProvider):
                         content=content_text if content_text else None,
                         tool_calls=tool_calls
                     )
-                    usage = {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0}
+                    usage, finish_reason = self._extract_usage_and_finish_reason(chunk)
                     yield ChatCompletionResponse(
                         message=message,
                         provider='gemini',
                         model=model,
                         usage=usage,
                         raw_response=chunk,
-                        thinking=thinking_content_chunk
+                        thinking=thinking_content_chunk,
+                        finish_reason=finish_reason
                     )
 
         except Exception as e:
