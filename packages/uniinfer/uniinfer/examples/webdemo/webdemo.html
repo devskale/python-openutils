@@ -492,6 +492,74 @@
       }
     });
 
+    // ─── Tool Definitions ──────────────────────────────────────────
+    const WEB_TOOLS = [
+      {
+        type: "function",
+        function: {
+          name: "web_search",
+          description: "Search the web for current information. Use when you need up-to-date facts, news, or topics not in your training data.",
+          parameters: {
+            type: "object",
+            properties: {
+              query: { type: "string", description: "Search query" },
+              max_results: { type: "number", description: "Max results (1-10)", default: 5 }
+            },
+            required: ["query"]
+          }
+        }
+      },
+      {
+        type: "function",
+        function: {
+          name: "fetch_url",
+          description: "Fetch and read the content of a webpage. Use when you need to read a specific URL, article, or documentation page.",
+          parameters: {
+            type: "object",
+            properties: {
+              url: { type: "string", description: "The URL to fetch" }
+            },
+            required: ["url"]
+          }
+        }
+      }
+    ];
+
+    function modelSupportsTools() {
+      const models = store.modelsByProvider[store.selectedProvider] || [];
+      const m = models.find(x => x.id === store.selectedModel);
+      return m?.capabilities?.tool_call || false;
+    }
+
+    async function executeToolCall(name, argsStr) {
+      let args;
+      try { args = typeof argsStr === "string" ? JSON.parse(argsStr) : argsStr; } catch { args = {}; }
+      try {
+        if (name === "web_search") {
+          const d = await apiJson(`/v1/tools/search?q=${encodeURIComponent(args.query || "")}&max_results=${args.max_results || 5}`);
+          return JSON.stringify({ results: d.results });
+        } else if (name === "fetch_url") {
+          const d = await apiJson(`/v1/tools/fetch?url=${encodeURIComponent(args.url || "")}`);
+          return d.content || "";
+        }
+        return JSON.stringify({ error: `Unknown tool: ${name}` });
+      } catch (e) {
+        return JSON.stringify({ error: e.detail || e.message });
+      }
+    }
+
+    function renderToolCall(name, argsStr, result) {
+      let args;
+      try { args = typeof argsStr === "string" ? JSON.parse(argsStr) : argsStr; } catch { args = {}; }
+      const icon = name === "web_search" ? "🔍" : "🌐";
+      const label = name === "web_search" ? `Search: ${args.query || ""}` : `Fetch: ${args.url || ""}`;
+      const preview = result ? (result.substring(0, 200) + (result.length > 200 ? "..." : "")) : "";
+      return `<div class="tool-call-card">
+        <div class="tool-call-header"><span>${icon} ${escapeHtml(label)}</span></div>
+        ${preview ? `<details class="tool-call-result"><summary>Result</summary><pre>${escapeHtml(result)}</pre></details>` : ""}
+      </div>`;
+    }
+
     // ─── Send Message ───────────────────────────────────────────────
     async function sendMessage(text) {
       const provider = store.selectedProvider, model = store.selectedModel;
@@ -507,35 +575,86 @@
       sendButton.style.display = "none"; stopButton.style.display = "flex";
       const assistantDiv = addMsg("...", "assistant");
       abortController = new AbortController();
-      let fullResponse = "", fullThinking = "";
+      const useTools = modelSupportsTools();
+
       try {
-        const resp = await apiFetch("/v1/chat/completions", {
-          method: "POST", headers: getHeaders(), signal: abortController.signal,
-          body: JSON.stringify({ model:`${provider}@${model}`, messages: store.chatHistory, stream:true, max_tokens: window.uniinferConfig.maxTokens || 4000 }),
-        });
-        if (!resp.body) throw new Error("Empty response");
-        const reader = resp.body.getReader(), decoder = new TextDecoder();
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-          for (const line of decoder.decode(value).split("\n").filter(l => l.startsWith("data: "))) {
-            const str = line.slice(6);
-            if (str === "[DONE]") break;
-            try {
-              const d = JSON.parse(str);
-              if (d.error) { assistantDiv.remove(); addMsg(d.error.message || JSON.stringify(d.error), "error"); return; }
-              const delta = d.choices?.[0]?.delta || {};
-              if (delta.content) fullResponse += delta.content;
-              if (delta.thinking || delta.reasoning_content) fullThinking += (delta.thinking || delta.reasoning_content);
-              let html = "";
-              if (fullThinking) html += `<details class="thinking-details"><summary class="thinking-badge">💭 Thinking</summary><div class="thinking-content">${escapeHtml(fullThinking)}</div></details>`;
-              if (fullResponse) html += renderMd(fullResponse);
-              assistantDiv.innerHTML = html || "";
-              chatContainer.scrollTop = chatContainer.scrollHeight;
-            } catch {}
+        // Loop: send to model, handle tool calls, re-send with results
+        let loopRound = 0;
+        while (loopRound++ < 5) {
+          const body = { model:`${provider}@${model}`, messages: store.chatHistory, stream:true, max_tokens: window.uniinferConfig.maxTokens || 4000 };
+          if (useTools) body.tools = WEB_TOOLS;
+
+          const resp = await apiFetch("/v1/chat/completions", {
+            method: "POST", headers: getHeaders(), signal: abortController.signal,
+            body: JSON.stringify(body),
+          });
+          if (!resp.body) throw new Error("Empty response");
+
+          const reader = resp.body.getReader(), decoder = new TextDecoder();
+          let fullResponse = "", fullThinking = "";
+          // Accumulate tool calls from stream
+          const toolCallMap = {}; // index -> { id, name, arguments }
+          let finishReason = null;
+
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            for (const line of decoder.decode(value).split("\n").filter(l => l.startsWith("data: "))) {
+              const str = line.slice(6);
+              if (str === "[DONE]") break;
+              try {
+                const d = JSON.parse(str);
+                if (d.error) { assistantDiv.remove(); addMsg(d.error.message || JSON.stringify(d.error), "error"); return; }
+                const choice = d.choices?.[0] || {};
+                const delta = choice.delta || {};
+                if (delta.content) fullResponse += delta.content;
+                if (delta.thinking || delta.reasoning_content) fullThinking += (delta.thinking || delta.reasoning_content);
+                if (choice.finish_reason) finishReason = choice.finish_reason;
+                // Accumulate tool calls
+                if (delta.tool_calls) {
+                  for (const tc of delta.tool_calls) {
+                    const idx = tc.index ?? 0;
+                    if (!toolCallMap[idx]) toolCallMap[idx] = { id: "", name: "", arguments: "" };
+                    if (tc.id) toolCallMap[idx].id = tc.id;
+                    if (tc.function?.name) toolCallMap[idx].name += tc.function.name;
+                    if (tc.function?.arguments) toolCallMap[idx].arguments += tc.function.arguments;
+                  }
+                }
+                // Render progress
+                let html = "";
+                if (fullThinking) html += `<details class="thinking-details"><summary class="thinking-badge">💭 Thinking</summary><div class="thinking-content">${escapeHtml(fullThinking)}</div></details>`;
+                if (fullResponse) html += renderMd(fullResponse);
+                assistantDiv.innerHTML = html || "";
+                chatContainer.scrollTop = chatContainer.scrollHeight;
+              } catch {}
+            }
           }
+
+          // No tool calls — final response
+          const toolCalls = Object.values(toolCallMap);
+          if (!toolCalls.length || finishReason !== "tool_calls") {
+            if (fullResponse) pushHistory({ role:"assistant", content:fullResponse });
+            break;
+          }
+
+          // Execute tool calls and show in chat
+          const toolMsgs = [];
+          let toolHtml = "";
+          if (fullThinking) toolHtml += `<details class="thinking-details"><summary class="thinking-badge">💭 Thinking</summary><div class="thinking-content">${escapeHtml(fullThinking)}</div></details>`;
+          for (const tc of toolCalls) {
+            assistantDiv.innerHTML = toolHtml + `<div class="tool-call-card"><div class="tool-call-header"><span class="spinner"></span> ${tc.name === "web_search" ? "🔍" : "🌐"} ${escapeHtml(tc.name)}...</span></div></div>`;
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+            const result = await executeToolCall(tc.name, tc.arguments);
+            toolHtml += renderToolCall(tc.name, tc.arguments, result);
+            assistantDiv.innerHTML = toolHtml;
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+            toolMsgs.push({ role: "tool", tool_call_id: tc.id, content: result });
+          }
+          // Add assistant tool_calls message and tool results to history
+          pushHistory({ role: "assistant", content: null, tool_calls: toolCalls.map(tc => ({ id: tc.id, type: "function", function: { name: tc.name, arguments: tc.arguments } })) });
+          store.chatHistory.push(...toolMsgs);
+          // Loop: send again with tool results (new assistantDiv not needed, we reuse)
         }
-        if (fullResponse) pushHistory({ role:"assistant", content:fullResponse });
         updateStats();
       } catch (e) {
         if (e.name !== "AbortError") { assistantDiv.remove(); addMsg(e.detail || e.message, "error"); }
