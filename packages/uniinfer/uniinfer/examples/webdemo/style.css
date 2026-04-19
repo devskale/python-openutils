@@ -1173,72 +1173,9 @@ select:disabled { color: var(--text-muted); opacity: 0.5; cursor: not-allowed; }
 ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
 ::-webkit-scrollbar-track { background: transparent; }
 
-/* ─── Web Tool Popups ──────────────────────────────────────── */
-.tool-popup {
-  position: fixed;
-  width: 420px;
-  max-width: 90vw;
-  background: var(--bg-color, #fff);
-  border: 1px solid var(--border-color, #e2e8f0);
-  border-radius: 12px;
-  box-shadow: 0 8px 30px rgba(0,0,0,0.12);
-  z-index: 100;
-  overflow: hidden;
-}
-.tool-popup-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 10px 14px;
-  font-weight: 600;
-  font-size: 14px;
-  border-bottom: 1px solid var(--border-color, #e2e8f0);
-  color: var(--text-color, #0f172a);
-}
-.tool-popup-close {
-  background: none; border: none; font-size: 18px; cursor: pointer;
-  color: var(--text-muted, #64748b); padding: 0 4px;
-}
-.tool-popup-close:hover { color: var(--text-color, #0f172a); }
-.tool-popup-body {
-  display: flex; gap: 8px; padding: 10px 14px;
-}
-.tool-popup-body input {
-  flex: 1; padding: 8px 10px; border: 1px solid var(--border-color, #e2e8f0);
-  border-radius: 8px; font-size: 13px; background: var(--input-bg, #f8fafc);
-  color: var(--text-color, #0f172a); outline: none;
-}
-.tool-popup-body input:focus { border-color: var(--accent-color, #3b82f6); }
-.btn-sm { padding: 6px 14px !important; font-size: 13px !important; }
-.tool-popup-results {
-  max-height: 320px;
-  overflow-y: auto;
-  padding: 0 14px 10px;
-}
-.tool-popup-status {
-  padding: 4px 14px 0;
-  font-size: 12px;
-  color: var(--text-muted, #64748b);
-}
-.tool-result-item {
-  display: block; padding: 8px 0; border-bottom: 1px solid var(--border-color, #e2e8f0);
-  text-decoration: none; color: inherit; cursor: pointer;
-}
-.tool-result-item:last-child { border-bottom: none; }
-.tool-result-item:hover .tool-result-title { color: var(--accent-color, #3b82f6); }
-.tool-result-title { font-size: 13px; font-weight: 500; color: var(--text-color, #0f172a); }
-.tool-result-url { font-size: 11px; color: var(--text-muted, #64748b); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.tool-result-snippet { font-size: 12px; color: var(--text-muted, #64748b); margin-top: 2px; line-height: 1.4; }
-.tool-empty, .tool-error { padding: 12px 0; font-size: 13px; color: var(--text-muted, #64748b); }
-.tool-error { color: #ef4444; }
-.tool-truncated { font-size: 11px; color: #f59e0b; margin: 6px 0; }
-.tool-fetch-preview {
-  font-size: 12px; line-height: 1.5; background: var(--input-bg, #f8fafc);
-  border: 1px solid var(--border-color, #e2e8f0);
-  border-radius: 8px; padding: 10px; max-height: 200px; overflow-y: auto;
-  white-space: pre-wrap; word-break: break-word; color: var(--text-color, #0f172a);
-  margin: 8px 0;
-}
+/* ─── Web Tool Toggles ──────────────────────────────────────── */
+.tool-toggle { opacity: 0.4; transition: opacity 0.2s, background 0.2s; }
+.tool-toggle.tool-active { opacity: 1; background: var(--accent-color, #3b82f6); color: #fff; border-radius: 6px; }
 
 /* ─── Tool Call Cards (in chat) ──────────────────────────────────── */
 .tool-call-card {
