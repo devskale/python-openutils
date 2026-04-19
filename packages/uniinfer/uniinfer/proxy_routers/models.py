@@ -61,6 +61,22 @@ def create_models_router(version: str) -> APIRouter:
         except Exception as e:
             raise HTTPException(status_code=500, detail=f"Failed to update models: {e}")
 
+    @router.get("/v1/models/new")
+    async def list_new_models(days: int = 7):
+        """List models first seen in the last N days."""
+        from datetime import datetime, timezone, timedelta
+        await ensure_fresh_models_file()
+        models = list_all_models_from_factories()
+        cutoff = (datetime.now(timezone.utc) - timedelta(days=days)).strftime("%Y-%m-%d")
+        new = [m for m in models if m.get("first_seen", "") >= cutoff]
+        return {
+            "object": "list",
+            "data": new,
+            "total": len(new),
+            "since": cutoff,
+            "days": days,
+        }
+
     @router.get("/v1/providers")
     async def get_providers(api_bearer_token: str = Depends(validate_proxy_token)):
         try:

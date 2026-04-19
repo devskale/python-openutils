@@ -10,6 +10,7 @@ from uniinfer import (
 )
 from credgoo import get_api_key
 import argparse
+import json
 import random
 import time
 import base64
@@ -97,8 +98,41 @@ def main():
     parser.add_argument('--version', action='version',
                         version='%(prog)s ' + version('uniinfer'),
                         help="Show program's version number and exit")
+    parser.add_argument('--new-models', type=int, nargs='?', const=7, metavar='DAYS',
+                        help='List models first seen in the last N days (default: 7)')
 
     args = parser.parse_args()
+
+    if args.new_models:
+        from datetime import datetime, timezone, timedelta
+        from pathlib import Path
+        models_json = Path(__file__).parent / "models" / "models.json"
+        if not models_json.exists():
+            print("models.json not found. Run scripts/generate_models.py first.")
+            return
+        with open(models_json) as f:
+            data = json.load(f)
+        days = args.new_models
+        cutoff = (datetime.now(timezone.utc) - timedelta(days=days)).strftime("%Y-%m-%d")
+        new = []
+        for pid, pdata in data["providers"].items():
+            for m in pdata["models"]:
+                if m.get("first_seen", "") >= cutoff:
+                    new.append((pid, m))
+        if not new:
+            print(f"No new models in the last {days} days.")
+            return
+        print(f"New models since {cutoff} ({len(new)}):")
+        for pid, m in new:
+            ctx = m.get("context_window", "")
+            cost = m.get("cost", "")
+            parts = [f"{pid}/{m['id']}", f"type={m.get('type', '?')}"]
+            if ctx:
+                parts.append(f"ctx={ctx}")
+            if cost:
+                parts.append(f"cost={cost}")
+            print(f"  {'  '.join(parts)}")
+        return
 
     # Retrieve credentials: prioritize CLI args, then environment variables
     credgoo_encryption_token = args.encryption_key or os.getenv(
@@ -589,7 +623,7 @@ def main():
     tool_choice = None
     if args.tools_file:
         try:
-            import json
+            # json already imported at top level
             with open(args.tools_file, 'r', encoding='utf-8') as f:
                 tools_data = json.load(f)
             if isinstance(tools_data, dict):
@@ -602,7 +636,7 @@ def main():
     if args.tool_choice:
         tc = args.tool_choice
         try:
-            import json
+            # json already imported at top level
             tool_choice = json.loads(tc)
         except Exception:
             tool_choice = tc

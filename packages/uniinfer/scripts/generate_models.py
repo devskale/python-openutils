@@ -15,6 +15,7 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent
 OUTPUT_PATH = PROJECT_ROOT / "uniinfer" / "models" / "models.json"
 MODELS_DEV_CACHE = PROJECT_ROOT / "scripts" / "_models_dev_cache.json"
 MODELS_DEV_URL = "https://models.dev/api.json"
+MODEL_HISTORY_PATH = PROJECT_ROOT / "uniinfer" / "models" / "_model_history.json"
 
 UNIINFER_TO_MODELS_DEV = {
     "openai": "openai",
@@ -181,6 +182,48 @@ def _build_dev_lookup(dev_models: dict) -> dict[str, dict]:
     return lookup
 
 
+def load_model_history() -> dict[str, str]:
+    """Load {provider/model_id: first_seen_date} from history file."""
+    if MODEL_HISTORY_PATH.exists():
+        with open(MODEL_HISTORY_PATH) as f:
+            return json.load(f)
+    return {}
+
+
+def save_model_history(history: dict[str, str]) -> None:
+    MODEL_HISTORY_PATH.parent.mkdir(parents=True, exist_ok=True)
+    with open(MODEL_HISTORY_PATH, "w") as f:
+        json.dump(history, f, indent=2, sort_keys=True)
+
+
+def update_model_history(
+    history: dict[str, str],
+    current_providers: dict[str, dict],
+    today: str,
+) -> tuple[dict[str, str], list[dict]]:
+    """Update history with current models, return (updated_history, deprecated_models).
+
+    - New models get first_seen = today
+    - Models in history but not in current_models are returned as deprecated
+    """
+    current_keys = set()
+    for pid, pdata in current_providers.items():
+        for m in pdata["models"]:
+            key = f"{pid}/{m['id']}"
+            current_keys.add(key)
+            if key not in history:
+                history[key] = today
+
+    deprecated = []
+    for key, first_seen in history.items():
+        if key not in current_keys:
+            pid, mid = key.split("/", 1)
+            deprecated.append({"id": mid, "provider": pid, "first_seen": first_seen, "last_seen": today})
+            del history[key]
+
+    return history, deprecated
+
+
 def merge_models_dev(models: list[dict], dev_provider: dict) -> list[dict]:
     """Enrich models with models.dev data.
 
@@ -306,6 +349,10 @@ def main():
     models_dev = fetch_models_dev()
     dev_providers_used = set()
 
+    model_history = load_model_history()
+    today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    new_models_count = 0
+
     result = {}
     total_models = 0
 
@@ -348,6 +395,36 @@ def main():
         else:
             log.info("  → 0 models (skipped)")
 
+    # Track first_seen and detect deprecated models
+    model_history, deprecated_models = update_model_history(model_history, result, today)
+
+    # Apply first_seen to all models
+    for pid, pdata in result.items():
+        for m in pdata["models"]:
+            key = f"{pid}/{m['id']}"
+            m["first_seen"] = model_history.get(key, today)
+
+    # Check for newly seen models
+    new_models = [k for k in {f"{pid}/{m['id']}" for pid, pd in result.items() for m in pd["models"]} if model_history[k] == today]
+    new_models_count = len(new_models)
+    if new_models:
+        log.info("\nNew models (%d):", new_models_count)
+        for k in sorted(new_models)[:20]:
+            log.info("  + %s", k)
+        if new_models_count > 20:
+            log.info("  ... and %d more", new_models_count - 20)
+
+    # Report deprecated models
+    if deprecated_models:
+        log.info("\nDeprecated models (%d):", len(deprecated_models))
+        for dm in deprecated_models[:20]:
+            log.info("  - %s/%s (first_seen: %s)", dm["provider"], dm["id"], dm["first_seen"])
+        if len(deprecated_models) > 20:
+            log.info("  ... and %d more", len(deprecated_models) - 20)
+
+    save_model_history(model_history)
+    log.info("Saved model history (%d entries)", len(model_history))
+
     output = {
         "_meta": {
             "version": "1.0.0",
@@ -356,6 +433,8 @@ def main():
             "models_dev_providers": sorted(dev_providers_used),
             "total_models": total_models,
             "total_providers": len(result),
+            "new_models": new_models_count,
+            "deprecated_models": len(deprecated_models),
         },
         "providers": result,
     }
