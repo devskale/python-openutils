@@ -280,7 +280,9 @@ class GeminiProvider(ChatProvider):
                         parameters=func_def.get("parameters")
                     )
                 )
-            api_params["tools"] = [Tool(function_declarations=tool_declarations)]
+            existing = config.model_dump(exclude_none=True)
+            existing["tools"] = [Tool(function_declarations=tool_declarations)]
+            api_params["config"] = types.GenerateContentConfig(**existing)
 
         api_params.update(provider_specific_kwargs)
         return api_params
