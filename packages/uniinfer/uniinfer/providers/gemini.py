@@ -36,7 +36,7 @@ class GeminiProvider(ChatProvider):
         resolved_key = api_key
         if not resolved_key:
             try:
-                from credgoo.credgoo import get_api_key
+                from credgoo import get_api_key
                 resolved_key = get_api_key("gemini")
             except (ImportError, Exception):
                 pass
@@ -89,7 +89,7 @@ class GeminiProvider(ChatProvider):
         from ..core import ModelInfo
         if not api_key:
             try:
-                from credgoo.credgoo import get_api_key
+                from credgoo import get_api_key
                 api_key = get_api_key('gemini')
             except (ImportError, Exception):
                 pass

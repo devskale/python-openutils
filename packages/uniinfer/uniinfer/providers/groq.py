@@ -31,7 +31,7 @@ class GroqProvider(ChatProvider):
             **kwargs: Additional configuration options.
         """
         if not api_key:
-            from credgoo.credgoo import get_api_key
+            from credgoo import get_api_key
             api_key = get_api_key("groq")
 
         super().__init__(api_key)
@@ -231,7 +231,7 @@ class GroqProvider(ChatProvider):
             api_key = os.getenv("GROQ_API_KEY")
         if not api_key:
             try:
-                from credgoo.credgoo import get_api_key
+                from credgoo import get_api_key
                 api_key = get_api_key("groq")
             except ImportError:
                 api_key = None  # credgoo not available

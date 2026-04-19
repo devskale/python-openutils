@@ -29,7 +29,7 @@ class SambanovaProvider(OpenAICompatibleChatProvider):
         """List available models from SambaNova."""
         if api_key is None:
             try:
-                from credgoo.credgoo import get_api_key
+                from credgoo import get_api_key
                 api_key = get_api_key("sambanova")
             except ImportError:
                 api_key = None

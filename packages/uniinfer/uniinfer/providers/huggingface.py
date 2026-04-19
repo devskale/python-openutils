@@ -74,7 +74,7 @@ class HuggingFaceProvider(ChatProvider):
                 return []
 
             if not api_key:
-                from credgoo.credgoo import get_api_key
+                from credgoo import get_api_key
                 api_key = get_api_key("huggingface")
 
             hf_api = HfApi(token=api_key)

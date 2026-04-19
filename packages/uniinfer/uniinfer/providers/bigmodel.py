@@ -69,7 +69,7 @@ class ZAIBaseProvider(ChatProvider):
     def __init__(self, api_key: Optional[str] = None, base_url: Optional[str] = None, **kwargs):
         if not api_key:
             try:
-                from credgoo.credgoo import get_api_key
+                from credgoo import get_api_key
                 api_key = get_api_key(self.CREDGOO_SERVICE)
             except Exception:
                 api_key = None

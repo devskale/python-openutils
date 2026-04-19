@@ -1,150 +1,65 @@
 # Credgoo
 
-> **For coding agents:** `cd packages/credgoo && uv sync` then `from credgoo import get_api_key`.
+Secure API key manager backed by Google Sheets.
 
-[![Python Version](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/downloads/)
-[![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](../LICENSE)
+Keys are stored encrypted in a Google Sheet, fetched over HTTPS, and cached locally at `~/.config/api_keys/`.
 
-**The Secure Credentials Manager for Everywhere.**
-
-Credgoo is a powerful credentials manager that allows you to securely add and maintain API keys in Google Sheets using an encrypted Apps Script integration, making them available everywhere you work.
-
-## Overview
-
-Credgoo transforms your Google Sheets into a secure, centralized vault for your API keys and secrets. By leveraging an encrypted Google Apps Script integration, you can easily manage credentials in a familiar interface and access them securely across all your environments.
-
-Whether you are developing locally, deploying to a staging server, or running in production, Credgoo ensures your credentials are always available, encrypted, and up-to-date. With built-in local caching, you get the convenience of cloud management with the speed and reliability of local access.
-
-## Features
-
-- **Use Everywhere**: Access your credentials seamlessly across local, dev, and production environments.
-- **Secure Google Sheets Integration**: Manage keys in Google Sheets with a secure, encrypted Apps Script backend.
-- **End-to-End Encryption**: Credentials are encrypted during transmission and storage.
-- **Smart Local Caching**: High-performance caching with restrictive permissions (0600) to minimize API calls.
-- **Centralized Control**: Update secrets in one place and have them propagate everywhere.
-- **Developer Friendly**: Simple CLI and Python API for instant integration.
-
-## Installation
-
-```bash
-# From this repo (creates venv, installs deps)
-cd packages/credgoo && uv sync
-```
-
-## Add to Your Project
+## Install
 
 ```bash
 uv add credgoo
 ```
 
-Then use it anywhere in your code:
+## Python usage
 
 ```python
 from credgoo import get_api_key
 
-key = get_api_key("openai")
+api_key = get_api_key("openai")  # returns str or None
 ```
 
-## Usage
+That's the entire API. Call `get_api_key()` with a service name, get the key back.
 
-### Command Line Interface
+## CLI usage
 
 ```bash
-credgoo SERVICE_NAME --token BEARER_TOKEN --key ENCRYPTION_KEY
+credgoo openai              # print the API key (cached or fresh)
+credgoo openai --update     # force fresh fetch + update cache (after key rotation)
+credgoo openai --no-cache   # force fresh fetch without updating cache
+credgoo --setup             # interactive first-time setup
+credgoo --version           # show version
 ```
 
-Optional arguments:
+## How it works
 
-- `--url`: Custom Google Apps Script URL (defaults to built-in URL)
-- `--cache-dir`: Custom cache directory (defaults to ~/.config/api_keys)
-- `--no-cache`: Bypass cache and force retrieval from Google Sheets
-- `--update`: Update cached key: checks if another key is online, updates it, and provides verbose output if the online key has changed.
-- `--save {all,token,key,url,none}`: Specify which credentials to persist (default: `all`). Use `token`, `key`, or `url` to save specific parts, or `none` to disable saving.
+1. First call fetches the encrypted key from your Google Sheet via Apps Script
+2. Decrypts it in memory and caches it locally (`~/.config/api_keys/api_keys.json`)
+3. Subsequent calls return from cache — no network needed
 
-### Python API
+## First-time setup
 
-```python
-from credgoo import get_api_key
-
-# Basic usage
-# uses cached keys if available
-api_key = get_api_key("service_name")
-
-# With custom cache directory
-api_key = get_api_key("service_name",
-                      bearer_token="your_token",
-                      encryption_key="your_key",
-                      cache_dir="/path/to/cache")
-
-# Force fresh retrieval (bypass cache)
-api_key = get_api_key("service_name",
-                      bearer_token="your_token",
-                      encryption_key="your_key",
-                      no_cache=True)
+```bash
+credgoo --setup
 ```
 
-### Credential Storage
+Interactive prompt for:
+- **Bearer token** — authenticates with your Google Apps Script
+- **Encryption key** — decrypts the stored keys
+- **Apps Script URL** — your Google Sheet endpoint
 
-Credentials can be stored securely for future use:
+After setup, all `get_api_key()` calls work automatically. No config in code needed.
 
-```python
-from credgoo import store_credentials
-from pathlib import Path
+## Security
 
-store_credentials("your_token", "your_key", "optional_url", Path("~/.config/api_keys/credgoo.txt"))
-```
+- Keys are encrypted (XOR + Base64) before caching
+- Cache files use `0o600` (owner-only) permissions
+- Credentials stored at `~/.config/api_keys/credgoo.txt` (also `0o600`)
+- Never log or print plaintext keys
 
-### Caching Behavior
+## Google Apps Script setup
 
-By default, retrieved keys are cached in `~/.config/api_keys/api_keys.json` with restrictive permissions (0600). The cache:
-
-- Is automatically used for subsequent requests
-- Can be bypassed with `--no-cache` flag
-- Stores keys with restrictive permissions (0600)
-- Includes timestamp of when each key was retrieved
-
-## Security Notes
-
-- Always protect your encryption key and bearer token
-- Recommended to store credentials in secure locations
-- Cache files have restrictive permissions (0600)
-- Consider rotating credentials periodically
-
-## Why Credgoo is Great
-
-Credgoo provides a secure and convenient way to manage your API keys:
-
-**Personal Secure Storage**
-
-- Your keys are stored in your personal Google Sheet, not on some third-party server
-- Only you have access to your spreadsheet (Google account protected)
-
-**Double-Layer Security**
-
-- Protected by both a SECRET_TOKEN (authentication)
-- And an ENCRYPTION_KEY (data security)
-- Both are required to access your credentials
-
-**Encrypted Transmission**
-
-- Keys are encrypted before being sent over the network
-- Uses robust encryption with unique initialization vectors
-
-**CLI Integration**
-
-- Easy to use from command line with automatic decryption
-- No keys stored in plaintext in your local environment
-
-**Centralized Management**
-
-- Update keys in one place (your spreadsheet)
-- Changes are immediately available everywhere
-- No need to update multiple config files
-
-## Google Apps Script Setup
-
-See [appscript/README.md](appscript/README.md) for instructions on setting up the Google Apps Script integration.
+See [appscript/README.md](appscript/README.md) for setting up the Google Sheet backend.
 
 ## License
 
-MIT - see [LICENSE](../LICENSE) for details.
+MIT
