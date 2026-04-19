@@ -150,8 +150,10 @@ def complete(
 - `uniinfer/models/models.json`: Generated model catalog (rich metadata for all providers)
 - `uniinfer/models/type_overrides.json`: Curated model type assignments (edit this to fix types)
 - `uniinfer/models/_model_history.json`: first_seen date tracking (auto-managed)
+- `uniinfer/models/_speed_results.json`: Speed test results (auto-managed by `--speedtest` CLI)
 - `scripts/generate_models.py`: Regenerates models.json from live provider APIs + models.dev
-- `uniinfer/proxy_routers/models.py`: Proxy endpoints for models, new models, deprecated models
+- `uniinfer/proxy_routers/models.py`: Proxy endpoints for models, new models, deprecated models, version
+- `uniinfer/proxy_services/models_registry.py`: Model loading, caching, override persistence
 - `uniinfer/errors.py`: Error handling
 - `uniinfer/factory.py`, `embedding_factory.py`: Factories
 - `uniinfer/tests/test_*.py`: Tests
@@ -185,13 +187,18 @@ See `docs/models.md` for full details.
 uniinfer --new-models           # models first seen in last 7 days
 uniinfer --new-models 30        # last 30 days
 uniinfer --deprecated-models   # deprecated models with dates + replacements
+uniinfer --speedtest -p tu -m qwen-coder-30b  # speed test a model
+uniinfer --speedtest -p openrouter --models m1 m2 --runs 3  # multiple models, averaged
 ```
 
 **Proxy endpoints:**
-- `GET /v1/models` — all models from cache
+- `GET /v1/models` — all models from cache (includes `version` and `speed` fields)
 - `GET /v1/models/{provider}` — live provider models
 - `GET /v1/models/new?days=7` — recently added models
 - `GET /v1/models/deprecated` — deprecated models
+- `GET /v1/system/version` — package version
+- `POST /v1/system/update-models` — trigger models.json regeneration
+- `GET/PUT/DELETE /v1/models/overrides[/{model_id}]` — runtime model metadata overrides
 
 ### Provider Implementation Pattern
 

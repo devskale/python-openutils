@@ -9,6 +9,7 @@ uniinfer/models/
   models.json            # Generated catalog (DO NOT edit manually)
   type_overrides.json    # Curated model type assignments (edit this)
   _model_history.json    # first_seen tracking (auto-managed by generator)
+  _speed_results.json    # Speed test results (auto-managed by --speedtest CLI)
 scripts/
   generate_models.py     # Regenerates models.json from live APIs + models.dev
   explore_models_dev.py  # Explore models.dev mapping and data
@@ -191,15 +192,37 @@ uniinfer --new-models 30    # last 30 days
 
 # List all deprecated models with deprecation date and replacement
 uniinfer --deprecated-models
+
+# Speed test one or more models
+uniinfer --speedtest -p tu -m qwen-coder-30b
+uniinfer --speedtest -p openrouter --models google/gemma-4-26b-a4b-it:free meta-llama/llama-3.3-70b-instruct:free
+uniinfer --speedtest -p zai-code --models glm-4.7 glm-5 --runs 3
 ```
+
+### Speed Test
+
+The `--speedtest` command measures per-model performance and persists results to `_speed_results.json`. Results are merged into `models.json` on next regeneration and exposed via `/v1/models` as the `speed` field.
+
+Measured metrics:
+- **TFT** (time to first token): seconds until first text token arrives
+- **TFT thinking**: seconds until first thinking token (for thinking models)
+- **Thinking tokens**: reasoning token count (from `usage.completion_tokens_details.reasoning_tokens` or char-based estimate)
+- **Text tokens**: output text token count
+- **Total tokens**: thinking + text
+- **tok/s**: tokens per second (generation speed)
+- **Wall time**: total request duration
+
+Prompts are auto-generated from a pool of German ML questions. Multiple runs (`--runs N`) produce averaged results.
 
 ## Proxy Endpoints
 
 | Endpoint | Description |
 |----------|-------------|
-| `GET /v1/models` | All models from cache (auto-refresh if stale) |
+| `GET /v1/models` | All models from cache (auto-refresh if stale, includes `version` field) |
 | `GET /v1/models/{provider}` | Live provider models (updates cache) |
 | `GET /v1/models/new?days=7` | Models first seen in last N days |
 | `GET /v1/models/deprecated` | Deprecated models with deprecation info |
+| `GET /v1/system/version` | Package version |
+| `POST /v1/system/update-models` | Trigger models.json regeneration |
 
 `models.txt` is deprecated — `models.json` is the single source of truth.
