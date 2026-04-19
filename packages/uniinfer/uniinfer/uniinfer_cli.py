@@ -190,9 +190,12 @@ def _speedtest(args):
                 parts.append(f"tft_think={avg['tft_thinking']:.2f}s")
             if avg.get("thinking_tokens"):
                 parts.append(f"think_tok={avg['thinking_tokens']:.0f}")
-            parts.append(f"text_tok={avg['text_tokens']:.0f}")
-            parts.append(f"total={avg['total_tokens']:.0f}")
-            parts.append(f"tok/s={avg['tok_per_sec']:.1f}")
+            if avg.get("text_tokens"):
+                parts.append(f"text_tok={avg['text_tokens']:.0f}")
+            if avg.get("total_tokens"):
+                parts.append(f"total={avg['total_tokens']:.0f}")
+            if avg.get("tok_per_sec"):
+                parts.append(f"tok/s={avg['tok_per_sec']:.1f}")
             parts.append(f"wall={avg['wall_time']:.2f}s")
             if avg.get("finish_reason"):
                 parts.append(f"({avg['finish_reason']})")
