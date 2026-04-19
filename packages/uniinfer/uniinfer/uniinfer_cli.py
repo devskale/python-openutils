@@ -46,7 +46,7 @@ SPEED_QUESTIONS = [
 SPEED_RESULTS_PATH = Path(__file__).parent / "models" / "_speed_results.json"
 
 
-def _run_speedtest(provider_name, model, prompt, api_key, extra_params):
+def _run_speedtest(provider_name, model, prompt, api_key, extra_params, max_tokens=1000):
     from uniinfer import ChatMessage, ChatCompletionRequest
 
     kwargs = {k: v for k, v in extra_params.items() if k in ("base_url", "account_id")}
@@ -62,7 +62,7 @@ def _run_speedtest(provider_name, model, prompt, api_key, extra_params):
         return {"error": f"provider init: {e}"}
 
     messages = [ChatMessage(role="user", content=prompt)]
-    request = ChatCompletionRequest(messages=messages, model=model, streaming=True)
+    request = ChatCompletionRequest(messages=messages, model=model, streaming=True, max_tokens=max_tokens)
 
     start = time.time()
     first_token_time = None
@@ -151,7 +151,7 @@ def _speedtest(args):
         run_results = []
         for run in range(1, runs + 1):
             prompt = random.choice(SPEED_QUESTIONS)
-            r = _run_speedtest(provider, model, prompt, api_key, extra_params)
+            r = _run_speedtest(provider, model, prompt, api_key, extra_params, max_tokens=args.max_tokens)
             if "error" in r:
                 print(f"  run {run}: ERROR - {r['error']}")
                 run_results.append(None)

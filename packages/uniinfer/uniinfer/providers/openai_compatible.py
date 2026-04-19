@@ -110,7 +110,8 @@ class OpenAICompatibleChatProvider(ChatProvider):
                 tool_call_id=message_data.get("tool_call_id"),
             )
             # Handle reasoning_content (OpenAI o1/o3, Groq R1, etc.)
-            reasoning_content = message_data.get("reasoning_content")
+            # Also handle NGC 'reasoning' and Ollama 'thinking' fields
+            reasoning_content = message_data.get("reasoning_content") or message_data.get("reasoning") or message_data.get("thinking")
 
             return ChatCompletionResponse(
                 message=message,
@@ -186,7 +187,8 @@ class OpenAICompatibleChatProvider(ChatProvider):
                     role = delta.get("role", "assistant")
                     content = delta.get("content")
                     # Handle reasoning_content (OpenAI o1/o3, Groq R1, etc.)
-                    reasoning_content = delta.get("reasoning_content")
+                    # Also handle NGC 'reasoning' and Ollama 'thinking' fields
+                    reasoning_content = delta.get("reasoning_content") or delta.get("reasoning") or delta.get("thinking")
                     tool_calls = delta.get("tool_calls")
 
                     if content is None and reasoning_content is None and tool_calls is None and finish_reason is None:
