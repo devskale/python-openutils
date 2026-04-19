@@ -1,6 +1,6 @@
 // UniInfer WebDemo Configuration
 window.uniinferConfig = {
   apiBaseUrl: window.location.origin,
-  apiKey: "test23@test34",
+  apiKey: "",
   maxTokens: 4000,
 };

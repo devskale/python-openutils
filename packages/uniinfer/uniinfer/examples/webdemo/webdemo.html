@@ -557,7 +557,7 @@
 
     // ─── Web Tools ─────────────────────────────────────────────────
     function showToolPopup(id) {
-      $(".tool-popup").forEach(p => p.style.display = "none");
+      $$(".tool-popup").forEach(p => p.style.display = "none");
       const popup = $("#" + id);
       const btn = id === "web-search-popup" ? $("#web-search-btn") : $("#fetch-url-btn");
       const rect = btn.getBoundingClientRect();
@@ -570,11 +570,11 @@
       if (id === "web-search-popup") { $("#web-search-results").innerHTML = ""; }
       if (id === "fetch-url-popup") { $("#fetch-url-result").innerHTML = ""; $("#fetch-url-status").textContent = ""; }
     }
-    function hideToolPopups() { $(".tool-popup").forEach(p => p.style.display = "none"); }
+    function hideToolPopups() { $$(".tool-popup").forEach(p => p.style.display = "none"); }
 
     $("#web-search-btn").addEventListener("click", () => showToolPopup("web-search-popup"));
     $("#fetch-url-btn").addEventListener("click", () => showToolPopup("fetch-url-popup"));
-    $(".tool-popup-close").forEach(btn => btn.addEventListener("click", () => $("#" + btn.dataset.popup).style.display = "none"));
+    $$(".tool-popup-close").forEach(btn => btn.addEventListener("click", () => $("#" + btn.dataset.popup).style.display = "none"));
     document.addEventListener("click", e => {
       if (!e.target.closest(".tool-popup") && !e.target.closest("#web-search-btn") && !e.target.closest("#fetch-url-btn")) hideToolPopups();
     });
