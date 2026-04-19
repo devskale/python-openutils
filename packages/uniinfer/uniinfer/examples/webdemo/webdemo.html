@@ -70,7 +70,7 @@
         <div class="select-group select-group--model">
           <label>Model</label>
           <div class="model-select-wrapper">
-            <input type="text" id="model-search" placeholder="Search models..." autocomplete="off" />
+            <div class="search-input-wrap"><input type="text" id="model-search" placeholder="Search models..." autocomplete="off" /><button class="search-clear" data-target="model-search" style="display:none">×</button></div>
             <div id="model-dropdown" class="model-dropdown"></div>
           </div>
           <button id="selected-model-info" class="model-info-btn" title="Model details" style="display:none">ⓘ</button>
@@ -115,7 +115,7 @@
     <div id="models-section" class="section" style="display:none">
       <div class="models-toolbar">
         <div class="models-search">
-          <input type="text" id="models-browser-search" placeholder="Search models..." />
+          <div class="search-input-wrap"><input type="text" id="models-browser-search" placeholder="Search models..." /><button class="search-clear" data-target="models-browser-search" style="display:none">×</button></div>
         </div>
         <div class="models-filters">
           <button class="filter-btn active" data-filter="all">All</button>
@@ -256,6 +256,19 @@
     const modelInfoBar = $("#model-info-bar");
     const modelInfoBtn = $("#selected-model-info");
     let abortController = null;
+
+    // ─── Search clear buttons ─────────────────────────────────────────
+    $$(".search-clear").forEach(btn => {
+      const input = $("#" + btn.dataset.target);
+      const update = () => { btn.style.display = input.value ? "flex" : "none"; };
+      input.addEventListener("input", update);
+      btn.addEventListener("click", () => {
+        input.value = "";
+        input.focus();
+        update();
+        input.dispatchEvent(new Event("input"));
+      });
+    });
 
     // ─── Util ───────────────────────────────────────────────────────
     function escapeHtml(s) {
