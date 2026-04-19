@@ -26,6 +26,38 @@ Monorepo for Python utility packages.
 - `packages/credgoo/` - Secure API key retrieval from Google Sheets with local caching
 - `packages/uniinfer/` - Unified LLM inference interface across 20+ providers
 
+## Dependency flow
+
+```
+credgoo ←── uniinfer (local path within this repo)
+  ↑              ↑
+  └──────────── python-utils packages (via git URL from GitHub)
+```
+
+### Within this repo: use local paths
+
+uniinfer depends on credgoo via `path =` source:
+```toml
+[tool.uv.sources]
+credgoo = { path = "../credgoo", editable = true }
+```
+
+### External repos (python-utils): use git URLs
+
+See python-utils/AGENTS.md for the full guide. Pattern:
+```toml
+[tool.uv.sources]
+credgoo = { git = "https://github.com/devskale/python-openutils.git", subdirectory = "packages/credgoo" }
+uniinfer = { git = "https://github.com/devskale/python-openutils.git", subdirectory = "packages/uniinfer" }
+```
+
+### When to bump versions
+
+After changing credgoo or uniinfer:
+1. Commit and push to `main` on python-openutils
+2. In python-utils: `cd packages/THAT_PACKAGE && uv lock -U` to pick up the new commit
+3. Deploy: `pushto` runs `uvinit.sh` which does `uv sync` from the pinned lockfile
+
 ## Environment Setup
 
 ```bash
