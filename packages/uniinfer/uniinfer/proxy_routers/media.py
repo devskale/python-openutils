@@ -11,7 +11,7 @@ from fastapi.responses import JSONResponse, Response
 from pydantic import BaseModel, Field
 
 from uniinfer.auth import get_optional_proxy_token, verify_provider_access
-from uniinfer.uniioai import get_provider_api_key, list_models_for_provider
+from uniinfer.uniioai import get_provider_api_key, list_model_names_for_provider
 
 
 logger = logging.getLogger("uniioai_proxy")
@@ -88,7 +88,7 @@ def create_media_router(
                 if not token_for_tu:
                     raise HTTPException(status_code=401, detail="Authentication required for provider 'tu'")
 
-                raw_models = list_models_for_provider("tu", token_for_tu)
+                raw_models = list_model_names_for_provider("tu", token_for_tu)
                 image_markers = ("image", "z-image", "dall-e", "stable-diffusion", "sdxl", "flux")
                 models = sorted(set(m for m in raw_models if any(marker in m.lower() for marker in image_markers)))
             else:

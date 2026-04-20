@@ -423,13 +423,26 @@ def main():
             # Merge speed test results
             models = merge_speed_results(models, provider_id)
 
-            result[provider_id] = {
-                "provider_class": cls.__name__,
-                "kind": kind,
-                "models": models,
-            }
-            total_models += len(models)
-            log.info("  → %d models", len(models))
+            if provider_id in result:
+                # Merge models from a second factory (e.g. embed) for the same provider.
+                # Deduplicate by model ID, preferring the first (chat) entry.
+                existing_ids = {m["id"] for m in result[provider_id]["models"]}
+                added = 0
+                for m in models:
+                    if m["id"] not in existing_ids:
+                        result[provider_id]["models"].append(m)
+                        existing_ids.add(m["id"])
+                        added += 1
+                total_models += added
+                log.info("  → merged %d new models (total %d)", added, len(result[provider_id]["models"]))
+            else:
+                result[provider_id] = {
+                    "provider_class": cls.__name__,
+                    "kind": kind,
+                    "models": models,
+                }
+                total_models += len(models)
+                log.info("  → %d models", len(models))
         else:
             log.info("  → 0 models (skipped)")
 
