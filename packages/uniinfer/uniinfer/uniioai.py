@@ -432,6 +432,16 @@ def list_models_for_provider(provider_name: str, api_bearer_token: str) -> list[
     return modellist
 
 
+def list_model_names_for_provider(provider_name: str, api_bearer_token: str) -> list[str]:
+    """Return model ID strings for the given provider.
+
+    Convenience wrapper around list_models_for_provider that always returns
+    plain strings regardless of whether the provider returns ModelInfo objects.
+    """
+    modellist = list_models_for_provider(provider_name, api_bearer_token)
+    return [m.id if hasattr(m, 'id') else str(m) for m in modellist]
+
+
 # Example Usage
 if __name__ == "__main__":
     test_credgootoken = f"{os.getenv('CREDGOO_BEARER_TOKEN')}@{os.getenv('CREDGOO_ENCRYPTION_KEY')}"

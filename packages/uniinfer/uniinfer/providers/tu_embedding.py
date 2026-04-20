@@ -41,7 +41,13 @@ class TuAIEmbeddingProvider(EmbeddingProvider):
             response = requests.get(url, headers=headers)
             if response.status_code == 200:
                 data = response.json()
-                return [ModelInfo(id=model["id"], type="embed", owned_by=model.get("owned_by"), raw=model) for model in data.get("data", [])]
+                results = []
+                for model in data.get("data", []):
+                    mid = model["id"]
+                    m = ModelInfo(id=mid, owned_by=model.get("owned_by"), created=model.get("created"), raw=model)
+                    m.type = m.derive_type()
+                    results.append(m)
+                return results
         except Exception:
             pass
         return []
