@@ -1086,6 +1086,27 @@ select:disabled { color: var(--text-muted); opacity: 0.5; cursor: not-allowed; }
 #image-results img:hover { transform: scale(1.02); box-shadow: 0 20px 50px -10px rgba(0,0,0,0.2); }
 
 .image-card { background: transparent; }
+.img-download-btn {
+  position: absolute;
+  bottom: 12px;
+  right: 12px;
+  background: rgba(255,255,255,0.92);
+  border: 1px solid rgba(0,0,0,0.08);
+  border-radius: 50%;
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.12);
+  transition: all 0.2s ease;
+  z-index: 10;
+  opacity: 0;
+  color: #334155;
+}
+.image-card:hover .img-download-btn { opacity: 1; }
+.img-download-btn:hover { background: #fff; box-shadow: 0 6px 20px rgba(0,0,0,0.18); transform: scale(1.08); }
 .image-card-label {
   padding: 8px 4px;
   color: var(--text-muted);
