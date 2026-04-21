@@ -1,5 +1,7 @@
 # AGENTS.md - UniInfer Development Guide
 
+**Package**: uniinfer (python-openutils) · **Repo map**: [../AGENTS.md](../AGENTS.md)
+
 This file provides guidelines for agentic coding agents operating in the uniinfer repository.
 
 ## Project Overview

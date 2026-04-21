@@ -60,10 +60,30 @@ After changing credgoo or uniinfer:
 2. In python-utils: `cd packages/THAT_PACKAGE && uv lock -U` to pick up the new commit
 3. Deploy: `pushto` runs `uvinit.sh` which does `uv sync` from the pinned lockfile
 
+## Install
+
+```bash
+# Short URL (needs active venv)
+uv pip install -r https://skale.dev/credgoo
+uv pip install -r https://skale.dev/uniinfer
+
+# Standalone tool (no venv needed)
+uv tool install "credgoo @ git+https://github.com/devskale/python-openutils.git#subdirectory=packages/credgoo"
+uv tool install "uniinfer @ git+https://github.com/devskale/python-openutils.git#subdirectory=packages/uniinfer"
+
+# As dependency in pyproject.toml
+[project]
+dependencies = ["uniinfer", "credgoo"]
+
+[tool.uv.sources]
+uniinfer = { git = "https://github.com/devskale/python-openutils.git", subdirectory = "packages/uniinfer" }
+credgoo = { git = "https://github.com/devskale/python-openutils.git", subdirectory = "packages/credgoo" }
+```
+
 ## Environment Setup
 
 ```bash
-# Sync all packages (creates venvs, installs deps from lockfile)
+# From source — sync all packages (creates venvs, installs deps from lockfile)
 cd packages/credgoo && uv sync
 cd packages/uniinfer && uv sync
 ```

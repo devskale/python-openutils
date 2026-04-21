@@ -1,5 +1,7 @@
 # AGENTS.md - Credgoo
 
+**Package**: credgoo (python-openutils) · **Repo map**: [../AGENTS.md](../AGENTS.md)
+
 Secure API key manager. Keys live in an encrypted Google Sheet, are fetched over HTTPS, and cached locally at `~/.config/api_keys/`.
 
 ## Usage — you only need these two things
