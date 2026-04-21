@@ -253,8 +253,12 @@ async def root():
 def main():
     import uvicorn
     import argparse
+    from importlib.metadata import version
 
     parser = argparse.ArgumentParser(description="Run the UniIOAI API server.")
+    parser.add_argument('--version', action='version',
+                        version='%(prog)s ' + version('uniinfer'),
+                        help="Show program's version number and exit")
     parser.add_argument('--reload', action='store_true',
                         help='Enable auto-reloading')
     parser.add_argument('--port', type=int, default=8123,
