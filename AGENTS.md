@@ -4,10 +4,12 @@
 
 ## Repo Map
 
-This repo can live standalone, but in the **kontext.one meta setup** it sits alongside:
+Run `kontextone map` from the metarepo to see all repos with paths and branch status.
 
-| Role | Repo | Local path (if in meta setup) |
-|------|------|-------------------------------|
+In the **kontext.one meta setup** this repo sits alongside:
+
+| Role | Repo | Local path |
+|------|------|-------------|
 | **Meta** | kontext.one | `..` |
 | **klark0** | klark0 (Next.js) | `../klark0` |
 | **utils** | python-utils | `../python-utils` |
