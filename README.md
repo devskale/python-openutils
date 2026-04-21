@@ -1,11 +1,31 @@
 # Python Open Utils
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[GitHub](https://github.com/devskale/python-openutils) · [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![GitHub Stars](https://img.shields.io/github/stars/devskale/python-openutils)](https://github.com/devskale/python-openutils/stargazers)
 [![GitHub Issues](https://img.shields.io/github/issues/devskale/python-openutils)](https://github.com/devskale/python-openutils/issues)
 [![Python](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/downloads/)
 
 A collection of powerful Python utilities for secure credential management and unified LLM inference.
+
+## Install
+
+```bash
+# Short URL (needs active venv)
+uv pip install -r https://skale.dev/credgoo
+uv pip install -r https://skale.dev/uniinfer
+
+# Standalone tool (no venv needed)
+uv tool install "credgoo @ git+https://github.com/devskale/python-openutils.git#subdirectory=packages/credgoo"
+uv tool install "uniinfer @ git+https://github.com/devskale/python-openutils.git#subdirectory=packages/uniinfer"
+
+# As dependency in pyproject.toml
+[project]
+dependencies = ["uniinfer", "credgoo"]
+
+[tool.uv.sources]
+uniinfer = { git = "https://github.com/devskale/python-openutils.git", subdirectory = "packages/uniinfer" }
+credgoo = { git = "https://github.com/devskale/python-openutils.git", subdirectory = "packages/credgoo" }
+```
 
 ## Packages
 
