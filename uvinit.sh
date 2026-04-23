@@ -5,7 +5,6 @@ set -u
 MODE=""
 PACKAGE_FILTER=""
 SILENT=0
-UV_EXTRAS=""
 ROOT_DIR="$(cd "$(dirname "$0")" && pwd)"
 LOG_FILE="$ROOT_DIR/uvinit.log"
 SUCCESS_COUNT=0
@@ -17,20 +16,19 @@ declare -a SKIP_LIST=()
 
 usage() {
   echo "Usage: $0 [-x|-u|-c|-h] [package] [-s]"
-  echo "  -x            Init packages (uv sync)"
-  echo "  -u            Upgrade packages (uv lock -U, uv sync)"
+  echo "  -x            Build all packages (uv sync — install deps + build)"
+  echo "  -u            Upgrade all packages (uv lock -U, uv sync)"
   echo "  -c            Remove .venv for matched packages"
   echo "  -h            Show help"
   echo "  [package]     Optional substring to filter packages by directory name"
   echo "  -s            Silent mode (no prompts, concise output)"
-  echo "  --extra NAME   Pass --extra NAME to uv sync (repeatable)"
   echo ""
   echo "Packages are auto-discovered from subdirectories containing pyproject.toml."
   echo ""
   echo "Examples:"
-  echo "  $0 -x                  Init all packages"
+  echo "  $0 -x                  Build all packages"
   echo "  $0 -u                  Upgrade all packages (lock + sync)"
-  echo "  $0 -x credgoo          Init packages matching 'credgoo'"
+  echo "  $0 -x credgoo          Build packages matching 'credgoo'"
   echo "  $0 -c                  Clean all venvs"
 }
 
@@ -145,26 +143,13 @@ process_dirs() {
   for d in "${dirs[@]}"; do
     case "$MODE" in
       init)
-        log_info "Init: $d"
-        if [ -n "$UV_EXTRAS" ]; then
-          if (cd "$d" && uv sync $UV_EXTRAS >>"$LOG_FILE" 2>&1); then
-            log_info "Synced: $d"
-            SUCCESS_COUNT=$((SUCCESS_COUNT+1)); SUCCESS_LIST+=("$d")
-          elif (cd "$d" && uv sync >>"$LOG_FILE" 2>&1); then
-            log_info "Synced: $d (no extras)"
-            SUCCESS_COUNT=$((SUCCESS_COUNT+1)); SUCCESS_LIST+=("$d")
-          else
-            log_error "uv sync failed: $d"
-            FAIL_COUNT=$((FAIL_COUNT+1)); FAIL_LIST+=("$d")
-          fi
+        log_info "Build: $d"
+        if (cd "$d" && uv sync >>"$LOG_FILE" 2>&1); then
+          log_info "Synced: $d"
+          SUCCESS_COUNT=$((SUCCESS_COUNT+1)); SUCCESS_LIST+=("$d")
         else
-          if (cd "$d" && uv sync >>"$LOG_FILE" 2>&1); then
-            log_info "Synced: $d"
-            SUCCESS_COUNT=$((SUCCESS_COUNT+1)); SUCCESS_LIST+=("$d")
-          else
-            log_error "uv sync failed: $d"
-            FAIL_COUNT=$((FAIL_COUNT+1)); FAIL_LIST+=("$d")
-          fi
+          log_error "uv sync failed: $d"
+          FAIL_COUNT=$((FAIL_COUNT+1)); FAIL_LIST+=("$d")
         fi
         ;;
       upgrade)
@@ -175,25 +160,12 @@ process_dirs() {
           continue
         fi
         log_info "Lock updated: $d"
-        if [ -n "$UV_EXTRAS" ]; then
-          if (cd "$d" && uv sync $UV_EXTRAS >>"$LOG_FILE" 2>&1); then
-            log_info "Synced: $d"
-            SUCCESS_COUNT=$((SUCCESS_COUNT+1)); SUCCESS_LIST+=("$d")
-          elif (cd "$d" && uv sync >>"$LOG_FILE" 2>&1); then
-            log_info "Synced: $d (no extras)"
-            SUCCESS_COUNT=$((SUCCESS_COUNT+1)); SUCCESS_LIST+=("$d")
-          else
-            log_error "uv sync failed: $d"
-            FAIL_COUNT=$((FAIL_COUNT+1)); FAIL_LIST+=("$d")
-          fi
+        if (cd "$d" && uv sync >>"$LOG_FILE" 2>&1); then
+          log_info "Synced: $d"
+          SUCCESS_COUNT=$((SUCCESS_COUNT+1)); SUCCESS_LIST+=("$d")
         else
-          if (cd "$d" && uv sync >>"$LOG_FILE" 2>&1); then
-            log_info "Synced: $d"
-            SUCCESS_COUNT=$((SUCCESS_COUNT+1)); SUCCESS_LIST+=("$d")
-          else
-            log_error "uv sync failed: $d"
-            FAIL_COUNT=$((FAIL_COUNT+1)); FAIL_LIST+=("$d")
-          fi
+          log_error "uv sync failed: $d"
+          FAIL_COUNT=$((FAIL_COUNT+1)); FAIL_LIST+=("$d")
         fi
         ;;
       clean)
@@ -238,19 +210,6 @@ summary() {
 
 parse_args() {
   [ "$#" -eq 0 ] && { usage; exit 1; }
-  # Consume --extra flags before getopts (getopts can't handle --)
-  local _args=("$@")
-  local _final=()
-  local _i=0
-  while [ $_i -lt ${#_args[@]} ]; do
-    case "${_args[$_i]}" in
-      --extra)
-        [ $((_i+1)) -lt ${#_args[@]} ] && { UV_EXTRAS="$UV_EXTRAS --extra ${_args[$((_i+1))]}"; _i=$((_i+2)); continue; } ;;
-    esac
-    _final+=("${_args[$_i]}")
-    _i=$((_i+1))
-  done
-  set -- "${_final[@]}"
   while getopts ":xuchs" opt; do
     case "$opt" in
       x) MODE="init" ;;
