@@ -1,0 +1,23 @@
+uvinit start: 2026-04-19 14:30:47
+Branch : main
+Commit : bf4a895 docs: add models catalog docs (docs/models.md) and update AGENTS.md
+Date   : 2026-04-19 14:25:44 +0200
+[INFO] Mode: upgrade, Filter: '', Silent: 1
+[INFO] Upgrade: /Users/johannwaldherr/code/kontext.one/python-openutils/packages/uniinfer
+Resolved 118 packages in 376ms
+[INFO] Lock updated: /Users/johannwaldherr/code/kontext.one/python-openutils/packages/uniinfer
+Resolved 118 packages in 0.75ms
+Audited 54 packages in 1ms
+[INFO] Synced: /Users/johannwaldherr/code/kontext.one/python-openutils/packages/uniinfer
+[INFO] Upgrade: /Users/johannwaldherr/code/kontext.one/python-openutils/packages/credgoo
+Resolved 7 packages in 60ms
+[INFO] Lock updated: /Users/johannwaldherr/code/kontext.one/python-openutils/packages/credgoo
+Resolved 7 packages in 0.58ms
+Audited 6 packages in 0.07ms
+[INFO] Synced: /Users/johannwaldherr/code/kontext.one/python-openutils/packages/credgoo
+----------- Summary -----------
+Success: 2
+  OK  - /Users/johannwaldherr/code/kontext.one/python-openutils/packages/uniinfer  (uniinfer@0.5.18)
+  OK  - /Users/johannwaldherr/code/kontext.one/python-openutils/packages/credgoo  (credgoo@0.1.11)
+Failed: 0
+Skipped: 0
