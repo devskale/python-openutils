@@ -1,0 +1,12 @@
+Available models for tu:
+- glm-4.7-355b
+- qwen-3.5-397b
+- qwen-coder-30b
+- mistral-small-3.2-24b
+- glm-4.5v-106b
+- e5-mistral-7b
+- qwen3-embedding-4b
+- kokoro
+- piper-thorsten
+- whisper-large
+- z-image-turbo

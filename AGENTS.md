@@ -4,20 +4,39 @@
 
 ## Repo Map
 
-Run `kontextone map` from the metarepo to see all repos with paths and branch status.
+This repo works in two modes:
 
-In the **kontext.one meta setup** this repo sits alongside:
+**Meta setup** (alongside kontext.one):
 
-| Role | Repo | Local path |
-|------|------|-------------|
-| **Meta** | kontext.one | `..` |
-| **klark0** | klark0 (Next.js) | `../klark0` |
-| **utils** | python-utils | `../python-utils` |
-| **openutils** | python-openutils | `.` (this repo) |
+| Repo | Local path |
+|------|------------|
+| kontext.one (meta) | `..` |
+| klark0 | `../klark0` |
+| python-utils | `../python-utils` |
+| python-openutils (this repo) | `.` |
 
-If `../repos.yml` and `../scripts/` exist, you're in a meta setup. Otherwise this repo is standalone.
+**Standalone**: just this repo, no siblings. Packages install standalone via `uv sync`.
 
-**Typical local dev**: klark0 on localhost, utils on pi5, openutils on amd (see `../repos.yml` for servers).
+Detect: `../repos.yml` exists → meta setup. Otherwise standalone.
+
+**Identity**: `machine@python-openutils` or `machine@<package>` (e.g. `pi5@uniinfer`). Run `me.one` to check.
+
+**Consumers**:
+- python-utils imports credgoo/uniinfer via **git URL** from GitHub (not local path)
+- klark0 calls uniinfer proxy via `/api/ai/uniinfer/stream` — see `../klark0/lib/ai/uniinferApi.ts`
+- Standalone tools: `uv tool install` from git URL (see Install section)
+
+**Deploy** (meta setup only): `../scripts/deploy.sh dev` or `../scripts/deploy.sh production`
+
+## Frontend code — where to find it
+
+| Backend concept | Frontend location | GitHub |
+|----------------|-------------------|--------|
+| Uniinfer streaming API | `../klark0/app/api/ai/uniinfer/stream/route.ts` | [route.ts](https://github.com/devskale/klark0/blob/main/app/api/ai/uniinfer/stream/route.ts) |
+| Uniinfer client adapter | `../klark0/lib/ai/uniinferApi.ts` | [uniinferApi.ts](https://github.com/devskale/klark0/blob/main/lib/ai/uniinferApi.ts) |
+| AI provider settings | `../klark0/lib/ai/settings.ts` | [settings.ts](https://github.com/devskale/klark0/blob/main/lib/ai/settings.ts) |
+
+If `../klark0` doesn't exist (standalone), the code lives on GitHub at the URLs above.
 
 ---
 

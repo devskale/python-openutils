@@ -1,0 +1,13 @@
+{
+	"folders": [
+		{
+			"path": "../.."
+		},
+		{
+			"path": "../../../../../pi/pi-mono/packages/ai"
+		}
+	],
+	"settings": {
+		"python.languageServer": "None"
+	}
+}
