@@ -138,8 +138,10 @@ def create_chat_router(
         try:
             provider_name, _ = parse_provider_model(provider_model)
             if provider_name == "ollama":
-                provider_api_key = None
-                base_url = provider_configs.get("ollama", {}).get("extra_params", {}).get("base_url")
+                from credgoo import get_api_key as _get_credgoo_key
+                ollama_extra = provider_configs.get("ollama", {}).get("extra_params", {})
+                provider_api_key = _get_credgoo_key("ollama")
+                base_url = ollama_extra.get("base_url")
             else:
                 provider_api_key = verify_provider_access(api_bearer_token, provider_name)
                 base_url = None
