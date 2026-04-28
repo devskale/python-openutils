@@ -21,12 +21,7 @@ class TUProvider(ChatProvider):
     _global_lock = asyncio.Lock()
     _min_request_interval = timedelta(seconds=2)
 
-    _MODEL_CONTEXT_LENGTHS: dict[str, int] = {
-        "qwen-coder-30b": 16384,
-        "mistral-small-3.2-24b": 16384,
-    }
-    _DEFAULT_CONTEXT_LENGTH = 16384
-    _INPUT_HEADROOM = 1024
+    _DEFAULT_MAX_TOKENS = 8192
 
     def __init__(self, api_key: str | None = None, base_url: str | None = None, supports_reasoning_effort: bool = False):
         """Initialize the TU provider.
@@ -109,15 +104,7 @@ class TUProvider(ChatProvider):
             "temperature": request.temperature,
             "stream": request.streaming
         }
-        
-        model_name = request.model or "qwen-coder-30b"
-        context_length = self._MODEL_CONTEXT_LENGTHS.get(model_name, self._DEFAULT_CONTEXT_LENGTH)
-        max_tokens = request.max_tokens
-        if max_tokens is None:
-            max_tokens = context_length - self._INPUT_HEADROOM
-        else:
-            max_tokens = min(max_tokens, context_length - self._INPUT_HEADROOM)
-        payload["max_tokens"] = max_tokens
+        payload["max_tokens"] = request.max_tokens or self._DEFAULT_MAX_TOKENS
             
         if request.tools:
             payload["tools"] = request.tools
