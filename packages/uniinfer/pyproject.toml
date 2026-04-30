@@ -41,6 +41,7 @@ dependencies = [
     "importlib-metadata; python_version<'3.8'",
     "credgoo", # resolved via local path in [tool.uv.sources]
     "google-genai>=1.47.0",
+    "groq>=0.11.0",
 ]
 
 [project.optional-dependencies]
