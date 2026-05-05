@@ -14,6 +14,10 @@ from ..core import ChatProvider, ChatCompletionRequest, ChatCompletionResponse, 
 from ..errors import map_provider_error, UniInferError
 from ..logging_utils import log_raw_response
 
+TU_BASE_URL = "https://aqueduct.ai.datalab.tuwien.ac.at/v1"
+TU_STAGING_BASE_URL = "https://aqueduct-staging.ai.datalab.tuwien.ac.at/v1"
+
+
 class TUProvider(ChatProvider):
     """TU (Tencent Unbounded) LLM Provider implementation."""
 
@@ -22,6 +26,8 @@ class TUProvider(ChatProvider):
     _min_request_interval = timedelta(seconds=2)
 
     _DEFAULT_MAX_TOKENS = 8192
+    _CREDGOO_SERVICE = "tu"
+    _DEFAULT_BASE_URL = TU_BASE_URL
 
     def __init__(self, api_key: str | None = None, base_url: str | None = None, supports_reasoning_effort: bool = False):
         """Initialize the TU provider.
@@ -36,10 +42,10 @@ class TUProvider(ChatProvider):
         if not self.api_key:
             try:
                 from credgoo import get_api_key
-                self.api_key = get_api_key("tu")
+                self.api_key = get_api_key(self._CREDGOO_SERVICE)
             except (ImportError, Exception):
                 pass
-        self.base_url = base_url or "https://aqueduct.ai.datalab.tuwien.ac.at/v1"
+        self.base_url = base_url or self._DEFAULT_BASE_URL
         self.supports_reasoning_effort = supports_reasoning_effort
         self._async_client: httpx.AsyncClient | None = None
         
@@ -134,7 +140,7 @@ class TUProvider(ChatProvider):
             # Log raw response for debugging
             raw_text = response.text
             log_raw_response(
-                provider="tu",
+                provider=self._CREDGOO_SERVICE,
                 operation="chat.completions",
                 raw_response={
                     "status_code": response.status_code,
@@ -144,16 +150,16 @@ class TUProvider(ChatProvider):
             )
             
             if response.status_code != 200:
-                raise map_provider_error("tu", Exception(f"TU API error: {response.status_code} - {raw_text}"), status_code=response.status_code, response_body=raw_text)
+                raise map_provider_error(self._CREDGOO_SERVICE, Exception(f"TU API error: {response.status_code} - {raw_text}"), status_code=response.status_code, response_body=raw_text)
             
             # Check for empty response
             if not raw_text or not raw_text.strip():
-                raise map_provider_error("tu", Exception("TU API returned empty response"), status_code=500, response_body="(empty)")
+                raise map_provider_error(self._CREDGOO_SERVICE, Exception("TU API returned empty response"), status_code=500, response_body="(empty)")
             
             try:
                 data = response.json()
             except Exception as json_err:
-                raise map_provider_error("tu", Exception(f"TU API JSON parse error: {json_err}. Response: {raw_text[:500]}"), status_code=500, response_body=raw_text)
+                raise map_provider_error(self._CREDGOO_SERVICE, Exception(f"TU API JSON parse error: {json_err}. Response: {raw_text[:500]}"), status_code=500, response_body=raw_text)
             choice = data["choices"][0]
             message_data = choice["message"]
             
@@ -169,7 +175,7 @@ class TUProvider(ChatProvider):
             
             return ChatCompletionResponse(
                 message=message,
-                provider="tu",
+                provider=self._CREDGOO_SERVICE,
                 model=data.get("model", request.model or "qwen-coder-30b"),
                 usage=data.get("usage", {}),
                 raw_response=data,
@@ -179,7 +185,7 @@ class TUProvider(ChatProvider):
         except Exception as e:
             if isinstance(e, UniInferError):
                 raise
-            raise map_provider_error("tu", e)
+            raise map_provider_error(self._CREDGOO_SERVICE, e)
 
     async def astream_complete(self, request: ChatCompletionRequest) -> AsyncIterator[ChatCompletionResponse]:
         """Async streaming completion implementation for TU."""
@@ -196,7 +202,7 @@ class TUProvider(ChatProvider):
                 if response.status_code != 200:
                     error_body = await response.aread()
                     log_raw_response(
-                        provider="tu",
+                        provider=self._CREDGOO_SERVICE,
                         operation="chat.completions.stream",
                         raw_response={
                             "status_code": response.status_code,
@@ -205,7 +211,7 @@ class TUProvider(ChatProvider):
                         log_file=os.path.join(os.getcwd(), "logs", "tu_raw_chat.log"),
                     )
                     error_msg = f"TU API error: {response.status_code} - {error_body}"
-                    raise map_provider_error("tu", Exception(error_msg), status_code=response.status_code, response_body=error_msg)
+                    raise map_provider_error(self._CREDGOO_SERVICE, Exception(error_msg), status_code=response.status_code, response_body=error_body)
                 
                 async for line in response.aiter_lines():
                     if not line:
@@ -216,7 +222,7 @@ class TUProvider(ChatProvider):
                     if not line.startswith('data: '):
                         continue
                     log_raw_response(
-                        provider="tu",
+                        provider=self._CREDGOO_SERVICE,
                         operation="chat.completions.stream",
                         raw_response={"line": line},
                         log_file=os.path.join(os.getcwd(), "logs", "tu_raw_chat.log"),
@@ -250,7 +256,7 @@ class TUProvider(ChatProvider):
                             
                             yield ChatCompletionResponse(
                                 message=message,
-                                provider="tu",
+                                provider=self._CREDGOO_SERVICE,
                                 model=data.get("model", request.model),
                                 usage={},
                                 raw_response=data,
@@ -263,7 +269,7 @@ class TUProvider(ChatProvider):
                 # Detect incomplete stream (preemption) - stream ended without proper completion
                 if chunks_yielded == 0:
                     log_raw_response(
-                        provider="tu",
+                        provider=self._CREDGOO_SERVICE,
                         operation="chat.completions.stream",
                         raw_response={"error": "Empty stream - no chunks received (possible preemption)"},
                         log_file=os.path.join(os.getcwd(), "logs", "tu_raw_chat.log"),
@@ -271,7 +277,7 @@ class TUProvider(ChatProvider):
                     # Yield error response instead of raising - exception would be swallowed by StopAsyncIteration
                     yield ChatCompletionResponse(
                         message=ChatMessage(role="assistant", content=""),
-                        provider="tu",
+                        provider=self._CREDGOO_SERVICE,
                         model=request.model,
                         usage={},
                         raw_response={"error": "TU API returned empty stream - model may have preempted"},
@@ -285,7 +291,7 @@ class TUProvider(ChatProvider):
                     import sys
                     print(f"[DEBUG] PREEMPTION DETECTED: {chunks_yielded} chunks, no finish_reason or [DONE]", file=sys.stderr, flush=True)
                     log_raw_response(
-                        provider="tu",
+                        provider=self._CREDGOO_SERVICE,
                         operation="chat.completions.stream",
                         raw_response={"error": f"Stream terminated prematurely - {chunks_yielded} chunks but no finish_reason or [DONE] (possible preemption)"},
                         log_file=os.path.join(os.getcwd(), "logs", "tu_raw_chat.log"),
@@ -293,7 +299,7 @@ class TUProvider(ChatProvider):
                     # Yield error response instead of raising - exception would be swallowed by StopAsyncIteration
                     yield ChatCompletionResponse(
                         message=ChatMessage(role="assistant", content=""),
-                        provider="tu",
+                        provider=self._CREDGOO_SERVICE,
                         model=request.model,
                         usage={},
                         raw_response={"error": f"TU API stream terminated prematurely after {chunks_yielded} chunks - model may have preempted"},
@@ -304,7 +310,7 @@ class TUProvider(ChatProvider):
         except Exception as e:
             if isinstance(e, UniInferError):
                 raise
-            raise map_provider_error("tu", e)
+            raise map_provider_error(self._CREDGOO_SERVICE, e)
 
     @classmethod
     def list_models(cls, api_key: str | None = None, **kwargs) -> list[ModelInfo]:
@@ -324,14 +330,14 @@ class TUProvider(ChatProvider):
         if not api_key:
             try:
                 from credgoo import get_api_key
-                api_key = get_api_key("tu")
+                api_key = get_api_key(cls._CREDGOO_SERVICE)
             except (ImportError, Exception):
                 pass
         
         if not api_key:
             return []
             
-        base_url = kwargs.get("base_url") or "https://aqueduct.ai.datalab.tuwien.ac.at/v1"
+        base_url = kwargs.get("base_url") or cls._DEFAULT_BASE_URL
         
         try:
             import requests
@@ -353,3 +359,10 @@ class TUProvider(ChatProvider):
             pass
             
         return []
+
+
+class TUStagingProvider(TUProvider):
+    """TU Staging provider — uses staging base URL and staging API key."""
+
+    _CREDGOO_SERVICE = "tu-staging"
+    _DEFAULT_BASE_URL = TU_STAGING_BASE_URL

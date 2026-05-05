@@ -28,7 +28,7 @@ except ImportError:
     HAS_GENAI = False
 
 try:
-    from .tu import TUProvider
+    from .tu import TUProvider, TUStagingProvider
     from .tu_embedding import TuAIEmbeddingProvider
     from .tu_tts import TuAITTSProvider
     from .tu_stt import TuAISTTProvider
@@ -92,6 +92,7 @@ __all__ = [
     'TuAIEmbeddingProvider',
     'TuAITTSProvider',
     'TuAISTTProvider',
+    'TUStagingProvider',
 ]
 
 # Add optional providers to __all__ if available

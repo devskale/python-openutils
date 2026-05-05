@@ -19,7 +19,7 @@ from .providers import (
     OllamaProvider, OllamaEmbeddingProvider, OpenRouterProvider, ArliAIProvider,
     InternLMProvider, StepFunProvider, SambanovaProvider,
     UpstageProvider, NGCProvider, CloudflareProvider, ChutesProvider,
-    PollinationsProvider, ZAIProvider, ZAICodeProvider, TUProvider, TuAIEmbeddingProvider,
+    PollinationsProvider, ZAIProvider, ZAICodeProvider, TUProvider, TUStagingProvider, TuAIEmbeddingProvider,
     TuAITTSProvider, TuAISTTProvider
 )
 from .errors import (
@@ -84,6 +84,7 @@ ProviderFactory.register_provider("pollinations", PollinationsProvider)
 ProviderFactory.register_provider("zai", ZAIProvider)
 ProviderFactory.register_provider("zai-code", ZAICodeProvider)
 ProviderFactory.register_provider("tu", TUProvider)
+ProviderFactory.register_provider("tu-staging", TUStagingProvider)
 
 # Register embedding providers
 EmbeddingProviderFactory.register_provider("ollama", OllamaEmbeddingProvider)
@@ -155,6 +156,7 @@ __all__ = [
     'NGCProvider',
     'CloudflareProvider',
     'TUProvider',
+    'TUStagingProvider',
     'TuAIEmbeddingProvider',
     'TuAITTSProvider',
     'TuAISTTProvider',
