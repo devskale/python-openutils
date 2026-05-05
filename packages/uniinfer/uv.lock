@@ -2185,7 +2185,7 @@ wheels = [
 
 [[package]]
 name = "uniinfer"
-version = "0.5.22"
+version = "0.5.24"
 source = { editable = "." }
 dependencies = [
     { name = "credgoo" },
@@ -2193,6 +2193,8 @@ dependencies = [
     { name = "fastapi", version = "0.136.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.10'" },
     { name = "google-genai", version = "1.47.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.10'" },
     { name = "google-genai", version = "1.73.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.10'" },
+    { name = "groq", version = "1.0.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.10'" },
+    { name = "groq", version = "1.2.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.10'" },
     { name = "httpx" },
     { name = "openai" },
     { name = "pydantic" },
@@ -2269,6 +2271,7 @@ requires-dist = [
     { name = "google-genai", specifier = ">=1.47.0" },
     { name = "google-genai", marker = "extra == 'all'", specifier = ">=1.38.0" },
     { name = "google-genai", marker = "extra == 'gemini'", specifier = ">=1.38.0" },
+    { name = "groq", specifier = ">=0.11.0" },
     { name = "groq", marker = "extra == 'all'", specifier = ">=0.11.0" },
     { name = "groq", marker = "extra == 'groq'", specifier = ">=0.11.0" },
     { name = "httpx" },
