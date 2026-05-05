@@ -146,7 +146,9 @@ class ChatCompletionRequest:
         streaming: bool = False,
         tools: list[dict] | None = None,
         tool_choice: Any | None = None,
-        reasoning_effort: str | None = None
+        reasoning_effort: str | None = None,
+        enable_thinking: bool | None = None,
+        thinking_budget: int | None = None,
     ):
         self.messages = messages
         self.model = model
@@ -156,6 +158,8 @@ class ChatCompletionRequest:
         self.tools = tools
         self.tool_choice = tool_choice
         self.reasoning_effort = reasoning_effort
+        self.enable_thinking = enable_thinking
+        self.thinking_budget = thinking_budget
 
 
 class ChatCompletionResponse:
