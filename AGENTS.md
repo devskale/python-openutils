@@ -82,10 +82,6 @@ After changing credgoo or uniinfer:
 ## Install
 
 ```bash
-# Short URL (needs active venv)
-uv pip install -r https://skale.dev/credgoo
-uv pip install -r https://skale.dev/uniinfer
-
 # Standalone tool (no venv needed)
 uv tool install "credgoo @ git+https://github.com/devskale/python-openutils.git#subdirectory=packages/credgoo"
 uv tool install "uniinfer @ git+https://github.com/devskale/python-openutils.git#subdirectory=packages/uniinfer"

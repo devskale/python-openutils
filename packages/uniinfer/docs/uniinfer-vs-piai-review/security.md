@@ -100,7 +100,7 @@ Core dependencies:
 - python-dotenv >= 1.0.0
 
 Remote requirements:
-- https://skale.dev/credgoo (fetched dynamically)
+- credgoo (fetched dynamically)
 ```
 
 **Issues:**
