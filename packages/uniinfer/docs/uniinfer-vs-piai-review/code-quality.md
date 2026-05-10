@@ -160,7 +160,6 @@ tests/
 ```python
 # Issues in setup.py
 - No requirements.lock or poetry.lock
-- Remote requirements fetched from https://skale.dev/credgoo
 - No version pinning for major dependencies
 ```
 
