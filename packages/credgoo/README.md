@@ -6,8 +6,23 @@ Keys are stored encrypted in a Google Sheet, fetched over HTTPS, and cached loca
 
 ## Install
 
+**Into a venv** (fastest):
 ```bash
-uv add credgoo
+uv pip install -r https://skale.dev/credgoo
+```
+
+**Standalone CLI** (no venv needed):
+```bash
+uv tool install "credgoo @ git+https://github.com/devskale/python-openutils.git#subdirectory=packages/credgoo"
+```
+
+**As a dependency** in your `pyproject.toml`:
+```toml
+[project]
+dependencies = ["credgoo"]
+
+[tool.uv.sources]
+credgoo = { git = "https://github.com/devskale/python-openutils.git", subdirectory = "packages/credgoo" }
 ```
 
 ## Python usage

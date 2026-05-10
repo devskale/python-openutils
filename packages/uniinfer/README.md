@@ -19,14 +19,29 @@ UniInfer provides a consistent Python interface for **LLM chat completions and t
 
 ## Installation
 
+**Into a venv** (fastest):
 ```bash
-cd packages/uniinfer && uv sync
+uv pip install -r https://skale.dev/uniinfer
 ```
 
-## Add to Your Project
-
+**Standalone CLI** (no venv needed):
 ```bash
-uv add uniinfer
+uv tool install "uniinfer @ git+https://github.com/devskale/python-openutils.git#subdirectory=packages/uniinfer"
+```
+
+**As a dependency** in your `pyproject.toml`:
+```toml
+[project]
+dependencies = ["uniinfer"]
+
+[tool.uv.sources]
+uniinfer = { git = "https://github.com/devskale/python-openutils.git", subdirectory = "packages/uniinfer" }
+```
+
+**From source**:
+```bash
+git clone https://github.com/devskale/python-openutils.git
+cd python-openutils/packages/uniinfer && uv sync
 ```
 
 Then use it anywhere in your code:
