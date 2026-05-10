@@ -9,16 +9,20 @@ A collection of powerful Python utilities for secure credential management and u
 
 ## Install
 
+**Into a venv** (fastest):
 ```bash
-# Short URL (needs active venv)
 uv pip install -r https://skale.dev/credgoo
 uv pip install -r https://skale.dev/uniinfer
+```
 
-# Standalone tool (no venv needed)
+**Standalone CLI** (no venv needed):
+```bash
 uv tool install "credgoo @ git+https://github.com/devskale/python-openutils.git#subdirectory=packages/credgoo"
 uv tool install "uniinfer @ git+https://github.com/devskale/python-openutils.git#subdirectory=packages/uniinfer"
+```
 
-# As dependency in pyproject.toml
+**As a dependency** in your `pyproject.toml`:
+```toml
 [project]
 dependencies = ["uniinfer", "credgoo"]
 
@@ -27,9 +31,17 @@ uniinfer = { git = "https://github.com/devskale/python-openutils.git", subdirect
 credgoo = { git = "https://github.com/devskale/python-openutils.git", subdirectory = "packages/credgoo" }
 ```
 
+**From source**:
+```bash
+git clone https://github.com/devskale/python-openutils.git
+cd python-openutils
+ cd packages/credgoo && uv sync && cd ../..
+ cd packages/uniinfer && uv sync && cd ../..
+```
+
 ## Packages
 
-### [Credgoo](packages/credgoo/) `v0.1.10`
+### [Credgoo](packages/credgoo/) `v0.1.11`
 
 **The Secure Credentials Manager for Everywhere.**
 
@@ -41,7 +53,7 @@ Securely manage your credentials in Google Sheets with encrypted Apps Script int
 - **Smart Local Caching**: Performance optimized with restrictive permissions.
 - **Centralized Control**: Single source of truth for all your secrets.
 
-### [UniInfer](packages/uniinfer/) `v0.5.15`
+### [UniInfer](packages/uniinfer/) `v0.5.24`
 
 OpenAI-compatible proxy server providing unified access to 500+ models from 20+ providers with multi-modal support.
 
@@ -55,17 +67,7 @@ OpenAI-compatible proxy server providing unified access to 500+ models from 20+ 
 
 ## Quick Start
 
-```bash
-# Clone and set up
-git clone https://github.com/devskale/python-openutils.git
-cd python-openutils
-
-# Install each package (creates venv, resolves deps from lockfile)
-cd packages/credgoo && uv sync && cd ../..
-cd packages/uniinfer && uv sync && cd ../..
-```
-
-### Credgoo — Get an API Key in 3 Lines
+### Credgoo — Get an API Key
 
 ```python
 from credgoo import get_api_key
