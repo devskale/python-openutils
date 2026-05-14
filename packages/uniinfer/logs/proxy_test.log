@@ -1,7 +1,0 @@
-2026-02-22 11:37:47,143 - uniioai_proxy - INFO - Starting UniIOAI API server (reload=False at port 8123)...
-INFO:     Started server process [48667]
-INFO:     Waiting for application startup.
-INFO:     Application startup complete.
-ERROR:    [Errno 48] error while attempting to bind on address ('0.0.0.0', 8123): address already in use
-INFO:     Waiting for application shutdown.
-INFO:     Application shutdown complete.
