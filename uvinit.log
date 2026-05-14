@@ -1,23 +1,23 @@
-uvinit start: 2026-04-19 14:30:47
+uvinit start: 2026-05-14 22:01:33
 Branch : main
-Commit : bf4a895 docs: add models catalog docs (docs/models.md) and update AGENTS.md
-Date   : 2026-04-19 14:25:44 +0200
+Commit : 564231d chore: untrack log files (covered by .gitignore)
+Date   : 2026-05-14 21:52:29 +0200
 [INFO] Mode: upgrade, Filter: '', Silent: 1
 [INFO] Upgrade: /Users/johannwaldherr/code/kontext.one/python-openutils/packages/uniinfer
-Resolved 118 packages in 376ms
+Resolved 122 packages in 433ms
 [INFO] Lock updated: /Users/johannwaldherr/code/kontext.one/python-openutils/packages/uniinfer
-Resolved 118 packages in 0.75ms
-Audited 54 packages in 1ms
+Resolved 122 packages in 1ms
+Audited 55 packages in 0.20ms
 [INFO] Synced: /Users/johannwaldherr/code/kontext.one/python-openutils/packages/uniinfer
 [INFO] Upgrade: /Users/johannwaldherr/code/kontext.one/python-openutils/packages/credgoo
-Resolved 7 packages in 60ms
+Resolved 8 packages in 91ms
 [INFO] Lock updated: /Users/johannwaldherr/code/kontext.one/python-openutils/packages/credgoo
-Resolved 7 packages in 0.58ms
-Audited 6 packages in 0.07ms
+Resolved 8 packages in 0.71ms
+Audited 6 packages in 0.10ms
 [INFO] Synced: /Users/johannwaldherr/code/kontext.one/python-openutils/packages/credgoo
 ----------- Summary -----------
 Success: 2
-  OK  - /Users/johannwaldherr/code/kontext.one/python-openutils/packages/uniinfer  (uniinfer@0.5.18)
+  OK  - /Users/johannwaldherr/code/kontext.one/python-openutils/packages/uniinfer  (uniinfer@0.5.24)
   OK  - /Users/johannwaldherr/code/kontext.one/python-openutils/packages/credgoo  (credgoo@0.1.11)
 Failed: 0
 Skipped: 0
