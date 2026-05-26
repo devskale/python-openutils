@@ -1,7 +1,7 @@
 {
   "_meta": {
     "version": "1.0.0",
-    "generated": "2026-05-26T21:35:27.166785+00:00",
+    "generated": "2026-05-26T21:58:49.717475+00:00",
     "source": "live provider APIs + models.dev",
     "models_dev_providers": [
       "chutes",
@@ -14041,7 +14041,7 @@
       ]
     },
     "stepfun": {
-      "provider_class": "StepFunProvider",
+      "provider_class": "",
       "kind": "chat",
       "models": [
         {
@@ -14049,381 +14049,257 @@
           "type": "chat",
           "status": "active",
           "owned_by": "stepai",
-          "created": 1711015200,
-          "name": "Step 1 (32K)",
-          "context_window": 32768,
-          "max_output": 32768,
-          "cost": {
-            "input": 2.05,
-            "output": 9.59,
-            "cache_read": 0.41
-          },
-          "modalities": {
-            "input": [
-              "text"
-            ],
-            "output": [
-              "text"
-            ]
-          },
-          "capabilities": {
-            "reasoning": true,
-            "tool_call": true
-          },
-          "release_date": "2025-01-01",
-          "knowledge_cutoff": "2024-06",
-          "first_seen": "2026-04-19"
+          "created": 1711015200
         },
         {
           "id": "step-1v-32k",
           "type": "chat",
           "status": "active",
           "owned_by": "stepai",
-          "created": 1711015200,
-          "first_seen": "2026-04-19"
+          "created": 1711015200
         },
         {
           "id": "step-1-8k",
           "type": "chat",
           "status": "active",
           "owned_by": "stepai",
-          "created": 1713196800,
-          "first_seen": "2026-04-19"
+          "created": 1713196800
         },
         {
           "id": "step-1v-8k",
           "type": "chat",
           "status": "active",
           "owned_by": "stepai",
-          "created": 1713974400,
-          "first_seen": "2026-04-19"
+          "created": 1713974400
         },
         {
           "id": "step-2-16k",
           "type": "chat",
           "status": "active",
           "owned_by": "stepai",
-          "created": 1718982000,
-          "name": "Step 2 (16K)",
-          "context_window": 16384,
-          "max_output": 8192,
-          "cost": {
-            "input": 5.21,
-            "output": 16.44,
-            "cache_read": 1.04
-          },
-          "modalities": {
-            "input": [
-              "text"
-            ],
-            "output": [
-              "text"
-            ]
-          },
-          "capabilities": {
-            "reasoning": true,
-            "tool_call": true
-          },
-          "release_date": "2025-01-01",
-          "knowledge_cutoff": "2024-06",
-          "first_seen": "2026-04-19"
+          "created": 1718982000
         },
         {
           "id": "step-1x-medium",
           "type": "chat",
           "status": "active",
           "owned_by": "stepai",
-          "created": 1723011987,
-          "first_seen": "2026-04-19"
+          "created": 1723011987
         },
         {
           "id": "step-tts-mini",
           "type": "chat",
           "status": "active",
           "owned_by": "stepai",
-          "created": 1730983888,
-          "first_seen": "2026-04-19"
+          "created": 1730983888
         },
         {
           "id": "step-asr",
           "type": "chat",
           "status": "active",
           "owned_by": "stepai",
-          "created": 1733285399,
-          "first_seen": "2026-04-19"
+          "created": 1733285399
         },
         {
           "id": "step-1o-vision-32k",
           "type": "chat",
           "status": "active",
           "owned_by": "stepai",
-          "created": 1734679584,
-          "first_seen": "2026-04-19"
+          "created": 1734679584
         },
         {
           "id": "step-2-mini",
           "type": "chat",
           "status": "active",
           "owned_by": "stepai",
-          "created": 1736840381,
-          "first_seen": "2026-04-19"
+          "created": 1736840381
         },
         {
           "id": "step-1o-turbo-vision",
           "type": "chat",
           "status": "active",
           "owned_by": "stepai",
-          "created": 1738814327,
-          "first_seen": "2026-04-19"
+          "created": 1738814327
         },
         {
           "id": "step-1o-audio",
           "type": "chat",
           "status": "active",
           "owned_by": "stepai",
-          "created": 1739960181,
-          "first_seen": "2026-04-19"
+          "created": 1739960181
         },
         {
           "id": "step-r1-v-mini",
           "type": "chat",
           "status": "active",
           "owned_by": "stepai",
-          "created": 1743697960,
-          "first_seen": "2026-04-19"
+          "created": 1743697960
         },
         {
           "id": "step-tts-vivid",
           "type": "chat",
           "status": "active",
           "owned_by": "stepai",
-          "created": 1744884095,
-          "first_seen": "2026-04-19"
+          "created": 1744884095
         },
         {
           "id": "step-1x-edit",
           "type": "chat",
           "status": "active",
           "owned_by": "stepai",
-          "created": 1750161940,
-          "first_seen": "2026-04-19"
+          "created": 1750161940
         },
         {
           "id": "step-1f-audio",
           "type": "chat",
           "status": "active",
           "owned_by": "stepai",
-          "created": 1750823334,
-          "first_seen": "2026-04-19"
+          "created": 1750823334
         },
         {
           "id": "step-2x-large",
           "type": "chat",
           "status": "active",
           "owned_by": "stepai",
-          "created": 1752503031,
-          "first_seen": "2026-04-19"
+          "created": 1752503031
         },
         {
           "id": "step-3",
           "type": "chat",
           "status": "active",
           "owned_by": "stepai",
-          "created": 1753931693,
-          "first_seen": "2026-04-19"
+          "created": 1753931693
         },
         {
           "id": "step-audio-2",
           "type": "chat",
           "status": "active",
           "owned_by": "stepai",
-          "created": 1756369838,
-          "first_seen": "2026-04-19"
+          "created": 1756369838
         },
         {
           "id": "step-audio-2-mini",
           "type": "chat",
           "status": "active",
           "owned_by": "stepai",
-          "created": 1756369873,
-          "first_seen": "2026-04-19"
+          "created": 1756369873
         },
         {
           "id": "step-audio-2-think",
           "type": "chat",
           "status": "active",
           "owned_by": "stepai",
-          "created": 1757600219,
-          "first_seen": "2026-04-19"
+          "created": 1757600219
         },
         {
           "id": "step-tts-2",
           "type": "chat",
           "status": "active",
           "owned_by": "stepai",
-          "created": 1762143771,
-          "first_seen": "2026-04-19"
+          "created": 1762143771
         },
         {
           "id": "dr-search-api",
           "type": "chat",
           "status": "active",
           "owned_by": "stepai",
-          "created": 1765352628,
-          "first_seen": "2026-04-19"
+          "created": 1765352628
         },
         {
           "id": "step-gui",
           "type": "chat",
           "status": "active",
           "owned_by": "stepai",
-          "created": 1765960298,
-          "first_seen": "2026-04-19"
+          "created": 1765960298
         },
         {
           "id": "step-audio-r1.1",
           "type": "chat",
           "status": "active",
           "owned_by": "stepai",
-          "created": 1768362461,
-          "first_seen": "2026-04-19"
+          "created": 1768362461
         },
         {
           "id": "step-3.5-flash",
           "type": "chat",
           "status": "active",
           "owned_by": "stepai",
-          "created": 1769580037,
-          "name": "Step 3.5 Flash",
-          "context_window": 256000,
-          "max_output": 256000,
-          "cost": {
-            "input": 0.096,
-            "output": 0.288,
-            "cache_read": 0.019
-          },
-          "modalities": {
-            "input": [
-              "text"
-            ],
-            "output": [
-              "text"
-            ]
-          },
-          "capabilities": {
-            "reasoning": true,
-            "tool_call": true
-          },
-          "release_date": "2026-01-29",
-          "knowledge_cutoff": "2025-01",
-          "first_seen": "2026-04-19"
+          "created": 1769580037
         },
         {
           "id": "step-asr-1.1",
           "type": "chat",
           "status": "active",
           "owned_by": "stepai",
-          "created": 1773309505,
-          "first_seen": "2026-04-19"
+          "created": 1773309505
         },
         {
           "id": "step-asr-1.1-stream",
           "type": "chat",
           "status": "active",
           "owned_by": "stepai",
-          "created": 1773309526,
-          "first_seen": "2026-04-19"
+          "created": 1773309526
         },
         {
           "id": "step-3.5-flash-2603",
           "type": "chat",
           "status": "active",
           "owned_by": "stepai",
-          "created": 1774708867,
-          "name": "Step 3.5 Flash 2603",
-          "context_window": 256000,
-          "max_output": 256000,
-          "cost": {
-            "input": 0.1,
-            "output": 0.3,
-            "cache_read": 0.02
-          },
-          "modalities": {
-            "input": [
-              "text"
-            ],
-            "output": [
-              "text"
-            ]
-          },
-          "capabilities": {
-            "reasoning": true,
-            "tool_call": true
-          },
-          "release_date": "2026-04-02",
-          "knowledge_cutoff": "2025-01",
-          "first_seen": "2026-04-19"
+          "created": 1774708867
         },
         {
           "id": "stepaudio-2.5-tts",
           "type": "chat",
           "status": "active",
           "owned_by": "stepai",
-          "created": 1775707009,
-          "first_seen": "2026-04-19"
+          "created": 1775707009
         },
         {
           "id": "stepaudio-2.5-asr",
           "type": "chat",
           "status": "active",
           "owned_by": "stepai",
-          "created": 1776062931,
-          "first_seen": "2026-05-26"
+          "created": 1776062931
         },
         {
           "id": "stepaudio-2-asr-pro",
           "type": "chat",
           "status": "active",
           "owned_by": "stepai",
-          "created": 1777111926,
-          "first_seen": "2026-05-26"
+          "created": 1777111926
         },
         {
           "id": "step-router-v1",
           "type": "chat",
           "status": "active",
           "owned_by": "stepai",
-          "created": 1777277978,
-          "first_seen": "2026-05-26"
+          "created": 1777277978
         },
         {
           "id": "stepaudio-2.5-chat",
           "type": "chat",
           "status": "active",
           "owned_by": "stepai",
-          "created": 1777357216,
-          "first_seen": "2026-05-26"
+          "created": 1777357216
         },
         {
           "id": "step-image-edit-2",
           "type": "chat",
           "status": "active",
           "owned_by": "stepai",
-          "created": 1777365249,
-          "first_seen": "2026-05-26"
+          "created": 1777365249
         },
         {
           "id": "stepaudio-2.5-realtime",
           "type": "chat",
           "status": "active",
           "owned_by": "stepai",
-          "created": 1777436067,
-          "first_seen": "2026-05-26"
+          "created": 1777436067
         }
       ]
     },
     "sambanova": {
-      "provider_class": "SambanovaProvider",
+      "provider_class": "",
       "kind": "chat",
       "models": [
         {
@@ -14436,8 +14312,7 @@
             "input": 3.0,
             "output": 4.5
           },
-          "owned_by": "no-reply@sambanova.ai",
-          "first_seen": "2026-04-19"
+          "owned_by": "no-reply@sambanova.ai"
         },
         {
           "id": "DeepSeek-V3.2",
@@ -14449,8 +14324,7 @@
             "input": 3.0,
             "output": 4.5
           },
-          "owned_by": "no-reply@sambanova.ai",
-          "first_seen": "2026-04-19"
+          "owned_by": "no-reply@sambanova.ai"
         },
         {
           "id": "Llama-4-Maverick-17B-128E-Instruct",
@@ -14462,8 +14336,7 @@
             "input": 0.63,
             "output": 1.7999999999999998
           },
-          "owned_by": "no-reply@sambanova.ai",
-          "first_seen": "2026-04-19"
+          "owned_by": "no-reply@sambanova.ai"
         },
         {
           "id": "Meta-Llama-3.3-70B-Instruct",
@@ -14475,8 +14348,7 @@
             "input": 0.6,
             "output": 1.2
           },
-          "owned_by": "no-reply@sambanova.ai",
-          "first_seen": "2026-04-19"
+          "owned_by": "no-reply@sambanova.ai"
         },
         {
           "id": "MiniMax-M2.7",
@@ -14488,8 +14360,7 @@
             "input": 0.6,
             "output": 2.4
           },
-          "owned_by": "no-reply@sambanova.ai",
-          "first_seen": "2026-05-26"
+          "owned_by": "no-reply@sambanova.ai"
         },
         {
           "id": "gemma-3-12b-it",
@@ -14501,8 +14372,7 @@
             "input": 0.35,
             "output": 0.59
           },
-          "owned_by": "no-reply@sambanova.ai",
-          "first_seen": "2026-04-19"
+          "owned_by": "no-reply@sambanova.ai"
         },
         {
           "id": "gpt-oss-120b",
@@ -14514,13 +14384,12 @@
             "input": 0.22,
             "output": 0.59
           },
-          "owned_by": "no-reply@sambanova.ai",
-          "first_seen": "2026-04-19"
+          "owned_by": "no-reply@sambanova.ai"
         }
       ]
     },
     "upstage": {
-      "provider_class": "UpstageProvider",
+      "provider_class": "",
       "kind": "chat",
       "models": [
         {
@@ -14528,231 +14397,147 @@
           "type": "chat",
           "status": "active",
           "owned_by": "system",
-          "created": 1685577600,
-          "name": "solar-mini",
-          "context_window": 32768,
-          "max_output": 4096,
-          "cost": {
-            "input": 0.15,
-            "output": 0.15
-          },
-          "modalities": {
-            "input": [
-              "text"
-            ],
-            "output": [
-              "text"
-            ]
-          },
-          "capabilities": {
-            "reasoning": false,
-            "tool_call": true
-          },
-          "release_date": "2024-06-12",
-          "knowledge_cutoff": "2024-09",
-          "first_seen": "2026-04-19"
+          "created": 1685577600
         },
         {
           "id": "solar-mini-250422",
           "type": "chat",
           "status": "active",
           "owned_by": "system",
-          "created": 1685577600,
-          "first_seen": "2026-04-19"
+          "created": 1685577600
         },
         {
           "id": "solar-pro",
           "type": "chat",
           "status": "active",
           "owned_by": "system",
-          "created": 1685577600,
-          "first_seen": "2026-04-19"
+          "created": 1685577600
         },
         {
           "id": "solar-pro-250422",
           "type": "chat",
           "status": "active",
           "owned_by": "system",
-          "created": 1685577600,
-          "first_seen": "2026-04-19"
+          "created": 1685577600
         },
         {
           "id": "solar-pro2",
           "type": "chat",
           "status": "active",
           "owned_by": "system",
-          "created": 1685577600,
-          "name": "solar-pro2",
-          "context_window": 65536,
-          "max_output": 8192,
-          "cost": {
-            "input": 0.25,
-            "output": 0.25
-          },
-          "modalities": {
-            "input": [
-              "text"
-            ],
-            "output": [
-              "text"
-            ]
-          },
-          "capabilities": {
-            "reasoning": true,
-            "tool_call": true
-          },
-          "release_date": "2025-05-20",
-          "knowledge_cutoff": "2025-03",
-          "first_seen": "2026-04-19"
+          "created": 1685577600
         },
         {
           "id": "solar-pro2-sagemaker",
           "type": "chat",
           "status": "active",
           "owned_by": "system",
-          "created": 1685577600,
-          "first_seen": "2026-04-19"
+          "created": 1685577600
         },
         {
           "id": "solar-pro2-nightly",
           "type": "chat",
           "status": "active",
           "owned_by": "system",
-          "created": 1685577600,
-          "first_seen": "2026-04-19"
+          "created": 1685577600
         },
         {
           "id": "solar-pro2-251215",
           "type": "chat",
           "status": "active",
           "owned_by": "system",
-          "created": 1685577600,
-          "first_seen": "2026-04-19"
+          "created": 1685577600
         },
         {
           "id": "syn-pro",
           "type": "chat",
           "status": "active",
           "owned_by": "system",
-          "created": 1685577600,
-          "first_seen": "2026-04-19"
+          "created": 1685577600
         },
         {
           "id": "syn-pro-251021",
           "type": "chat",
           "status": "active",
           "owned_by": "system",
-          "created": 1685577600,
-          "first_seen": "2026-04-19"
+          "created": 1685577600
         },
         {
           "id": "solar-open",
           "type": "chat",
           "status": "active",
           "owned_by": "system",
-          "created": 1685577600,
-          "first_seen": "2026-04-19"
+          "created": 1685577600
         },
         {
           "id": "tripod",
           "type": "chat",
           "status": "active",
           "owned_by": "system",
-          "created": 1685577600,
-          "first_seen": "2026-04-19"
+          "created": 1685577600
         },
         {
           "id": "tripod-test",
           "type": "chat",
           "status": "active",
           "owned_by": "system",
-          "created": 1685577600,
-          "first_seen": "2026-04-19"
+          "created": 1685577600
         },
         {
           "id": "solar-pro3",
           "type": "chat",
           "status": "active",
           "owned_by": "system",
-          "created": 1685577600,
-          "name": "solar-pro3",
-          "context_window": 131072,
-          "max_output": 8192,
-          "cost": {
-            "input": 0.25,
-            "output": 0.25
-          },
-          "modalities": {
-            "input": [
-              "text"
-            ],
-            "output": [
-              "text"
-            ]
-          },
-          "capabilities": {
-            "reasoning": true,
-            "tool_call": true
-          },
-          "release_date": "2026-01",
-          "knowledge_cutoff": "2025-03",
-          "first_seen": "2026-04-19"
+          "created": 1685577600
         },
         {
           "id": "solar-pro3-260323",
           "type": "chat",
           "status": "active",
           "owned_by": "system",
-          "created": 1685577600,
-          "first_seen": "2026-04-19"
+          "created": 1685577600
         },
         {
           "id": "solar-pro3-nightly",
           "type": "chat",
           "status": "active",
           "owned_by": "system",
-          "created": 1685577600,
-          "first_seen": "2026-04-19"
+          "created": 1685577600
         },
         {
           "id": "solar-pro3-preview",
           "type": "chat",
           "status": "active",
           "owned_by": "system",
-          "created": 1685577600,
-          "first_seen": "2026-04-19"
+          "created": 1685577600
         },
         {
           "id": "solar-embedding-1-large-query",
           "type": "chat",
           "status": "active",
           "owned_by": "system",
-          "created": 1685577600,
-          "first_seen": "2026-04-19"
+          "created": 1685577600
         },
         {
           "id": "solar-embedding-1-large-passage",
           "type": "chat",
           "status": "active",
           "owned_by": "system",
-          "created": 1685577600,
-          "first_seen": "2026-04-19"
+          "created": 1685577600
         },
         {
           "id": "embedding-query",
           "type": "chat",
           "status": "active",
           "owned_by": "system",
-          "created": 1685577600,
-          "first_seen": "2026-04-19"
+          "created": 1685577600
         },
         {
           "id": "embedding-passage",
           "type": "chat",
           "status": "active",
           "owned_by": "system",
-          "created": 1685577600,
-          "first_seen": "2026-04-19"
+          "created": 1685577600
         }
       ]
     },
@@ -16901,246 +16686,55 @@
       ]
     },
     "zai-code": {
-      "provider_class": "ZAICodeProvider",
+      "provider_class": "",
       "kind": "chat",
       "models": [
         {
           "id": "glm-4.5",
           "type": "chat",
           "status": "active",
-          "owned_by": "z-ai",
-          "name": "GLM-4.5",
-          "context_window": 131072,
-          "max_output": 98304,
-          "cost": {
-            "input": 0.6,
-            "output": 2.2,
-            "cache_read": 0.11,
-            "cache_write": 0
-          },
-          "modalities": {
-            "input": [
-              "text"
-            ],
-            "output": [
-              "text"
-            ]
-          },
-          "capabilities": {
-            "reasoning": true,
-            "tool_call": true
-          },
-          "release_date": "2025-07-28",
-          "knowledge_cutoff": "2025-04",
-          "first_seen": "2026-04-19"
+          "owned_by": "z-ai"
         },
         {
           "id": "glm-4.5-air",
           "type": "chat",
           "status": "active",
-          "owned_by": "z-ai",
-          "name": "GLM-4.5-Air",
-          "context_window": 131072,
-          "max_output": 98304,
-          "cost": {
-            "input": 0.2,
-            "output": 1.1,
-            "cache_read": 0.03,
-            "cache_write": 0
-          },
-          "modalities": {
-            "input": [
-              "text"
-            ],
-            "output": [
-              "text"
-            ]
-          },
-          "capabilities": {
-            "reasoning": true,
-            "tool_call": true
-          },
-          "release_date": "2025-07-28",
-          "knowledge_cutoff": "2025-04",
-          "first_seen": "2026-04-19"
+          "owned_by": "z-ai"
         },
         {
           "id": "glm-4.6",
           "type": "chat",
           "status": "active",
-          "owned_by": "z-ai",
-          "name": "GLM-4.6",
-          "context_window": 204800,
-          "max_output": 131072,
-          "cost": {
-            "input": 0.6,
-            "output": 2.2,
-            "cache_read": 0.11,
-            "cache_write": 0
-          },
-          "modalities": {
-            "input": [
-              "text"
-            ],
-            "output": [
-              "text"
-            ]
-          },
-          "capabilities": {
-            "reasoning": true,
-            "tool_call": true
-          },
-          "release_date": "2025-09-30",
-          "knowledge_cutoff": "2025-04",
-          "first_seen": "2026-04-19"
+          "owned_by": "z-ai"
         },
         {
           "id": "glm-4.7",
           "type": "chat",
           "status": "active",
-          "owned_by": "z-ai",
-          "name": "GLM-4.7",
-          "context_window": 204800,
-          "max_output": 131072,
-          "cost": {
-            "input": 0.6,
-            "output": 2.2,
-            "cache_read": 0.11,
-            "cache_write": 0
-          },
-          "modalities": {
-            "input": [
-              "text"
-            ],
-            "output": [
-              "text"
-            ]
-          },
-          "capabilities": {
-            "reasoning": true,
-            "tool_call": true
-          },
-          "release_date": "2025-12-22",
-          "knowledge_cutoff": "2025-04",
-          "speed": {
-            "tft": 20.316,
-            "tok_per_sec": 176.9,
-            "thinking_tokens": 1134.0,
-            "text_tokens": 1069.0,
-            "total_tokens": 2222.0,
-            "wall_time": 33.0,
-            "tft_thinking": 4.889,
-            "runs": 1,
-            "finish_reason": "stop",
-            "tested_at": "2026-04-19T17:05:55Z"
-          },
-          "first_seen": "2026-04-19"
+          "owned_by": "z-ai"
         },
         {
           "id": "glm-5",
           "type": "chat",
           "status": "active",
-          "owned_by": "z-ai",
-          "name": "GLM-5",
-          "context_window": 204800,
-          "max_output": 131072,
-          "cost": {
-            "input": 1,
-            "output": 3.2,
-            "cache_read": 0.2,
-            "cache_write": 0
-          },
-          "modalities": {
-            "input": [
-              "text"
-            ],
-            "output": [
-              "text"
-            ]
-          },
-          "capabilities": {
-            "reasoning": true,
-            "tool_call": true
-          },
-          "release_date": "2026-02-11",
-          "speed": {
-            "tft": 22.298,
-            "tok_per_sec": 109.1,
-            "thinking_tokens": 894.0,
-            "text_tokens": 637.0,
-            "total_tokens": 1550.0,
-            "wall_time": 37.0,
-            "tft_thinking": 4.052,
-            "runs": 1,
-            "finish_reason": "stop",
-            "tested_at": "2026-04-19T17:06:31Z"
-          },
-          "first_seen": "2026-04-19"
+          "owned_by": "z-ai"
         },
         {
           "id": "glm-5-turbo",
           "type": "chat",
           "status": "active",
-          "owned_by": "z-ai",
-          "name": "GLM-5-Turbo",
-          "context_window": 200000,
-          "max_output": 131072,
-          "cost": {
-            "input": 1.2,
-            "output": 4,
-            "cache_read": 0.24,
-            "cache_write": 0
-          },
-          "modalities": {
-            "input": [
-              "text"
-            ],
-            "output": [
-              "text"
-            ]
-          },
-          "capabilities": {
-            "reasoning": true,
-            "tool_call": true,
-            "structured_output": true
-          },
-          "release_date": "2026-03-16",
-          "first_seen": "2026-04-19"
+          "owned_by": "z-ai"
         },
         {
           "id": "glm-5.1",
           "type": "chat",
           "status": "active",
-          "owned_by": "z-ai",
-          "name": "GLM-5.1",
-          "context_window": 200000,
-          "max_output": 131072,
-          "cost": {
-            "input": 1.4,
-            "output": 4.4,
-            "cache_read": 0.26,
-            "cache_write": 0
-          },
-          "modalities": {
-            "input": [
-              "text"
-            ],
-            "output": [
-              "text"
-            ]
-          },
-          "capabilities": {
-            "reasoning": true,
-            "tool_call": true,
-            "structured_output": true
-          },
-          "release_date": "2026-03-27",
-          "first_seen": "2026-04-19"
+          "owned_by": "z-ai"
         }
       ]
     },
     "tu": {
-      "provider_class": "TUProvider",
+      "provider_class": "",
       "kind": "chat",
       "models": [
         {
@@ -17148,64 +16742,56 @@
           "type": "chat",
           "status": "active",
           "owned_by": "aqueduct",
-          "created": 1779704888,
-          "first_seen": "2026-04-19"
+          "created": 1779704888
         },
         {
           "id": "qwen-3.6-35b",
           "type": "chat",
           "status": "active",
           "owned_by": "aqueduct",
-          "created": 1779704888,
-          "first_seen": "2026-05-26"
+          "created": 1779704888
         },
         {
           "id": "gemma-4-e2b-it",
           "type": "chat",
           "status": "active",
           "owned_by": "aqueduct",
-          "created": 1779704888,
-          "first_seen": "2026-05-26"
+          "created": 1779704888
         },
         {
           "id": "qwen3-embedding-4b",
-          "type": "embed",
+          "type": "chat",
           "status": "active",
           "owned_by": "aqueduct",
-          "created": 1779704888,
-          "first_seen": "2026-04-19"
+          "created": 1779704888
         },
         {
           "id": "kokoro",
           "type": "tts",
           "status": "active",
           "owned_by": "aqueduct",
-          "created": 1779704888,
-          "first_seen": "2026-04-19"
+          "created": 1779704888
         },
         {
           "id": "piper-thorsten",
           "type": "tts",
           "status": "active",
           "owned_by": "aqueduct",
-          "created": 1779704888,
-          "first_seen": "2026-04-19"
+          "created": 1779704888
         },
         {
           "id": "whisper-large",
           "type": "stt",
           "status": "active",
           "owned_by": "aqueduct",
-          "created": 1779704888,
-          "first_seen": "2026-04-19"
+          "created": 1779704888
         },
         {
           "id": "z-image-turbo",
-          "type": "image",
+          "type": "chat",
           "status": "active",
           "owned_by": "aqueduct",
-          "created": 1779704888,
-          "first_seen": "2026-04-19"
+          "created": 1779704888
         }
       ]
     },
