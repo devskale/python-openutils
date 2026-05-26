@@ -1,7 +1,7 @@
 {
   "_meta": {
     "version": "1.0.0",
-    "generated": "2026-05-26T21:15:19.368358+00:00",
+    "generated": "2026-05-26T21:35:27.166785+00:00",
     "source": "live provider APIs + models.dev",
     "models_dev_providers": [
       "chutes",
@@ -19,7 +19,7 @@
       "upstage",
       "zai"
     ],
-    "total_models": 1066,
+    "total_models": 1024,
     "total_providers": 21,
     "new_models": 198,
     "deprecated_models": 257
@@ -3873,55 +3873,49 @@
       ]
     },
     "ollama": {
-      "provider_class": "OllamaProvider",
+      "provider_class": "",
       "kind": "chat",
       "models": [
         {
           "id": "nomic-embed-text-v2-moe:latest",
           "type": "chat",
           "status": "active",
-          "owned_by": "nomic-bert-moe",
-          "first_seen": "2026-05-26"
+          "owned_by": "nomic-bert-moe"
         },
         {
           "id": "gemma3:1b",
           "type": "chat",
           "status": "active",
-          "owned_by": "gemma3",
-          "first_seen": "2026-04-19"
+          "owned_by": "gemma3"
         },
         {
           "id": "nomic-embed-text:latest",
           "type": "chat",
           "status": "active",
-          "owned_by": "nomic-bert",
-          "first_seen": "2026-04-19"
+          "owned_by": "nomic-bert"
         },
         {
           "id": "embeddinggemma:latest",
           "type": "chat",
           "status": "active",
-          "owned_by": "gemma3",
-          "first_seen": "2026-04-19"
+          "owned_by": "gemma3"
         },
         {
           "id": "dengcao/Qwen3-Embedding-0.6B:Q8_0",
           "type": "chat",
           "status": "active",
-          "owned_by": "qwen3",
-          "first_seen": "2026-04-19"
+          "owned_by": "qwen3"
         },
         {
           "id": "jina/jina-embeddings-v2-base-de:latest",
           "type": "chat",
           "status": "active",
-          "owned_by": "jina-bert-v2",
-          "first_seen": "2026-04-19"
+          "owned_by": "jina-bert-v2"
         }
       ]
     },
     "openrouter": {
-      "provider_class": "OpenRouterProvider",
+      "provider_class": "",
       "kind": "chat",
       "models": [
         {
@@ -3948,8 +3942,7 @@
             "input": 2.5,
             "output": 7.5
           },
-          "created": 1779376861,
-          "first_seen": "2026-05-26"
+          "created": 1779376861
         },
         {
           "id": "x-ai/grok-build-0.1",
@@ -3975,8 +3968,7 @@
             "input": 1.0,
             "output": 2.0
           },
-          "created": 1779298123,
-          "first_seen": "2026-05-26"
+          "created": 1779298123
         },
         {
           "id": "google/gemini-3.5-flash",
@@ -4007,8 +3999,7 @@
             "input": 1.5,
             "output": 9.0
           },
-          "created": 1779193800,
-          "first_seen": "2026-05-26"
+          "created": 1779193800
         },
         {
           "id": "anthropic/claude-opus-4.7-fast",
@@ -4036,8 +4027,7 @@
             "input": 30.0,
             "output": 150.0
           },
-          "created": 1778613011,
-          "first_seen": "2026-05-26"
+          "created": 1778613011
         },
         {
           "id": "perceptron/perceptron-mk1",
@@ -4064,8 +4054,7 @@
             "input": 0.15,
             "output": 1.5
           },
-          "created": 1778597029,
-          "first_seen": "2026-05-26"
+          "created": 1778597029
         },
         {
           "id": "inclusionai/ring-2.6-1t",
@@ -4090,8 +4079,7 @@
             "input": 0.075,
             "output": 0.625
           },
-          "created": 1778247440,
-          "first_seen": "2026-05-26"
+          "created": 1778247440
         },
         {
           "id": "google/gemini-3.1-flash-lite",
@@ -4121,8 +4109,7 @@
             "input": 0.25,
             "output": 1.5
           },
-          "created": 1778168828,
-          "first_seen": "2026-05-26"
+          "created": 1778168828
         },
         {
           "id": "baidu/cobuddy:free",
@@ -4147,8 +4134,7 @@
             "input": 0.0,
             "output": 0.0
           },
-          "created": 1778035480,
-          "first_seen": "2026-05-26"
+          "created": 1778035480
         },
         {
           "id": "openai/gpt-chat-latest",
@@ -4175,8 +4161,7 @@
             "input": 5.0,
             "output": 30.0
           },
-          "created": 1778000212,
-          "first_seen": "2026-05-26"
+          "created": 1778000212
         },
         {
           "id": "x-ai/grok-4.3",
@@ -4202,8 +4187,7 @@
             "input": 1.25,
             "output": 2.5
           },
-          "created": 1777591821,
-          "first_seen": "2026-05-26"
+          "created": 1777591821
         },
         {
           "id": "ibm-granite/granite-4.1-8b",
@@ -4228,8 +4212,7 @@
             "input": 0.049999999999999996,
             "output": 0.09999999999999999
           },
-          "created": 1777577071,
-          "first_seen": "2026-05-26"
+          "created": 1777577071
         },
         {
           "id": "mistralai/mistral-medium-3-5",
@@ -4256,8 +4239,7 @@
             "input": 1.5,
             "output": 7.5
           },
-          "created": 1777570439,
-          "first_seen": "2026-05-26"
+          "created": 1777570439
         },
         {
           "id": "openrouter/owl-alpha",
@@ -4282,8 +4264,7 @@
             "input": 0.0,
             "output": 0.0
           },
-          "created": 1777398589,
-          "first_seen": "2026-05-26"
+          "created": 1777398589
         },
         {
           "id": "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free",
@@ -4311,8 +4292,7 @@
             "input": 0.0,
             "output": 0.0
           },
-          "created": 1777393095,
-          "first_seen": "2026-05-26"
+          "created": 1777393095
         },
         {
           "id": "poolside/laguna-xs.2:free",
@@ -4337,8 +4317,7 @@
             "input": 0.0,
             "output": 0.0
           },
-          "created": 1777389604,
-          "first_seen": "2026-05-26"
+          "created": 1777389604
         },
         {
           "id": "poolside/laguna-m.1:free",
@@ -4363,8 +4342,7 @@
             "input": 0.0,
             "output": 0.0
           },
-          "created": 1777388504,
-          "first_seen": "2026-05-26"
+          "created": 1777388504
         },
         {
           "id": "~anthropic/claude-haiku-latest",
@@ -4392,8 +4370,7 @@
             "input": 1.0,
             "output": 5.0
           },
-          "created": 1777318492,
-          "first_seen": "2026-05-26"
+          "created": 1777318492
         },
         {
           "id": "~openai/gpt-mini-latest",
@@ -4422,8 +4399,7 @@
             "input": 0.75,
             "output": 4.5
           },
-          "created": 1777318471,
-          "first_seen": "2026-05-26"
+          "created": 1777318471
         },
         {
           "id": "~google/gemini-pro-latest",
@@ -4453,8 +4429,7 @@
             "input": 2.0,
             "output": 12.0
           },
-          "created": 1777318451,
-          "first_seen": "2026-05-26"
+          "created": 1777318451
         },
         {
           "id": "~moonshotai/kimi-latest",
@@ -4481,8 +4456,7 @@
             "input": 0.73,
             "output": 3.49
           },
-          "created": 1777318428,
-          "first_seen": "2026-05-26"
+          "created": 1777318428
         },
         {
           "id": "~google/gemini-flash-latest",
@@ -4513,8 +4487,7 @@
             "input": 1.5,
             "output": 9.0
           },
-          "created": 1777318398,
-          "first_seen": "2026-05-26"
+          "created": 1777318398
         },
         {
           "id": "~anthropic/claude-sonnet-latest",
@@ -4542,8 +4515,7 @@
             "input": 3.0,
             "output": 15.0
           },
-          "created": 1777318368,
-          "first_seen": "2026-05-26"
+          "created": 1777318368
         },
         {
           "id": "~openai/gpt-latest",
@@ -4572,8 +4544,7 @@
             "input": 5.0,
             "output": 30.0
           },
-          "created": 1777318334,
-          "first_seen": "2026-05-26"
+          "created": 1777318334
         },
         {
           "id": "qwen/qwen3.5-plus-20260420",
@@ -4601,8 +4572,7 @@
             "input": 0.3,
             "output": 1.7999999999999998
           },
-          "created": 1777261368,
-          "first_seen": "2026-05-26"
+          "created": 1777261368
         },
         {
           "id": "qwen/qwen3.6-flash",
@@ -4630,8 +4600,7 @@
             "input": 0.1875,
             "output": 1.125
           },
-          "created": 1777261362,
-          "first_seen": "2026-05-26"
+          "created": 1777261362
         },
         {
           "id": "qwen/qwen3.6-35b-a3b",
@@ -4659,8 +4628,7 @@
             "input": 0.15,
             "output": 1.0
           },
-          "created": 1777260255,
-          "first_seen": "2026-05-26"
+          "created": 1777260255
         },
         {
           "id": "qwen/qwen3.6-max-preview",
@@ -4686,8 +4654,7 @@
             "input": 1.04,
             "output": 6.24
           },
-          "created": 1777260242,
-          "first_seen": "2026-05-26"
+          "created": 1777260242
         },
         {
           "id": "qwen/qwen3.6-27b",
@@ -4715,8 +4682,7 @@
             "input": 0.3,
             "output": 2.0
           },
-          "created": 1777255064,
-          "first_seen": "2026-05-26"
+          "created": 1777255064
         },
         {
           "id": "openai/gpt-5.5-pro",
@@ -4745,8 +4711,7 @@
             "input": 30.0,
             "output": 180.0
           },
-          "created": 1777051896,
-          "first_seen": "2026-05-26"
+          "created": 1777051896
         },
         {
           "id": "openai/gpt-5.5",
@@ -4775,8 +4740,7 @@
             "input": 5.0,
             "output": 30.0
           },
-          "created": 1777051893,
-          "first_seen": "2026-05-26"
+          "created": 1777051893
         },
         {
           "id": "deepseek/deepseek-v4-pro",
@@ -4802,8 +4766,7 @@
             "input": 0.435,
             "output": 0.87
           },
-          "created": 1777000679,
-          "first_seen": "2026-05-26"
+          "created": 1777000679
         },
         {
           "id": "deepseek/deepseek-v4-flash:free",
@@ -4828,8 +4791,7 @@
             "input": 0.0,
             "output": 0.0
           },
-          "created": 1777000666,
-          "first_seen": "2026-05-26"
+          "created": 1777000666
         },
         {
           "id": "deepseek/deepseek-v4-flash",
@@ -4855,8 +4817,7 @@
             "input": 0.09999999999999999,
             "output": 0.19999999999999998
           },
-          "created": 1777000666,
-          "first_seen": "2026-05-26"
+          "created": 1777000666
         },
         {
           "id": "inclusionai/ling-2.6-1t",
@@ -4881,8 +4842,7 @@
             "input": 0.075,
             "output": 0.625
           },
-          "created": 1776948238,
-          "first_seen": "2026-05-26"
+          "created": 1776948238
         },
         {
           "id": "tencent/hy3-preview",
@@ -4907,8 +4867,7 @@
             "input": 0.06599999999999999,
             "output": 0.26
           },
-          "created": 1776878150,
-          "first_seen": "2026-05-26"
+          "created": 1776878150
         },
         {
           "id": "xiaomi/mimo-v2.5-pro",
@@ -4934,8 +4893,7 @@
             "input": 0.435,
             "output": 0.87
           },
-          "created": 1776874273,
-          "first_seen": "2026-05-26"
+          "created": 1776874273
         },
         {
           "id": "xiaomi/mimo-v2.5",
@@ -4963,8 +4921,7 @@
             "input": 0.14,
             "output": 0.28
           },
-          "created": 1776874269,
-          "first_seen": "2026-05-26"
+          "created": 1776874269
         },
         {
           "id": "openai/gpt-5.4-image-2",
@@ -4992,8 +4949,7 @@
             "input": 8.0,
             "output": 15.0
           },
-          "created": 1776797528,
-          "first_seen": "2026-05-26"
+          "created": 1776797528
         },
         {
           "id": "inclusionai/ling-2.6-flash",
@@ -5018,8 +4974,7 @@
             "input": 0.01,
             "output": 0.03
           },
-          "created": 1776795886,
-          "first_seen": "2026-05-26"
+          "created": 1776795886
         },
         {
           "id": "~anthropic/claude-opus-latest",
@@ -5047,8 +5002,7 @@
             "input": 5.0,
             "output": 25.0
           },
-          "created": 1776795361,
-          "first_seen": "2026-05-26"
+          "created": 1776795361
         },
         {
           "id": "openrouter/pareto-code",
@@ -5068,8 +5022,7 @@
             "input": -1000000.0,
             "output": -1000000.0
           },
-          "created": 1776747900,
-          "first_seen": "2026-05-26"
+          "created": 1776747900
         },
         {
           "id": "baidu/qianfan-ocr-fast",
@@ -5094,8 +5047,7 @@
             "input": 0.6799999999999999,
             "output": 2.81
           },
-          "created": 1776707472,
-          "first_seen": "2026-05-26"
+          "created": 1776707472
         },
         {
           "id": "moonshotai/kimi-k2.6",
@@ -5122,8 +5074,7 @@
             "input": 0.73,
             "output": 3.49
           },
-          "created": 1776699402,
-          "first_seen": "2026-05-26"
+          "created": 1776699402
         },
         {
           "id": "anthropic/claude-opus-4.7",
@@ -5143,19 +5094,15 @@
             ]
           },
           "capabilities": {
-            "reasoning": true,
             "tool_call": true,
-            "structured_output": true,
-            "structured_outputs": true
+            "structured_outputs": true,
+            "reasoning": true
           },
           "cost": {
             "input": 5.0,
             "output": 25.0
           },
-          "created": 1776351100,
-          "release_date": "2026-04-16",
-          "knowledge_cutoff": "2026-01-31",
-          "first_seen": "2026-04-19"
+          "created": 1776351100
         },
         {
           "id": "anthropic/claude-opus-4.6-fast",
@@ -5183,8 +5130,7 @@
             "input": 30.0,
             "output": 150.0
           },
-          "created": 1775592472,
-          "first_seen": "2026-04-19"
+          "created": 1775592472
         },
         {
           "id": "z-ai/glm-5.1",
@@ -5201,19 +5147,15 @@
             ]
           },
           "capabilities": {
-            "reasoning": true,
             "tool_call": true,
-            "structured_output": true,
-            "structured_outputs": true
+            "structured_outputs": true,
+            "reasoning": true
           },
           "cost": {
             "input": 0.98,
             "output": 3.08
           },
-          "created": 1775578025,
-          "max_output": 131072,
-          "release_date": "2026-04-07",
-          "first_seen": "2026-04-19"
+          "created": 1775578025
         },
         {
           "id": "google/gemma-4-26b-a4b-it:free",
@@ -5233,29 +5175,14 @@
             ]
           },
           "capabilities": {
-            "reasoning": true,
             "tool_call": true,
-            "structured_output": true
+            "reasoning": true
           },
           "cost": {
             "input": 0.0,
             "output": 0.0
           },
-          "created": 1775227989,
-          "release_date": "2026-04-03",
-          "knowledge_cutoff": "2025-01",
-          "speed": {
-            "tft": 1.54,
-            "tok_per_sec": 50.0,
-            "thinking_tokens": 0.0,
-            "text_tokens": 968.0,
-            "total_tokens": 980.0,
-            "wall_time": 21.0,
-            "runs": 1,
-            "finish_reason": "stop",
-            "tested_at": "2026-04-19T17:04:24Z"
-          },
-          "first_seen": "2026-04-19"
+          "created": 1775227989
         },
         {
           "id": "google/gemma-4-26b-a4b-it",
@@ -5274,20 +5201,15 @@
             ]
           },
           "capabilities": {
-            "reasoning": true,
             "tool_call": true,
-            "structured_output": true,
-            "structured_outputs": true
+            "structured_outputs": true,
+            "reasoning": true
           },
           "cost": {
             "input": 0.06,
             "output": 0.33
           },
-          "created": 1775227989,
-          "max_output": 262144,
-          "release_date": "2026-04-03",
-          "knowledge_cutoff": "2025-01",
-          "first_seen": "2026-04-19"
+          "created": 1775227989
         },
         {
           "id": "google/gemma-4-31b-it:free",
@@ -5307,18 +5229,14 @@
             ]
           },
           "capabilities": {
-            "reasoning": true,
             "tool_call": true,
-            "structured_output": true
+            "reasoning": true
           },
           "cost": {
             "input": 0.0,
             "output": 0.0
           },
-          "created": 1775148486,
-          "release_date": "2026-04-02",
-          "knowledge_cutoff": "2025-01",
-          "first_seen": "2026-04-19"
+          "created": 1775148486
         },
         {
           "id": "google/gemma-4-31b-it",
@@ -5338,19 +5256,15 @@
             ]
           },
           "capabilities": {
-            "reasoning": true,
             "tool_call": true,
-            "structured_output": true,
-            "structured_outputs": true
+            "structured_outputs": true,
+            "reasoning": true
           },
           "cost": {
             "input": 0.12,
             "output": 0.37
           },
-          "created": 1775148486,
-          "release_date": "2026-04-02",
-          "knowledge_cutoff": "2025-01",
-          "first_seen": "2026-04-19"
+          "created": 1775148486
         },
         {
           "id": "qwen/qwen3.6-plus",
@@ -5370,19 +5284,15 @@
             ]
           },
           "capabilities": {
-            "reasoning": true,
             "tool_call": true,
-            "structured_output": true,
-            "structured_outputs": true
+            "structured_outputs": true,
+            "reasoning": true
           },
           "cost": {
             "input": 0.325,
             "output": 1.95
           },
-          "created": 1775133557,
-          "release_date": "2026-04-02",
-          "knowledge_cutoff": "2025-04",
-          "first_seen": "2026-04-19"
+          "created": 1775133557
         },
         {
           "id": "z-ai/glm-5v-turbo",
@@ -5409,8 +5319,7 @@
             "input": 1.2,
             "output": 4.0
           },
-          "created": 1775061458,
-          "first_seen": "2026-04-19"
+          "created": 1775061458
         },
         {
           "id": "arcee-ai/trinity-large-thinking",
@@ -5428,17 +5337,15 @@
             ]
           },
           "capabilities": {
-            "reasoning": true,
             "tool_call": true,
-            "structured_outputs": true
+            "structured_outputs": true,
+            "reasoning": true
           },
           "cost": {
             "input": 0.22,
             "output": 0.85
           },
-          "created": 1775058318,
-          "release_date": "2026-04-01",
-          "first_seen": "2026-04-19"
+          "created": 1775058318
         },
         {
           "id": "x-ai/grok-4.20-multi-agent",
@@ -5465,8 +5372,7 @@
             "input": 2.0,
             "output": 6.0
           },
-          "created": 1774979158,
-          "first_seen": "2026-04-19"
+          "created": 1774979158
         },
         {
           "id": "x-ai/grok-4.20",
@@ -5494,8 +5400,7 @@
             "input": 1.25,
             "output": 2.5
           },
-          "created": 1774979019,
-          "first_seen": "2026-04-19"
+          "created": 1774979019
         },
         {
           "id": "google/lyria-3-pro-preview",
@@ -5518,8 +5423,7 @@
             "input": 0.0,
             "output": 0.0
           },
-          "created": 1774907286,
-          "first_seen": "2026-04-19"
+          "created": 1774907286
         },
         {
           "id": "google/lyria-3-clip-preview",
@@ -5542,8 +5446,7 @@
             "input": 0.0,
             "output": 0.0
           },
-          "created": 1774907255,
-          "first_seen": "2026-04-19"
+          "created": 1774907255
         },
         {
           "id": "kwaipilot/kat-coder-pro-v2",
@@ -5568,8 +5471,7 @@
             "input": 0.3,
             "output": 1.2
           },
-          "created": 1774649310,
-          "first_seen": "2026-04-19"
+          "created": 1774649310
         },
         {
           "id": "rekaai/reka-edge",
@@ -5596,8 +5498,7 @@
             "input": 0.09999999999999999,
             "output": 0.09999999999999999
           },
-          "created": 1774026965,
-          "first_seen": "2026-04-19"
+          "created": 1774026965
         },
         {
           "id": "xiaomi/mimo-v2-omni",
@@ -5618,17 +5519,14 @@
             ]
           },
           "capabilities": {
-            "reasoning": true,
             "tool_call": true,
-            "structured_output": true
+            "reasoning": true
           },
           "cost": {
             "input": 0.39999999999999997,
             "output": 2.0
           },
-          "created": 1773863703,
-          "release_date": "2026-03-18",
-          "first_seen": "2026-04-19"
+          "created": 1773863703
         },
         {
           "id": "xiaomi/mimo-v2-pro",
@@ -5646,17 +5544,14 @@
             ]
           },
           "capabilities": {
-            "reasoning": true,
             "tool_call": true,
-            "structured_output": true
+            "reasoning": true
           },
           "cost": {
             "input": 1.0,
             "output": 3.0
           },
-          "created": 1773863643,
-          "release_date": "2026-03-18",
-          "first_seen": "2026-04-19"
+          "created": 1773863643
         },
         {
           "id": "minimax/minimax-m2.7",
@@ -5674,17 +5569,15 @@
             ]
           },
           "capabilities": {
-            "reasoning": true,
             "tool_call": true,
-            "structured_outputs": true
+            "structured_outputs": true,
+            "reasoning": true
           },
           "cost": {
             "input": 0.27899999999999997,
             "output": 1.2
           },
-          "created": 1773836697,
-          "release_date": "2026-03-18",
-          "first_seen": "2026-04-19"
+          "created": 1773836697
         },
         {
           "id": "openai/gpt-5.4-nano",
@@ -5704,20 +5597,16 @@
             ]
           },
           "capabilities": {
-            "reasoning": true,
             "tool_call": true,
-            "structured_output": true,
             "structured_outputs": true,
+            "reasoning": true,
             "knowledge_cutoff": "2025-08-31"
           },
           "cost": {
             "input": 0.19999999999999998,
             "output": 1.25
           },
-          "created": 1773748187,
-          "release_date": "2026-03-17",
-          "knowledge_cutoff": "2025-08-31",
-          "first_seen": "2026-04-19"
+          "created": 1773748187
         },
         {
           "id": "openai/gpt-5.4-mini",
@@ -5737,20 +5626,16 @@
             ]
           },
           "capabilities": {
-            "reasoning": true,
             "tool_call": true,
-            "structured_output": true,
             "structured_outputs": true,
+            "reasoning": true,
             "knowledge_cutoff": "2025-08-31"
           },
           "cost": {
             "input": 0.75,
             "output": 4.5
           },
-          "created": 1773748178,
-          "release_date": "2026-03-17",
-          "knowledge_cutoff": "2025-08-31",
-          "first_seen": "2026-04-19"
+          "created": 1773748178
         },
         {
           "id": "mistralai/mistral-small-2603",
@@ -5768,19 +5653,15 @@
             ]
           },
           "capabilities": {
-            "reasoning": true,
             "tool_call": true,
-            "structured_outputs": true
+            "structured_outputs": true,
+            "reasoning": true
           },
           "cost": {
             "input": 0.15,
             "output": 0.6
           },
-          "created": 1773695685,
-          "max_output": 262144,
-          "release_date": "2026-03-16",
-          "knowledge_cutoff": "2025-06",
-          "first_seen": "2026-04-19"
+          "created": 1773695685
         },
         {
           "id": "z-ai/glm-5-turbo",
@@ -5798,17 +5679,14 @@
             ]
           },
           "capabilities": {
-            "reasoning": true,
             "tool_call": true,
-            "structured_output": true
+            "reasoning": true
           },
           "cost": {
             "input": 1.2,
             "output": 4.0
           },
-          "created": 1773583573,
-          "release_date": "2026-03-16",
-          "first_seen": "2026-04-19"
+          "created": 1773583573
         },
         {
           "id": "nvidia/nemotron-3-super-120b-a12b:free",
@@ -5826,18 +5704,15 @@
             ]
           },
           "capabilities": {
-            "reasoning": true,
             "tool_call": true,
-            "structured_outputs": true
+            "structured_outputs": true,
+            "reasoning": true
           },
           "cost": {
             "input": 0.0,
             "output": 0.0
           },
-          "created": 1773245239,
-          "release_date": "2026-03-11",
-          "knowledge_cutoff": "2024-04",
-          "first_seen": "2026-04-19"
+          "created": 1773245239
         },
         {
           "id": "nvidia/nemotron-3-super-120b-a12b",
@@ -5854,18 +5729,14 @@
             ]
           },
           "capabilities": {
-            "reasoning": true,
-            "tool_call": true
+            "tool_call": true,
+            "reasoning": true
           },
           "cost": {
             "input": 0.09,
             "output": 0.44999999999999996
           },
-          "created": 1773245239,
-          "max_output": 262144,
-          "release_date": "2026-03-11",
-          "knowledge_cutoff": "2024-04",
-          "first_seen": "2026-04-19"
+          "created": 1773245239
         },
         {
           "id": "bytedance-seed/seed-2.0-lite",
@@ -5893,8 +5764,7 @@
             "input": 0.25,
             "output": 2.0
           },
-          "created": 1773157231,
-          "first_seen": "2026-04-19"
+          "created": 1773157231
         },
         {
           "id": "qwen/qwen3.5-9b",
@@ -5922,8 +5792,7 @@
             "input": 0.04,
             "output": 0.15
           },
-          "created": 1773152396,
-          "first_seen": "2026-04-19"
+          "created": 1773152396
         },
         {
           "id": "openai/gpt-5.4-pro",
@@ -5943,19 +5812,15 @@
             ]
           },
           "capabilities": {
-            "reasoning": true,
             "tool_call": true,
-            "structured_output": false,
-            "structured_outputs": true
+            "structured_outputs": true,
+            "reasoning": true
           },
           "cost": {
             "input": 30.0,
             "output": 180.0
           },
-          "created": 1772734366,
-          "release_date": "2026-03-05",
-          "knowledge_cutoff": "2025-08-31",
-          "first_seen": "2026-04-19"
+          "created": 1772734366
         },
         {
           "id": "openai/gpt-5.4",
@@ -5975,19 +5840,15 @@
             ]
           },
           "capabilities": {
-            "reasoning": true,
             "tool_call": true,
-            "structured_output": true,
-            "structured_outputs": true
+            "structured_outputs": true,
+            "reasoning": true
           },
           "cost": {
             "input": 2.5,
             "output": 15.0
           },
-          "created": 1772734352,
-          "release_date": "2026-03-05",
-          "knowledge_cutoff": "2025-08-31",
-          "first_seen": "2026-04-19"
+          "created": 1772734352
         },
         {
           "id": "inception/mercury-2",
@@ -6005,18 +5866,15 @@
             ]
           },
           "capabilities": {
-            "reasoning": true,
             "tool_call": true,
-            "structured_output": true,
-            "structured_outputs": true
+            "structured_outputs": true,
+            "reasoning": true
           },
           "cost": {
             "input": 0.25,
             "output": 0.75
           },
-          "created": 1772636275,
-          "release_date": "2026-03-04",
-          "first_seen": "2026-04-19"
+          "created": 1772636275
         },
         {
           "id": "openai/gpt-5.3-chat",
@@ -6043,8 +5901,7 @@
             "input": 1.75,
             "output": 14.0
           },
-          "created": 1772564061,
-          "first_seen": "2026-04-19"
+          "created": 1772564061
         },
         {
           "id": "google/gemini-3.1-flash-lite-preview",
@@ -6066,18 +5923,15 @@
             ]
           },
           "capabilities": {
-            "reasoning": true,
             "tool_call": true,
-            "structured_output": true,
-            "structured_outputs": true
+            "structured_outputs": true,
+            "reasoning": true
           },
           "cost": {
             "input": 0.25,
             "output": 1.5
           },
-          "created": 1772512673,
-          "release_date": "2026-03-03",
-          "first_seen": "2026-04-19"
+          "created": 1772512673
         },
         {
           "id": "bytedance-seed/seed-2.0-mini",
@@ -6105,8 +5959,7 @@
             "input": 0.09999999999999999,
             "output": 0.39999999999999997
           },
-          "created": 1772131107,
-          "first_seen": "2026-04-19"
+          "created": 1772131107
         },
         {
           "id": "google/gemini-3.1-flash-image-preview",
@@ -6133,8 +5986,7 @@
             "input": 0.5,
             "output": 3.0
           },
-          "created": 1772119558,
-          "first_seen": "2026-04-19"
+          "created": 1772119558
         },
         {
           "id": "qwen/qwen3.5-35b-a3b",
@@ -6161,8 +6013,7 @@
             "input": 0.13899999999999998,
             "output": 1.0
           },
-          "created": 1772053822,
-          "first_seen": "2026-04-19"
+          "created": 1772053822
         },
         {
           "id": "qwen/qwen3.5-27b",
@@ -6190,8 +6041,7 @@
             "input": 0.195,
             "output": 1.56
           },
-          "created": 1772053810,
-          "first_seen": "2026-04-19"
+          "created": 1772053810
         },
         {
           "id": "qwen/qwen3.5-122b-a10b",
@@ -6219,8 +6069,7 @@
             "input": 0.26,
             "output": 2.08
           },
-          "created": 1772053789,
-          "first_seen": "2026-04-19"
+          "created": 1772053789
         },
         {
           "id": "qwen/qwen3.5-flash-02-23",
@@ -6240,18 +6089,15 @@
             ]
           },
           "capabilities": {
-            "reasoning": true,
             "tool_call": true,
-            "structured_output": true,
-            "structured_outputs": true
+            "structured_outputs": true,
+            "reasoning": true
           },
           "cost": {
             "input": 0.065,
             "output": 0.26
           },
-          "created": 1772053776,
-          "release_date": "2026-02-25",
-          "first_seen": "2026-04-19"
+          "created": 1772053776
         },
         {
           "id": "liquid/lfm-2-24b-a2b",
@@ -6271,8 +6117,7 @@
             "input": 0.03,
             "output": 0.12
           },
-          "created": 1772048711,
-          "first_seen": "2026-04-19"
+          "created": 1772048711
         },
         {
           "id": "google/gemini-3.1-pro-preview-customtools",
@@ -6294,19 +6139,15 @@
             ]
           },
           "capabilities": {
-            "reasoning": true,
             "tool_call": true,
-            "structured_output": true,
-            "structured_outputs": true
+            "structured_outputs": true,
+            "reasoning": true
           },
           "cost": {
             "input": 2.0,
             "output": 12.0
           },
-          "created": 1772045923,
-          "release_date": "2026-02-19",
-          "knowledge_cutoff": "2025-01",
-          "first_seen": "2026-04-19"
+          "created": 1772045923
         },
         {
           "id": "openai/gpt-5.3-codex",
@@ -6326,19 +6167,15 @@
             ]
           },
           "capabilities": {
-            "reasoning": true,
             "tool_call": true,
-            "structured_output": true,
-            "structured_outputs": true
+            "structured_outputs": true,
+            "reasoning": true
           },
           "cost": {
             "input": 1.75,
             "output": 14.0
           },
-          "created": 1771959164,
-          "release_date": "2026-02-24",
-          "knowledge_cutoff": "2025-08-31",
-          "first_seen": "2026-04-19"
+          "created": 1771959164
         },
         {
           "id": "aion-labs/aion-2.0",
@@ -6362,8 +6199,7 @@
             "input": 0.7999999999999999,
             "output": 1.5999999999999999
           },
-          "created": 1771881306,
-          "first_seen": "2026-04-19"
+          "created": 1771881306
         },
         {
           "id": "google/gemini-3.1-pro-preview",
@@ -6385,19 +6221,15 @@
             ]
           },
           "capabilities": {
-            "reasoning": true,
             "tool_call": true,
-            "structured_output": true,
-            "structured_outputs": true
+            "structured_outputs": true,
+            "reasoning": true
           },
           "cost": {
             "input": 2.0,
             "output": 12.0
           },
-          "created": 1771509627,
-          "release_date": "2026-02-19",
-          "knowledge_cutoff": "2025-01",
-          "first_seen": "2026-04-19"
+          "created": 1771509627
         },
         {
           "id": "anthropic/claude-sonnet-4.6",
@@ -6417,19 +6249,15 @@
             ]
           },
           "capabilities": {
-            "reasoning": true,
             "tool_call": true,
-            "structured_output": true,
-            "structured_outputs": true
+            "structured_outputs": true,
+            "reasoning": true
           },
           "cost": {
             "input": 3.0,
             "output": 15.0
           },
-          "created": 1771342990,
-          "release_date": "2026-02-17",
-          "knowledge_cutoff": "2025-08-31",
-          "first_seen": "2026-04-19"
+          "created": 1771342990
         },
         {
           "id": "qwen/qwen3.5-plus-02-15",
@@ -6449,19 +6277,15 @@
             ]
           },
           "capabilities": {
-            "reasoning": true,
             "tool_call": true,
-            "structured_output": true,
-            "structured_outputs": true
+            "structured_outputs": true,
+            "reasoning": true
           },
           "cost": {
             "input": 0.26,
             "output": 1.56
           },
-          "created": 1771229416,
-          "release_date": "2026-02-16",
-          "knowledge_cutoff": "2025-04",
-          "first_seen": "2026-04-19"
+          "created": 1771229416
         },
         {
           "id": "qwen/qwen3.5-397b-a17b",
@@ -6481,19 +6305,15 @@
             ]
           },
           "capabilities": {
-            "reasoning": true,
             "tool_call": true,
-            "structured_output": true,
-            "structured_outputs": true
+            "structured_outputs": true,
+            "reasoning": true
           },
           "cost": {
             "input": 0.39,
             "output": 2.34
           },
-          "created": 1771223018,
-          "release_date": "2026-02-16",
-          "knowledge_cutoff": "2025-04",
-          "first_seen": "2026-04-19"
+          "created": 1771223018
         },
         {
           "id": "minimax/minimax-m2.5:free",
@@ -6511,17 +6331,14 @@
             ]
           },
           "capabilities": {
-            "reasoning": true,
             "tool_call": true,
-            "structured_output": true
+            "reasoning": true
           },
           "cost": {
             "input": 0.0,
             "output": 0.0
           },
-          "created": 1770908502,
-          "release_date": "2026-02-12",
-          "first_seen": "2026-04-19"
+          "created": 1770908502
         },
         {
           "id": "minimax/minimax-m2.5",
@@ -6539,18 +6356,15 @@
             ]
           },
           "capabilities": {
-            "reasoning": true,
             "tool_call": true,
-            "structured_output": true,
-            "structured_outputs": true
+            "structured_outputs": true,
+            "reasoning": true
           },
           "cost": {
             "input": 0.15,
             "output": 1.15
           },
-          "created": 1770908502,
-          "release_date": "2026-02-12",
-          "first_seen": "2026-04-19"
+          "created": 1770908502
         },
         {
           "id": "z-ai/glm-5",
@@ -6567,19 +6381,15 @@
             ]
           },
           "capabilities": {
-            "reasoning": true,
             "tool_call": true,
-            "structured_output": true,
-            "structured_outputs": true
+            "structured_outputs": true,
+            "reasoning": true
           },
           "cost": {
             "input": 0.6,
             "output": 1.92
           },
-          "created": 1770829182,
-          "max_output": 131000,
-          "release_date": "2026-02-12",
-          "first_seen": "2026-04-19"
+          "created": 1770829182
         },
         {
           "id": "qwen/qwen3-max-thinking",
@@ -6605,8 +6415,7 @@
             "input": 0.78,
             "output": 3.9
           },
-          "created": 1770671901,
-          "first_seen": "2026-04-19"
+          "created": 1770671901
         },
         {
           "id": "anthropic/claude-opus-4.6",
@@ -6626,19 +6435,15 @@
             ]
           },
           "capabilities": {
-            "reasoning": true,
             "tool_call": true,
-            "structured_output": true,
-            "structured_outputs": true
+            "structured_outputs": true,
+            "reasoning": true
           },
           "cost": {
             "input": 5.0,
             "output": 25.0
           },
-          "created": 1770219050,
-          "release_date": "2026-02-05",
-          "knowledge_cutoff": "2025-05-31",
-          "first_seen": "2026-04-19"
+          "created": 1770219050
         },
         {
           "id": "qwen/qwen3-coder-next",
@@ -6663,8 +6468,7 @@
             "input": 0.11,
             "output": 0.7999999999999999
           },
-          "created": 1770164101,
-          "first_seen": "2026-04-19"
+          "created": 1770164101
         },
         {
           "id": "openrouter/free",
@@ -6682,19 +6486,15 @@
             ]
           },
           "capabilities": {
-            "reasoning": true,
             "tool_call": true,
-            "structured_output": true,
-            "structured_outputs": true
+            "structured_outputs": true,
+            "reasoning": true
           },
           "cost": {
             "input": 0.0,
             "output": 0.0
           },
-          "created": 1769917427,
-          "max_output": 8000,
-          "release_date": "2026-02-01",
-          "first_seen": "2026-04-19"
+          "created": 1769917427
         },
         {
           "id": "stepfun/step-3.5-flash",
@@ -6712,17 +6512,14 @@
             ]
           },
           "capabilities": {
-            "reasoning": true,
-            "tool_call": true
+            "tool_call": true,
+            "reasoning": true
           },
           "cost": {
             "input": 0.09,
             "output": 0.3
           },
-          "created": 1769728337,
-          "release_date": "2026-01-29",
-          "knowledge_cutoff": "2025-01",
-          "first_seen": "2026-04-19"
+          "created": 1769728337
         },
         {
           "id": "moonshotai/kimi-k2.5",
@@ -6741,19 +6538,15 @@
             ]
           },
           "capabilities": {
-            "reasoning": true,
             "tool_call": true,
-            "structured_output": true,
-            "structured_outputs": true
+            "structured_outputs": true,
+            "reasoning": true
           },
           "cost": {
             "input": 0.39999999999999997,
             "output": 1.9
           },
-          "created": 1769487076,
-          "release_date": "2026-01-27",
-          "knowledge_cutoff": "2025-01",
-          "first_seen": "2026-04-19"
+          "created": 1769487076
         },
         {
           "id": "upstage/solar-pro-3",
@@ -6778,8 +6571,7 @@
             "input": 0.15,
             "output": 0.6
           },
-          "created": 1769481200,
-          "first_seen": "2026-04-19"
+          "created": 1769481200
         },
         {
           "id": "minimax/minimax-m2-her",
@@ -6800,8 +6592,7 @@
             "input": 0.3,
             "output": 1.2
           },
-          "created": 1769177239,
-          "first_seen": "2026-04-19"
+          "created": 1769177239
         },
         {
           "id": "writer/palmyra-x5",
@@ -6822,8 +6613,7 @@
             "input": 0.6,
             "output": 6.0
           },
-          "created": 1769003823,
-          "first_seen": "2026-04-19"
+          "created": 1769003823
         },
         {
           "id": "liquid/lfm-2.5-1.2b-thinking:free",
@@ -6840,18 +6630,13 @@
             ]
           },
           "capabilities": {
-            "reasoning": true,
-            "tool_call": false
+            "reasoning": true
           },
           "cost": {
             "input": 0.0,
             "output": 0.0
           },
-          "created": 1768927527,
-          "max_output": 32768,
-          "release_date": "2026-01-20",
-          "knowledge_cutoff": "2025-06",
-          "first_seen": "2026-04-19"
+          "created": 1768927527
         },
         {
           "id": "liquid/lfm-2.5-1.2b-instruct:free",
@@ -6871,15 +6656,7 @@
             "input": 0.0,
             "output": 0.0
           },
-          "created": 1768927521,
-          "max_output": 32768,
-          "capabilities": {
-            "reasoning": false,
-            "tool_call": false
-          },
-          "release_date": "2026-01-20",
-          "knowledge_cutoff": "2025-06",
-          "first_seen": "2026-04-19"
+          "created": 1768927521
         },
         {
           "id": "openai/gpt-audio",
@@ -6906,8 +6683,7 @@
             "input": 2.5,
             "output": 10.0
           },
-          "created": 1768862569,
-          "first_seen": "2026-04-19"
+          "created": 1768862569
         },
         {
           "id": "openai/gpt-audio-mini",
@@ -6934,8 +6710,7 @@
             "input": 0.6,
             "output": 2.4
           },
-          "created": 1768859419,
-          "first_seen": "2026-04-19"
+          "created": 1768859419
         },
         {
           "id": "z-ai/glm-4.7-flash",
@@ -6953,18 +6728,15 @@
             ]
           },
           "capabilities": {
-            "reasoning": true,
             "tool_call": true,
-            "structured_output": true,
-            "structured_outputs": true
+            "structured_outputs": true,
+            "reasoning": true
           },
           "cost": {
             "input": 0.06,
             "output": 0.39999999999999997
           },
-          "created": 1768833913,
-          "release_date": "2026-01-19",
-          "first_seen": "2026-04-19"
+          "created": 1768833913
         },
         {
           "id": "openai/gpt-5.2-codex",
@@ -6983,19 +6755,15 @@
             ]
           },
           "capabilities": {
-            "reasoning": true,
             "tool_call": true,
-            "structured_output": true,
-            "structured_outputs": true
+            "structured_outputs": true,
+            "reasoning": true
           },
           "cost": {
             "input": 1.75,
             "output": 14.0
           },
-          "created": 1768409315,
-          "release_date": "2026-01-14",
-          "knowledge_cutoff": "2025-08-31",
-          "first_seen": "2026-04-19"
+          "created": 1768409315
         },
         {
           "id": "bytedance-seed/seed-1.6-flash",
@@ -7023,8 +6791,7 @@
             "input": 0.075,
             "output": 0.3
           },
-          "created": 1766505011,
-          "first_seen": "2026-04-19"
+          "created": 1766505011
         },
         {
           "id": "bytedance-seed/seed-1.6",
@@ -7052,8 +6819,7 @@
             "input": 0.25,
             "output": 2.0
           },
-          "created": 1766504997,
-          "first_seen": "2026-04-19"
+          "created": 1766504997
         },
         {
           "id": "minimax/minimax-m2.1",
@@ -7071,18 +6837,15 @@
             ]
           },
           "capabilities": {
-            "reasoning": true,
             "tool_call": true,
-            "structured_output": true,
-            "structured_outputs": true
+            "structured_outputs": true,
+            "reasoning": true
           },
           "cost": {
             "input": 0.29,
             "output": 0.95
           },
-          "created": 1766454997,
-          "release_date": "2025-12-23",
-          "first_seen": "2026-04-19"
+          "created": 1766454997
         },
         {
           "id": "z-ai/glm-4.7",
@@ -7100,19 +6863,15 @@
             ]
           },
           "capabilities": {
-            "reasoning": true,
             "tool_call": true,
-            "structured_output": true,
-            "structured_outputs": true
+            "structured_outputs": true,
+            "reasoning": true
           },
           "cost": {
             "input": 0.39999999999999997,
             "output": 1.75
           },
-          "created": 1766378014,
-          "release_date": "2025-12-22",
-          "knowledge_cutoff": "2025-04",
-          "first_seen": "2026-04-19"
+          "created": 1766378014
         },
         {
           "id": "google/gemini-3-flash-preview",
@@ -7134,19 +6893,15 @@
             ]
           },
           "capabilities": {
-            "reasoning": true,
             "tool_call": true,
-            "structured_output": true,
-            "structured_outputs": true
+            "structured_outputs": true,
+            "reasoning": true
           },
           "cost": {
             "input": 0.5,
             "output": 3.0
           },
-          "created": 1765987078,
-          "release_date": "2025-12-17",
-          "knowledge_cutoff": "2025-01",
-          "first_seen": "2026-04-19"
+          "created": 1765987078
         },
         {
           "id": "xiaomi/mimo-v2-flash",
@@ -7164,18 +6919,14 @@
             ]
           },
           "capabilities": {
-            "reasoning": true,
             "tool_call": true,
-            "structured_output": true
+            "reasoning": true
           },
           "cost": {
             "input": 0.09999999999999999,
             "output": 0.3
           },
-          "created": 1765731308,
-          "release_date": "2025-12-14",
-          "knowledge_cutoff": "2024-12",
-          "first_seen": "2026-04-19"
+          "created": 1765731308
         },
         {
           "id": "nvidia/nemotron-3-nano-30b-a3b:free",
@@ -7192,19 +6943,14 @@
             ]
           },
           "capabilities": {
-            "reasoning": true,
             "tool_call": true,
-            "structured_output": true
+            "reasoning": true
           },
           "cost": {
             "input": 0.0,
             "output": 0.0
           },
-          "created": 1765731275,
-          "max_output": 256000,
-          "release_date": "2025-12-14",
-          "knowledge_cutoff": "2025-11",
-          "first_seen": "2026-04-19"
+          "created": 1765731275
         },
         {
           "id": "nvidia/nemotron-3-nano-30b-a3b",
@@ -7229,8 +6975,7 @@
             "input": 0.049999999999999996,
             "output": 0.19999999999999998
           },
-          "created": 1765731275,
-          "first_seen": "2026-04-19"
+          "created": 1765731275
         },
         {
           "id": "openai/gpt-5.2-chat",
@@ -7250,19 +6995,14 @@
             ]
           },
           "capabilities": {
-            "reasoning": true,
             "tool_call": true,
-            "structured_output": true,
             "structured_outputs": true
           },
           "cost": {
             "input": 1.75,
             "output": 14.0
           },
-          "created": 1765389783,
-          "release_date": "2025-12-11",
-          "knowledge_cutoff": "2025-08-31",
-          "first_seen": "2026-04-19"
+          "created": 1765389783
         },
         {
           "id": "openai/gpt-5.2-pro",
@@ -7282,19 +7022,15 @@
             ]
           },
           "capabilities": {
-            "reasoning": true,
             "tool_call": true,
-            "structured_output": true,
-            "structured_outputs": true
+            "structured_outputs": true,
+            "reasoning": true
           },
           "cost": {
             "input": 21.0,
             "output": 168.0
           },
-          "created": 1765389780,
-          "release_date": "2025-12-11",
-          "knowledge_cutoff": "2025-08-31",
-          "first_seen": "2026-04-19"
+          "created": 1765389780
         },
         {
           "id": "openai/gpt-5.2",
@@ -7314,19 +7050,15 @@
             ]
           },
           "capabilities": {
-            "reasoning": true,
             "tool_call": true,
-            "structured_output": true,
-            "structured_outputs": true
+            "structured_outputs": true,
+            "reasoning": true
           },
           "cost": {
             "input": 1.75,
             "output": 14.0
           },
-          "created": 1765389775,
-          "release_date": "2025-12-11",
-          "knowledge_cutoff": "2025-08-31",
-          "first_seen": "2026-04-19"
+          "created": 1765389775
         },
         {
           "id": "mistralai/devstral-2512",
@@ -7344,20 +7076,14 @@
             ]
           },
           "capabilities": {
-            "reasoning": false,
             "tool_call": true,
-            "structured_output": true,
             "structured_outputs": true
           },
           "cost": {
             "input": 0.39999999999999997,
             "output": 2.0
           },
-          "created": 1765285419,
-          "max_output": 262144,
-          "release_date": "2025-09-12",
-          "knowledge_cutoff": "2025-12",
-          "first_seen": "2026-04-19"
+          "created": 1765285419
         },
         {
           "id": "relace/relace-search",
@@ -7381,8 +7107,7 @@
             "input": 1.0,
             "output": 3.0
           },
-          "created": 1765213560,
-          "first_seen": "2026-04-19"
+          "created": 1765213560
         },
         {
           "id": "z-ai/glm-4.6v",
@@ -7409,8 +7134,7 @@
             "input": 0.3,
             "output": 0.8999999999999999
           },
-          "created": 1765207462,
-          "first_seen": "2026-04-19"
+          "created": 1765207462
         },
         {
           "id": "nex-agi/deepseek-v3.1-nex-n1",
@@ -7435,8 +7159,7 @@
             "input": 0.135,
             "output": 0.5
           },
-          "created": 1765204393,
-          "first_seen": "2026-04-19"
+          "created": 1765204393
         },
         {
           "id": "essentialai/rnj-1-instruct",
@@ -7460,8 +7183,7 @@
             "input": 0.15,
             "output": 0.15
           },
-          "created": 1765094847,
-          "first_seen": "2026-04-19"
+          "created": 1765094847
         },
         {
           "id": "openrouter/bodybuilder",
@@ -7481,8 +7203,7 @@
             "input": -1000000.0,
             "output": -1000000.0
           },
-          "created": 1764903653,
-          "first_seen": "2026-04-19"
+          "created": 1764903653
         },
         {
           "id": "openai/gpt-5.1-codex-max",
@@ -7501,19 +7222,15 @@
             ]
           },
           "capabilities": {
-            "reasoning": true,
             "tool_call": true,
-            "structured_output": true,
-            "structured_outputs": true
+            "structured_outputs": true,
+            "reasoning": true
           },
           "cost": {
             "input": 1.25,
             "output": 10.0
           },
-          "created": 1764878934,
-          "release_date": "2025-11-13",
-          "knowledge_cutoff": "2024-09-30",
-          "first_seen": "2026-04-19"
+          "created": 1764878934
         },
         {
           "id": "amazon/nova-2-lite-v1",
@@ -7541,8 +7258,7 @@
             "input": 0.3,
             "output": 2.5
           },
-          "created": 1764696672,
-          "first_seen": "2026-04-19"
+          "created": 1764696672
         },
         {
           "id": "mistralai/ministral-14b-2512",
@@ -7567,8 +7283,7 @@
             "input": 0.19999999999999998,
             "output": 0.19999999999999998
           },
-          "created": 1764681735,
-          "first_seen": "2026-04-19"
+          "created": 1764681735
         },
         {
           "id": "mistralai/ministral-8b-2512",
@@ -7593,8 +7308,7 @@
             "input": 0.15,
             "output": 0.15
           },
-          "created": 1764681654,
-          "first_seen": "2026-04-19"
+          "created": 1764681654
         },
         {
           "id": "mistralai/ministral-3b-2512",
@@ -7619,8 +7333,7 @@
             "input": 0.09999999999999999,
             "output": 0.09999999999999999
           },
-          "created": 1764681560,
-          "first_seen": "2026-04-19"
+          "created": 1764681560
         },
         {
           "id": "mistralai/mistral-large-2512",
@@ -7646,8 +7359,7 @@
             "input": 0.5,
             "output": 1.5
           },
-          "created": 1764624472,
-          "first_seen": "2026-04-19"
+          "created": 1764624472
         },
         {
           "id": "arcee-ai/trinity-mini",
@@ -7673,8 +7385,7 @@
             "input": 0.045,
             "output": 0.15
           },
-          "created": 1764601720,
-          "first_seen": "2026-04-19"
+          "created": 1764601720
         },
         {
           "id": "deepseek/deepseek-v3.2-speciale",
@@ -7692,19 +7403,14 @@
             ]
           },
           "capabilities": {
-            "reasoning": true,
-            "tool_call": true,
-            "structured_output": true,
-            "structured_outputs": true
+            "structured_outputs": true,
+            "reasoning": true
           },
           "cost": {
             "input": 0.28700000000000003,
             "output": 0.431
           },
-          "created": 1764594837,
-          "release_date": "2025-12-01",
-          "knowledge_cutoff": "2024-07",
-          "first_seen": "2026-04-19"
+          "created": 1764594837
         },
         {
           "id": "deepseek/deepseek-v3.2",
@@ -7722,19 +7428,15 @@
             ]
           },
           "capabilities": {
-            "reasoning": true,
             "tool_call": true,
-            "structured_output": true,
-            "structured_outputs": true
+            "structured_outputs": true,
+            "reasoning": true
           },
           "cost": {
             "input": 0.252,
             "output": 0.378
           },
-          "created": 1764594642,
-          "release_date": "2025-12-01",
-          "knowledge_cutoff": "2024-07",
-          "first_seen": "2026-04-19"
+          "created": 1764594642
         },
         {
           "id": "prime-intellect/intellect-3",
@@ -7752,19 +7454,15 @@
             ]
           },
           "capabilities": {
-            "reasoning": true,
             "tool_call": true,
-            "structured_output": true,
-            "structured_outputs": true
+            "structured_outputs": true,
+            "reasoning": true
           },
           "cost": {
             "input": 0.19999999999999998,
             "output": 1.1
           },
-          "created": 1764212534,
-          "release_date": "2025-01-15",
-          "knowledge_cutoff": "2024-10",
-          "first_seen": "2026-04-19"
+          "created": 1764212534
         },
         {
           "id": "anthropic/claude-opus-4.5",
@@ -7784,19 +7482,15 @@
             ]
           },
           "capabilities": {
-            "reasoning": true,
             "tool_call": true,
-            "structured_output": true,
-            "structured_outputs": true
+            "structured_outputs": true,
+            "reasoning": true
           },
           "cost": {
             "input": 5.0,
             "output": 25.0
           },
-          "created": 1764010580,
-          "release_date": "2025-11-24",
-          "knowledge_cutoff": "2025-05-30",
-          "first_seen": "2026-04-19"
+          "created": 1764010580
         },
         {
           "id": "allenai/olmo-3-32b-think",
@@ -7821,8 +7515,7 @@
             "input": 0.15,
             "output": 0.5
           },
-          "created": 1763758276,
-          "first_seen": "2026-04-19"
+          "created": 1763758276
         },
         {
           "id": "google/gemini-3-pro-image-preview",
@@ -7849,8 +7542,7 @@
             "input": 2.0,
             "output": 12.0
           },
-          "created": 1763653797,
-          "first_seen": "2026-04-19"
+          "created": 1763653797
         },
         {
           "id": "deepcogito/cogito-v2.1-671b",
@@ -7874,8 +7566,7 @@
             "input": 1.25,
             "output": 1.25
           },
-          "created": 1763071233,
-          "first_seen": "2026-04-19"
+          "created": 1763071233
         },
         {
           "id": "openai/gpt-5.1",
@@ -7895,19 +7586,15 @@
             ]
           },
           "capabilities": {
-            "reasoning": true,
             "tool_call": true,
-            "structured_output": true,
-            "structured_outputs": true
+            "structured_outputs": true,
+            "reasoning": true
           },
           "cost": {
             "input": 1.25,
             "output": 10.0
           },
-          "created": 1763060305,
-          "release_date": "2025-11-13",
-          "knowledge_cutoff": "2024-09-30",
-          "first_seen": "2026-04-19"
+          "created": 1763060305
         },
         {
           "id": "openai/gpt-5.1-chat",
@@ -7927,19 +7614,14 @@
             ]
           },
           "capabilities": {
-            "reasoning": true,
             "tool_call": true,
-            "structured_output": true,
             "structured_outputs": true
           },
           "cost": {
             "input": 1.25,
             "output": 10.0
           },
-          "created": 1763060302,
-          "release_date": "2025-11-13",
-          "knowledge_cutoff": "2024-09-30",
-          "first_seen": "2026-04-19"
+          "created": 1763060302
         },
         {
           "id": "openai/gpt-5.1-codex",
@@ -7958,19 +7640,15 @@
             ]
           },
           "capabilities": {
-            "reasoning": true,
             "tool_call": true,
-            "structured_output": true,
-            "structured_outputs": true
+            "structured_outputs": true,
+            "reasoning": true
           },
           "cost": {
             "input": 1.25,
             "output": 10.0
           },
-          "created": 1763060298,
-          "release_date": "2025-11-13",
-          "knowledge_cutoff": "2024-09-30",
-          "first_seen": "2026-04-19"
+          "created": 1763060298
         },
         {
           "id": "openai/gpt-5.1-codex-mini",
@@ -7989,19 +7667,15 @@
             ]
           },
           "capabilities": {
-            "reasoning": true,
             "tool_call": true,
-            "structured_output": true,
-            "structured_outputs": true
+            "structured_outputs": true,
+            "reasoning": true
           },
           "cost": {
             "input": 0.25,
             "output": 2.0
           },
-          "created": 1763057820,
-          "release_date": "2025-11-13",
-          "knowledge_cutoff": "2024-09-30",
-          "first_seen": "2026-04-19"
+          "created": 1763057820
         },
         {
           "id": "moonshotai/kimi-k2-thinking",
@@ -8019,19 +7693,15 @@
             ]
           },
           "capabilities": {
-            "reasoning": true,
             "tool_call": true,
-            "structured_output": true,
-            "structured_outputs": true
+            "structured_outputs": true,
+            "reasoning": true
           },
           "cost": {
             "input": 0.6,
             "output": 2.5
           },
-          "created": 1762440622,
-          "release_date": "2025-11-06",
-          "knowledge_cutoff": "2024-08",
-          "first_seen": "2026-04-19"
+          "created": 1762440622
         },
         {
           "id": "amazon/nova-premier-v1",
@@ -8056,8 +7726,7 @@
             "input": 2.5,
             "output": 12.5
           },
-          "created": 1761950332,
-          "first_seen": "2026-04-19"
+          "created": 1761950332
         },
         {
           "id": "perplexity/sonar-pro-search",
@@ -8083,8 +7752,7 @@
             "input": 3.0,
             "output": 15.0
           },
-          "created": 1761854366,
-          "first_seen": "2026-04-19"
+          "created": 1761854366
         },
         {
           "id": "mistralai/voxtral-small-24b-2507",
@@ -8110,8 +7778,7 @@
             "input": 0.09999999999999999,
             "output": 0.3
           },
-          "created": 1761835144,
-          "first_seen": "2026-04-19"
+          "created": 1761835144
         },
         {
           "id": "openai/gpt-oss-safeguard-20b",
@@ -8129,16 +7796,14 @@
             ]
           },
           "capabilities": {
-            "reasoning": true,
-            "tool_call": true
+            "tool_call": true,
+            "reasoning": true
           },
           "cost": {
             "input": 0.075,
             "output": 0.3
           },
-          "created": 1761752836,
-          "release_date": "2025-10-29",
-          "first_seen": "2026-04-19"
+          "created": 1761752836
         },
         {
           "id": "nvidia/nemotron-nano-12b-v2-vl:free",
@@ -8158,17 +7823,14 @@
             ]
           },
           "capabilities": {
-            "reasoning": true,
-            "tool_call": true
+            "tool_call": true,
+            "reasoning": true
           },
           "cost": {
             "input": 0.0,
             "output": 0.0
           },
-          "created": 1761675565,
-          "release_date": "2025-10-28",
-          "knowledge_cutoff": "2025-11",
-          "first_seen": "2026-04-19"
+          "created": 1761675565
         },
         {
           "id": "minimax/minimax-m2",
@@ -8186,18 +7848,15 @@
             ]
           },
           "capabilities": {
-            "reasoning": true,
             "tool_call": true,
-            "structured_output": true,
-            "structured_outputs": true
+            "structured_outputs": true,
+            "reasoning": true
           },
           "cost": {
             "input": 0.255,
             "output": 1.0
           },
-          "created": 1761252093,
-          "release_date": "2025-10-23",
-          "first_seen": "2026-04-19"
+          "created": 1761252093
         },
         {
           "id": "qwen/qwen3-vl-32b-instruct",
@@ -8222,8 +7881,7 @@
             "input": 0.10400000000000001,
             "output": 0.41600000000000004
           },
-          "created": 1761231332,
-          "first_seen": "2026-04-19"
+          "created": 1761231332
         },
         {
           "id": "ibm-granite/granite-4.0-h-micro",
@@ -8244,8 +7902,7 @@
             "input": 0.017,
             "output": 0.112
           },
-          "created": 1760927695,
-          "first_seen": "2026-04-19"
+          "created": 1760927695
         },
         {
           "id": "microsoft/phi-4-mini-instruct",
@@ -8269,8 +7926,7 @@
             "input": 0.08,
             "output": 0.35
           },
-          "created": 1760726049,
-          "first_seen": "2026-05-26"
+          "created": 1760726049
         },
         {
           "id": "openai/gpt-5-image-mini",
@@ -8298,8 +7954,7 @@
             "input": 2.5,
             "output": 2.0
           },
-          "created": 1760624583,
-          "first_seen": "2026-04-19"
+          "created": 1760624583
         },
         {
           "id": "anthropic/claude-haiku-4.5",
@@ -8319,19 +7974,15 @@
             ]
           },
           "capabilities": {
-            "reasoning": true,
             "tool_call": true,
-            "structured_output": true,
-            "structured_outputs": true
+            "structured_outputs": true,
+            "reasoning": true
           },
           "cost": {
             "input": 1.0,
             "output": 5.0
           },
-          "created": 1760547638,
-          "release_date": "2025-10-15",
-          "knowledge_cutoff": "2025-02-28",
-          "first_seen": "2026-04-19"
+          "created": 1760547638
         },
         {
           "id": "qwen/qwen3-vl-8b-thinking",
@@ -8358,8 +8009,7 @@
             "input": 0.117,
             "output": 1.365
           },
-          "created": 1760463746,
-          "first_seen": "2026-04-19"
+          "created": 1760463746
         },
         {
           "id": "qwen/qwen3-vl-8b-instruct",
@@ -8385,8 +8035,7 @@
             "input": 0.08,
             "output": 0.5
           },
-          "created": 1760463308,
-          "first_seen": "2026-04-19"
+          "created": 1760463308
         },
         {
           "id": "openai/gpt-5-image",
@@ -8407,19 +8056,14 @@
             ]
           },
           "capabilities": {
-            "reasoning": true,
-            "tool_call": true,
-            "structured_output": true,
-            "structured_outputs": true
+            "structured_outputs": true,
+            "reasoning": true
           },
           "cost": {
             "input": 10.0,
             "output": 10.0
           },
-          "created": 1760447986,
-          "release_date": "2025-10-14",
-          "knowledge_cutoff": "2024-10-01",
-          "first_seen": "2026-04-19"
+          "created": 1760447986
         },
         {
           "id": "openai/o3-deep-research",
@@ -8447,8 +8091,7 @@
             "input": 10.0,
             "output": 40.0
           },
-          "created": 1760129661,
-          "first_seen": "2026-04-19"
+          "created": 1760129661
         },
         {
           "id": "openai/o4-mini-deep-research",
@@ -8476,8 +8119,7 @@
             "input": 2.0,
             "output": 8.0
           },
-          "created": 1760129642,
-          "first_seen": "2026-04-19"
+          "created": 1760129642
         },
         {
           "id": "nvidia/llama-3.3-nemotron-super-49b-v1.5",
@@ -8503,8 +8145,7 @@
             "input": 0.09999999999999999,
             "output": 0.39999999999999997
           },
-          "created": 1760101395,
-          "first_seen": "2026-04-19"
+          "created": 1760101395
         },
         {
           "id": "baidu/ernie-4.5-21b-a3b-thinking",
@@ -8529,8 +8170,7 @@
             "input": 0.07,
             "output": 0.28
           },
-          "created": 1760048887,
-          "first_seen": "2026-04-19"
+          "created": 1760048887
         },
         {
           "id": "google/gemini-2.5-flash-image",
@@ -8557,8 +8197,7 @@
             "input": 0.3,
             "output": 2.5
           },
-          "created": 1759870431,
-          "first_seen": "2026-04-19"
+          "created": 1759870431
         },
         {
           "id": "qwen/qwen3-vl-30b-a3b-thinking",
@@ -8586,8 +8225,7 @@
             "input": 0.13,
             "output": 1.56
           },
-          "created": 1759794479,
-          "first_seen": "2026-04-19"
+          "created": 1759794479
         },
         {
           "id": "qwen/qwen3-vl-30b-a3b-instruct",
@@ -8614,8 +8252,7 @@
             "input": 0.13,
             "output": 0.52
           },
-          "created": 1759794476,
-          "first_seen": "2026-04-19"
+          "created": 1759794476
         },
         {
           "id": "openai/gpt-5-pro",
@@ -8635,20 +8272,16 @@
             ]
           },
           "capabilities": {
-            "reasoning": true,
             "tool_call": true,
-            "structured_output": true,
             "structured_outputs": true,
+            "reasoning": true,
             "knowledge_cutoff": "2024-09-30"
           },
           "cost": {
             "input": 15.0,
             "output": 120.0
           },
-          "created": 1759776663,
-          "release_date": "2025-10-06",
-          "knowledge_cutoff": "2024-09-30",
-          "first_seen": "2026-04-19"
+          "created": 1759776663
         },
         {
           "id": "z-ai/glm-4.6",
@@ -8666,20 +8299,16 @@
             ]
           },
           "capabilities": {
-            "reasoning": true,
             "tool_call": true,
-            "structured_output": true,
             "structured_outputs": true,
+            "reasoning": true,
             "knowledge_cutoff": "2025-03-31"
           },
           "cost": {
             "input": 0.43,
             "output": 1.74
           },
-          "created": 1759235576,
-          "release_date": "2025-09-30",
-          "knowledge_cutoff": "2025-09",
-          "first_seen": "2026-04-19"
+          "created": 1759235576
         },
         {
           "id": "anthropic/claude-sonnet-4.5",
@@ -8699,20 +8328,16 @@
             ]
           },
           "capabilities": {
-            "reasoning": true,
             "tool_call": true,
-            "structured_output": true,
             "structured_outputs": true,
+            "reasoning": true,
             "knowledge_cutoff": "2025-01-31"
           },
           "cost": {
             "input": 3.0,
             "output": 15.0
           },
-          "created": 1759161676,
-          "release_date": "2025-09-29",
-          "knowledge_cutoff": "2025-07-31",
-          "first_seen": "2026-04-19"
+          "created": 1759161676
         },
         {
           "id": "deepseek/deepseek-v3.2-exp",
@@ -8739,8 +8364,7 @@
             "input": 0.27,
             "output": 0.41
           },
-          "created": 1759150481,
-          "first_seen": "2026-04-19"
+          "created": 1759150481
         },
         {
           "id": "thedrummer/cydonia-24b-v4.1",
@@ -8764,8 +8388,7 @@
             "input": 0.3,
             "output": 0.5
           },
-          "created": 1758931878,
-          "first_seen": "2026-04-19"
+          "created": 1758931878
         },
         {
           "id": "relace/relace-apply-3",
@@ -8786,8 +8409,7 @@
             "input": 0.85,
             "output": 1.25
           },
-          "created": 1758891572,
-          "first_seen": "2026-04-19"
+          "created": 1758891572
         },
         {
           "id": "google/gemini-2.5-flash-lite-preview-09-2025",
@@ -8809,20 +8431,16 @@
             ]
           },
           "capabilities": {
-            "reasoning": true,
             "tool_call": true,
-            "structured_output": true,
             "structured_outputs": true,
+            "reasoning": true,
             "knowledge_cutoff": "2025-01-31"
           },
           "cost": {
             "input": 0.09999999999999999,
             "output": 0.39999999999999997
           },
-          "created": 1758819686,
-          "release_date": "2025-09-25",
-          "knowledge_cutoff": "2025-01",
-          "first_seen": "2026-04-19"
+          "created": 1758819686
         },
         {
           "id": "qwen/qwen3-vl-235b-a22b-thinking",
@@ -8849,8 +8467,7 @@
             "input": 0.26,
             "output": 2.6
           },
-          "created": 1758668690,
-          "first_seen": "2026-04-19"
+          "created": 1758668690
         },
         {
           "id": "qwen/qwen3-vl-235b-a22b-instruct",
@@ -8877,8 +8494,7 @@
             "input": 0.19999999999999998,
             "output": 0.88
           },
-          "created": 1758668687,
-          "first_seen": "2026-04-19"
+          "created": 1758668687
         },
         {
           "id": "qwen/qwen3-max",
@@ -8896,7 +8512,6 @@
             ]
           },
           "capabilities": {
-            "reasoning": true,
             "tool_call": true,
             "knowledge_cutoff": "2025-06-30"
           },
@@ -8904,9 +8519,7 @@
             "input": 0.78,
             "output": 3.9
           },
-          "created": 1758662808,
-          "release_date": "2025-09-05",
-          "first_seen": "2026-04-19"
+          "created": 1758662808
         },
         {
           "id": "qwen/qwen3-coder-plus",
@@ -8932,8 +8545,7 @@
             "input": 0.65,
             "output": 3.25
           },
-          "created": 1758662707,
-          "first_seen": "2026-04-19"
+          "created": 1758662707
         },
         {
           "id": "openai/gpt-5-codex",
@@ -8952,20 +8564,16 @@
             ]
           },
           "capabilities": {
-            "reasoning": true,
             "tool_call": true,
-            "structured_output": true,
             "structured_outputs": true,
+            "reasoning": true,
             "knowledge_cutoff": "2024-09-30"
           },
           "cost": {
             "input": 1.25,
             "output": 10.0
           },
-          "created": 1758643403,
-          "release_date": "2025-09-15",
-          "knowledge_cutoff": "2024-10-01",
-          "first_seen": "2026-04-19"
+          "created": 1758643403
         },
         {
           "id": "deepseek/deepseek-v3.1-terminus",
@@ -8983,20 +8591,16 @@
             ]
           },
           "capabilities": {
-            "reasoning": true,
             "tool_call": true,
-            "structured_output": true,
             "structured_outputs": true,
+            "reasoning": true,
             "knowledge_cutoff": "2025-03-31"
           },
           "cost": {
             "input": 0.27,
             "output": 0.95
           },
-          "created": 1758548275,
-          "release_date": "2025-09-22",
-          "knowledge_cutoff": "2025-07",
-          "first_seen": "2026-04-19"
+          "created": 1758548275
         },
         {
           "id": "qwen/qwen3-coder-flash",
@@ -9014,19 +8618,14 @@
             ]
           },
           "capabilities": {
-            "reasoning": false,
             "tool_call": true,
-            "structured_output": false,
             "knowledge_cutoff": "2025-06-30"
           },
           "cost": {
             "input": 0.195,
             "output": 0.975
           },
-          "created": 1758115536,
-          "release_date": "2025-07-23",
-          "knowledge_cutoff": "2025-04",
-          "first_seen": "2026-04-19"
+          "created": 1758115536
         },
         {
           "id": "qwen/qwen3-next-80b-a3b-thinking",
@@ -9044,20 +8643,16 @@
             ]
           },
           "capabilities": {
-            "reasoning": true,
             "tool_call": true,
-            "structured_output": true,
             "structured_outputs": true,
+            "reasoning": true,
             "knowledge_cutoff": "2025-09-30"
           },
           "cost": {
             "input": 0.0975,
             "output": 0.78
           },
-          "created": 1757612284,
-          "release_date": "2025-09-11",
-          "knowledge_cutoff": "2025-04",
-          "first_seen": "2026-04-19"
+          "created": 1757612284
         },
         {
           "id": "qwen/qwen3-next-80b-a3b-instruct:free",
@@ -9082,8 +8677,7 @@
             "input": 0.0,
             "output": 0.0
           },
-          "created": 1757612213,
-          "first_seen": "2026-04-19"
+          "created": 1757612213
         },
         {
           "id": "qwen/qwen3-next-80b-a3b-instruct",
@@ -9101,9 +8695,7 @@
             ]
           },
           "capabilities": {
-            "reasoning": false,
             "tool_call": true,
-            "structured_output": true,
             "structured_outputs": true,
             "knowledge_cutoff": "2025-09-30"
           },
@@ -9111,10 +8703,7 @@
             "input": 0.09,
             "output": 1.1
           },
-          "created": 1757612213,
-          "release_date": "2025-09-11",
-          "knowledge_cutoff": "2025-04",
-          "first_seen": "2026-04-19"
+          "created": 1757612213
         },
         {
           "id": "qwen/qwen-plus-2025-07-28:thinking",
@@ -9141,8 +8730,7 @@
             "input": 0.26,
             "output": 0.78
           },
-          "created": 1757347599,
-          "first_seen": "2026-04-19"
+          "created": 1757347599
         },
         {
           "id": "qwen/qwen-plus-2025-07-28",
@@ -9168,8 +8756,7 @@
             "input": 0.26,
             "output": 0.78
           },
-          "created": 1757347599,
-          "first_seen": "2026-04-19"
+          "created": 1757347599
         },
         {
           "id": "nvidia/nemotron-nano-9b-v2:free",
@@ -9186,21 +8773,16 @@
             ]
           },
           "capabilities": {
-            "reasoning": true,
             "tool_call": true,
-            "structured_output": true,
             "structured_outputs": true,
+            "reasoning": true,
             "knowledge_cutoff": "2025-03-31"
           },
           "cost": {
             "input": 0.0,
             "output": 0.0
           },
-          "created": 1757106807,
-          "max_output": 128000,
-          "release_date": "2025-09-05",
-          "knowledge_cutoff": "2024-09",
-          "first_seen": "2026-04-19"
+          "created": 1757106807
         },
         {
           "id": "nvidia/nemotron-nano-9b-v2",
@@ -9218,18 +8800,15 @@
             ]
           },
           "capabilities": {
-            "reasoning": true,
             "tool_call": true,
+            "reasoning": true,
             "knowledge_cutoff": "2025-03-31"
           },
           "cost": {
             "input": 0.04,
             "output": 0.16
           },
-          "created": 1757106807,
-          "release_date": "2025-08-18",
-          "knowledge_cutoff": "2024-09",
-          "first_seen": "2026-04-19"
+          "created": 1757106807
         },
         {
           "id": "moonshotai/kimi-k2-0905",
@@ -9247,9 +8826,7 @@
             ]
           },
           "capabilities": {
-            "reasoning": false,
             "tool_call": true,
-            "structured_output": true,
             "structured_outputs": true,
             "knowledge_cutoff": "2024-12-31"
           },
@@ -9257,10 +8834,7 @@
             "input": 0.6,
             "output": 2.5
           },
-          "created": 1757021147,
-          "release_date": "2025-09-05",
-          "knowledge_cutoff": "2024-10",
-          "first_seen": "2026-04-19"
+          "created": 1757021147
         },
         {
           "id": "qwen/qwen3-30b-a3b-thinking-2507",
@@ -9278,20 +8852,16 @@
             ]
           },
           "capabilities": {
-            "reasoning": true,
             "tool_call": true,
-            "structured_output": true,
             "structured_outputs": true,
+            "reasoning": true,
             "knowledge_cutoff": "2025-06-30"
           },
           "cost": {
             "input": 0.08,
             "output": 0.39999999999999997
           },
-          "created": 1756399192,
-          "release_date": "2025-07-29",
-          "knowledge_cutoff": "2025-04",
-          "first_seen": "2026-04-19"
+          "created": 1756399192
         },
         {
           "id": "nousresearch/hermes-4-70b",
@@ -9309,19 +8879,13 @@
           },
           "capabilities": {
             "reasoning": true,
-            "tool_call": true,
-            "structured_output": true,
             "knowledge_cutoff": "2024-08-31"
           },
           "cost": {
             "input": 0.13,
             "output": 0.39999999999999997
           },
-          "created": 1756236182,
-          "max_output": 131072,
-          "release_date": "2025-08-25",
-          "knowledge_cutoff": "2023-12",
-          "first_seen": "2026-04-19"
+          "created": 1756236182
         },
         {
           "id": "nousresearch/hermes-4-405b",
@@ -9339,18 +8903,13 @@
           },
           "capabilities": {
             "reasoning": true,
-            "tool_call": true,
             "knowledge_cutoff": "2024-08-31"
           },
           "cost": {
             "input": 1.0,
             "output": 3.0
           },
-          "created": 1756235463,
-          "max_output": 131072,
-          "release_date": "2025-08-25",
-          "knowledge_cutoff": "2023-12",
-          "first_seen": "2026-04-19"
+          "created": 1756235463
         },
         {
           "id": "deepseek/deepseek-chat-v3.1",
@@ -9368,20 +8927,16 @@
             ]
           },
           "capabilities": {
-            "reasoning": true,
             "tool_call": true,
-            "structured_output": true,
             "structured_outputs": true,
+            "reasoning": true,
             "knowledge_cutoff": "2025-03-31"
           },
           "cost": {
             "input": 0.21,
             "output": 0.7899999999999999
           },
-          "created": 1755779628,
-          "release_date": "2025-08-21",
-          "knowledge_cutoff": "2025-07",
-          "first_seen": "2026-04-19"
+          "created": 1755779628
         },
         {
           "id": "openai/gpt-4o-audio-preview",
@@ -9409,8 +8964,7 @@
             "input": 2.5,
             "output": 10.0
           },
-          "created": 1755233061,
-          "first_seen": "2026-04-19"
+          "created": 1755233061
         },
         {
           "id": "mistralai/mistral-medium-3.1",
@@ -9429,9 +8983,7 @@
             ]
           },
           "capabilities": {
-            "reasoning": false,
             "tool_call": true,
-            "structured_output": true,
             "structured_outputs": true,
             "knowledge_cutoff": "2025-06-30"
           },
@@ -9439,11 +8991,7 @@
             "input": 0.39999999999999997,
             "output": 2.0
           },
-          "created": 1755095639,
-          "max_output": 262144,
-          "release_date": "2025-08-12",
-          "knowledge_cutoff": "2025-05",
-          "first_seen": "2026-04-19"
+          "created": 1755095639
         },
         {
           "id": "baidu/ernie-4.5-21b-a3b",
@@ -9468,8 +9016,7 @@
             "input": 0.07,
             "output": 0.28
           },
-          "created": 1755034167,
-          "first_seen": "2026-04-19"
+          "created": 1755034167
         },
         {
           "id": "baidu/ernie-4.5-vl-28b-a3b",
@@ -9496,8 +9043,7 @@
             "input": 0.14,
             "output": 0.56
           },
-          "created": 1755032836,
-          "first_seen": "2026-04-19"
+          "created": 1755032836
         },
         {
           "id": "z-ai/glm-4.5v",
@@ -9516,19 +9062,15 @@
             ]
           },
           "capabilities": {
-            "reasoning": true,
             "tool_call": true,
-            "structured_output": true,
+            "reasoning": true,
             "knowledge_cutoff": "2024-12-31"
           },
           "cost": {
             "input": 0.6,
             "output": 1.7999999999999998
           },
-          "created": 1754922288,
-          "release_date": "2025-08-11",
-          "knowledge_cutoff": "2025-04",
-          "first_seen": "2026-04-19"
+          "created": 1754922288
         },
         {
           "id": "ai21/jamba-large-1.7",
@@ -9553,8 +9095,7 @@
             "input": 2.0,
             "output": 8.0
           },
-          "created": 1754669020,
-          "first_seen": "2026-04-19"
+          "created": 1754669020
         },
         {
           "id": "openai/gpt-5-chat",
@@ -9574,9 +9115,6 @@
             ]
           },
           "capabilities": {
-            "reasoning": true,
-            "tool_call": false,
-            "structured_output": true,
             "structured_outputs": true,
             "knowledge_cutoff": "2024-09-30"
           },
@@ -9584,10 +9122,7 @@
             "input": 1.25,
             "output": 10.0
           },
-          "created": 1754587837,
-          "release_date": "2025-08-07",
-          "knowledge_cutoff": "2024-09-30",
-          "first_seen": "2026-04-19"
+          "created": 1754587837
         },
         {
           "id": "openai/gpt-5",
@@ -9607,20 +9142,16 @@
             ]
           },
           "capabilities": {
-            "reasoning": true,
             "tool_call": true,
-            "structured_output": true,
             "structured_outputs": true,
+            "reasoning": true,
             "knowledge_cutoff": "2024-09-30"
           },
           "cost": {
             "input": 1.25,
             "output": 10.0
           },
-          "created": 1754587413,
-          "release_date": "2025-08-07",
-          "knowledge_cutoff": "2024-10-01",
-          "first_seen": "2026-04-19"
+          "created": 1754587413
         },
         {
           "id": "openai/gpt-5-mini",
@@ -9640,20 +9171,16 @@
             ]
           },
           "capabilities": {
-            "reasoning": true,
             "tool_call": true,
-            "structured_output": true,
             "structured_outputs": true,
+            "reasoning": true,
             "knowledge_cutoff": "2024-05-31"
           },
           "cost": {
             "input": 0.25,
             "output": 2.0
           },
-          "created": 1754587407,
-          "release_date": "2025-08-07",
-          "knowledge_cutoff": "2024-10-01",
-          "first_seen": "2026-04-19"
+          "created": 1754587407
         },
         {
           "id": "openai/gpt-5-nano",
@@ -9672,21 +9199,16 @@
             ]
           },
           "capabilities": {
-            "reasoning": true,
             "tool_call": true,
-            "structured_output": true,
             "structured_outputs": true,
+            "reasoning": true,
             "knowledge_cutoff": "2024-05-31"
           },
           "cost": {
             "input": 0.049999999999999996,
             "output": 0.39999999999999997
           },
-          "created": 1754587402,
-          "max_output": 128000,
-          "release_date": "2025-08-07",
-          "knowledge_cutoff": "2024-10-01",
-          "first_seen": "2026-04-19"
+          "created": 1754587402
         },
         {
           "id": "openai/gpt-oss-120b:free",
@@ -9704,28 +9226,15 @@
             ]
           },
           "capabilities": {
-            "reasoning": true,
             "tool_call": true,
+            "reasoning": true,
             "knowledge_cutoff": "2024-06-30"
           },
           "cost": {
             "input": 0.0,
             "output": 0.0
           },
-          "created": 1754414231,
-          "release_date": "2025-08-05",
-          "speed": {
-            "tft": 1.434,
-            "tok_per_sec": 43.2,
-            "thinking_tokens": 14.0,
-            "text_tokens": 1089.0,
-            "total_tokens": 1182.0,
-            "wall_time": 29.0,
-            "runs": 1,
-            "finish_reason": "stop",
-            "tested_at": "2026-04-19T17:04:52Z"
-          },
-          "first_seen": "2026-04-19"
+          "created": 1754414231
         },
         {
           "id": "openai/gpt-oss-120b",
@@ -9742,20 +9251,16 @@
             ]
           },
           "capabilities": {
-            "reasoning": true,
             "tool_call": true,
-            "structured_output": true,
             "structured_outputs": true,
+            "reasoning": true,
             "knowledge_cutoff": "2024-06-30"
           },
           "cost": {
             "input": 0.039,
             "output": 0.18
           },
-          "created": 1754414231,
-          "max_output": 32768,
-          "release_date": "2025-08-05",
-          "first_seen": "2026-04-19"
+          "created": 1754414231
         },
         {
           "id": "openai/gpt-oss-20b:free",
@@ -9773,17 +9278,15 @@
             ]
           },
           "capabilities": {
-            "reasoning": true,
             "tool_call": true,
+            "reasoning": true,
             "knowledge_cutoff": "2024-06-30"
           },
           "cost": {
             "input": 0.0,
             "output": 0.0
           },
-          "created": 1754414229,
-          "release_date": "2025-08-05",
-          "first_seen": "2026-04-19"
+          "created": 1754414229
         },
         {
           "id": "openai/gpt-oss-20b",
@@ -9801,19 +9304,16 @@
             ]
           },
           "capabilities": {
-            "reasoning": true,
             "tool_call": true,
-            "structured_output": true,
             "structured_outputs": true,
+            "reasoning": true,
             "knowledge_cutoff": "2024-06-30"
           },
           "cost": {
             "input": 0.03,
             "output": 0.14
           },
-          "created": 1754414229,
-          "release_date": "2025-08-05",
-          "first_seen": "2026-04-19"
+          "created": 1754414229
         },
         {
           "id": "anthropic/claude-opus-4.1",
@@ -9833,20 +9333,16 @@
             ]
           },
           "capabilities": {
-            "reasoning": true,
             "tool_call": true,
-            "structured_output": true,
             "structured_outputs": true,
+            "reasoning": true,
             "knowledge_cutoff": "2025-01-31"
           },
           "cost": {
             "input": 15.0,
             "output": 75.0
           },
-          "created": 1754411591,
-          "release_date": "2025-08-05",
-          "knowledge_cutoff": "2025-03-31",
-          "first_seen": "2026-04-19"
+          "created": 1754411591
         },
         {
           "id": "mistralai/codestral-2508",
@@ -9864,9 +9360,7 @@
             ]
           },
           "capabilities": {
-            "reasoning": false,
             "tool_call": true,
-            "structured_output": true,
             "structured_outputs": true,
             "knowledge_cutoff": "2025-03-31"
           },
@@ -9874,11 +9368,7 @@
             "input": 0.3,
             "output": 0.8999999999999999
           },
-          "created": 1754079630,
-          "max_output": 256000,
-          "release_date": "2025-08-01",
-          "knowledge_cutoff": "2025-05",
-          "first_seen": "2026-04-19"
+          "created": 1754079630
         },
         {
           "id": "qwen/qwen3-coder-30b-a3b-instruct",
@@ -9896,9 +9386,7 @@
             ]
           },
           "capabilities": {
-            "reasoning": false,
             "tool_call": true,
-            "structured_output": true,
             "structured_outputs": true,
             "knowledge_cutoff": "2025-06-30"
           },
@@ -9906,10 +9394,7 @@
             "input": 0.07,
             "output": 0.27
           },
-          "created": 1753972379,
-          "release_date": "2025-07-31",
-          "knowledge_cutoff": "2025-04",
-          "first_seen": "2026-04-19"
+          "created": 1753972379
         },
         {
           "id": "qwen/qwen3-30b-a3b-instruct-2507",
@@ -9927,9 +9412,7 @@
             ]
           },
           "capabilities": {
-            "reasoning": false,
             "tool_call": true,
-            "structured_output": true,
             "structured_outputs": true,
             "knowledge_cutoff": "2025-06-30"
           },
@@ -9937,10 +9420,7 @@
             "input": 0.09,
             "output": 0.3
           },
-          "created": 1753806965,
-          "release_date": "2025-07-29",
-          "knowledge_cutoff": "2025-04",
-          "first_seen": "2026-04-19"
+          "created": 1753806965
         },
         {
           "id": "z-ai/glm-4.5",
@@ -9958,19 +9438,15 @@
             ]
           },
           "capabilities": {
-            "reasoning": true,
             "tool_call": true,
-            "structured_output": true,
+            "reasoning": true,
             "knowledge_cutoff": "2024-12-31"
           },
           "cost": {
             "input": 0.6,
             "output": 2.2
           },
-          "created": 1753471347,
-          "release_date": "2025-07-28",
-          "knowledge_cutoff": "2025-04",
-          "first_seen": "2026-04-19"
+          "created": 1753471347
         },
         {
           "id": "z-ai/glm-4.5-air:free",
@@ -9988,18 +9464,15 @@
             ]
           },
           "capabilities": {
-            "reasoning": true,
             "tool_call": true,
+            "reasoning": true,
             "knowledge_cutoff": "2024-12-31"
           },
           "cost": {
             "input": 0.0,
             "output": 0.0
           },
-          "created": 1753471258,
-          "release_date": "2025-07-28",
-          "knowledge_cutoff": "2025-04",
-          "first_seen": "2026-04-19"
+          "created": 1753471258
         },
         {
           "id": "z-ai/glm-4.5-air",
@@ -10017,19 +9490,15 @@
             ]
           },
           "capabilities": {
-            "reasoning": true,
             "tool_call": true,
-            "structured_output": true,
+            "reasoning": true,
             "knowledge_cutoff": "2024-12-31"
           },
           "cost": {
             "input": 0.125,
             "output": 0.84
           },
-          "created": 1753471258,
-          "release_date": "2025-07-28",
-          "knowledge_cutoff": "2025-04",
-          "first_seen": "2026-04-19"
+          "created": 1753471258
         },
         {
           "id": "qwen/qwen3-235b-a22b-thinking-2507",
@@ -10046,21 +9515,16 @@
             ]
           },
           "capabilities": {
-            "reasoning": true,
             "tool_call": true,
-            "structured_output": true,
             "structured_outputs": true,
+            "reasoning": true,
             "knowledge_cutoff": "2025-06-30"
           },
           "cost": {
             "input": 0.14950000000000002,
             "output": 1.495
           },
-          "created": 1753449557,
-          "max_output": 81920,
-          "release_date": "2025-07-25",
-          "knowledge_cutoff": "2025-04",
-          "first_seen": "2026-04-19"
+          "created": 1753449557
         },
         {
           "id": "z-ai/glm-4-32b",
@@ -10084,8 +9548,7 @@
             "input": 0.09999999999999999,
             "output": 0.09999999999999999
           },
-          "created": 1753376617,
-          "first_seen": "2026-04-19"
+          "created": 1753376617
         },
         {
           "id": "qwen/qwen3-coder:free",
@@ -10110,8 +9573,7 @@
             "input": 0.0,
             "output": 0.0
           },
-          "created": 1753230546,
-          "first_seen": "2026-04-19"
+          "created": 1753230546
         },
         {
           "id": "qwen/qwen3-coder",
@@ -10129,9 +9591,7 @@
             ]
           },
           "capabilities": {
-            "reasoning": false,
             "tool_call": true,
-            "structured_output": true,
             "structured_outputs": true,
             "knowledge_cutoff": "2025-06-30"
           },
@@ -10139,10 +9599,7 @@
             "input": 0.22,
             "output": 1.7999999999999998
           },
-          "created": 1753230546,
-          "release_date": "2025-07-23",
-          "knowledge_cutoff": "2025-04",
-          "first_seen": "2026-04-19"
+          "created": 1753230546
         },
         {
           "id": "bytedance/ui-tars-1.5-7b",
@@ -10167,8 +9624,7 @@
             "input": 0.09999999999999999,
             "output": 0.19999999999999998
           },
-          "created": 1753205056,
-          "first_seen": "2026-04-19"
+          "created": 1753205056
         },
         {
           "id": "google/gemini-2.5-flash-lite",
@@ -10190,20 +9646,16 @@
             ]
           },
           "capabilities": {
-            "reasoning": true,
             "tool_call": true,
-            "structured_output": true,
             "structured_outputs": true,
+            "reasoning": true,
             "knowledge_cutoff": "2025-01-31"
           },
           "cost": {
             "input": 0.09999999999999999,
             "output": 0.39999999999999997
           },
-          "created": 1753200276,
-          "release_date": "2025-06-17",
-          "knowledge_cutoff": "2025-01",
-          "first_seen": "2026-04-19"
+          "created": 1753200276
         },
         {
           "id": "qwen/qwen3-235b-a22b-2507",
@@ -10229,8 +9681,7 @@
             "input": 0.071,
             "output": 0.09999999999999999
           },
-          "created": 1753119555,
-          "first_seen": "2026-04-19"
+          "created": 1753119555
         },
         {
           "id": "switchpoint/router",
@@ -10253,8 +9704,7 @@
             "input": 0.85,
             "output": 3.4
           },
-          "created": 1752272899,
-          "first_seen": "2026-04-19"
+          "created": 1752272899
         },
         {
           "id": "moonshotai/kimi-k2",
@@ -10272,7 +9722,6 @@
             ]
           },
           "capabilities": {
-            "reasoning": false,
             "tool_call": true,
             "knowledge_cutoff": "2024-12-31"
           },
@@ -10280,10 +9729,7 @@
             "input": 0.5700000000000001,
             "output": 2.3
           },
-          "created": 1752263252,
-          "release_date": "2025-07-11",
-          "knowledge_cutoff": "2024-10",
-          "first_seen": "2026-04-19"
+          "created": 1752263252
         },
         {
           "id": "mistralai/devstral-medium",
@@ -10301,9 +9747,7 @@
             ]
           },
           "capabilities": {
-            "reasoning": false,
             "tool_call": true,
-            "structured_output": true,
             "structured_outputs": true,
             "knowledge_cutoff": "2025-06-30"
           },
@@ -10311,11 +9755,7 @@
             "input": 0.39999999999999997,
             "output": 2.0
           },
-          "created": 1752161321,
-          "max_output": 131072,
-          "release_date": "2025-07-10",
-          "knowledge_cutoff": "2025-05",
-          "first_seen": "2026-04-19"
+          "created": 1752161321
         },
         {
           "id": "mistralai/devstral-small",
@@ -10333,7 +9773,6 @@
             ]
           },
           "capabilities": {
-            "reasoning": false,
             "tool_call": true,
             "structured_outputs": true,
             "knowledge_cutoff": "2025-03-31"
@@ -10342,11 +9781,7 @@
             "input": 0.09999999999999999,
             "output": 0.3
           },
-          "created": 1752160751,
-          "max_output": 128000,
-          "release_date": "2025-05-07",
-          "knowledge_cutoff": "2025-05",
-          "first_seen": "2026-04-19"
+          "created": 1752160751
         },
         {
           "id": "cognitivecomputations/dolphin-mistral-24b-venice-edition:free",
@@ -10363,9 +9798,6 @@
             ]
           },
           "capabilities": {
-            "reasoning": false,
-            "tool_call": false,
-            "structured_output": true,
             "structured_outputs": true,
             "knowledge_cutoff": "2024-04-30"
           },
@@ -10373,11 +9805,7 @@
             "input": 0.0,
             "output": 0.0
           },
-          "created": 1752094966,
-          "max_output": 32768,
-          "release_date": "2025-07-09",
-          "knowledge_cutoff": "2025-06",
-          "first_seen": "2026-04-19"
+          "created": 1752094966
         },
         {
           "id": "tencent/hunyuan-a13b-instruct",
@@ -10403,8 +9831,7 @@
             "input": 0.14,
             "output": 0.5700000000000001
           },
-          "created": 1751987664,
-          "first_seen": "2026-04-19"
+          "created": 1751987664
         },
         {
           "id": "morph/morph-v3-large",
@@ -10425,8 +9852,7 @@
             "input": 0.8999999999999999,
             "output": 1.9
           },
-          "created": 1751910858,
-          "first_seen": "2026-04-19"
+          "created": 1751910858
         },
         {
           "id": "morph/morph-v3-fast",
@@ -10447,8 +9873,7 @@
             "input": 0.7999999999999999,
             "output": 1.2
           },
-          "created": 1751910002,
-          "first_seen": "2026-04-19"
+          "created": 1751910002
         },
         {
           "id": "baidu/ernie-4.5-vl-424b-a47b",
@@ -10474,8 +9899,7 @@
             "input": 0.42,
             "output": 1.25
           },
-          "created": 1751300903,
-          "first_seen": "2026-04-19"
+          "created": 1751300903
         },
         {
           "id": "baidu/ernie-4.5-300b-a47b",
@@ -10499,8 +9923,7 @@
             "input": 0.28,
             "output": 1.1
           },
-          "created": 1751300139,
-          "first_seen": "2026-04-19"
+          "created": 1751300139
         },
         {
           "id": "mistralai/mistral-small-3.2-24b-instruct",
@@ -10519,9 +9942,7 @@
             ]
           },
           "capabilities": {
-            "reasoning": false,
             "tool_call": true,
-            "structured_output": true,
             "structured_outputs": true,
             "knowledge_cutoff": "2023-10-31"
           },
@@ -10529,10 +9950,7 @@
             "input": 0.075,
             "output": 0.19999999999999998
           },
-          "created": 1750443016,
-          "release_date": "2025-06-20",
-          "knowledge_cutoff": "2024-10",
-          "first_seen": "2026-04-19"
+          "created": 1750443016
         },
         {
           "id": "minimax/minimax-m1",
@@ -10550,17 +9968,15 @@
             ]
           },
           "capabilities": {
-            "reasoning": true,
             "tool_call": true,
+            "reasoning": true,
             "knowledge_cutoff": "2024-06-30"
           },
           "cost": {
             "input": 0.39999999999999997,
             "output": 2.2
           },
-          "created": 1750200414,
-          "release_date": "2025-06-17",
-          "first_seen": "2026-04-19"
+          "created": 1750200414
         },
         {
           "id": "google/gemini-2.5-flash",
@@ -10582,20 +9998,16 @@
             ]
           },
           "capabilities": {
-            "reasoning": true,
             "tool_call": true,
-            "structured_output": true,
             "structured_outputs": true,
+            "reasoning": true,
             "knowledge_cutoff": "2025-01-31"
           },
           "cost": {
             "input": 0.3,
             "output": 2.5
           },
-          "created": 1750172488,
-          "release_date": "2025-07-17",
-          "knowledge_cutoff": "2025-01",
-          "first_seen": "2026-04-19"
+          "created": 1750172488
         },
         {
           "id": "google/gemini-2.5-pro",
@@ -10617,20 +10029,16 @@
             ]
           },
           "capabilities": {
-            "reasoning": true,
             "tool_call": true,
-            "structured_output": true,
             "structured_outputs": true,
+            "reasoning": true,
             "knowledge_cutoff": "2025-01-31"
           },
           "cost": {
             "input": 1.25,
             "output": 10.0
           },
-          "created": 1750169544,
-          "release_date": "2025-03-20",
-          "knowledge_cutoff": "2025-01",
-          "first_seen": "2026-04-19"
+          "created": 1750169544
         },
         {
           "id": "openai/o3-pro",
@@ -10659,8 +10067,7 @@
             "input": 20.0,
             "output": 80.0
           },
-          "created": 1749598352,
-          "first_seen": "2026-04-19"
+          "created": 1749598352
         },
         {
           "id": "google/gemini-2.5-pro-preview",
@@ -10690,8 +10097,7 @@
             "input": 1.25,
             "output": 10.0
           },
-          "created": 1749137257,
-          "first_seen": "2026-04-19"
+          "created": 1749137257
         },
         {
           "id": "deepseek/deepseek-r1-0528",
@@ -10709,20 +10115,16 @@
             ]
           },
           "capabilities": {
-            "reasoning": true,
             "tool_call": true,
-            "structured_output": false,
             "structured_outputs": true,
+            "reasoning": true,
             "knowledge_cutoff": "2025-03-31"
           },
           "cost": {
             "input": 0.5,
             "output": 2.1500000000000004
           },
-          "created": 1748455170,
-          "release_date": "2025-01-20",
-          "knowledge_cutoff": "2024-07",
-          "first_seen": "2026-04-19"
+          "created": 1748455170
         },
         {
           "id": "anthropic/claude-opus-4",
@@ -10742,18 +10144,15 @@
             ]
           },
           "capabilities": {
-            "reasoning": true,
             "tool_call": true,
+            "reasoning": true,
             "knowledge_cutoff": "2025-01-31"
           },
           "cost": {
             "input": 15.0,
             "output": 75.0
           },
-          "created": 1747931245,
-          "release_date": "2025-05-22",
-          "knowledge_cutoff": "2025-03-31",
-          "first_seen": "2026-04-19"
+          "created": 1747931245
         },
         {
           "id": "anthropic/claude-sonnet-4",
@@ -10773,18 +10172,15 @@
             ]
           },
           "capabilities": {
-            "reasoning": true,
             "tool_call": true,
+            "reasoning": true,
             "knowledge_cutoff": "2025-01-31"
           },
           "cost": {
             "input": 3.0,
             "output": 15.0
           },
-          "created": 1747930371,
-          "release_date": "2025-05-22",
-          "knowledge_cutoff": "2025-03-31",
-          "first_seen": "2026-04-19"
+          "created": 1747930371
         },
         {
           "id": "google/gemma-3n-e4b-it",
@@ -10801,19 +10197,13 @@
             ]
           },
           "capabilities": {
-            "reasoning": false,
-            "tool_call": false,
             "knowledge_cutoff": "2024-08-31"
           },
           "cost": {
             "input": 0.06,
             "output": 0.12
           },
-          "created": 1747776824,
-          "max_output": 32768,
-          "release_date": "2025-05-20",
-          "knowledge_cutoff": "2024-06",
-          "first_seen": "2026-04-19"
+          "created": 1747776824
         },
         {
           "id": "mistralai/mistral-medium-3",
@@ -10832,9 +10222,7 @@
             ]
           },
           "capabilities": {
-            "reasoning": false,
             "tool_call": true,
-            "structured_output": true,
             "structured_outputs": true,
             "knowledge_cutoff": "2025-03-31"
           },
@@ -10842,11 +10230,7 @@
             "input": 0.39999999999999997,
             "output": 2.0
           },
-          "created": 1746627341,
-          "max_output": 131072,
-          "release_date": "2025-05-07",
-          "knowledge_cutoff": "2025-05",
-          "first_seen": "2026-04-19"
+          "created": 1746627341
         },
         {
           "id": "google/gemini-2.5-pro-preview-05-06",
@@ -10868,20 +10252,16 @@
             ]
           },
           "capabilities": {
-            "reasoning": true,
             "tool_call": true,
-            "structured_output": true,
             "structured_outputs": true,
+            "reasoning": true,
             "knowledge_cutoff": "2025-01-31"
           },
           "cost": {
             "input": 1.25,
             "output": 10.0
           },
-          "created": 1746578513,
-          "release_date": "2025-05-06",
-          "knowledge_cutoff": "2025-01",
-          "first_seen": "2026-04-19"
+          "created": 1746578513
         },
         {
           "id": "arcee-ai/spotlight",
@@ -10906,8 +10286,7 @@
             "input": 0.18,
             "output": 0.18
           },
-          "created": 1746481552,
-          "first_seen": "2026-04-19"
+          "created": 1746481552
         },
         {
           "id": "arcee-ai/maestro-reasoning",
@@ -10931,8 +10310,7 @@
             "input": 0.8999999999999999,
             "output": 3.3000000000000003
           },
-          "created": 1746481269,
-          "first_seen": "2026-04-19"
+          "created": 1746481269
         },
         {
           "id": "arcee-ai/virtuoso-large",
@@ -10957,8 +10335,7 @@
             "input": 0.75,
             "output": 1.2
           },
-          "created": 1746478885,
-          "first_seen": "2026-04-19"
+          "created": 1746478885
         },
         {
           "id": "arcee-ai/coder-large",
@@ -10981,8 +10358,7 @@
             "input": 0.5,
             "output": 0.7999999999999999
           },
-          "created": 1746478663,
-          "first_seen": "2026-04-19"
+          "created": 1746478663
         },
         {
           "id": "meta-llama/llama-guard-4-12b",
@@ -11007,8 +10383,7 @@
             "input": 0.18,
             "output": 0.18
           },
-          "created": 1745975193,
-          "first_seen": "2026-04-19"
+          "created": 1745975193
         },
         {
           "id": "qwen/qwen3-30b-a3b",
@@ -11035,8 +10410,7 @@
             "input": 0.09,
             "output": 0.44999999999999996
           },
-          "created": 1745878604,
-          "first_seen": "2026-04-19"
+          "created": 1745878604
         },
         {
           "id": "qwen/qwen3-8b",
@@ -11063,8 +10437,7 @@
             "input": 0.049999999999999996,
             "output": 0.39999999999999997
           },
-          "created": 1745876632,
-          "first_seen": "2026-04-19"
+          "created": 1745876632
         },
         {
           "id": "qwen/qwen3-14b",
@@ -11091,8 +10464,7 @@
             "input": 0.09999999999999999,
             "output": 0.24
           },
-          "created": 1745876478,
-          "first_seen": "2026-04-19"
+          "created": 1745876478
         },
         {
           "id": "qwen/qwen3-32b",
@@ -11119,8 +10491,7 @@
             "input": 0.08,
             "output": 0.28
           },
-          "created": 1745875945,
-          "first_seen": "2026-04-19"
+          "created": 1745875945
         },
         {
           "id": "qwen/qwen3-235b-a22b",
@@ -11146,8 +10517,7 @@
             "input": 0.45499999999999996,
             "output": 1.8199999999999998
           },
-          "created": 1745875757,
-          "first_seen": "2026-04-19"
+          "created": 1745875757
         },
         {
           "id": "openai/o4-mini-high",
@@ -11176,8 +10546,7 @@
             "input": 1.1,
             "output": 4.4
           },
-          "created": 1744824212,
-          "first_seen": "2026-04-19"
+          "created": 1744824212
         },
         {
           "id": "openai/o3",
@@ -11206,8 +10575,7 @@
             "input": 2.0,
             "output": 8.0
           },
-          "created": 1744823457,
-          "first_seen": "2026-04-19"
+          "created": 1744823457
         },
         {
           "id": "openai/o4-mini",
@@ -11227,20 +10595,16 @@
             ]
           },
           "capabilities": {
-            "reasoning": true,
             "tool_call": true,
-            "structured_output": true,
             "structured_outputs": true,
+            "reasoning": true,
             "knowledge_cutoff": "2024-06-30"
           },
           "cost": {
             "input": 1.1,
             "output": 4.4
           },
-          "created": 1744820942,
-          "release_date": "2025-04-16",
-          "knowledge_cutoff": "2024-06",
-          "first_seen": "2026-04-19"
+          "created": 1744820942
         },
         {
           "id": "openai/gpt-4.1",
@@ -11259,9 +10623,7 @@
             ]
           },
           "capabilities": {
-            "reasoning": false,
             "tool_call": true,
-            "structured_output": true,
             "structured_outputs": true,
             "knowledge_cutoff": "2024-06-30"
           },
@@ -11269,11 +10631,7 @@
             "input": 2.0,
             "output": 8.0
           },
-          "created": 1744651385,
-          "max_output": 32768,
-          "release_date": "2025-04-14",
-          "knowledge_cutoff": "2024-04",
-          "first_seen": "2026-04-19"
+          "created": 1744651385
         },
         {
           "id": "openai/gpt-4.1-mini",
@@ -11293,9 +10651,7 @@
             ]
           },
           "capabilities": {
-            "reasoning": false,
             "tool_call": true,
-            "structured_output": true,
             "structured_outputs": true,
             "knowledge_cutoff": "2024-06-30"
           },
@@ -11303,10 +10659,7 @@
             "input": 0.39999999999999997,
             "output": 1.5999999999999999
           },
-          "created": 1744651381,
-          "release_date": "2025-04-14",
-          "knowledge_cutoff": "2024-04",
-          "first_seen": "2026-04-19"
+          "created": 1744651381
         },
         {
           "id": "openai/gpt-4.1-nano",
@@ -11334,8 +10687,7 @@
             "input": 0.09999999999999999,
             "output": 0.39999999999999997
           },
-          "created": 1744651369,
-          "first_seen": "2026-04-19"
+          "created": 1744651369
         },
         {
           "id": "alfredpros/codellama-7b-instruct-solidity",
@@ -11359,8 +10711,7 @@
             "input": 0.7999999999999999,
             "output": 1.2
           },
-          "created": 1744641874,
-          "first_seen": "2026-04-19"
+          "created": 1744641874
         },
         {
           "id": "meta-llama/llama-4-maverick",
@@ -11386,8 +10737,7 @@
             "input": 0.15,
             "output": 0.6
           },
-          "created": 1743881822,
-          "first_seen": "2026-04-19"
+          "created": 1743881822
         },
         {
           "id": "meta-llama/llama-4-scout",
@@ -11414,8 +10764,7 @@
             "input": 0.08,
             "output": 0.3
           },
-          "created": 1743881519,
-          "first_seen": "2026-04-19"
+          "created": 1743881519
         },
         {
           "id": "deepseek/deepseek-chat-v3-0324",
@@ -11433,9 +10782,7 @@
             ]
           },
           "capabilities": {
-            "reasoning": false,
             "tool_call": true,
-            "structured_output": true,
             "structured_outputs": true,
             "knowledge_cutoff": "2024-07-31"
           },
@@ -11443,10 +10790,7 @@
             "input": 0.19999999999999998,
             "output": 0.77
           },
-          "created": 1742824755,
-          "release_date": "2025-03-24",
-          "knowledge_cutoff": "2024-10",
-          "first_seen": "2026-04-19"
+          "created": 1742824755
         },
         {
           "id": "openai/o1-pro",
@@ -11474,8 +10818,7 @@
             "input": 150.0,
             "output": 600.0
           },
-          "created": 1742423211,
-          "first_seen": "2026-04-19"
+          "created": 1742423211
         },
         {
           "id": "mistralai/mistral-small-3.1-24b-instruct",
@@ -11494,19 +10837,13 @@
             ]
           },
           "capabilities": {
-            "reasoning": false,
-            "tool_call": true,
-            "structured_output": true,
             "knowledge_cutoff": "2023-10-31"
           },
           "cost": {
             "input": 0.351,
             "output": 0.5549999999999999
           },
-          "created": 1742238937,
-          "release_date": "2025-03-17",
-          "knowledge_cutoff": "2024-10",
-          "first_seen": "2026-04-19"
+          "created": 1742238937
         },
         {
           "id": "google/gemma-3-4b-it",
@@ -11525,8 +10862,6 @@
             ]
           },
           "capabilities": {
-            "reasoning": false,
-            "tool_call": false,
             "structured_outputs": true,
             "knowledge_cutoff": "2024-08-31"
           },
@@ -11534,10 +10869,7 @@
             "input": 0.04,
             "output": 0.08
           },
-          "created": 1741905510,
-          "release_date": "2025-03-13",
-          "knowledge_cutoff": "2024-10",
-          "first_seen": "2026-04-19"
+          "created": 1741905510
         },
         {
           "id": "google/gemma-3-12b-it",
@@ -11556,9 +10888,7 @@
             ]
           },
           "capabilities": {
-            "reasoning": false,
             "tool_call": true,
-            "structured_output": true,
             "structured_outputs": true,
             "knowledge_cutoff": "2024-08-31"
           },
@@ -11566,10 +10896,7 @@
             "input": 0.04,
             "output": 0.13
           },
-          "created": 1741902625,
-          "release_date": "2025-03-13",
-          "knowledge_cutoff": "2024-10",
-          "first_seen": "2026-04-19"
+          "created": 1741902625
         },
         {
           "id": "cohere/command-a",
@@ -11594,8 +10921,7 @@
             "input": 2.5,
             "output": 10.0
           },
-          "created": 1741894342,
-          "first_seen": "2026-04-19"
+          "created": 1741894342
         },
         {
           "id": "openai/gpt-4o-mini-search-preview",
@@ -11620,8 +10946,7 @@
             "input": 0.15,
             "output": 0.6
           },
-          "created": 1741818122,
-          "first_seen": "2026-04-19"
+          "created": 1741818122
         },
         {
           "id": "openai/gpt-4o-search-preview",
@@ -11646,8 +10971,7 @@
             "input": 2.5,
             "output": 10.0
           },
-          "created": 1741817949,
-          "first_seen": "2026-04-19"
+          "created": 1741817949
         },
         {
           "id": "rekaai/reka-flash-3",
@@ -11672,8 +10996,7 @@
             "input": 0.09999999999999999,
             "output": 0.19999999999999998
           },
-          "created": 1741812813,
-          "first_seen": "2026-04-19"
+          "created": 1741812813
         },
         {
           "id": "google/gemma-3-27b-it",
@@ -11692,9 +11015,7 @@
             ]
           },
           "capabilities": {
-            "reasoning": false,
             "tool_call": true,
-            "structured_output": true,
             "structured_outputs": true,
             "knowledge_cutoff": "2024-08-31"
           },
@@ -11702,10 +11023,7 @@
             "input": 0.08,
             "output": 0.16
           },
-          "created": 1741756359,
-          "release_date": "2025-03-12",
-          "knowledge_cutoff": "2024-10",
-          "first_seen": "2026-04-19"
+          "created": 1741756359
         },
         {
           "id": "thedrummer/skyfall-36b-v2",
@@ -11729,8 +11047,7 @@
             "input": 0.55,
             "output": 0.7999999999999999
           },
-          "created": 1741636566,
-          "first_seen": "2026-04-19"
+          "created": 1741636566
         },
         {
           "id": "perplexity/sonar-reasoning-pro",
@@ -11754,8 +11071,7 @@
             "input": 2.0,
             "output": 8.0
           },
-          "created": 1741313308,
-          "first_seen": "2026-04-19"
+          "created": 1741313308
         },
         {
           "id": "perplexity/sonar-pro",
@@ -11777,8 +11093,7 @@
             "input": 3.0,
             "output": 15.0
           },
-          "created": 1741312423,
-          "first_seen": "2026-04-19"
+          "created": 1741312423
         },
         {
           "id": "perplexity/sonar-deep-research",
@@ -11801,8 +11116,7 @@
             "input": 2.0,
             "output": 8.0
           },
-          "created": 1741311246,
-          "first_seen": "2026-04-19"
+          "created": 1741311246
         },
         {
           "id": "google/gemini-2.0-flash-lite-001",
@@ -11832,8 +11146,7 @@
             "input": 0.075,
             "output": 0.3
           },
-          "created": 1740506212,
-          "first_seen": "2026-04-19"
+          "created": 1740506212
         },
         {
           "id": "mistralai/mistral-saba",
@@ -11859,8 +11172,7 @@
             "input": 0.19999999999999998,
             "output": 0.6
           },
-          "created": 1739803239,
-          "first_seen": "2026-04-19"
+          "created": 1739803239
         },
         {
           "id": "meta-llama/llama-guard-3-8b",
@@ -11884,8 +11196,7 @@
             "input": 0.48400000000000004,
             "output": 0.03
           },
-          "created": 1739401318,
-          "first_seen": "2026-04-19"
+          "created": 1739401318
         },
         {
           "id": "openai/o3-mini-high",
@@ -11913,8 +11224,7 @@
             "input": 1.1,
             "output": 4.4
           },
-          "created": 1739372611,
-          "first_seen": "2026-04-19"
+          "created": 1739372611
         },
         {
           "id": "google/gemini-2.0-flash-001",
@@ -11936,9 +11246,7 @@
             ]
           },
           "capabilities": {
-            "reasoning": false,
             "tool_call": true,
-            "structured_output": true,
             "structured_outputs": true,
             "knowledge_cutoff": "2024-08-31"
           },
@@ -11946,10 +11254,7 @@
             "input": 0.09999999999999999,
             "output": 0.39999999999999997
           },
-          "created": 1738769413,
-          "release_date": "2024-12-11",
-          "knowledge_cutoff": "2024-06",
-          "first_seen": "2026-04-19"
+          "created": 1738769413
         },
         {
           "id": "aion-labs/aion-1.0",
@@ -11973,8 +11278,7 @@
             "input": 4.0,
             "output": 8.0
           },
-          "created": 1738697557,
-          "first_seen": "2026-04-19"
+          "created": 1738697557
         },
         {
           "id": "aion-labs/aion-1.0-mini",
@@ -11998,8 +11302,7 @@
             "input": 0.7,
             "output": 1.4
           },
-          "created": 1738697107,
-          "first_seen": "2026-04-19"
+          "created": 1738697107
         },
         {
           "id": "aion-labs/aion-rp-llama-3.1-8b",
@@ -12023,8 +11326,7 @@
             "input": 0.7999999999999999,
             "output": 1.5999999999999999
           },
-          "created": 1738696718,
-          "first_seen": "2026-04-19"
+          "created": 1738696718
         },
         {
           "id": "qwen/qwen2.5-vl-72b-instruct",
@@ -12042,9 +11344,6 @@
             ]
           },
           "capabilities": {
-            "reasoning": false,
-            "tool_call": false,
-            "structured_output": true,
             "structured_outputs": true,
             "knowledge_cutoff": "2024-06-30"
           },
@@ -12052,11 +11351,7 @@
             "input": 0.25,
             "output": 0.75
           },
-          "created": 1738410311,
-          "max_output": 8192,
-          "release_date": "2025-02-01",
-          "knowledge_cutoff": "2024-10",
-          "first_seen": "2026-04-19"
+          "created": 1738410311
         },
         {
           "id": "qwen/qwen-plus",
@@ -12081,8 +11376,7 @@
             "input": 0.26,
             "output": 0.78
           },
-          "created": 1738409840,
-          "first_seen": "2026-04-19"
+          "created": 1738409840
         },
         {
           "id": "openai/o3-mini",
@@ -12110,8 +11404,7 @@
             "input": 1.1,
             "output": 4.4
           },
-          "created": 1738351721,
-          "first_seen": "2026-04-19"
+          "created": 1738351721
         },
         {
           "id": "mistralai/mistral-small-24b-instruct-2501",
@@ -12136,8 +11429,7 @@
             "input": 0.049999999999999996,
             "output": 0.08
           },
-          "created": 1738255409,
-          "first_seen": "2026-04-19"
+          "created": 1738255409
         },
         {
           "id": "deepseek/deepseek-r1-distill-qwen-32b",
@@ -12163,8 +11455,7 @@
             "input": 0.29,
             "output": 0.29
           },
-          "created": 1738194830,
-          "first_seen": "2026-04-19"
+          "created": 1738194830
         },
         {
           "id": "perplexity/sonar",
@@ -12185,8 +11476,7 @@
             "input": 1.0,
             "output": 1.0
           },
-          "created": 1738013808,
-          "first_seen": "2026-04-19"
+          "created": 1738013808
         },
         {
           "id": "deepseek/deepseek-r1-distill-llama-70b",
@@ -12205,18 +11495,13 @@
           },
           "capabilities": {
             "reasoning": true,
-            "tool_call": false,
-            "structured_output": true,
             "knowledge_cutoff": "2024-07-31"
           },
           "cost": {
             "input": 0.7,
             "output": 0.7999999999999999
           },
-          "created": 1737663169,
-          "release_date": "2025-01-23",
-          "knowledge_cutoff": "2024-10",
-          "first_seen": "2026-04-19"
+          "created": 1737663169
         },
         {
           "id": "deepseek/deepseek-r1",
@@ -12234,20 +11519,16 @@
             ]
           },
           "capabilities": {
-            "reasoning": true,
             "tool_call": true,
-            "structured_output": false,
             "structured_outputs": true,
+            "reasoning": true,
             "knowledge_cutoff": "2024-07-31"
           },
           "cost": {
             "input": 0.7,
             "output": 2.5
           },
-          "created": 1737381095,
-          "release_date": "2025-01-20",
-          "knowledge_cutoff": "2024-07",
-          "first_seen": "2026-04-19"
+          "created": 1737381095
         },
         {
           "id": "minimax/minimax-01",
@@ -12266,17 +11547,13 @@
             ]
           },
           "capabilities": {
-            "reasoning": true,
-            "tool_call": true,
             "knowledge_cutoff": "2024-03-31"
           },
           "cost": {
             "input": 0.19999999999999998,
             "output": 1.1
           },
-          "created": 1736915462,
-          "release_date": "2025-01-15",
-          "first_seen": "2026-04-19"
+          "created": 1736915462
         },
         {
           "id": "microsoft/phi-4",
@@ -12301,8 +11578,7 @@
             "input": 0.065,
             "output": 0.14
           },
-          "created": 1736489872,
-          "first_seen": "2026-04-19"
+          "created": 1736489872
         },
         {
           "id": "sao10k/l3.1-70b-hanami-x1",
@@ -12325,8 +11601,7 @@
             "input": 3.0,
             "output": 3.0
           },
-          "created": 1736302854,
-          "first_seen": "2026-04-19"
+          "created": 1736302854
         },
         {
           "id": "deepseek/deepseek-chat",
@@ -12352,8 +11627,7 @@
             "input": 0.2288,
             "output": 0.9144
           },
-          "created": 1735241320,
-          "first_seen": "2026-04-19"
+          "created": 1735241320
         },
         {
           "id": "sao10k/l3.3-euryale-70b",
@@ -12378,8 +11652,7 @@
             "input": 0.65,
             "output": 0.75
           },
-          "created": 1734535928,
-          "first_seen": "2026-04-19"
+          "created": 1734535928
         },
         {
           "id": "openai/o1",
@@ -12408,8 +11681,7 @@
             "input": 15.0,
             "output": 60.0
           },
-          "created": 1734459999,
-          "first_seen": "2026-04-19"
+          "created": 1734459999
         },
         {
           "id": "cohere/command-r7b-12-2024",
@@ -12434,8 +11706,7 @@
             "input": 0.0375,
             "output": 0.15
           },
-          "created": 1734158152,
-          "first_seen": "2026-04-19"
+          "created": 1734158152
         },
         {
           "id": "meta-llama/llama-3.3-70b-instruct:free",
@@ -12452,20 +11723,14 @@
             ]
           },
           "capabilities": {
-            "reasoning": false,
             "tool_call": true,
-            "structured_output": true,
             "knowledge_cutoff": "2023-12-31"
           },
           "cost": {
             "input": 0.0,
             "output": 0.0
           },
-          "created": 1733506137,
-          "max_output": 131072,
-          "release_date": "2024-12-06",
-          "knowledge_cutoff": "2024-12",
-          "first_seen": "2026-04-19"
+          "created": 1733506137
         },
         {
           "id": "meta-llama/llama-3.3-70b-instruct",
@@ -12491,8 +11756,7 @@
             "input": 0.09999999999999999,
             "output": 0.32
           },
-          "created": 1733506137,
-          "first_seen": "2026-04-19"
+          "created": 1733506137
         },
         {
           "id": "amazon/nova-lite-v1",
@@ -12518,8 +11782,7 @@
             "input": 0.06,
             "output": 0.24
           },
-          "created": 1733437363,
-          "first_seen": "2026-04-19"
+          "created": 1733437363
         },
         {
           "id": "amazon/nova-micro-v1",
@@ -12544,8 +11807,7 @@
             "input": 0.035,
             "output": 0.14
           },
-          "created": 1733437237,
-          "first_seen": "2026-04-19"
+          "created": 1733437237
         },
         {
           "id": "amazon/nova-pro-v1",
@@ -12571,8 +11833,7 @@
             "input": 0.7999999999999999,
             "output": 3.1999999999999997
           },
-          "created": 1733436303,
-          "first_seen": "2026-04-19"
+          "created": 1733436303
         },
         {
           "id": "openai/gpt-4o-2024-11-20",
@@ -12600,8 +11861,7 @@
             "input": 2.5,
             "output": 10.0
           },
-          "created": 1732127594,
-          "first_seen": "2026-04-19"
+          "created": 1732127594
         },
         {
           "id": "mistralai/mistral-large-2411",
@@ -12627,8 +11887,7 @@
             "input": 2.0,
             "output": 6.0
           },
-          "created": 1731978685,
-          "first_seen": "2026-04-19"
+          "created": 1731978685
         },
         {
           "id": "mistralai/mistral-large-2407",
@@ -12654,8 +11913,7 @@
             "input": 2.0,
             "output": 6.0
           },
-          "created": 1731978415,
-          "first_seen": "2026-04-19"
+          "created": 1731978415
         },
         {
           "id": "mistralai/pixtral-large-2411",
@@ -12682,8 +11940,7 @@
             "input": 2.0,
             "output": 6.0
           },
-          "created": 1731977388,
-          "first_seen": "2026-04-19"
+          "created": 1731977388
         },
         {
           "id": "qwen/qwen-2.5-coder-32b-instruct",
@@ -12701,19 +11958,13 @@
             ]
           },
           "capabilities": {
-            "reasoning": false,
-            "tool_call": false,
-            "structured_output": true,
             "knowledge_cutoff": "2024-06-30"
           },
           "cost": {
             "input": 0.66,
             "output": 1.0
           },
-          "created": 1731368400,
-          "release_date": "2024-11-11",
-          "knowledge_cutoff": "2024-10",
-          "first_seen": "2026-04-19"
+          "created": 1731368400
         },
         {
           "id": "thedrummer/unslopnemo-12b",
@@ -12739,8 +11990,7 @@
             "input": 0.39999999999999997,
             "output": 0.39999999999999997
           },
-          "created": 1731103448,
-          "first_seen": "2026-04-19"
+          "created": 1731103448
         },
         {
           "id": "anthropic/claude-3.5-haiku",
@@ -12759,7 +12009,6 @@
             ]
           },
           "capabilities": {
-            "reasoning": false,
             "tool_call": true,
             "knowledge_cutoff": "2024-07-31"
           },
@@ -12767,10 +12016,7 @@
             "input": 0.7999999999999999,
             "output": 4.0
           },
-          "created": 1730678400,
-          "release_date": "2024-10-22",
-          "knowledge_cutoff": "2024-07-31",
-          "first_seen": "2026-04-19"
+          "created": 1730678400
         },
         {
           "id": "anthracite-org/magnum-v4-72b",
@@ -12794,8 +12040,7 @@
             "input": 3.0,
             "output": 5.0
           },
-          "created": 1729555200,
-          "first_seen": "2026-04-19"
+          "created": 1729555200
         },
         {
           "id": "qwen/qwen-2.5-7b-instruct",
@@ -12820,8 +12065,7 @@
             "input": 0.04,
             "output": 0.09999999999999999
           },
-          "created": 1729036800,
-          "first_seen": "2026-04-19"
+          "created": 1729036800
         },
         {
           "id": "inflection/inflection-3-productivity",
@@ -12845,8 +12089,7 @@
             "input": 2.5,
             "output": 10.0
           },
-          "created": 1728604800,
-          "first_seen": "2026-04-19"
+          "created": 1728604800
         },
         {
           "id": "inflection/inflection-3-pi",
@@ -12870,8 +12113,7 @@
             "input": 2.5,
             "output": 10.0
           },
-          "created": 1728604800,
-          "first_seen": "2026-04-19"
+          "created": 1728604800
         },
         {
           "id": "thedrummer/rocinante-12b",
@@ -12897,8 +12139,7 @@
             "input": 0.16999999999999998,
             "output": 0.43
           },
-          "created": 1727654400,
-          "first_seen": "2026-04-19"
+          "created": 1727654400
         },
         {
           "id": "meta-llama/llama-3.2-11b-vision-instruct",
@@ -12917,18 +12158,13 @@
             ]
           },
           "capabilities": {
-            "reasoning": false,
-            "tool_call": false,
             "knowledge_cutoff": "2023-12-31"
           },
           "cost": {
             "input": 0.245,
             "output": 0.245
           },
-          "created": 1727222400,
-          "release_date": "2024-09-25",
-          "knowledge_cutoff": "2023-12",
-          "first_seen": "2026-04-19"
+          "created": 1727222400
         },
         {
           "id": "meta-llama/llama-3.2-1b-instruct",
@@ -12952,8 +12188,7 @@
             "input": 0.027,
             "output": 0.201
           },
-          "created": 1727222400,
-          "first_seen": "2026-04-19"
+          "created": 1727222400
         },
         {
           "id": "meta-llama/llama-3.2-3b-instruct:free",
@@ -12970,19 +12205,13 @@
             ]
           },
           "capabilities": {
-            "reasoning": false,
-            "tool_call": false,
             "knowledge_cutoff": "2023-12-31"
           },
           "cost": {
             "input": 0.0,
             "output": 0.0
           },
-          "created": 1727222400,
-          "max_output": 131072,
-          "release_date": "2024-09-25",
-          "knowledge_cutoff": "2023-12",
-          "first_seen": "2026-04-19"
+          "created": 1727222400
         },
         {
           "id": "meta-llama/llama-3.2-3b-instruct",
@@ -13006,8 +12235,7 @@
             "input": 0.0509,
             "output": 0.335
           },
-          "created": 1727222400,
-          "first_seen": "2026-04-19"
+          "created": 1727222400
         },
         {
           "id": "qwen/qwen-2.5-72b-instruct",
@@ -13033,8 +12261,7 @@
             "input": 0.36,
             "output": 0.39999999999999997
           },
-          "created": 1726704000,
-          "first_seen": "2026-04-19"
+          "created": 1726704000
         },
         {
           "id": "cohere/command-r-08-2024",
@@ -13060,8 +12287,7 @@
             "input": 0.15,
             "output": 0.6
           },
-          "created": 1724976000,
-          "first_seen": "2026-04-19"
+          "created": 1724976000
         },
         {
           "id": "cohere/command-r-plus-08-2024",
@@ -13087,8 +12313,7 @@
             "input": 2.5,
             "output": 10.0
           },
-          "created": 1724976000,
-          "first_seen": "2026-04-19"
+          "created": 1724976000
         },
         {
           "id": "sao10k/l3.1-euryale-70b",
@@ -13114,8 +12339,7 @@
             "input": 0.85,
             "output": 0.85
           },
-          "created": 1724803200,
-          "first_seen": "2026-04-19"
+          "created": 1724803200
         },
         {
           "id": "nousresearch/hermes-3-llama-3.1-70b",
@@ -13140,8 +12364,7 @@
             "input": 0.3,
             "output": 0.3
           },
-          "created": 1723939200,
-          "first_seen": "2026-04-19"
+          "created": 1723939200
         },
         {
           "id": "nousresearch/hermes-3-llama-3.1-405b:free",
@@ -13158,19 +12381,13 @@
             ]
           },
           "capabilities": {
-            "reasoning": true,
-            "tool_call": false,
             "knowledge_cutoff": "2023-12-31"
           },
           "cost": {
             "input": 0.0,
             "output": 0.0
           },
-          "created": 1723766400,
-          "max_output": 131072,
-          "release_date": "2024-08-16",
-          "knowledge_cutoff": "2023-12",
-          "first_seen": "2026-04-19"
+          "created": 1723766400
         },
         {
           "id": "nousresearch/hermes-3-llama-3.1-405b",
@@ -13195,8 +12412,7 @@
             "input": 1.0,
             "output": 1.0
           },
-          "created": 1723766400,
-          "first_seen": "2026-04-19"
+          "created": 1723766400
         },
         {
           "id": "sao10k/l3-lunaris-8b",
@@ -13221,8 +12437,7 @@
             "input": 0.04,
             "output": 0.049999999999999996
           },
-          "created": 1723507200,
-          "first_seen": "2026-04-19"
+          "created": 1723507200
         },
         {
           "id": "openai/gpt-4o-2024-08-06",
@@ -13250,8 +12465,7 @@
             "input": 2.5,
             "output": 10.0
           },
-          "created": 1722902400,
-          "first_seen": "2026-04-19"
+          "created": 1722902400
         },
         {
           "id": "meta-llama/llama-3.1-70b-instruct",
@@ -13277,8 +12491,7 @@
             "input": 0.39999999999999997,
             "output": 0.39999999999999997
           },
-          "created": 1721692800,
-          "first_seen": "2026-04-19"
+          "created": 1721692800
         },
         {
           "id": "meta-llama/llama-3.1-8b-instruct",
@@ -13304,8 +12517,7 @@
             "input": 0.02,
             "output": 0.049999999999999996
           },
-          "created": 1721692800,
-          "first_seen": "2026-04-19"
+          "created": 1721692800
         },
         {
           "id": "mistralai/mistral-nemo",
@@ -13330,8 +12542,7 @@
             "input": 0.02,
             "output": 0.03
           },
-          "created": 1721347200,
-          "first_seen": "2026-04-19"
+          "created": 1721347200
         },
         {
           "id": "openai/gpt-4o-mini-2024-07-18",
@@ -13351,9 +12562,7 @@
             ]
           },
           "capabilities": {
-            "reasoning": false,
             "tool_call": true,
-            "structured_output": true,
             "structured_outputs": true,
             "knowledge_cutoff": "2023-10-31"
           },
@@ -13361,10 +12570,7 @@
             "input": 0.15,
             "output": 0.6
           },
-          "created": 1721260800,
-          "release_date": "2024-07-18",
-          "knowledge_cutoff": "2024-10",
-          "first_seen": "2026-04-19"
+          "created": 1721260800
         },
         {
           "id": "openai/gpt-4o-mini",
@@ -13384,9 +12590,7 @@
             ]
           },
           "capabilities": {
-            "reasoning": false,
             "tool_call": true,
-            "structured_output": true,
             "structured_outputs": true,
             "knowledge_cutoff": "2023-10-31"
           },
@@ -13394,10 +12598,7 @@
             "input": 0.15,
             "output": 0.6
           },
-          "created": 1721260800,
-          "release_date": "2024-07-18",
-          "knowledge_cutoff": "2024-10",
-          "first_seen": "2026-04-19"
+          "created": 1721260800
         },
         {
           "id": "google/gemma-2-27b-it",
@@ -13422,8 +12623,7 @@
             "input": 0.65,
             "output": 0.65
           },
-          "created": 1720828800,
-          "first_seen": "2026-04-19"
+          "created": 1720828800
         },
         {
           "id": "sao10k/l3-euryale-70b",
@@ -13448,8 +12648,7 @@
             "input": 1.48,
             "output": 1.48
           },
-          "created": 1718668800,
-          "first_seen": "2026-04-19"
+          "created": 1718668800
         },
         {
           "id": "nousresearch/hermes-2-pro-llama-3-8b",
@@ -13474,8 +12673,7 @@
             "input": 0.14,
             "output": 0.14
           },
-          "created": 1716768000,
-          "first_seen": "2026-04-19"
+          "created": 1716768000
         },
         {
           "id": "openai/gpt-4o",
@@ -13503,8 +12701,7 @@
             "input": 2.5,
             "output": 10.0
           },
-          "created": 1715558400,
-          "first_seen": "2026-04-19"
+          "created": 1715558400
         },
         {
           "id": "openai/gpt-4o-2024-05-13",
@@ -13532,8 +12729,7 @@
             "input": 5.0,
             "output": 15.0
           },
-          "created": 1715558400,
-          "first_seen": "2026-04-19"
+          "created": 1715558400
         },
         {
           "id": "meta-llama/llama-3-70b-instruct",
@@ -13558,8 +12754,7 @@
             "input": 0.51,
             "output": 0.74
           },
-          "created": 1713398400,
-          "first_seen": "2026-04-19"
+          "created": 1713398400
         },
         {
           "id": "meta-llama/llama-3-8b-instruct",
@@ -13583,8 +12778,7 @@
             "input": 0.04,
             "output": 0.04
           },
-          "created": 1713398400,
-          "first_seen": "2026-04-19"
+          "created": 1713398400
         },
         {
           "id": "mistralai/mixtral-8x22b-instruct",
@@ -13610,8 +12804,7 @@
             "input": 2.0,
             "output": 6.0
           },
-          "created": 1713312000,
-          "first_seen": "2026-04-19"
+          "created": 1713312000
         },
         {
           "id": "microsoft/wizardlm-2-8x22b",
@@ -13635,8 +12828,7 @@
             "input": 0.62,
             "output": 0.62
           },
-          "created": 1713225600,
-          "first_seen": "2026-04-19"
+          "created": 1713225600
         },
         {
           "id": "openai/gpt-4-turbo",
@@ -13663,8 +12855,7 @@
             "input": 10.0,
             "output": 30.0
           },
-          "created": 1712620800,
-          "first_seen": "2026-04-19"
+          "created": 1712620800
         },
         {
           "id": "anthropic/claude-3-haiku",
@@ -13690,8 +12881,7 @@
             "input": 0.25,
             "output": 1.25
           },
-          "created": 1710288000,
-          "first_seen": "2026-04-19"
+          "created": 1710288000
         },
         {
           "id": "mistralai/mistral-large",
@@ -13717,8 +12907,7 @@
             "input": 2.0,
             "output": 6.0
           },
-          "created": 1708905600,
-          "first_seen": "2026-04-19"
+          "created": 1708905600
         },
         {
           "id": "openai/gpt-3.5-turbo-0613",
@@ -13744,8 +12933,7 @@
             "input": 1.0,
             "output": 2.0
           },
-          "created": 1706140800,
-          "first_seen": "2026-04-19"
+          "created": 1706140800
         },
         {
           "id": "openai/gpt-4-turbo-preview",
@@ -13771,8 +12959,7 @@
             "input": 10.0,
             "output": 30.0
           },
-          "created": 1706140800,
-          "first_seen": "2026-04-19"
+          "created": 1706140800
         },
         {
           "id": "openrouter/auto",
@@ -13802,8 +12989,7 @@
             "input": -1000000.0,
             "output": -1000000.0
           },
-          "created": 1699401600,
-          "first_seen": "2026-04-19"
+          "created": 1699401600
         },
         {
           "id": "openai/gpt-4-1106-preview",
@@ -13829,8 +13015,7 @@
             "input": 10.0,
             "output": 30.0
           },
-          "created": 1699228800,
-          "first_seen": "2026-04-19"
+          "created": 1699228800
         },
         {
           "id": "mistralai/mistral-7b-instruct-v0.1",
@@ -13854,8 +13039,7 @@
             "input": 0.11,
             "output": 0.19
           },
-          "created": 1695859200,
-          "first_seen": "2026-04-19"
+          "created": 1695859200
         },
         {
           "id": "openai/gpt-3.5-turbo-instruct",
@@ -13880,8 +13064,7 @@
             "input": 1.5,
             "output": 2.0
           },
-          "created": 1695859200,
-          "first_seen": "2026-04-19"
+          "created": 1695859200
         },
         {
           "id": "openai/gpt-3.5-turbo-16k",
@@ -13907,8 +13090,7 @@
             "input": 3.0,
             "output": 4.0
           },
-          "created": 1693180800,
-          "first_seen": "2026-04-19"
+          "created": 1693180800
         },
         {
           "id": "mancer/weaver",
@@ -13932,8 +13114,7 @@
             "input": 0.75,
             "output": 1.0
           },
-          "created": 1690934400,
-          "first_seen": "2026-04-19"
+          "created": 1690934400
         },
         {
           "id": "undi95/remm-slerp-l2-13b",
@@ -13958,8 +13139,7 @@
             "input": 0.44999999999999996,
             "output": 0.65
           },
-          "created": 1689984000,
-          "first_seen": "2026-04-19"
+          "created": 1689984000
         },
         {
           "id": "gryphe/mythomax-l2-13b",
@@ -13984,8 +13164,7 @@
             "input": 0.06,
             "output": 0.06
           },
-          "created": 1688256000,
-          "first_seen": "2026-04-19"
+          "created": 1688256000
         },
         {
           "id": "openai/gpt-4-0314",
@@ -14011,8 +13190,7 @@
             "input": 30.0,
             "output": 60.0
           },
-          "created": 1685232000,
-          "first_seen": "2026-04-19"
+          "created": 1685232000
         },
         {
           "id": "openai/gpt-3.5-turbo",
@@ -14038,8 +13216,7 @@
             "input": 0.5,
             "output": 1.5
           },
-          "created": 1685232000,
-          "first_seen": "2026-04-19"
+          "created": 1685232000
         },
         {
           "id": "openai/gpt-4",
@@ -14065,8 +13242,7 @@
             "input": 30.0,
             "output": 60.0
           },
-          "created": 1685232000,
-          "first_seen": "2026-04-19"
+          "created": 1685232000
         }
       ]
     },
@@ -16785,7 +15961,6 @@
       "models": [
         {
           "id": "openai",
-          "name": "openai",
           "type": "chat",
           "status": "active",
           "modalities": {
@@ -16803,7 +15978,6 @@
         },
         {
           "id": "openai-fast",
-          "name": "openai-fast",
           "type": "chat",
           "status": "active",
           "modalities": {
@@ -16821,7 +15995,6 @@
         },
         {
           "id": "openai-large",
-          "name": "openai-large",
           "type": "chat",
           "status": "active",
           "modalities": {
@@ -16840,7 +16013,6 @@
         },
         {
           "id": "gpt-5.4-mini",
-          "name": "gpt-5.4-mini",
           "type": "chat",
           "status": "active",
           "modalities": {
@@ -16853,31 +16025,11 @@
             ]
           },
           "capabilities": {
-            "tool_call": true
-          }
-        },
-        {
-          "id": "gpt-5.5",
-          "name": "gpt-5.5",
-          "type": "chat",
-          "status": "active",
-          "modalities": {
-            "input": [
-              "text",
-              "image"
-            ],
-            "output": [
-              "text"
-            ]
-          },
-          "capabilities": {
-            "reasoning": true,
             "tool_call": true
           }
         },
         {
           "id": "qwen-coder",
-          "name": "qwen-coder",
           "type": "chat",
           "status": "active",
           "modalities": {
@@ -16894,7 +16046,6 @@
         },
         {
           "id": "mistral",
-          "name": "mistral",
           "type": "chat",
           "status": "active",
           "modalities": {
@@ -16912,7 +16063,6 @@
         },
         {
           "id": "mistral-4",
-          "name": "mistral-4",
           "type": "chat",
           "status": "active",
           "modalities": {
@@ -16930,7 +16080,6 @@
         },
         {
           "id": "openai-audio",
-          "name": "openai-audio",
           "type": "chat",
           "status": "active",
           "modalities": {
@@ -16949,7 +16098,6 @@
         },
         {
           "id": "openai-audio-large",
-          "name": "openai-audio-large",
           "type": "chat",
           "status": "active",
           "modalities": {
@@ -16959,83 +16107,6 @@
             ],
             "output": [
               "audio",
-              "text"
-            ]
-          },
-          "capabilities": {
-            "tool_call": true
-          }
-        },
-        {
-          "id": "gemini",
-          "name": "gemini",
-          "type": "chat",
-          "status": "active",
-          "modalities": {
-            "input": [
-              "text",
-              "image",
-              "audio",
-              "video"
-            ],
-            "output": [
-              "text"
-            ]
-          },
-          "capabilities": {
-            "tool_call": true
-          }
-        },
-        {
-          "id": "gemini-3.5-flash",
-          "name": "gemini-3.5-flash",
-          "type": "chat",
-          "status": "active",
-          "modalities": {
-            "input": [
-              "text",
-              "image",
-              "audio",
-              "video"
-            ],
-            "output": [
-              "text"
-            ]
-          },
-          "capabilities": {
-            "tool_call": true
-          }
-        },
-        {
-          "id": "gemini-flash-lite-3.1",
-          "name": "gemini-flash-lite-3.1",
-          "type": "chat",
-          "status": "active",
-          "modalities": {
-            "input": [
-              "text",
-              "image",
-              "audio"
-            ],
-            "output": [
-              "text"
-            ]
-          },
-          "capabilities": {
-            "tool_call": true
-          }
-        },
-        {
-          "id": "gemini-fast",
-          "name": "gemini-fast",
-          "type": "chat",
-          "status": "active",
-          "modalities": {
-            "input": [
-              "text",
-              "image"
-            ],
-            "output": [
               "text"
             ]
           },
@@ -17045,44 +16116,6 @@
         },
         {
           "id": "deepseek",
-          "name": "deepseek",
-          "type": "chat",
-          "status": "active",
-          "modalities": {
-            "input": [
-              "text"
-            ],
-            "output": [
-              "text"
-            ]
-          },
-          "capabilities": {
-            "reasoning": true,
-            "tool_call": true
-          }
-        },
-        {
-          "id": "gemma",
-          "name": "gemma",
-          "type": "chat",
-          "status": "active",
-          "modalities": {
-            "input": [
-              "text",
-              "image"
-            ],
-            "output": [
-              "text"
-            ]
-          },
-          "capabilities": {
-            "reasoning": true,
-            "tool_call": true
-          }
-        },
-        {
-          "id": "deepseek-pro",
-          "name": "deepseek-pro",
           "type": "chat",
           "status": "active",
           "modalities": {
@@ -17100,7 +16133,6 @@
         },
         {
           "id": "grok",
-          "name": "grok",
           "type": "chat",
           "status": "active",
           "modalities": {
@@ -17114,62 +16146,10 @@
           },
           "capabilities": {
             "tool_call": true
-          }
-        },
-        {
-          "id": "grok-large",
-          "name": "grok-large",
-          "type": "chat",
-          "status": "active",
-          "modalities": {
-            "input": [
-              "text",
-              "image"
-            ],
-            "output": [
-              "text"
-            ]
-          },
-          "capabilities": {
-            "reasoning": true,
-            "tool_call": true
-          }
-        },
-        {
-          "id": "gemini-search",
-          "name": "gemini-search",
-          "type": "chat",
-          "status": "active",
-          "modalities": {
-            "input": [
-              "text",
-              "image"
-            ],
-            "output": [
-              "text"
-            ]
           }
         },
         {
           "id": "midijourney",
-          "name": "midijourney",
-          "type": "chat",
-          "status": "active",
-          "modalities": {
-            "input": [
-              "text"
-            ],
-            "output": [
-              "text"
-            ]
-          },
-          "capabilities": {
-            "tool_call": true
-          }
-        },
-        {
-          "id": "midijourney-large",
-          "name": "midijourney-large",
           "type": "chat",
           "status": "active",
           "modalities": {
@@ -17186,61 +16166,6 @@
         },
         {
           "id": "claude-fast",
-          "name": "claude-fast",
-          "type": "chat",
-          "status": "active",
-          "modalities": {
-            "input": [
-              "text",
-              "image"
-            ],
-            "output": [
-              "text"
-            ]
-          },
-          "capabilities": {
-            "tool_call": true
-          }
-        },
-        {
-          "id": "claude",
-          "name": "claude",
-          "type": "chat",
-          "status": "active",
-          "modalities": {
-            "input": [
-              "text",
-              "image"
-            ],
-            "output": [
-              "text"
-            ]
-          },
-          "capabilities": {
-            "tool_call": true
-          }
-        },
-        {
-          "id": "claude-large",
-          "name": "claude-large",
-          "type": "chat",
-          "status": "active",
-          "modalities": {
-            "input": [
-              "text",
-              "image"
-            ],
-            "output": [
-              "text"
-            ]
-          },
-          "capabilities": {
-            "tool_call": true
-          }
-        },
-        {
-          "id": "claude-opus-4.7",
-          "name": "claude-opus-4.7",
           "type": "chat",
           "status": "active",
           "modalities": {
@@ -17258,7 +16183,6 @@
         },
         {
           "id": "perplexity-fast",
-          "name": "perplexity-fast",
           "type": "chat",
           "status": "active",
           "modalities": {
@@ -17273,7 +16197,6 @@
         },
         {
           "id": "perplexity-reasoning",
-          "name": "perplexity-reasoning",
           "type": "chat",
           "status": "active",
           "modalities": {
@@ -17291,7 +16214,6 @@
         },
         {
           "id": "kimi",
-          "name": "kimi",
           "type": "chat",
           "status": "active",
           "modalities": {
@@ -17310,7 +16232,6 @@
         },
         {
           "id": "kimi-k2.6",
-          "name": "kimi-k2.6",
           "type": "chat",
           "status": "active",
           "modalities": {
@@ -17328,29 +16249,7 @@
           }
         },
         {
-          "id": "gemini-large",
-          "name": "gemini-large",
-          "type": "chat",
-          "status": "active",
-          "modalities": {
-            "input": [
-              "text",
-              "image",
-              "audio",
-              "video"
-            ],
-            "output": [
-              "text"
-            ]
-          },
-          "capabilities": {
-            "reasoning": true,
-            "tool_call": true
-          }
-        },
-        {
           "id": "nova-fast",
-          "name": "nova-fast",
           "type": "chat",
           "status": "active",
           "modalities": {
@@ -17367,7 +16266,6 @@
         },
         {
           "id": "nova",
-          "name": "nova",
           "type": "chat",
           "status": "active",
           "modalities": {
@@ -17386,7 +16284,6 @@
         },
         {
           "id": "glm",
-          "name": "glm",
           "type": "chat",
           "status": "active",
           "modalities": {
@@ -17404,30 +16301,11 @@
         },
         {
           "id": "llama",
-          "name": "llama",
           "type": "chat",
           "status": "active",
           "modalities": {
             "input": [
               "text"
-            ],
-            "output": [
-              "text"
-            ]
-          },
-          "capabilities": {
-            "tool_call": true
-          }
-        },
-        {
-          "id": "llama-maverick",
-          "name": "llama-maverick",
-          "type": "chat",
-          "status": "active",
-          "modalities": {
-            "input": [
-              "text",
-              "image"
             ],
             "output": [
               "text"
@@ -17439,7 +16317,6 @@
         },
         {
           "id": "llama-scout",
-          "name": "llama-scout",
           "type": "chat",
           "status": "active",
           "modalities": {
@@ -17457,7 +16334,6 @@
         },
         {
           "id": "minimax",
-          "name": "minimax",
           "type": "chat",
           "status": "active",
           "modalities": {
@@ -17475,7 +16351,6 @@
         },
         {
           "id": "mistral-large",
-          "name": "mistral-large",
           "type": "chat",
           "status": "active",
           "modalities": {
@@ -17494,7 +16369,6 @@
         },
         {
           "id": "polly",
-          "name": "polly",
           "type": "chat",
           "status": "active",
           "modalities": {
@@ -17513,7 +16387,6 @@
         },
         {
           "id": "qwen-coder-large",
-          "name": "qwen-coder-large",
           "type": "chat",
           "status": "active",
           "modalities": {
@@ -17530,7 +16403,6 @@
         },
         {
           "id": "qwen-large",
-          "name": "qwen-large",
           "type": "chat",
           "status": "active",
           "modalities": {
@@ -17549,7 +16421,6 @@
         },
         {
           "id": "qwen-vision",
-          "name": "qwen-vision",
           "type": "chat",
           "status": "active",
           "modalities": {
@@ -17567,7 +16438,6 @@
         },
         {
           "id": "qwen-vision-pro",
-          "name": "qwen-vision-pro",
           "type": "chat",
           "status": "active",
           "modalities": {
@@ -17586,7 +16456,6 @@
         },
         {
           "id": "qwen-safety",
-          "name": "qwen-safety",
           "type": "chat",
           "status": "active",
           "modalities": {
@@ -17600,98 +16469,7 @@
         },
         {
           "id": "kontext",
-          "name": "kontext",
-          "type": "chat",
-          "status": "active",
-          "modalities": {
-            "input": [
-              "text",
-              "image"
-            ],
-            "output": [
-              "image"
-            ]
-          }
-        },
-        {
-          "id": "nanobanana",
-          "name": "nanobanana",
-          "type": "chat",
-          "status": "active",
-          "modalities": {
-            "input": [
-              "text",
-              "image"
-            ],
-            "output": [
-              "image"
-            ]
-          }
-        },
-        {
-          "id": "nanobanana-2",
-          "name": "nanobanana-2",
-          "type": "chat",
-          "status": "active",
-          "modalities": {
-            "input": [
-              "text",
-              "image"
-            ],
-            "output": [
-              "image"
-            ]
-          }
-        },
-        {
-          "id": "nanobanana-pro",
-          "name": "nanobanana-pro",
-          "type": "chat",
-          "status": "active",
-          "modalities": {
-            "input": [
-              "text",
-              "image"
-            ],
-            "output": [
-              "image"
-            ]
-          }
-        },
-        {
-          "id": "seedream5",
-          "name": "seedream5",
-          "type": "chat",
-          "status": "active",
-          "modalities": {
-            "input": [
-              "text",
-              "image"
-            ],
-            "output": [
-              "image"
-            ]
-          }
-        },
-        {
-          "id": "seedream",
-          "name": "seedream",
-          "type": "chat",
-          "status": "active",
-          "modalities": {
-            "input": [
-              "text",
-              "image"
-            ],
-            "output": [
-              "image"
-            ]
-          }
-        },
-        {
-          "id": "seedream-pro",
-          "name": "seedream-pro",
-          "type": "chat",
+          "type": "image",
           "status": "active",
           "modalities": {
             "input": [
@@ -17705,8 +16483,7 @@
         },
         {
           "id": "gptimage",
-          "name": "gptimage",
-          "type": "chat",
+          "type": "image",
           "status": "active",
           "modalities": {
             "input": [
@@ -17720,23 +16497,7 @@
         },
         {
           "id": "gptimage-large",
-          "name": "gptimage-large",
-          "type": "chat",
-          "status": "active",
-          "modalities": {
-            "input": [
-              "text",
-              "image"
-            ],
-            "output": [
-              "image"
-            ]
-          }
-        },
-        {
-          "id": "gpt-image-2",
-          "name": "gpt-image-2",
-          "type": "chat",
+          "type": "image",
           "status": "active",
           "modalities": {
             "input": [
@@ -17750,8 +16511,7 @@
         },
         {
           "id": "flux",
-          "name": "flux",
-          "type": "chat",
+          "type": "image",
           "status": "active",
           "modalities": {
             "input": [
@@ -17764,8 +16524,7 @@
         },
         {
           "id": "zimage",
-          "name": "zimage",
-          "type": "chat",
+          "type": "image",
           "status": "active",
           "modalities": {
             "input": [
@@ -17777,100 +16536,8 @@
           }
         },
         {
-          "id": "veo",
-          "name": "veo",
-          "type": "chat",
-          "status": "active",
-          "modalities": {
-            "input": [
-              "text",
-              "image"
-            ],
-            "output": [
-              "video"
-            ]
-          }
-        },
-        {
-          "id": "seedance-pro",
-          "name": "seedance-pro",
-          "type": "chat",
-          "status": "active",
-          "modalities": {
-            "input": [
-              "text",
-              "image"
-            ],
-            "output": [
-              "video"
-            ]
-          }
-        },
-        {
-          "id": "seedance-2.0",
-          "name": "seedance-2.0",
-          "type": "chat",
-          "status": "active",
-          "modalities": {
-            "input": [
-              "text",
-              "image"
-            ],
-            "output": [
-              "video",
-              "audio"
-            ]
-          }
-        },
-        {
-          "id": "wan",
-          "name": "wan",
-          "type": "chat",
-          "status": "active",
-          "modalities": {
-            "input": [
-              "text",
-              "image"
-            ],
-            "output": [
-              "video"
-            ]
-          }
-        },
-        {
-          "id": "wan-fast",
-          "name": "wan-fast",
-          "type": "chat",
-          "status": "active",
-          "modalities": {
-            "input": [
-              "text",
-              "image"
-            ],
-            "output": [
-              "video"
-            ]
-          }
-        },
-        {
           "id": "wan-image",
-          "name": "wan-image",
-          "type": "chat",
-          "status": "active",
-          "modalities": {
-            "input": [
-              "text",
-              "image"
-            ],
-            "output": [
-              "image"
-            ]
-          }
-        },
-        {
-          "id": "wan-image-pro",
-          "name": "wan-image-pro",
-          "type": "chat",
+          "type": "image",
           "status": "active",
           "modalities": {
             "input": [
@@ -17884,8 +16551,7 @@
         },
         {
           "id": "qwen-image",
-          "name": "qwen-image",
-          "type": "chat",
+          "type": "image",
           "status": "active",
           "modalities": {
             "input": [
@@ -17894,58 +16560,12 @@
             ],
             "output": [
               "image"
-            ]
-          }
-        },
-        {
-          "id": "grok-imagine",
-          "name": "grok-imagine",
-          "type": "chat",
-          "status": "active",
-          "modalities": {
-            "input": [
-              "text",
-              "image"
-            ],
-            "output": [
-              "image"
-            ]
-          }
-        },
-        {
-          "id": "grok-imagine-pro",
-          "name": "grok-imagine-pro",
-          "type": "chat",
-          "status": "active",
-          "modalities": {
-            "input": [
-              "text",
-              "image"
-            ],
-            "output": [
-              "image"
-            ]
-          }
-        },
-        {
-          "id": "grok-video-pro",
-          "name": "grok-video-pro",
-          "type": "chat",
-          "status": "active",
-          "modalities": {
-            "input": [
-              "text",
-              "image"
-            ],
-            "output": [
-              "video"
             ]
           }
         },
         {
           "id": "klein",
-          "name": "klein",
-          "type": "chat",
+          "type": "image",
           "status": "active",
           "modalities": {
             "input": [
@@ -17959,7 +16579,6 @@
         },
         {
           "id": "ltx-2",
-          "name": "ltx-2",
           "type": "chat",
           "status": "active",
           "modalities": {
@@ -17969,71 +16588,11 @@
             ],
             "output": [
               "video"
-            ]
-          }
-        },
-        {
-          "id": "p-image",
-          "name": "p-image",
-          "type": "chat",
-          "status": "active",
-          "modalities": {
-            "input": [
-              "text"
-            ],
-            "output": [
-              "image"
-            ]
-          }
-        },
-        {
-          "id": "p-image-edit",
-          "name": "p-image-edit",
-          "type": "chat",
-          "status": "active",
-          "modalities": {
-            "input": [
-              "text",
-              "image"
-            ],
-            "output": [
-              "image"
-            ]
-          }
-        },
-        {
-          "id": "p-video",
-          "name": "p-video",
-          "type": "chat",
-          "status": "active",
-          "modalities": {
-            "input": [
-              "text",
-              "image"
-            ],
-            "output": [
-              "video"
-            ]
-          }
-        },
-        {
-          "id": "nova-canvas",
-          "name": "nova-canvas",
-          "type": "chat",
-          "status": "active",
-          "modalities": {
-            "input": [
-              "text",
-              "image"
-            ],
-            "output": [
-              "image"
             ]
           }
         },
         {
           "id": "nova-reel",
-          "name": "nova-reel",
           "type": "chat",
           "status": "active",
           "modalities": {
@@ -18047,64 +16606,7 @@
           }
         },
         {
-          "id": "elevenlabs",
-          "name": "elevenlabs",
-          "type": "chat",
-          "status": "active",
-          "modalities": {
-            "input": [
-              "text"
-            ],
-            "output": [
-              "audio"
-            ]
-          }
-        },
-        {
-          "id": "elevenflash",
-          "name": "elevenflash",
-          "type": "chat",
-          "status": "active",
-          "modalities": {
-            "input": [
-              "text"
-            ],
-            "output": [
-              "audio"
-            ]
-          }
-        },
-        {
-          "id": "elevenmusic",
-          "name": "elevenmusic",
-          "type": "chat",
-          "status": "active",
-          "modalities": {
-            "input": [
-              "text"
-            ],
-            "output": [
-              "audio"
-            ]
-          }
-        },
-        {
           "id": "whisper",
-          "name": "whisper",
-          "type": "chat",
-          "status": "active",
-          "modalities": {
-            "input": [
-              "audio"
-            ],
-            "output": [
-              "text"
-            ]
-          }
-        },
-        {
-          "id": "scribe",
-          "name": "scribe",
           "type": "chat",
           "status": "active",
           "modalities": {
@@ -18118,21 +16620,6 @@
         },
         {
           "id": "universal-2",
-          "name": "universal-2",
-          "type": "chat",
-          "status": "active",
-          "modalities": {
-            "input": [
-              "audio"
-            ],
-            "output": [
-              "text"
-            ]
-          }
-        },
-        {
-          "id": "universal-3-pro",
-          "name": "universal-3-pro",
           "type": "chat",
           "status": "active",
           "modalities": {
@@ -18146,7 +16633,6 @@
         },
         {
           "id": "acestep",
-          "name": "acestep",
           "type": "chat",
           "status": "active",
           "modalities": {
@@ -18160,7 +16646,6 @@
         },
         {
           "id": "qwen-tts",
-          "name": "qwen-tts",
           "type": "chat",
           "status": "active",
           "modalities": {
@@ -18169,43 +16654,11 @@
             ],
             "output": [
               "audio"
-            ]
-          }
-        },
-        {
-          "id": "qwen-tts-instruct",
-          "name": "qwen-tts-instruct",
-          "type": "chat",
-          "status": "active",
-          "modalities": {
-            "input": [
-              "text"
-            ],
-            "output": [
-              "audio"
-            ]
-          }
-        },
-        {
-          "id": "gemini-2",
-          "name": "gemini-2",
-          "type": "chat",
-          "status": "active",
-          "modalities": {
-            "input": [
-              "text",
-              "image",
-              "audio",
-              "video"
-            ],
-            "output": [
-              "embedding"
             ]
           }
         },
         {
           "id": "openai-3-small",
-          "name": "openai-3-small",
           "type": "chat",
           "status": "active",
           "modalities": {
@@ -18219,7 +16672,6 @@
         },
         {
           "id": "openai-3-large",
-          "name": "openai-3-large",
           "type": "chat",
           "status": "active",
           "modalities": {

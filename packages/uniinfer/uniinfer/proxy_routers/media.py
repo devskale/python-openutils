@@ -73,15 +73,24 @@ def create_media_router(
 
             if provider_name == "pollinations":
                 try:
+                    api_key_for_list = None
+                    if api_bearer_token:
+                        try:
+                            api_key_for_list = get_provider_api_key(api_bearer_token, "pollinations")
+                        except Exception:
+                            pass
                     async with httpx.AsyncClient() as client:
-                        resp = await client.get("https://gen.pollinations.ai/image/models", timeout=10)
+                        headers = {"User-Agent": "UniIOAI/0.1"}
+                        if api_key_for_list:
+                            headers["Authorization"] = f"Bearer {api_key_for_list}"
+                        resp = await client.get("https://gen.pollinations.ai/v1/models", headers=headers, timeout=10)
                         resp.raise_for_status()
-                        for model in resp.json():
+                        for model in resp.json().get("data", []):
                             if "image" in model.get("output_modalities", []):
-                                models.append(model["name"])
+                                models.append(model["id"])
                 except Exception as e:
-                    logger.error("Failed to fetch Pollinations models: %s, using fallback list", e)
-                    models = ["turbo", "flux", "kontext", "nanobanana", "gptimage", "zimage", "klein"]
+                    logger.error("Failed to fetch Pollinations image models: %s, using fallback list", e)
+                    models = ["flux", "kontext", "gptimage", "gptimage-large", "zimage", "klein"]
 
             elif provider_name == "tu":
                 token_for_tu = api_bearer_token or os.getenv("TU_API_KEY")
@@ -168,14 +177,6 @@ def create_media_router(
                             b64 = base64.b64encode(img_resp.content).decode("utf-8")
                             data_items.append(ImageData(b64_json=b64, url=url))
                 else:
-                    allowed_models = {
-                        "turbo", "flux", "kontext", "nanobanana", "nanobanana-2", "nanobanana-pro",
-                        "seedream5", "seedream", "seedream-pro", "gptimage", "gptimage-large",
-                        "zimage", "klein", "klein-large", "imagen-4", "flux-2-dev", "grok-imagine",
-                    }
-                    if model_name not in allowed_models:
-                        model_name = "turbo"
-
                     encoded_prompt = urllib.parse.quote(prompt)
                     base_url = "https://gen.pollinations.ai/image"
                     for i in range(n):
