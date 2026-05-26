@@ -1,5 +1,5 @@
 version = 1
-revision = 2
+revision = 3
 requires-python = ">=3.9"
 resolution-markers = [
     "python_full_version >= '3.10'",
@@ -2341,6 +2341,7 @@ name = "uniinfer"
 version = "0.5.24"
 source = { editable = "." }
 dependencies = [
+    { name = "ai21" },
     { name = "credgoo" },
     { name = "fastapi", version = "0.128.8", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.10'" },
     { name = "fastapi", version = "0.136.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.10'" },
@@ -2413,6 +2414,7 @@ dev = [
 
 [package.metadata]
 requires-dist = [
+    { name = "ai21", specifier = ">=4.3.0" },
     { name = "ai21", marker = "extra == 'ai21'", specifier = ">=2.1.0" },
     { name = "ai21", marker = "extra == 'all'", specifier = ">=2.1.0" },
     { name = "anthropic", marker = "extra == 'all'", specifier = ">=0.25.0" },
