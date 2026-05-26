@@ -41,8 +41,9 @@ class ChatCompletionRequestInput(BaseModel):
     def validate_model_format(cls, v):
         if "@" not in v:
             raise ValueError("Invalid model format. Expected 'provider@modelname'.")
-        if not re.match(r"^[^@]+@[^@]+$", v):
-            raise ValueError("Incorrect model format. Exactly one '@' expected.")
+        parts = v.split("@", 1)
+        if not parts[0] or not parts[1]:
+            raise ValueError("Invalid model format. Provider or model name is empty.")
         return v
 
 
