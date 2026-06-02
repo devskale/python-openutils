@@ -1,8 +1,23 @@
 import json
+from pathlib import Path
 from typing import Any, AsyncIterator, Optional
 
 from ..core import ChatCompletionRequest, ChatCompletionResponse, ChatMessage, ChatProvider
 from ..errors import UniInferError, map_provider_error
+
+_MODEL_DEFAULTS: dict[str, dict[str, Any]] | None = None
+_MODEL_DEFAULTS_PATH = Path(__file__).resolve().parent.parent / "models" / "model_defaults.json"
+
+
+def _load_model_defaults() -> dict[str, dict[str, Any]]:
+    global _MODEL_DEFAULTS
+    if _MODEL_DEFAULTS is None:
+        try:
+            with open(_MODEL_DEFAULTS_PATH) as f:
+                _MODEL_DEFAULTS = json.load(f)
+        except Exception:
+            _MODEL_DEFAULTS = {}
+    return _MODEL_DEFAULTS
 
 
 class OpenAICompatibleChatProvider(ChatProvider):
@@ -42,10 +57,17 @@ class OpenAICompatibleChatProvider(ChatProvider):
         stream: bool,
         provider_specific_kwargs: dict[str, Any],
     ) -> dict[str, Any]:
+        model_id = request.model or self.DEFAULT_MODEL
+
+        defaults = {}
+        model_defaults = _load_model_defaults()
+        if model_id in model_defaults:
+            defaults = model_defaults[model_id]
+
         payload: dict[str, Any] = {
-            "model": request.model or self.DEFAULT_MODEL,
+            "model": model_id,
             "messages": self._flatten_messages(request.messages),
-            "temperature": request.temperature,
+            "temperature": defaults.get("temperature", request.temperature),
             "stream": stream,
         }
         if request.max_tokens is not None:

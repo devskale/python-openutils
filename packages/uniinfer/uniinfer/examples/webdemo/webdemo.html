@@ -899,22 +899,29 @@
 
     // ─── Image Generation ───────────────────────────────────────────
     async function updateImageModels() {
+      const provider = $("#image-provider").value;
+      const sel = $("#image-model"); sel.innerHTML = "";
       try {
-        const json = await apiJson(`/v1/image/models/${$("#image-provider").value}`, { headers: getHeaders() });
-        const sel = $("#image-model"); sel.innerHTML = "";
+        const json = await apiJson(`/v1/image/models/${provider}`, { headers: getHeaders(), allowHttp: true });
         (json.data || []).forEach(m => { const o = document.createElement("option"); o.value = m.id; o.textContent = m.id; sel.appendChild(o); });
-      } catch {}
+      } catch (e) {
+        console.warn(`Failed to load image models for ${provider}:`, e);
+        const fallbacks = { pollinations: ["flux","gptimage","kontext","zimage","klein","wan-image","qwen-image"], tu: ["z-image-turbo"] };
+        (fallbacks[provider] || []).forEach(id => { const o = document.createElement("option"); o.value = id; o.textContent = id; sel.appendChild(o); });
+      }
     }
     $("#image-provider").addEventListener("change", updateImageModels);
 
     $("#generate-image").addEventListener("click", async () => {
       const prompt = $("#image-prompt").value.trim(); if (!prompt) return;
-      const btn = $("#generate-image"); btn.disabled = true;
+      const btn = $("#generate-image"); btn.style.display = "none";
+      const stopBtn = $("#stop-image"); stopBtn.style.display = "inline-block";
       const status = $("#image-status"); status.innerHTML = '<span class="spinner"></span> Generating...';
+      abortController = new AbortController();
       let ok = false;
       try {
         const resp = await apiFetch("/v1/images/generations", {
-          method:"POST", headers:getHeaders(),
+          method:"POST", headers:getHeaders(), signal: abortController.signal,
           body: JSON.stringify({ model:`${$("#image-provider").value}@${$("#image-model").value}`, prompt, size:$("#image-size").value }),
         });
         const data = await resp.json();
@@ -980,23 +987,36 @@
           }
         }
         if (!ok) status.innerHTML = '<div class="error-status"><span>⚠️</span> No image generated</div>';
-      } catch (e) { status.innerHTML = `<div class="error-status"><span>⚠️</span> ${escapeHtml(e.detail || e.message)}</div>`; }
-      finally { btn.disabled = false; if (ok) status.innerHTML = ""; }
+      } catch (e) { if (e.name !== "AbortError") status.innerHTML = `<div class="error-status"><span>⚠️</span> ${escapeHtml(e.detail || e.message)}</div>`; }
+      finally { btn.style.display = "inline-block"; stopBtn.style.display = "none"; if (ok) status.innerHTML = ""; abortController = null; }
     });
+    $("#stop-image").addEventListener("click", () => abortController?.abort());
 
     // ─── Audio ───────────────────────────────────────────────────────
     async function loadAudioModels() {
       try {
-        // Load all models and filter for TTS/STT types
-        const { data } = await apiJson("/v1/models", { headers: getHeaders() });
-        const ttsModels = data.filter(m => m.type === "tts" || (m.id && (m.id.toLowerCase().includes("kokoro") || m.id.toLowerCase().includes("piper"))));
-        const sttModels = data.filter(m => m.type === "stt" || (m.id && (m.id.toLowerCase().includes("whisper") || m.id.toLowerCase().includes("stt"))));
         const ttsSel = $("#tts-model"); ttsSel.innerHTML = "";
-        if (ttsModels.length) ttsModels.forEach(m => { const o = document.createElement("option"); o.value = `${m.provider}@${m.id}`; o.textContent = `${m.provider}/${m.id}`; ttsSel.appendChild(o); });
-        else { const o = document.createElement("option"); o.value = "tu@kokoro"; o.textContent = "tu/kokoro"; ttsSel.appendChild(o); }
         const sttSel = $("#stt-model"); sttSel.innerHTML = "";
-        if (sttModels.length) sttModels.forEach(m => { const o = document.createElement("option"); o.value = `${m.provider}@${m.id}`; o.textContent = `${m.provider}/${m.id}`; sttSel.appendChild(o); });
-        else { const o = document.createElement("option"); o.value = "tu@whisper-large"; o.textContent = "tu/whisper-large"; sttSel.appendChild(o); }
+
+        const audioProviders = ["tu"];
+        for (const prov of audioProviders) {
+          try {
+            const { data } = await apiJson(`/v1/models/${prov}`, { headers: getHeaders(), allowHttp: true });
+            const tts = data.filter(m => {
+              const id = (m.id || "").toLowerCase();
+              return m.type === "tts" || id.includes("kokoro") || id.includes("piper") || id.includes("tts");
+            });
+            const stt = data.filter(m => {
+              const id = (m.id || "").toLowerCase();
+              return m.type === "stt" || id.includes("whisper") || id.includes("asr") || id.includes("stt");
+            });
+            tts.forEach(m => { const o = document.createElement("option"); o.value = `${prov}@${m.id}`; o.textContent = `${prov}/${m.id}`; ttsSel.appendChild(o); });
+            stt.forEach(m => { const o = document.createElement("option"); o.value = `${prov}@${m.id}`; o.textContent = `${prov}/${m.id}`; sttSel.appendChild(o); });
+          } catch (e) { console.warn(`Failed to load audio models for ${prov}:`, e); }
+        }
+
+        if (!ttsSel.options.length) { const o = document.createElement("option"); o.value = "tu@kokoro"; o.textContent = "tu/kokoro"; ttsSel.appendChild(o); }
+        if (!sttSel.options.length) { const o = document.createElement("option"); o.value = "tu@whisper-large"; o.textContent = "tu/whisper-large"; sttSel.appendChild(o); }
         updateVoices();
       } catch {}
     }

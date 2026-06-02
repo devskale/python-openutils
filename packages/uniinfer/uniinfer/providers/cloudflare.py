@@ -107,45 +107,19 @@ class CloudflareProvider(ChatProvider):
             response_body = getattr(e.response, 'text', None) if hasattr(e, 'response') else None
             raise map_provider_error("cloudflare", e, status_code=status_code, response_body=response_body)
 
-    def _prepare_messages(self, messages: List[ChatMessage]) -> str:
-        """
-        Prepare messages for Cloudflare Workers AI.
-        """
-        def _flatten(content):
+    def _prepare_messages(self, messages: List[ChatMessage]) -> list[dict]:
+        """Convert ChatMessage list to OpenAI-style messages dicts."""
+        result = []
+        for msg in messages:
+            content = msg.content
             if isinstance(content, list):
                 parts = []
                 for part in content:
                     if isinstance(part, dict) and part.get("type") == "text":
                         parts.append(part.get("text", ""))
-                return "".join(parts)
-            return content
-
-        if len(messages) == 1 and messages[0].role == "user":
-            return _flatten(messages[0].content)
-
-        system_content = None
-        for msg in messages:
-            if msg.role == "system":
-                system_content = _flatten(msg.content)
-                break
-
-        formatted_messages = []
-        for msg in messages:
-            if msg.role == "system":
-                continue
-            if msg.role == "user":
-                formatted_messages.append(f"User: {_flatten(msg.content)}")
-            elif msg.role == "assistant":
-                formatted_messages.append(f"Assistant: {_flatten(msg.content)}")
-
-        formatted_messages.append("Assistant:")
-
-        if system_content:
-            prompt = f"System: {system_content}\n\n" + "\n".join(formatted_messages)
-        else:
-            prompt = "\n".join(formatted_messages)
-
-        return prompt
+                content = "".join(parts)
+            result.append({"role": msg.role, "content": content})
+        return result
 
     async def acomplete(
         self,
@@ -157,10 +131,10 @@ class CloudflareProvider(ChatProvider):
         """
         try:
             model = request.model or "@cf/meta/llama-3-8b-instruct"
-            prompt = self._prepare_messages(request.messages)
+            msgs = self._prepare_messages(request.messages)
 
             data = {
-                "prompt": prompt,
+                "messages": msgs,
                 "max_tokens": request.max_tokens if request.max_tokens is not None else 1024,
             }
 
@@ -172,7 +146,7 @@ class CloudflareProvider(ChatProvider):
 
             client = await self._get_async_client()
             endpoint = self.base_url + model
-            
+
             response = await client.post(
                 endpoint,
                 headers=self.headers,
@@ -185,25 +159,37 @@ class CloudflareProvider(ChatProvider):
                 raise map_provider_error("cloudflare", Exception(error_msg), status_code=response.status_code, response_body=response.text)
 
             response_data = response.json()
+            result = response_data.get("result", {})
             content = ""
-            if "result" in response_data:
-                if isinstance(response_data["result"], str):
-                    content = response_data["result"]
-                elif isinstance(response_data["result"], dict) and "response" in response_data["result"]:
-                    content = response_data["result"]["response"]
+            thinking = None
+
+            if isinstance(result, dict):
+                if result.get("object") == "chat.completion":
+                    choice = result.get("choices", [{}])[0]
+                    msg = choice.get("message", {})
+                    content = msg.get("content", "") or ""
+                    thinking = msg.get("reasoning_content")
+                elif "response" in result:
+                    content = result["response"]
                 else:
-                    content = str(response_data["result"])
+                    content = str(result)
+            elif isinstance(result, str):
+                content = result
+            else:
+                content = str(result)
 
-            message = ChatMessage(role="assistant", content=content)
-            usage = {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0}
-
-            return ChatCompletionResponse(
-                message=message,
+            msg_obj = ChatMessage(role="assistant", content=content)
+            resp = ChatCompletionResponse(
+                message=msg_obj,
                 provider='cloudflare',
                 model=model,
-                usage=usage,
+                usage={},
                 raw_response=response_data
             )
+            if thinking:
+                resp.thinking = thinking
+
+            return resp
 
         except Exception as e:
             if isinstance(e, UniInferError):
@@ -220,10 +206,10 @@ class CloudflareProvider(ChatProvider):
         """
         try:
             model = request.model or "@cf/meta/llama-3-8b-instruct"
-            prompt = self._prepare_messages(request.messages)
+            msgs = self._prepare_messages(request.messages)
 
             data = {
-                "prompt": prompt,
+                "messages": msgs,
                 "stream": True,
                 "max_tokens": request.max_tokens if request.max_tokens is not None else 1024,
             }
@@ -236,7 +222,7 @@ class CloudflareProvider(ChatProvider):
 
             client = await self._get_async_client()
             endpoint = self.base_url + model
-            
+
             async with client.stream(
                 "POST",
                 endpoint,
@@ -253,20 +239,29 @@ class CloudflareProvider(ChatProvider):
                         chunk_data = line.strip()
                         if chunk_data.startswith("data: "):
                             chunk_data = chunk_data[6:]
-                        
+
                         if chunk_data == "[DONE]":
                             continue
 
                         try:
                             json_chunk = json.loads(chunk_data)
                             chunk_text = ""
-                            if "response" in json_chunk:
-                                chunk_text = json_chunk["response"]
-                            elif "result" in json_chunk:
-                                if isinstance(json_chunk["result"], str):
-                                    chunk_text = json_chunk["result"]
-                                elif isinstance(json_chunk["result"], dict) and "response" in json_chunk["result"]:
-                                    chunk_text = json_chunk["result"]["response"]
+
+                            if isinstance(json_chunk, dict):
+                                if "choices" in json_chunk:
+                                    delta = json_chunk.get("choices", [{}])[0]
+                                    d = delta.get("delta", {})
+                                    chunk_text = d.get("content", "") or ""
+                                    if not chunk_text:
+                                        chunk_text = delta.get("text", "") or ""
+                                elif "response" in json_chunk:
+                                    chunk_text = json_chunk["response"]
+                                elif "result" in json_chunk:
+                                    r = json_chunk["result"]
+                                    if isinstance(r, str):
+                                        chunk_text = r
+                                    elif isinstance(r, dict) and "response" in r:
+                                        chunk_text = r["response"]
 
                             if not chunk_text:
                                 continue
