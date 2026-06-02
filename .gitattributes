@@ -1,0 +1,3 @@
+# uv.lock files are fully regenerable from pyproject.toml.
+# On merge conflict, always take the incoming version ("theirs").
+**/uv.lock merge=lock-theirs
