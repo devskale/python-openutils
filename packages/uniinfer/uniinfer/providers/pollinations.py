@@ -15,7 +15,7 @@ class PollinationsProvider(OpenAICompatibleChatProvider):
     Provider for Pollinations OpenAI-compatible API.
     """
 
-    BASE_URL = "https://text.pollinations.ai/openai"
+    BASE_URL = "https://gen.pollinations.ai/v1"
     PROVIDER_ID = "pollinations"
     ERROR_PROVIDER_NAME = "Pollinations"
     DEFAULT_MODEL = "openai"
@@ -34,9 +34,9 @@ class PollinationsProvider(OpenAICompatibleChatProvider):
             headers["Authorization"] = f"Bearer {api_key}"
 
         endpoints = [
-            "https://gen.pollinations.ai/models",
-            "https://text.pollinations.ai/openai/v1/models",
+            "https://gen.pollinations.ai/v1/models",
             "https://gen.pollinations.ai/openai/v1/models",
+            "https://text.pollinations.ai/openai/v1/models",
         ]
 
         last_error = None
@@ -69,10 +69,11 @@ class PollinationsProvider(OpenAICompatibleChatProvider):
                         output_mods = m.get("output_modalities", ["text"])
                         if capabilities.get("vision") and "image" not in input_mods:
                             input_mods = input_mods + ["image"]
+                        model_type = "image" if "image" in output_mods else "chat"
                         results.append(ModelInfo(
                             id=m["id"],
                             name=m.get("name"),
-                            type="chat",
+                            type=model_type,
                             modalities={"input": input_mods, "output": output_mods},
                             capabilities=capabilities or None,
                             raw=m,
@@ -94,10 +95,11 @@ class PollinationsProvider(OpenAICompatibleChatProvider):
                         output_mods = m.get("output_modalities", ["text"])
                         if capabilities.get("vision") and "image" not in input_mods:
                             input_mods = input_mods + ["image"]
+                        model_type = "image" if "image" in output_mods else "chat"
                         results.append(ModelInfo(
                             id=m["name"],
                             name=m.get("name"),
-                            type="chat",
+                            type=model_type,
                             modalities={"input": input_mods, "output": output_mods},
                             capabilities=capabilities or None,
                             raw=m,
