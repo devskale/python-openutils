@@ -77,4 +77,19 @@ Ultra-fast LPU (Language Processing Unit) chip inference. Custom SDK, not OpenAI
 - **Streaming**: ✅
 - **Implementation**: Custom (`ChatProvider`), uses `groq.Groq` / `groq.AsyncGroq` SDK clients
 
+### arli — Arli AI *(info: 2026-06-03)*
+
+OpenAI-compatible inference with "derestricted" models (uncensored fine-tunes).
+
+- **API docs**: [www.arliai.com](https://www.arliai.com)
+- **Pricing**: [www.arliai.com/pricing](https://www.arliai.com/pricing?lang=en)
+- **Free tier**: ✅ One free model with unlimited tokens/requests
+  - `Qwen-3.5-27B-Derestricted` — 12K context, 1 request at a time, delayed response
+  - 5 trial requests per 2 days for all other models
+- **Reasoning**: ✅ (select models)
+- **Vision**: ✅ (select models)
+- **Tools**: ✅ (OpenAI-compatible)
+- **Streaming**: ✅
+- **Implementation**: `OpenAICompatibleChatProvider`, custom `list_models()` from `/v1/models/textgen-models`
+
 <!-- remaining providers TBD -->
