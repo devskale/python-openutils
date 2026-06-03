@@ -19,7 +19,7 @@ All providers registered in uniinfer. See [Provider Details](#provider-details) 
 | `cohere` | Trial: 5 RPM, 100K calls/mo (all models) | Free: 5 RPM; Paid: 500 RPM+ | [docs.cohere.com/docs/rate-limits](https://docs.cohere.com/docs/rate-limits) |
 | `huggingface` | Serverless: free, ~100s req/hr, **models <10GB only** | Free: few hundred req/hr; PRO $9/mo: much higher | [huggingface.co/docs/inference-providers](https://huggingface.co/docs/inference-providers) |
 | `cloudflare` | 10K Neurons/day (free); $0.011/1K Neurons paid | Varies by model; ~50+ req/day for 8B; ~20+ for 70B | [developers.cloudflare.com/workers-ai/platform/pricing](https://developers.cloudflare.com/workers-ai/platform/pricing) |
-| `sambanova` | — | — | [sambanova.ai](https://sambanova.ai) |
+| `sambanova` | $5 credits (3mo) + ongoing free tier (20 RPM) | Free: 20 RPM / 200K TPD; Dev: up to 240 RPM | [docs.sambanova.ai/docs/en/models/rate-limits](https://docs.sambanova.ai/docs/en/models/rate-limits) |
 | `moonshot` | — | — | [platform.moonshot.cn](https://platform.moonshot.cn) |
 | `stepfun` | — | — | [platform.stepfun.com](https://platform.stepfun.com) |
 | `upstage` | — | — | [upstage.ai](https://upstage.ai) |
@@ -446,5 +446,40 @@ Chinese AI lab (智谱AI). Creator of the GLM model family — MoE architecture,
 - **Streaming**: ✅
 - **Extra**: MoE architecture, native Chinese+English, competitive pricing vs Western providers (GLM-5 ≈ 3–5× cheaper than Claude Sonnet), also available free on OpenRouter (`z-ai/glm-4.5-air:free`)
 - **Implementation**: Custom `ChatProvider`
+
+### sambanova — SambaNova *(info: 2026-06-03)*
+
+Enterprise AI inference on custom RDU hardware (SN40L Reconfigurable Dataflow Unit). OpenAI-compatible API. Known for fast inference on large open-source models.
+
+- **API docs**: [docs.sambanova.ai](https://docs.sambanova.ai)
+- **Rate limits**: [docs.sambanova.ai/docs/en/models/rate-limits](https://docs.sambanova.ai/docs/en/models/rate-limits)
+- **Get key**: [cloud.sambanova.ai](https://cloud.sambanova.ai) (free signup)
+- **Endpoint**: `https://api.sambanova.ai/v1` (OpenAI-compatible)
+- **Free tier** ✅ Two-part free offering:
+  - **$5 signup credits** (expires after 3 months)
+  - **Ongoing Free Tier** (no payment method) — rate-limited but permanent
+  - No credit card required for free tier
+- **Free tier rate limits**:
+
+  | Model | RPM | RPD | TPD |
+  |-------|-----|-----|-----|
+  | `Meta-Llama-3.3-70B-Instruct` | 20 | 20 | 200K |
+  | `DeepSeek-V3.1` | 20 | 20 | 200K |
+  | `gpt-oss-120b` | 20 | 20 | 200K |
+  | `Llama-4-Maverick-17B-128E` *(preview)* | 20 | 20 | 200K |
+
+- **Developer tier** (add payment method) — much higher:
+
+  | Model | RPM | RPD |
+  |-------|-----|-----|
+  | `Meta-Llama-3.3-70B-Instruct` | **240** | **48K** |
+  | `DeepSeek-V3.1` / `gpt-oss-120b` / `MiniMax-M2.7` | 60 | 12K |
+
+- **Reasoning**: ✅ (DeepSeek V3.x)
+- **Vision**: ✅ (select models)
+- **Tools**: ✅ function calling
+- **Streaming**: ✅
+- **Extra**: Custom RDU hardware (not GPU — purpose-built for LLM inference), fast time-to-first-token, preview models available for evaluation, enterprise/on-prem options
+- **Implementation**: `OpenAICompatibleChatProvider`
 
 <!-- remaining providers TBD -->
