@@ -23,7 +23,7 @@ All providers registered in uniinfer. See [Provider Details](#provider-details) 
 | `moonshot` | Trial credits + ~3 RPM / 40K TPM (all models) | Free: ~3 RPM; Paid: 60 RPM | [platform.moonshot.ai/docs/pricing](https://platform.moonshot.ai/docs/pricing) |
 | `stepfun` | V0: 10 RPM / 5M TPM (free) | V0: 10 RPM; V1 ($15): 1K RPM | [platform.stepfun.ai/docs/en/guides/pricing/details](https://platform.stepfun.ai/docs/en/guides/pricing/details) |
 | `upstage` | `solar-pro-3:free` available | Varies by model | [upstage.ai](https://upstage.ai) |
-| `internlm` | Open-weight models, hosted API free tier | Varies | [internlm.ai](https://internlm.ai) |
+| `internlm` | V0: 10 RPM / 5M TPM (free) | V0: 10 RPM; V1 ($15): 1K RPM | [chat.intern-ai.org.cn](https://chat.intern-ai.org.cn) |
 | `minimax` | Trial credits; M3 open-weight imminent | Subscription: $20–120/mo; OR self-host M3 | [minimax.io](https://minimax.io) |
 | `chutes` | ❌ No confirmed free tier; pay-per-token only | Varies by model | [chutes.ai/pricing](https://chutes.ai/pricing) |
 | `zai-code` | — | — | [z.ai](https://z.ai) |
@@ -634,26 +634,36 @@ Korean AI company. Creator of the **Solar** model family — known for efficient
 Chinese AI lab (Shanghai AI Lab). Creator of the **InternLM** model family — open-weight models with strong bilingual (Chinese/English) capabilities. OpenAI-compatible.
 
 - **Website**: [internlm.ai](https://internlm.ai)
-- **API docs**: [chat.intern-ai.org.cn](https://chat.intern-ai.org.cn/api/v1)
+- **API docs**: [chat.intern-ai.org.cn](https://chat.intern-ai.org.cn)
 - **Get key**: [chat.intern-ai.org.cn](https://chat.intern-ai.org.cn) (free registration)
 - **Endpoint**: `https://chat.intern-ai.org.cn/api/v1` (OpenAI-compatible)
-- **Free tier**: ✅ Open-weight models available
-  - Models are open-source (can self-host)
-  - Hosted API access with rate limits; exact limits vary
-  - InternLM3 (latest) is the current flagship
+- **Free tier** (V0): ✅ No payment required
+  - **5 concurrency, 10 RPM, 5M TPM**
+  - Same generous V0 as StepFun — enough for light development
+- **Paid tiers** (auto-advance by cumulative top-up):
+
+  | Tier | Cumulative Top-Up | Concurrency | RPM | TPM |
+  |------|-------------------|-------------|-----|-----|
+  | V0 | $0 | 5 | 10 | 5M |
+  | V1 | $15 | 100 | 1K | 20M |
+  | V2 | $70 | 200 | 5K | 30M |
+  | V3 | $300 | 400 | 10K | 40M |
+  | V4 | $700 | 1K | 20K | 50M |
+  | V5 | $1,500 | 10K | 200K | 100M |
+
 - **Model lineup**:
 
   | Model | Notes |
   |-------|-------|
-  | `internlm3-latest` | Flagship, bilingual CN/EN |
+  | `internlm3-latest` / `internlm3` | Flagship, bilingual CN/EN |
   | `internlm2.5` | Previous gen |
-  | `internlm3` | Various sizes |
+  | `InternVL2` | Vision-language model |
 
 - **Reasoning**: ✅
-- **Vision**: ✅ (select models)
+- **Vision**: ✅ (InternVL2 series)
 - **Tools**: ✅ function calling
 - **Streaming**: ✅
-- **Extra**: Open-weight models (self-host option), strong Chinese language capabilities, Math & coding benchmarks competitive
+- **Extra**: Open-weight models (self-host option), strong Chinese language + math/coding benchmarks, InternVL vision models, same tier ladder as StepFun
 - **Implementation**: `OpenAICompatibleChatProvider`
 
 ### minimax — MiniMax *(info: 2026-06-03)*
