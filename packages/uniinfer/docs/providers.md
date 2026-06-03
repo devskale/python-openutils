@@ -15,7 +15,7 @@ All providers registered in uniinfer. See [Provider Details](#provider-details) 
 | `openai` | $5 credits (3mo); GPT-5 needs paid tier | Free: 3 RPM / 200 RPD; Tier 1: 500 RPM | [platform.openai.com/api/docs/pricing](https://platform.openai.com/api/docs/pricing) |
 | `anthropic` | ~$5 credits (signup); no recurring free | Tier 1: 50 RPM / varies by model | [docs.anthropic.com/en/api/rate-limits](https://docs.anthropic.com/en/api/rate-limits) |
 | `gemini` | Flash: 1,500 RPD; Gemma 4: free, 30 RPM | Flash: 15 RPM / 1M TPM; Gemma: 30 RPM / 1M TPM | [ai.google.dev/pricing](https://ai.google.dev/pricing) |
-| `mistral` | — | — | [docs.mistral.ai](https://docs.mistral.ai) |
+| `mistral` | All models (Experiment mode); 2 RPM, ~1B tokens/mo | Free: 2 RPM; Tier 1+: scales with spend | [docs.mistral.ai/admin/user-management-finops/tier](https://docs.mistral.ai/admin/user-management-finops/tier) |
 | `cohere` | — | — | [docs.cohere.com](https://docs.cohere.com) |
 | `huggingface` | — | — | [huggingface.co](https://huggingface.co) |
 | `cloudflare` | — | — | [developers.cloudflare.com](https://developers.cloudflare.com) |
@@ -231,6 +231,46 @@ Anthropic's Claude API. Custom protocol (Messages API), not OpenAI-compatible ba
 - **Tools**: ✅ function calling, tool use, MCP connectors, computer use
 - **Streaming**: ✅ (SSE)
 - **Extra capabilities**: Prompt caching (cached input tokens don't count toward rate limits!), Message Batches API (50% discount), Managed Agents, Fast Mode (Opus), PDF/image input
+- **Implementation**: `OpenAICompatibleChatProvider`
+
+### mistral — Mistral AI *(info: 2026-06-03)*
+
+European AI lab (Paris). OpenAI-compatible API. Strong GDPR/EU data residency story.
+
+- **API docs**: [docs.mistral.ai](https://docs.mistral.ai)
+- **Pricing**: [mistral.ai/products](https://mistral.ai/products)
+- **Rate limits / tiers**: [docs.mistral.ai/admin/user-management-finops/tier](https://docs.mistral.ai/admin/user-management-finops/tier)
+- **Get key**: [console.mistral.ai](https://console.mistral.ai)
+- **SDK**: `mistralai` (pip)
+- **Free tier** ("Experiment" mode): ✅ All models, no credit card
+  - **2 RPM**, ~1B tokens/month
+  - Access to all models including Large, Codestral, Pixtral
+  - Intended for evaluation and prototyping
+- **Paid tiers** (Scale plan, auto-advance by cumulative billing):
+
+  | Tier | Cumulative Billing | Notes |
+  |------|-------------------|-------|
+  | Tier 1 | $0 (upgrade to Scale) | Auto on plan upgrade |
+  | Tier 2 | >$20 | Auto |
+  | Tier 3 | >$100 | Auto |
+  | Tier 4 | >$500 | Auto |
+  | Higher | >$2,000 | Contact support |
+
+- **Model lineup**:
+
+  | Model | Input ($/M) | Output ($/M) | Context |
+  |-------|-----------|-------------|---------|
+  | `mistral-large-3` | $2.00 | $6.00 | 128K |
+  | `mistral-medium-3` | $1.00 | $3.00 | 128K |
+  | `mistral-small-3.1` | $0.20 | $0.60 | 128K |
+  | Codestral | code pricing | code pricing | — |
+  | Pixtral | vision pricing | vision pricing | — |
+
+- **Reasoning**: ✅ (select models)
+- **Vision**: ✅ (Pixtral, Large 3)
+- **Tools**: ✅ function calling
+- **Streaming**: ✅
+- **Extra**: Open-weight models available for self-hosting (Mistral 7B, Mixtral 8x7B/8x22B, Apache 2.0), native EU hosting/GDPR compliance, La Plateforme console with Vibe IDE
 - **Implementation**: `OpenAICompatibleChatProvider`
 
 <!-- remaining providers TBD -->
