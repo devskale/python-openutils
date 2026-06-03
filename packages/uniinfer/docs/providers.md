@@ -21,9 +21,16 @@ All providers registered in uniinfer. See [Provider Details](#provider-details) 
 | `cloudflare` | 10K Neurons/day (free); $0.011/1K Neurons paid | Varies by model; ~50+ req/day for 8B; ~20+ for 70B | [developers.cloudflare.com/workers-ai/platform/pricing](https://developers.cloudflare.com/workers-ai/platform/pricing) |
 | `sambanova` | — | — | [sambanova.ai](https://sambanova.ai) |
 | `moonshot` | — | — | [platform.moonshot.cn](https://platform.moonshot.cn) |
-| `stepfun` | — | — | [platform.stepfun.com](https://platform.stepfun.com) |\n| `upstage` | — | — | [upstage.ai](https://upstage.ai) |
+| `stepfun` | — | — | [platform.stepfun.com](https://platform.stepfun.com) |
+| `upstage` | — | — | [upstage.ai](https://upstage.ai) |
 | `internlm` | — | — | [internlm.ai](https://internlm.ai) |
-| `minimax` | — | — | [minimaxi.com](https://minimaxi.com) |\n| `chutes` | — | — | [chutes.ai](https://chutes.ai) |\n| `zai-code` | — | — | [z.ai](https://z.ai) |\n| `ngc` | Developer Program: ~40 RPM, 100+ models | Varies by model (shown in UI); ~40 RPM typical | [build.nvidia.com](https://build.nvidia.com) |\n| `ai21` | — | — | [ai21.com](https://ai21.com) |\n| `tu` | — | — | — |\n| `tu-staging` | — | — | — |
+| `minimax` | — | — | [minimaxi.com](https://minimaxi.com) |
+| `chutes` | — | — | [chutes.ai](https://chutes.ai) |
+| `zai-code` | — | — | [z.ai](https://z.ai) |
+| `ngc` | Developer Program: ~40 RPM, 100+ models | Varies by model (shown in UI); ~40 RPM typical | [build.nvidia.com](https://build.nvidia.com) |
+| `ai21` | — | — | [ai21.com](https://ai21.com) |
+| `tu` | — | — | — |
+| `tu-staging` | — | — | — |
 
 ## Embedding Providers
 
