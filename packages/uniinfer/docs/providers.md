@@ -50,7 +50,7 @@ All providers registered in uniinfer, with configuration and capability details.
 
 ## Provider Details
 
-### groq — Groq
+### groq — Groq *(info: 2026-06-03)*
 
 Ultra-fast LPU (Language Processing Unit) chip inference. Custom SDK, not OpenAI-compatible base.
 
