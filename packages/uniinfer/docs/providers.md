@@ -14,7 +14,7 @@ All providers registered in uniinfer. See [Provider Details](#provider-details) 
 | `zai` | glm-4.5-flash | — | [z.ai](https://z.ai) |
 | `openai` | $5 credits (3mo); GPT-5 needs paid tier | Free: 3 RPM / 200 RPD; Tier 1: 500 RPM | [platform.openai.com/api/docs/pricing](https://platform.openai.com/api/docs/pricing) |
 | `anthropic` | — | — | [docs.anthropic.com](https://docs.anthropic.com) |
-| `gemini` | Flash: 1,500 RPD; Pro: 50 RPD (trial) | Flash: 15 RPM / 1M TPM | [ai.google.dev/pricing](https://ai.google.dev/pricing) |
+| `gemini` | Flash: 1,500 RPD; Gemma 4: free, 30 RPM | Flash: 15 RPM / 1M TPM; Gemma: 30 RPM / 1M TPM | [ai.google.dev/pricing](https://ai.google.dev/pricing) |
 | `mistral` | — | — | [docs.mistral.ai](https://docs.mistral.ai) |
 | `cohere` | — | — | [docs.cohere.com](https://docs.cohere.com) |
 | `huggingface` | — | — | [huggingface.co](https://huggingface.co) |
@@ -154,6 +154,8 @@ Google's flagship LLM with native SDK (`google-genai`). Not OpenAI-compatible ba
   | `gemini-2.5-flash-lite` | 30 | 1,500 | 1M |
   | `gemini-2.5-pro` | 5 | 50 | 1M (trial-only) |
   | `gemma-3` | 30 | 1,500 | 1M |
+  | **`gemma-4-31b-it`** | **30** | **1,500** | **1M** (vision + tools) |
+  | **`gemma-4-26b-a4b-it`** | **30** | **1,500** | **1M** (MoE, 3.8B active/token) |
 
   Full limits: [ai.google.dev/pricing](https://ai.google.dev/pricing)
 - **Reasoning/Thinking**: ✅ native thinking support (`thought` parts in response)
