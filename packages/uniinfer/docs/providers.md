@@ -25,7 +25,7 @@ All providers registered in uniinfer. See [Provider Details](#provider-details) 
 | `upstage` | — | — | [upstage.ai](https://upstage.ai) |
 | `internlm` | — | — | [internlm.ai](https://internlm.ai) |
 | `minimax` | — | — | [minimaxi.com](https://minimaxi.com) |
-| `chutes` | — | — | [chutes.ai](https://chutes.ai) |
+| `chutes` | ❌ No confirmed free tier; pay-per-token only | Varies by model | [chutes.ai/pricing](https://chutes.ai/pricing) |
 | `zai-code` | — | — | [z.ai](https://z.ai) |
 | `ngc` | Developer Program: ~40 RPM, 100+ models | Varies by model (shown in UI); ~40 RPM typical | [build.nvidia.com](https://build.nvidia.com) |
 | `ai21` | — | — | [ai21.com](https://ai21.com) |
@@ -520,6 +520,27 @@ Chinese AI lab (月之暗面). Creator of the **Kimi** model family — known fo
 - **Tools**: ✅ function calling
 - **Streaming**: ✅
 - **Extra**: Famous for **long context** (pioneered 128K+ in production), strong coding agent performance (Kimi Code CLI), also available free on Cloudflare Workers AI and OpenRouter (`moonshotai/kimi-k2.6:free`)
+- **Implementation**: `OpenAICompatibleChatProvider`
+
+### chutes — Chutes AI *(info: 2026-06-03)*
+
+Serverless GPU inference gateway for open-source models. Runs on TEE (Trusted Execution Environment) / Bittensor decentralized infrastructure. OpenAI-compatible API.
+
+- **Website**: [chutes.ai](https://chutes.ai)
+- **Pricing**: [chutes.ai/pricing](https://chutes.ai/pricing)
+- **Get key**: [chutes.ai](https://chutes.ai) (signup required)
+- **Endpoint**: `https://llm.chutes.ai/v1` (OpenAI-compatible)
+- **Free tier**: ❌ No confirmed free tier or trial credits
+  - Pay-per-token pricing only, no subscription
+  - May have had signup credits in the past — not currently advertised
+  - Supports both USD and TAO (Bittensor crypto) payments
+- **Model catalog**: Open-source models (Llama, Qwen, Gemma, DeepSeek, Mistral, etc.) on TEE GPUs
+- **Private deployments**: Deploy your own model on confidential GPU ($1.80/hr+, deploy fee from $5.40)
+- **Reasoning**: ✅ (select models)
+- **Vision**: ✅ (select models)
+- **Tools**: ✅ function calling
+- **Streaming**: ✅
+- **Extra**: TEE/secure compute option, decentralized infrastructure, "permanently hot" models ready to scale, Chutes Search (AI-powered search), Fictio (custom experiences)
 - **Implementation**: `OpenAICompatibleChatProvider`
 
 <!-- remaining providers TBD -->
