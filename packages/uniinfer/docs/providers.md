@@ -13,7 +13,7 @@ All providers registered in uniinfer. See [Provider Details](#provider-details) 
 | `arli` | Qwen-3.5-27B | 1 req at a time, 12K ctx | [arliai.com/pricing](https://www.arliai.com/pricing?lang=en) |
 | `zai` | glm-4.5-flash | — | [z.ai](https://z.ai) |
 | `openai` | $5 credits (3mo); GPT-5 needs paid tier | Free: 3 RPM / 200 RPD; Tier 1: 500 RPM | [platform.openai.com/api/docs/pricing](https://platform.openai.com/api/docs/pricing) |
-| `anthropic` | — | — | [docs.anthropic.com](https://docs.anthropic.com) |
+| `anthropic` | ~$5 credits (signup); no recurring free | Tier 1: 50 RPM / varies by model | [docs.anthropic.com/en/api/rate-limits](https://docs.anthropic.com/en/api/rate-limits) |
 | `gemini` | Flash: 1,500 RPD; Gemma 4: free, 30 RPM | Flash: 15 RPM / 1M TPM; Gemma: 30 RPM / 1M TPM | [ai.google.dev/pricing](https://ai.google.dev/pricing) |
 | `mistral` | — | — | [docs.mistral.ai](https://docs.mistral.ai) |
 | `cohere` | — | — | [docs.cohere.com](https://docs.cohere.com) |
@@ -191,6 +191,46 @@ The original LLM API. Reference implementation for the OpenAI-compatible protoco
 - **Tools**: ✅ function calling, tool use, web search, file search, computer use, MCP
 - **Streaming**: ✅
 - **Extra capabilities**: Responses API, Batch API (50% discount), prompt caching, Agents SDK, real-time voice, Codex
+- **Implementation**: `OpenAICompatibleChatProvider`
+
+### anthropic — Anthropic (Claude) *(info: 2026-06-03)*
+
+Anthropic's Claude API. Custom protocol (Messages API), not OpenAI-compatible base.
+
+- **API docs**: [docs.anthropic.com/en/docs/intro](https://docs.anthropic.com/en/docs/intro)
+- **API reference**: [docs.anthropic.com/en/api/overview](https://docs.anthropic.com/en/api/overview)
+- **Rate limits**: [docs.anthropic.com/en/api/rate-limits](https://docs.anthropic.com/en/api/rate-limits)
+- **Get key**: [console.anthropic.com](https://console.anthropic.com) (phone verification required)
+- **SDK**: `anthropic` (pip)
+- **Free tier**: ✅ ~$5 free credits on signup, no credit card
+  - Phone number verification required for API access
+  - Credits work across all Claude models (Haiku, Sonnet, Opus)
+  - No fixed expiration stated — lasts until spent
+  - **No recurring free tier** — once credits are used, it's pay-as-you-go only
+- **Tier system** (auto-advances with spend):
+
+  | Tier | Required Spend | Monthly Limit |
+  |------|---------------|---------------|
+  | Free | $0 (signup bonus) | ~$5 credits |
+  | Tier 1 | $5 deposit | $500/month |
+  | Tier 2 | $40 cumulative | $500/month |
+  | Tier 3 | $200 cumulative | $1,000/month |
+  | Tier 4 | $400 cumulative | $200K/month |
+
+- **Rate limits** (per model class, Tier 1+):
+
+  | Model Class | RPM | ITPM | OTPM |
+  |------------|-----|------|------|
+  | Claude Sonnet 4.x | 50 | 30K | 8K |
+  | Claude Haiku 4.5 | 50 | 50K | 10K |
+  | Claude Opus 4.x | 50 | 500K | 80K |
+
+  Full limits: [docs.anthropic.com/en/api/rate-limits](https://docs.anthropic.com/en/api/rate-limits)
+- **Reasoning/Extended thinking**: ✅ `thinking` budget parameter
+- **Vision**: ✅ (all models)
+- **Tools**: ✅ function calling, tool use, MCP connectors, computer use
+- **Streaming**: ✅ (SSE)
+- **Extra capabilities**: Prompt caching (cached input tokens don't count toward rate limits!), Message Batches API (50% discount), Managed Agents, Fast Mode (Opus), PDF/image input
 - **Implementation**: `OpenAICompatibleChatProvider`
 
 <!-- remaining providers TBD -->
