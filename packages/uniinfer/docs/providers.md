@@ -20,7 +20,7 @@ All providers registered in uniinfer. See [Provider Details](#provider-details) 
 | `huggingface` | Serverless: free, ~100s req/hr, **models <10GB only** | Free: few hundred req/hr; PRO $9/mo: much higher | [huggingface.co/docs/inference-providers](https://huggingface.co/docs/inference-providers) |
 | `cloudflare` | 10K Neurons/day (free); $0.011/1K Neurons paid | Varies by model; ~50+ req/day for 8B; ~20+ for 70B | [developers.cloudflare.com/workers-ai/platform/pricing](https://developers.cloudflare.com/workers-ai/platform/pricing) |
 | `sambanova` | $5 credits (3mo) + ongoing free tier (20 RPM) | Free: 20 RPM / 200K TPD; Dev: up to 240 RPM | [docs.sambanova.ai/docs/en/models/rate-limits](https://docs.sambanova.ai/docs/en/models/rate-limits) |
-| `moonshot` | — | — | [platform.moonshot.cn](https://platform.moonshot.cn) |
+| `moonshot` | Trial credits + ~3 RPM / 40K TPM (all models) | Free: ~3 RPM; Paid: 60 RPM | [platform.moonshot.ai/docs/pricing](https://platform.moonshot.ai/docs/pricing) |
 | `stepfun` | — | — | [platform.stepfun.com](https://platform.stepfun.com) |
 | `upstage` | — | — | [upstage.ai](https://upstage.ai) |
 | `internlm` | — | — | [internlm.ai](https://internlm.ai) |
@@ -480,6 +480,46 @@ Enterprise AI inference on custom RDU hardware (SN40L Reconfigurable Dataflow Un
 - **Tools**: ✅ function calling
 - **Streaming**: ✅
 - **Extra**: Custom RDU hardware (not GPU — purpose-built for LLM inference), fast time-to-first-token, preview models available for evaluation, enterprise/on-prem options
+- **Implementation**: `OpenAICompatibleChatProvider`
+
+### moonshot — Moonshot AI (Kimi) *(info: 2026-06-03)*
+
+Chinese AI lab (月之暗面). Creator of the **Kimi** model family — known for long context windows and strong coding capabilities. OpenAI-compatible API.
+
+- **API docs**: [platform.moonshot.ai/docs](https://platform.moonshot.ai/docs)
+- **Pricing**: [platform.moonshot.ai/docs/pricing](https://platform.moonshot.ai/docs/pricing)
+- **Get key**: [platform.moonshot.ai](https://platform.moonshot.ai) (phone verification required)
+- **Endpoint**: `https://api.moonshot.cn/v1` (OpenAI-compatible)
+- **SDK**: `openai` (pip — uses OpenAI SDK with custom base_url)
+- **Free tier** ✅ Trial credits + rate-limited ongoing access
+  - **Trial credits** on signup (amount varies, no credit card)
+  - **~3 RPM**, **~40K TPM** on free tier
+  - All models available including 128K context (`moonshot-v1-128k`)
+  - Phone verification required; no regional restriction on API endpoint
+  - Interface primarily in Chinese (browser translation works fine)
+- **Paid tier** (add payment method):
+
+  | Metric | Free | Paid (Base) |
+  |--------|------|-------------|
+  | RPM | ~3 | 60 |
+  | TPM | ~40K | 500K+ |
+  | Models | 8K/32K/128K context | 8K/32K/128K context |
+
+- **Model lineup**:
+
+  | Model | Context | Notes |
+  |-------|---------|-------|
+  | `kimi-k2.6` | 256K+ | Latest, multimodal, coding-focused |
+  | `kimi-k2.5` | 256K | Trillion-parameter class |
+  | `moonshot-v1-128k` | 128K | Classic Kimi v1 |
+  | `moonshot-v1-32k` | 32K | Standard |
+  | `moonshot-v1-8k` | 8K | Lightweight |
+
+- **Reasoning**: ✅
+- **Vision**: ✅ (K2.x series)
+- **Tools**: ✅ function calling
+- **Streaming**: ✅
+- **Extra**: Famous for **long context** (pioneered 128K+ in production), strong coding agent performance (Kimi Code CLI), also available free on Cloudflare Workers AI and OpenRouter (`moonshotai/kimi-k2.6:free`)
 - **Implementation**: `OpenAICompatibleChatProvider`
 
 <!-- remaining providers TBD -->
