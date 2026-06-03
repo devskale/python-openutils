@@ -18,7 +18,7 @@ from .ngc import NGCProvider
 from .cloudflare import CloudflareProvider
 from .chutes import ChutesProvider
 from .pollinations import PollinationsProvider
-from .bigmodel import ZAIProvider, ZAICodeProvider
+from .zai import ZAIProvider, ZAICodeProvider
 
 # Import providers with optional dependencies
 try:
