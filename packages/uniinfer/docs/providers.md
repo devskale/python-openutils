@@ -10,7 +10,7 @@ All providers registered in uniinfer. See [Provider Details](#provider-details) 
 | `openrouter` | Free models available | Per-model | [openrouter.ai](https://openrouter.ai/models) |
 | `ollama` | Self-hosted, all free | — | [ollama.com](https://ollama.com) |
 | `pollinations` | All models, no key | — | [pollinations.ai](https://pollinations.ai) |
-n| `arli` | Qwen-3.5-27B | 1 req at a time, 12K ctx | [arliai.com/pricing](https://www.arliai.com/pricing?lang=en) |
+| `arli` | Qwen-3.5-27B | 1 req at a time, 12K ctx | [arliai.com/pricing](https://www.arliai.com/pricing?lang=en) |
 | `zai` | glm-4.5-flash | — | [z.ai](https://z.ai) |
 | `openai` | — | — | [platform.openai.com](https://platform.openai.com) |
 | `anthropic` | — | — | [docs.anthropic.com](https://docs.anthropic.com) |
@@ -84,5 +84,35 @@ OpenAI-compatible inference with "derestricted" models (uncensored fine-tunes).
 - **Tools**: ✅ (OpenAI-compatible)
 - **Streaming**: ✅
 - **Implementation**: `OpenAICompatibleChatProvider`, custom `list_models()` from `/v1/models/textgen-models`
+
+### openrouter — OpenRouter *(info: 2026-06-03)*
+
+Unified API router for 400+ models from 60+ providers. OpenAI-compatible.
+
+- **API docs**: [openrouter.ai/docs](https://openrouter.ai/docs)
+- **Pricing**: [openrouter.ai/pricing](https://openrouter.ai/pricing)
+- **Models browser**: [openrouter.ai/models](https://openrouter.ai/models)
+- **Free tier**: ✅ 25+ free models (`:free` suffix), no credit card required
+  - Free: 50 req/day, 20 RPM
+  - With ≥$10 credits: free model limit jumps to **1,000 req/day**
+  - Credits are a deposit (5.5% fee), deducted per-token at provider pass-through prices
+  - Credits unlock the full 400+ paid model catalog
+- **Notable free models**:
+
+  | Model | Context | Notes |
+  |-------|---------|-------|
+  | `google/gemma-4-31b-it:free` | 262K | Vision + tools |
+  | `openai/gpt-oss-120b:free` | 131K | Tools |
+  | `meta-llama/llama-3.3-70b-instruct:free` | 131K | Tools |
+  | `qwen/qwen3-coder:free` | 1M | Tools |
+  | `z-ai/glm-4.5-air:free` | 131K | Tools |
+  | `openrouter/free` | 200K | Auto-selects random free model |
+
+  Full list: [openrouter.ai/openrouter/free](https://openrouter.ai/openrouter/free)
+- **Reasoning**: ✅ (select models)
+- **Vision**: ✅ (select models)
+- **Tools**: ✅ function calling
+- **Streaming**: ✅
+- **Implementation**: `OpenAICompatibleChatProvider`
 
 <!-- remaining providers TBD -->
