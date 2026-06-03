@@ -63,17 +63,14 @@ Ultra-fast LPU (Language Processing Unit) chip inference. Custom SDK, not OpenAI
   - Limits are per-minute (RPM/TPM) and per-day (RPD/TPD) — whichever you hit first
   - Rate limit headers included in every response (`x-ratelimit-remaining-tokens`, etc.)
   - 429 response with `retry-after` header when exceeded
-- **Free tier rate limits** (per org, from official docs):
+- **Free tier rate limits** (per org, whichever cap hit first):
 
-  | Model | RPM | RPD | TPM | TPD |
-  |-------|-----|-----|-----|-----|
-  | `llama-3.3-70b-versatile` | 30 | 1,000 | 12,000 | 100,000 |
-  | `llama-4-scout-17b-16e-instruct` | 30 | 1,000 | 30,000 | 500,000 |
-  | `llama-3.1-8b-instant` | 30 | 14,400 | 6,000 | 500,000 |
-  | `qwen/qwen3-32b` | 60 | 1,000 | 6,000 | 500,000 |
-  | `allam-2-7b` | 30 | 7,000 | 6,000 | 500,000 |
-  | `openai/gpt-oss-120b` | 30 | 1,000 | 8,000 | 200,000 |
-  | `whisper-large-v3` (STT) | 20 | 2,000 | — | 7,200s/day |
+  | Model | RPM | TPM | TPD |
+  |-------|-----|-----|-----|
+  | `llama-3.3-70b-versatile` | 30 | 12K | 100K |
+  | `llama-4-scout-17b-16e-instruct` | 30 | 30K | 500K |
+
+  Full limits: [console.groq.com/docs/rate-limits](https://console.groq.com/docs/rate-limits)
 
 - **Reasoning**: ✅ `reasoning_content` support (DeepSeek R1 distill models)
 - **Tools**: ✅ function calling
