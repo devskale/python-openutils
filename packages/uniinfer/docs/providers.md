@@ -18,7 +18,7 @@ All providers registered in uniinfer. See [Provider Details](#provider-details) 
 | `mistral` | All models (Experiment mode); 2 RPM, ~1B tokens/mo | Free: 2 RPM; Tier 1+: scales with spend | [docs.mistral.ai/admin/user-management-finops/tier](https://docs.mistral.ai/admin/user-management-finops/tier) |
 | `cohere` | — | — | [docs.cohere.com](https://docs.cohere.com) |
 | `huggingface` | Serverless: free, ~100s req/hr, **models <10GB only** | Free: few hundred req/hr; PRO $9/mo: much higher | [huggingface.co/docs/inference-providers](https://huggingface.co/docs/inference-providers) |
-| `cloudflare` | — | — | [developers.cloudflare.com](https://developers.cloudflare.com) |
+| `cloudflare` | 10K Neurons/day (free); $0.011/1K Neurons paid | Varies by model size; ~5-15 req/day for 8B | [developers.cloudflare.com/workers-ai/platform/pricing](https://developers.cloudflare.com/workers-ai/platform/pricing) |
 | `sambanova` | — | — | [sambanova.ai](https://sambanova.ai) |
 | `moonshot` | — | — | [platform.moonshot.cn](https://platform.moonshot.cn) |
 | `stepfun` | — | — | [platform.stepfun.com](https://platform.stepfun.com) |\n| `upstage` | — | — | [upstage.ai](https://upstage.ai) |
@@ -299,5 +299,38 @@ The ML hub's inference API. Three products: Serverless (free), Endpoints (dedica
 - **Tools**: ✅ function calling (select models)
 - **Streaming**: ✅
 - **Implementation**: Custom `ChatProvider`, uses `huggingface_hub.InferenceClient`
+
+### cloudflare — Cloudflare Workers AI *(info: 2026-06-03)*
+
+Edge inference on Cloudflare's global network. Runs models at the edge (300+ locations). Custom protocol with OpenAI-compatible mode available.
+
+- **API docs**: [developers.cloudflare.com/workers-ai](https://developers.cloudflare.com/workers-ai)
+- **Pricing**: [developers.cloudflare.com/workers-ai/platform/pricing](https://developers.cloudflare.com/workers-ai/platform/pricing)
+- **Models catalog**: [developers.cloudflare.com/workers-ai/models](https://developers.cloudflare.com/workers-ai/models)
+- **Get key**: [dash.cloudflare.com](https://dash.cloudflare.com) (free account, phone verification required)
+- **Free tier** (Workers Free plan): ✅ **10,000 Neurons/day**
+  - Neurons = GPU compute unit (varies by model size and token count)
+  - No credit card required for free plan
+  - Phone verification required; must opt into data training for free tier
+  - Paid: $0.011/1K Neurons above free allocation
+- **What 10K Neurons buys you** (rough daily capacity):
+
+  | Model | ~Requests/day* |
+  |-------|-------------|
+  | `@cf/meta/llama-3.2-1b-instruct` | ~20–50 |
+  | `@cf/meta/llama-3.1-8b-instruct-fp8` | ~5–15 |
+  | `@cf/google/gemma-4-26b-a4b-it` | ~3–8 |
+  | `@cf/openai/gpt-oss-120b` | ~1–3 |
+  | `@cf/meta/llama-3.3-70b-instruct` | ~1–2 |
+
+  \*Depends on prompt/response length. Shorter = more requests.
+- **Notable free models**: Llama 3.x (1B/3B/8B/70B), Gemma 3/4, Qwen3-30B-A3B, GPT-OSS (20B/120B), DeepSeek R1 Distill 32B, Kimi K2.5/K2.6, GLM-4.7-Flash, Nemotron 120B, Granite 4.0 Micro
+- **Also includes**: Embeddings (BGE, Qwen), Image generation (Flux), TTS/STT (Whisper, Aura, Melotts), Translation
+- **Reasoning**: ✅ (DeepSeek R1 Distill, select models)
+- **Vision**: ✅ (Llama 3.2 11B Vision, select models)
+- **Tools**: ✅ function calling (beta)
+- **Streaming**: ✅
+- **Extra**: OpenAI-compatible endpoint, batch API (beta), runs at edge (low latency for users near CF locations)
+- **Implementation**: Custom `ChatProvider`, REST API to Workers AI gateway
 
 <!-- remaining providers TBD -->
