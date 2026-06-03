@@ -17,7 +17,7 @@ All providers registered in uniinfer. See [Provider Details](#provider-details) 
 | `gemini` | Flash: 1,500 RPD; Gemma 4: free, 30 RPM | Flash: 15 RPM / 1M TPM; Gemma: 30 RPM / 1M TPM | [ai.google.dev/pricing](https://ai.google.dev/pricing) |
 | `mistral` | All models (Experiment mode); 2 RPM, ~1B tokens/mo | Free: 2 RPM; Tier 1+: scales with spend | [docs.mistral.ai/admin/user-management-finops/tier](https://docs.mistral.ai/admin/user-management-finops/tier) |
 | `cohere` | — | — | [docs.cohere.com](https://docs.cohere.com) |
-| `huggingface` | Serverless: free, ~100s req/hr (<10B models) | Free: few hundred req/hr; PRO $9/mo: much higher | [huggingface.co/docs/inference-providers](https://huggingface.co/docs/inference-providers) |
+| `huggingface` | Serverless: free, ~100s req/hr, **models <10GB only** | Free: few hundred req/hr; PRO $9/mo: much higher | [huggingface.co/docs/inference-providers](https://huggingface.co/docs/inference-providers) |
 | `cloudflare` | — | — | [developers.cloudflare.com](https://developers.cloudflare.com) |
 | `sambanova` | — | — | [sambanova.ai](https://sambanova.ai) |
 | `moonshot` | — | — | [platform.moonshot.cn](https://platform.moonshot.cn) |
@@ -282,11 +282,11 @@ The ML hub's inference API. Three products: Serverless (free), Endpoints (dedica
 - **Get key**: [huggingface.co/settings/tokens](https://huggingface.co/settings/tokens) (free, no CC for basic token)
 - **SDK**: `huggingface_hub` (pip) — `InferenceClient` / `AsyncInferenceClient`
 - **Free tier** (Serverless Inference API): ✅ Free, no credit card
-  - **~few hundred requests per hour**, models under ~10B parameters
-  - 100K+ models available from the Hub
+  - **~few hundred requests per hour**, models under **~10GB** (roughly ≤8B params, or quantized small models)
+  - 100K+ models available from the Hub (but large ones won't load on free tier)
   - Cold starts on less popular models: 10-30 seconds
   - Best for: prototyping, small LLMs (7B-8B), embeddings, classification
-  - Not great for: 70B+ LLMs, high-volume, latency-critical workloads
+  - Not great for: full-size 70B+ LLMs, high-volume, latency-critical workloads
 - **PRO plan ($9/month)** raises limits significantly:
   - Higher Serverless rate limits
   - 25 min/day H200 ZeroGPU compute (vs ~3-5 min free)
