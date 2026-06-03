@@ -23,7 +23,7 @@ All providers registered in uniinfer. See [Provider Details](#provider-details) 
 | `moonshot` | — | — | [platform.moonshot.cn](https://platform.moonshot.cn) |
 | `stepfun` | — | — | [platform.stepfun.com](https://platform.stepfun.com) |\n| `upstage` | — | — | [upstage.ai](https://upstage.ai) |
 | `internlm` | — | — | [internlm.ai](https://internlm.ai) |
-| `minimax` | — | — | [minimaxi.com](https://minimaxi.com) |\n| `chutes` | — | — | [chutes.ai](https://chutes.ai) |\n| `zai-code` | — | — | [z.ai](https://z.ai) |\n| `ngc` | — | — | [build.nvidia.com](https://build.nvidia.com) |\n| `ai21` | — | — | [ai21.com](https://ai21.com) |\n| `tu` | — | — | — |\n| `tu-staging` | — | — | — |
+| `minimax` | — | — | [minimaxi.com](https://minimaxi.com) |\n| `chutes` | — | — | [chutes.ai](https://chutes.ai) |\n| `zai-code` | — | — | [z.ai](https://z.ai) |\n| `ngc` | Developer Program: ~40 RPM, 100+ models | Varies by model (shown in UI); ~40 RPM typical | [build.nvidia.com](https://build.nvidia.com) |\n| `ai21` | — | — | [ai21.com](https://ai21.com) |\n| `tu` | — | — | — |\n| `tu-staging` | — | — | — |
 
 ## Embedding Providers
 
@@ -366,5 +366,41 @@ Enterprise-focused LLM API. Strong RAG and tool-use story (Command R series). Cu
 - **Streaming**: ✅
 - **Extra**: Best-in-class RAG support (citations), Embed v3, Rerank v3, Command A+ (open weights), enterprise focus (SOC 2, GDPR)
 - **Implementation**: Custom `ChatProvider`
+
+### ngc — NVIDIA NIM *(info: 2026-06-03)*
+
+NVIDIA's inference platform (NVIDIA Inference Microservices). OpenAI-compatible API with 100+ models running on NVIDIA GPUs. Three usage modes: hosted API, downloadable containers, enterprise.
+
+- **API docs / catalog**: [build.nvidia.com](https://build.nvidia.com)
+- **API reference**: [build.nvidia.com/explore/discover](https://build.nvidia.com/explore/discover)
+- **Get key**: [build.nvidia.com](https://build.nvidia.com) (NVIDIA Developer Program, phone verification required)
+- **Endpoint**: `https://integrate.api.nvidia.com/v1` (OpenAI-compatible)
+- **Free tier** (Developer Program): ✅ Rate-limited prototyping access
+  - **~40 RPM** (varies by model — limits shown in build.nvidia.com UI per model)
+  - No credit card required; phone verification needed
+  - All catalog models available (Llama, Nemotron, DeepSeek, Qwen, Kimi, GLM, Mistral, Phi, Gemma, etc.)
+  - Intended for development/testing only — production use requires NVIDIA AI Enterprise license
+- **Production** (NVIDIA AI Enterprise):
+  - From **$4,500/GPU/year** or ~$1/GPU-hour in cloud
+  - Self-hosted NIM containers on your infrastructure
+  - Pricing is per-GPU, not per-model or per-token
+- **Notable models**:
+
+  | Model | Notes |
+  |-------|-------|
+  | `nvidia/nemotron-3-super-49b-v1.5` | NVIDIA's own 49B model |
+  | `meta/llama-3.3-70b-instruct` | Llama 3.3 70B |
+  | `deepseek-ai/deepseek-r1` | Reasoning model |
+  | `qwen/qwen2.5-coder-32b` | Code specialist |
+  | `moonshotai/kimi-k2.5` / `kimi-k2.6` | Latest Kimi |
+  | `z-ai/glm-4.7-flash` | Z.AI GLM |
+  | `google/gemma-4-26b-a4b-it` | MoE Gemma 4 |
+
+- **Reasoning**: ✅ (DeepSeek R1, select models)
+- **Vision**: ✅ (select models)
+- **Tools**: ✅ function calling
+- **Streaming**: ✅
+- **Extra**: Downloadable NIM containers (free dev/test on up to 16 GPUs), strong GPU-optimized performance, Nemotron series (NVIDIA's own models)
+- **Implementation**: `OpenAICompatibleChatProvider`
 
 <!-- remaining providers TBD -->
