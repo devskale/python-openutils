@@ -1,50 +1,43 @@
 # Provider Index
 
-All providers registered in uniinfer, with configuration and capability details.
+All providers registered in uniinfer. See [Provider Details](#provider-details) for per-provider docs.
 
 ## Chat Providers
 
-| ID | Provider | Base URL | Credgoo | Free | Conditional |
-|----|----------|----------|---------|------|------------|
-| `openai` | OpenAI | `https://api.openai.com/v1` | `openai` | — | — |
-| `anthropic` | Anthropic | `https://api.anthropic.com` | `anthropic` | — | — |
-| `gemini` | Google Gemini | — | `gemini` | — | `google-genai` |
-| `mistral` | Mistral AI | `https://api.mistral.ai/v1` | `mistral` | — | — |
-| `groq` | Groq | — | `groq` | ✅ | `groq` |
-| `cohere` | Cohere | — | `cohere` | — | `cohere` |
-| `openrouter` | OpenRouter | `https://openrouter.ai/api/v1` | `openrouter` | ✅ | — |
-| `ollama` | Ollama | `localhost:11434` | — | ✅ | — |
-| `huggingface` | HuggingFace | — | `huggingface` | — | `huggingface-hub` |
-| `cloudflare` | Cloudflare AI Gateway | — | `cloudflare` | — | — |
-| `sambanova` | SambaNova | `https://api.sambanova.ai/v1` | `sambanova` | — | — |
-| `pollinations` | Pollinations | `https://gen.pollinations.ai/v1` | — | ✅ | — |
-| `arli` | Arli AI | `https://api.arliai.com/v1` | `arli` | — | — |
-| `moonshot` | Moonshot AI | `https://api.moonshot.cn/v1` | `moonshot` | — | `moonshot` |
-| `stepfun` | StepFun | `https://api.stepfun.com/v1` | `stepfun` | — | — |
-| `upstage` | Upstage | `https://api.upstage.ai/v1/solar` | `upstage` | — | — |
-| `internlm` | InternLM | `https://chat.intern-ai.org.cn/api/v1` | `internlm` | — | — |
-| `minimax` | MiniMax | `https://api.minimax.io/anthropic` | `minimax` | — | — |
-| `chutes` | Chutes AI | `https://llm.chutes.ai/v1` | `chutes` | — | — |
-| `zai` | Z.AI | `https://api.z.ai/api/paas/v4` | `zai` | ✅ | `zai-sdk` |
-| `zai-code` | Z.AI Code | `https://api.z.ai/api/coding/paas/v4` | `zai-code` | — | `zai-sdk` |
-| `ngc` | NVIDIA NGC | `https://integrate.api.nvidia.com/v1` | `ngc` | — | — |
-| `ai21` | AI21 Labs | — | `ai21` | — | `ai21` |
-| `tu` | TU Wien | `https://aqueduct.ai.datalab.tuwien.ac.at/v1` | `tu` | — | — |
-| `tu-staging` | TU Wien (staging) | — | `tu` | — | — |
+| ID | Free Contingent | Free Rate Limits | URL |
+|----|---------------|-----------------|-----|
+| `groq` | All models, forever | 30 RPM, 100K TPD | [console.groq.com](https://console.groq.com/docs/rate-limits) |
+| `openrouter` | Free models available | Per-model | [openrouter.ai](https://openrouter.ai/models) |
+| `ollama` | Self-hosted, all free | — | [ollama.com](https://ollama.com) |
+| `pollinations` | All models, no key | — | [pollinations.ai](https://pollinations.ai) |
+n| `arli` | Qwen-3.5-27B | 1 req at a time, 12K ctx | [arliai.com/pricing](https://www.arliai.com/pricing?lang=en) |
+| `zai` | glm-4.5-flash | — | [z.ai](https://z.ai) |
+| `openai` | — | — | [platform.openai.com](https://platform.openai.com) |
+| `anthropic` | — | — | [docs.anthropic.com](https://docs.anthropic.com) |
+| `gemini` | — | — | [ai.google.dev](https://ai.google.dev) |
+| `mistral` | — | — | [docs.mistral.ai](https://docs.mistral.ai) |
+| `cohere` | — | — | [docs.cohere.com](https://docs.cohere.com) |
+| `huggingface` | — | — | [huggingface.co](https://huggingface.co) |
+| `cloudflare` | — | — | [developers.cloudflare.com](https://developers.cloudflare.com) |
+| `sambanova` | — | — | [sambanova.ai](https://sambanova.ai) |
+| `moonshot` | — | — | [platform.moonshot.cn](https://platform.moonshot.cn) |
+| `stepfun` | — | — | [platform.stepfun.com](https://platform.stepfun.com) |\n| `upstage` | — | — | [upstage.ai](https://upstage.ai) |
+| `internlm` | — | — | [internlm.ai](https://internlm.ai) |
+| `minimax` | — | — | [minimaxi.com](https://minimaxi.com) |\n| `chutes` | — | — | [chutes.ai](https://chutes.ai) |\n| `zai-code` | — | — | [z.ai](https://z.ai) |\n| `ngc` | — | — | [build.nvidia.com](https://build.nvidia.com) |\n| `ai21` | — | — | [ai21.com](https://ai21.com) |\n| `tu` | — | — | — |\n| `tu-staging` | — | — | — |
 
 ## Embedding Providers
 
-| ID | Provider | Free | Notes |
-|----|----------|------|-------|
-| `ollama` | Ollama | ✅ | Self-hosted |
-| `tu` | TU Wien | — | |
+| ID | Free | URL |
+|----|------|-----|
+| `ollama` | ✅ | [ollama.com](https://ollama.com) |
+| `tu` | — | — |
 
 ## TTS / STT Providers
 
-| ID | Provider | Kind | Free | Notes |
-|----|----------|------|------|-------|
-| `tu` | TU Wien | TTS | — | Kokoro voices |
-| `tu` | TU Wien | STT | — | Whisper models |
+| ID | Kind | Free | URL |
+|----|------|------|-----|
+| `tu` | TTS | — | — |
+| `tu` | STT | — | — |
 
 ---
 
