@@ -29,6 +29,7 @@ All providers registered in uniinfer. See [Provider Details](#provider-details) 
 | `zai-code` | — | — | [z.ai](https://z.ai) |
 | `ngc` | Developer Program: ~40 RPM, 100+ models | Varies by model (shown in UI); ~40 RPM typical | [build.nvidia.com](https://build.nvidia.com) |
 | `ai21` | Trial credits only | Contact sales for limits | [ai21.com](https://ai21.com) |
+| `opencode` ⬇️ | Experiment: ~1B tok/mo, 60 RPM, 500K TPM (no CC) | Pay-as-you-go ($20); Go $10/mo | [opencode.ai/zen](https://opencode.ai/zen) |
 | `tu` | — | — | — |
 | `tu-staging` | — | — | — |
 
@@ -729,5 +730,41 @@ Israeli AI lab. Creator of the **Jamba** model family — SSM (State Space Model
 - **Streaming**: ✅
 - **Extra**: **SSM architecture** (more efficient than pure Transformer for long sequences), enterprise focus (finance, healthcare, defense, manufacturing), Maestro knowledge agent product
 - **Implementation**: Custom `ChatProvider`, uses `ai21.AI21Client` SDK
+
+### opencode — OpenCode Zen *(info: 2026-06-03)* ⬇️ *not yet in uniinfer*
+
+**OpenCode** is an open-source coding agent (160K GitHub stars). **Zen** is their curated model marketplace — tested & benchmarked specifically for coding agents, with zero markup on model pricing. Not (yet) a uniinfer provider.
+
+- **Website / docs**: [opencode.ai/zen](https://opencode.ai/zen) · [open-code.ai/docs/zen](https://open-code.ai/docs/zen)
+- **GitHub**: [anomalyco/opencode](https://github.com/anomalyco/opencode) — 160K+ stars
+- **Get key**: [opencode.ai/auth](https://opencode.ai/auth) (free signup)
+- **Endpoint**: OpenAI-compatible (`https://api.opencode.ai/v1` or via OpenCode client)
+- **Free tier** (Experiment plan): ✅ No credit card required
+  - **~1B tokens/month total**
+  - **Per-model: 1 RPS (60 RPM), 500K TPM, 1B tokens/month**
+  - Requires **phone verification**
+  - Requires **opting into data training** (your prompts may be used to improve models)
+  - Free models are available "as long as OpenCode makes them available" — no hard guarantees
+- **Paid options**:
+  - **Pay-as-you-go**: Add $20 balance (+$1.23 card fee), auto-topup at $5, set monthly spend limits
+  - **Go plan**: $10/mo for 3 coding models (GLM-5, Kimi K2.5, MiniMax M2.5)
+- **Free model lineup** (changes frequently):
+
+  | Model | Source | Notes |
+  |-------|--------|-------|
+  | `minimax-m2.5-free` | MiniMax | Free on Zen |
+  | `deepseek-v4-flash-free` | DeepSeek | Limited-time free |
+  | `grok-code-fast-1-free` | xAI | Limited-time free |
+  | `mistral-medium-3` | Mistral | Via Experiment plan |
+  | `glm-5-free` | Zhipu AI | Coding model |
+  | `kimi-k2.5-free` / `kimi-k2.6-free` | Moonshot/Kimi | Long-context coding |
+
+- **Reasoning**: ✅ (select models)
+- **Vision**: ✅ (select models)
+- **Tools**: ✅ function calling
+- **Streaming**: ✅
+- **Extra**: **Purpose-built for coding agents** (not general chat), all models benchmarked by OpenCode team, US-hosted with zero-retention policy (exceptions apply), works with any agent not just OpenCode, transparent pricing (zero markup), 12 language UI support
+- **Caveats**: Free tier = data training opt-in required; free models can be removed anytime; rate limits are soft ("determined by server traffic")
+- **Implementation**: ❌ Not yet in uniinfer — OpenAI-compatible endpoint, could add as `OpenAICompatibleChatProvider`
 
 <!-- remaining providers TBD -->
