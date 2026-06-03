@@ -352,13 +352,34 @@ export ANTHROPIC_API_KEY=your_key_here
 
 ## Supported Providers
 
-| Provider                                             | Chat Models                | Embedding Models       | Streaming |
-| ---------------------------------------------------- | -------------------------- | ---------------------- | --------- |
-| OpenAI                                               | GPT-4, GPT-3.5             | text-embedding-ada-002 | ✅        |
-| Anthropic                                            | Claude 3 Opus/Sonnet/Haiku | -                      | ✅        |
-| Mistral                                              | Mistral Large/Small        | mistral-embed          | ✅        |
-| Google Gemini                                        | Gemini Pro/Flash           | text-embedding-004     | ✅        |
-| Ollama                                               | Llama2, Mistral, etc.      | nomic-embed-text, jina | ✅        |
+See **[docs/providers.md](docs/providers.md)** for the full provider index with base URLs, default models, credgoo service names, and implementation patterns.
+
+| Provider | Chat | Embed | TTS | STT | Free |
+|----------|------|-------|-----|-----|------|
+| OpenAI | ✅ | ✅ | — | — | — |
+| Anthropic | ✅ | — | — | — | — |
+| Google Gemini | ✅ | — | — | — | — |
+| Mistral | ✅ | — | — | — | — |
+| Groq | ✅ | — | — | — | — |
+| Cohere | ✅ | — | — | — | — |
+| OpenRouter | ✅ | — | — | — | — |
+| Ollama | ✅ | ✅ | — | — | ✅ |
+| HuggingFace | ✅ | — | — | — | — |
+| Cloudflare | ✅ | — | — | — | — |
+| SambaNova | ✅ | — | — | — | — |
+| Pollinations | ✅ | — | — | — | ✅ |
+| Arli AI | ✅ | — | — | — | — |
+| Moonshot | ✅ | — | — | — | — |
+| StepFun | ✅ | — | — | — | — |
+| Upstage | ✅ | — | — | — | — |
+| InternLM | ✅ | — | — | — | — |
+| MiniMax | ✅ | — | — | — | — |
+| Chutes | ✅ | — | — | — | — |
+| Z.AI | ✅ | — | — | — | ✅ |
+| Z.AI Code | ✅ | — | — | — | — |
+| NVIDIA NGC | ✅ | — | — | — | — |
+| AI21 | ✅ | — | — | — | — |
+| TU Wien | ✅ | ✅ | ✅ | ✅ | — |
 
 ### Gemini Async Support
 
@@ -402,60 +423,6 @@ models = GeminiProvider.list_models()
 print(f"Available models: {len(models)}")
 for i, model in enumerate(models):
     print(f"  {i+1}. {model.get('id')}")
-```
-| OpenRouter                                           | 60+ models                 | Various                | ✅        |
-| HuggingFace                                          | Llama, Mistral             | sentence-transformers  | ✅        |
-| Cohere                                               | Command R+                 | embed-english-v3.0     | ✅        |
-| Groq                                                 | Llama 3.1                  | -                      | ✅        |
-| AI21                                                 | Jamba 1.5                  | -                      | ✅        |
-| Moonshot                                             | Kimi                       | -                      | ✅        |
-| Arli AI                                              | Qwen 2.5, Llama 3.1        | -                      | ✅        |
-| Sambanova                                            | Llama 3.1                  | -                      | ✅        |
-| Upstage                                              | Solar                      | -                      | ✅        |
-| NGC                                                  | Llama 3.1                  | -                      | ✅        |
-| Cloudflare                                           | Llama 3.1                  | -                      | ✅        |
-| Bigmodel                                             | GLM-4                      | -                      | ✅        |
-| [Tu AI](https://github.com/TU-Wien-dataLAB/aqueduct) | Various                    | -                      | ✅        |
-| Chutes                                               | Various                    | -                      | ✅        |
-| [Pollinations](https://pollinations.ai/)             | 30+ models (GPT, Claude, Gemini, etc.) | -                      | ✅        |
-
-### Pollinations Support
-
-Pollinations.ai provides access to 30+ generative AI models (OpenAI GPT-5, Anthropic Claude 4.5, Google Gemini 3, Mistral, etc.) via a unified OpenAI-compatible API.
-
-- **GitHub**: [https://github.com/pollinations/pollinations/](https://github.com/pollinations/pollinations/)
-- **Documentation**: [https://pollinations.ai/docs](https://pollinations.ai/docs)
-- **API Reference**: [https://enter.pollinations.ai/api/docs](https://enter.pollinations.ai/api/docs)
-- **Get API Key**: [https://enter.pollinations.ai](https://enter.pollinations.ai)
-
-**Authentication Required**: Pollinations requires an API key (Secret Keys for server-side, Publishable Keys for client-side with rate limits). Keys are available at [enter.pollinations.ai](https://enter.pollinations.ai).
-
-**Async Support**: ✅ Pollinations provider supports both sync and async operations (`complete()`, `stream_complete()`, `acomplete()`, `astream_complete()`).
-
-```python
-# Example usage
-from uniinfer import PollinationsProvider, ChatMessage, ChatCompletionRequest
-
-provider = PollinationsProvider(api_key="your-pollinations-api-key")
-
-# Sync completion
-request = ChatCompletionRequest(
-    messages=[ChatMessage(role="user", content="Hello!")],
-    model="openai"
-)
-response = provider.complete(request)
-print(response.message.content)
-
-# Async completion
-import asyncio
-async def async_example():
-    async for chunk in provider.astream_complete(request):
-        print(chunk.message.content, end="", flush=True)
-asyncio.run(async_example())
-
-# List available models
-models = PollinationsProvider.list_models()
-print(f"Available models: {len(models)}")
 ```
 
 ## Troubleshooting
