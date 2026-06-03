@@ -15,6 +15,7 @@ from uniinfer.proxy_services.models_registry import (
     update_provider_in_cache,
     save_model_override,
     load_model_overrides,
+    load_stale_models,
     delete_model_override,
 )
 from uniinfer.core import ModelInfo
@@ -98,6 +99,24 @@ def create_models_router(version: str) -> APIRouter:
             "total": len(new),
             "since": cutoff,
             "days": days,
+        }
+
+    @router.get("/v1/models/stale")
+    async def list_stale_models(days: int = 90):
+        """List models not seen from their provider within N days.
+
+        These are models tracked in _model_history.json but absent from
+        the last generate_models.py run. Models gone > PRUNE_DAYS are
+        auto-pruned from the catalog.
+        """
+        await ensure_fresh_models_file()
+        stale = load_stale_models()
+        filtered = [s for s in stale if s.get("days_missing", 0) >= days] if days else stale
+        return {
+            "object": "list",
+            "data": filtered,
+            "total": len(filtered),
+            "prune_after_days": 90,
         }
 
     @router.get("/v1/providers")

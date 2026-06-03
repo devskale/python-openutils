@@ -184,15 +184,33 @@ def _build_dev_lookup(dev_models: dict) -> dict[str, dict]:
     return lookup
 
 
-def load_model_history() -> dict[str, str]:
-    """Load {provider/model_id: first_seen_date} from history file."""
+PRUNE_DAYS = 90
+
+
+def load_model_history() -> dict[str, dict]:
+    """Load {provider/model_id: {first_seen, last_seen}} from history file.
+
+    Migrates legacy format (string value) to new object format.
+    """
     if MODEL_HISTORY_PATH.exists():
         with open(MODEL_HISTORY_PATH) as f:
-            return json.load(f)
-    return {}
+            raw = json.load(f)
+    else:
+        return {}
+    migrated = {}
+    for key, val in raw.items():
+        if isinstance(val, str):
+            migrated[key] = {"first_seen": val, "last_seen": val}
+        elif isinstance(val, dict) and "first_seen" in val:
+            if "last_seen" not in val:
+                val["last_seen"] = val["first_seen"]
+            migrated[key] = val
+        else:
+            continue
+    return migrated
 
 
-def save_model_history(history: dict[str, str]) -> None:
+def save_model_history(history: dict[str, dict]) -> None:
     MODEL_HISTORY_PATH.parent.mkdir(parents=True, exist_ok=True)
     with open(MODEL_HISTORY_PATH, "w") as f:
         json.dump(history, f, indent=2, sort_keys=True)
@@ -218,15 +236,27 @@ def merge_speed_results(models: list[dict], provider_id: str) -> list[dict]:
     return models
 
 
+def _days_between(d1: str, d2: str) -> int:
+    """Days between two YYYY-MM-DD strings."""
+    from datetime import datetime
+    a = datetime.strptime(d1, "%Y-%m-%d")
+    b = datetime.strptime(d2, "%Y-%m-%d")
+    return abs((a - b).days)
+
+
 def update_model_history(
-    history: dict[str, str],
+    history: dict[str, dict],
     current_providers: dict[str, dict],
     today: str,
-) -> tuple[dict[str, str], list[dict]]:
-    """Update history with current models, return (updated_history, deprecated_models).
+) -> tuple[dict[str, dict], list[dict], list[dict]]:
+    """Update history with current models.
 
-    - New models get first_seen = today
-    - Models in history but not in current_models are returned as deprecated
+    Returns (history, stale_models, pruned_models).
+
+    - Models seen today: last_seen = today
+    - New models: first_seen = last_seen = today
+    - Models not seen today but seen before: last_seen unchanged (stale)
+    - Models not seen for > PRUNE_DAYS: pruned (removed from history)
     """
     current_keys = set()
     for pid, pdata in current_providers.items():
@@ -234,16 +264,33 @@ def update_model_history(
             key = f"{pid}/{m['id']}"
             current_keys.add(key)
             if key not in history:
-                history[key] = today
+                history[key] = {"first_seen": today, "last_seen": today}
+            else:
+                history[key]["last_seen"] = today
 
-    deprecated = []
-    for key, first_seen in list(history.items()):
+    stale = []
+    pruned = []
+    for key, entry in list(history.items()):
         if key not in current_keys:
+            days_missing = _days_between(entry["last_seen"], today)
             pid, mid = key.split("/", 1)
-            deprecated.append({"id": mid, "provider": pid, "first_seen": first_seen, "last_seen": today})
-            del history[key]
+            if days_missing >= PRUNE_DAYS:
+                pruned.append({
+                    "id": mid, "provider": pid,
+                    "first_seen": entry["first_seen"],
+                    "last_seen": entry["last_seen"],
+                    "days_missing": days_missing,
+                })
+                del history[key]
+            else:
+                stale.append({
+                    "id": mid, "provider": pid,
+                    "first_seen": entry["first_seen"],
+                    "last_seen": entry["last_seen"],
+                    "days_missing": days_missing,
+                })
 
-    return history, deprecated
+    return history, stale, pruned
 
 
 def merge_models_dev(models: list[dict], dev_provider: dict, type_overrides: dict = None) -> list[dict]:
@@ -446,17 +493,23 @@ def main():
         else:
             log.info("  → 0 models (skipped)")
 
-    # Track first_seen and detect deprecated models
-    model_history, deprecated_models = update_model_history(model_history, result, today)
+    # Track first_seen / last_seen, detect stale and pruned models
+    model_history, stale_models, pruned_models = update_model_history(model_history, result, today)
 
-    # Apply first_seen to all models
+    # Apply first_seen + last_seen to all models
     for pid, pdata in result.items():
         for m in pdata["models"]:
             key = f"{pid}/{m['id']}"
-            m["first_seen"] = model_history.get(key, today)
+            entry = model_history.get(key)
+            if entry:
+                m["first_seen"] = entry["first_seen"]
+                m["last_seen"] = entry["last_seen"]
+            else:
+                m["first_seen"] = today
+                m["last_seen"] = today
 
     # Check for newly seen models
-    new_models = [k for k in {f"{pid}/{m['id']}" for pid, pd in result.items() for m in pd["models"]} if model_history[k] == today]
+    new_models = [k for k in {f"{pid}/{m['id']}" for pid, pd in result.items() for m in pd["models"]} if model_history[k]["first_seen"] == today]
     new_models_count = len(new_models)
     if new_models:
         log.info("\nNew models (%d):", new_models_count)
@@ -465,13 +518,28 @@ def main():
         if new_models_count > 20:
             log.info("  ... and %d more", new_models_count - 20)
 
-    # Report deprecated models
-    if deprecated_models:
-        log.info("\nDeprecated models (%d):", len(deprecated_models))
-        for dm in deprecated_models[:20]:
-            log.info("  - %s/%s (first_seen: %s)", dm["provider"], dm["id"], dm["first_seen"])
-        if len(deprecated_models) > 20:
-            log.info("  ... and %d more", len(deprecated_models) - 20)
+    # Report stale models (missing from provider but within prune window)
+    if stale_models:
+        log.info("\nStale models (%d, will be pruned after %d days):", len(stale_models), PRUNE_DAYS)
+        for sm in sorted(stale_models, key=lambda x: -x["days_missing"])[:20]:
+            log.info("  ~ %s/%s (last_seen: %s, %d days ago)",
+                     sm["provider"], sm["id"], sm["last_seen"], sm["days_missing"])
+        if len(stale_models) > 20:
+            log.info("  ... and %d more", len(stale_models) - 20)
+
+    # Report pruned models (gone for > PRUNE_DAYS, removed from history)
+    if pruned_models:
+        log.info("\nPruned models (%d, removed from catalog):", len(pruned_models))
+        for pm in pruned_models[:20]:
+            log.info("  x %s/%s (last_seen: %s, %d days ago)",
+                     pm["provider"], pm["id"], pm["last_seen"], pm["days_missing"])
+        if len(pruned_models) > 20:
+            log.info("  ... and %d more", len(pruned_models) - 20)
+
+    # Write stale models list (for /v1/models/stale endpoint)
+    stale_output_path = PROJECT_ROOT / "uniinfer" / "models" / "_stale_models.json"
+    with open(stale_output_path, "w") as f:
+        json.dump(stale_models, f, indent=2, ensure_ascii=False)
 
     save_model_history(model_history)
     log.info("Saved model history (%d entries)", len(model_history))
@@ -485,7 +553,9 @@ def main():
             "total_models": total_models,
             "total_providers": len(result),
             "new_models": new_models_count,
-            "deprecated_models": len(deprecated_models),
+            "stale_models": len(stale_models),
+            "pruned_models": len(pruned_models),
+            "prune_after_days": PRUNE_DAYS,
         },
         "providers": result,
     }

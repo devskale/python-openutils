@@ -147,8 +147,25 @@ def delete_model_override(model_id: str) -> bool:
     return True
 
 
+def load_stale_models() -> list[dict]:
+    """Load stale models from _stale_models.json (written by generate_models.py)."""
+    path = os.path.join(PACKAGE_ROOT, "models", "_stale_models.json")
+    if not os.path.exists(path):
+        return []
+    try:
+        import json
+        with open(path) as f:
+            return json.load(f)
+    except Exception:
+        return []
+
+
 def list_all_models_from_factories() -> list[dict]:
-    """Build a flat OpenAI-compatible model list from models.json."""
+    """Build a flat OpenAI-compatible model list from models.json.
+
+    Each model gets a 'freshness' field: 'fresh' (last_seen == generated date)
+    or 'stale' (last_seen < generated date).
+    """
     from uniinfer.core import ModelInfo
 
     models_json = os.path.join(PACKAGE_ROOT, "models", "models.json")
@@ -212,6 +229,24 @@ def list_all_models_from_factories() -> list[dict]:
                 val = override.get(field) if field in override else model.get(field)
                 if val is not None:
                     entry[field] = val
+
+            # Freshness: based on last_seen vs models.json generated date
+            generated_date = data.get("_meta", {}).get("generated", "")[:10]
+            last_seen = model.get("last_seen") or generated_date
+            entry["last_seen"] = last_seen
+            if last_seen == generated_date:
+                entry["freshness"] = "fresh"
+                entry["days_since_seen"] = 0
+            else:
+                try:
+                    from datetime import datetime
+                    days = (datetime.strptime(generated_date, "%Y-%m-%d")
+                            - datetime.strptime(last_seen, "%Y-%m-%d")).days
+                except Exception:
+                    days = 0
+                entry["freshness"] = "stale"
+                entry["days_since_seen"] = days
+
             result.append(entry)
     return result
 

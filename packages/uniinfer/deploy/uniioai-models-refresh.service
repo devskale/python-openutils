@@ -1,0 +1,20 @@
+[Unit]
+Description=UniInfer daily model list refresh
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=ubuntu
+WorkingDirectory=/home/ubuntu/code/python-openutils/packages/uniinfer
+Environment=PATH=/home/ubuntu/.local/bin:/usr/local/bin:/usr/bin:/bin
+ExecStart=/home/ubuntu/.local/bin/uv run python scripts/generate_models.py
+TimeoutStartSec=600
+StandardOutput=journal
+StandardError=journal
+
+# Send completion signal to systemd
+# (oneshot exits when process finishes)
+
+[Install]
+WantedBy=multi-user.target

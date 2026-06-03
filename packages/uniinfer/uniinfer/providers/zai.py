@@ -61,10 +61,10 @@ def _map_reasoning_effort_to_thinking(reasoning_effort: Optional[str]) -> Option
 
 class ZAIBaseProvider(ChatProvider):
     BASE_URL = "https://api.z.ai/api/paas/v4"
-    PROVIDER_ID = "bigmodel"
-    ERROR_PROVIDER_NAME = "Bigmodel"
+    PROVIDER_ID = "zai"
+    ERROR_PROVIDER_NAME = "ZAI"
     DEFAULT_MODEL = "glm-4.7"
-    CREDGOO_SERVICE = "bigmodel"
+    CREDGOO_SERVICE = "zai"
 
     def __init__(self, api_key: Optional[str] = None, base_url: Optional[str] = None, **kwargs):
         if not api_key:
@@ -248,7 +248,6 @@ class ZAIProvider(ZAIBaseProvider):
     PROVIDER_ID = "zai"
     ERROR_PROVIDER_NAME = "ZAI"
     DEFAULT_MODEL = "glm-4.7"
-    CREDGOO_SERVICE = "zai"
 
 
 class ZAICodeProvider(ZAIBaseProvider):
