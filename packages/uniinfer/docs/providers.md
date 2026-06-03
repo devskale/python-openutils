@@ -14,7 +14,7 @@ All providers registered in uniinfer. See [Provider Details](#provider-details) 
 | `zai` | glm-4.5-flash | — | [z.ai](https://z.ai) |
 | `openai` | — | — | [platform.openai.com](https://platform.openai.com) |
 | `anthropic` | — | — | [docs.anthropic.com](https://docs.anthropic.com) |
-| `gemini` | — | — | [ai.google.dev](https://ai.google.dev) |
+| `gemini` | Flash: 1,500 RPD; Pro: 50 RPD (trial) | Flash: 15 RPM / 1M TPM | [ai.google.dev/pricing](https://ai.google.dev/pricing) |
 | `mistral` | — | — | [docs.mistral.ai](https://docs.mistral.ai) |
 | `cohere` | — | — | [docs.cohere.com](https://docs.cohere.com) |
 | `huggingface` | — | — | [huggingface.co](https://huggingface.co) |
@@ -133,5 +133,34 @@ Multi-modal generation platform (text, image, video, audio) with an OpenAI-compa
 - **Tools**: ✅ function calling
 - **Streaming**: ✅
 - **Implementation**: `OpenAICompatibleChatProvider`, custom `list_models()` tries multiple endpoints
+
+### gemini — Google Gemini *(info: 2026-06-03)*
+
+Google's flagship LLM with native SDK (`google-genai`). Not OpenAI-compatible base — custom implementation. Also offers an [OpenAI compatibility layer](https://ai.google.dev/gemini-api/docs/openai).
+
+- **API docs**: [ai.google.dev/gemini-api/docs](https://ai.google.dev/gemini-api/docs)
+- **Pricing**: [ai.google.dev/pricing](https://ai.google.dev/pricing)
+- **Rate limits**: [ai.google.dev/gemini-api/docs/rate-limits](https://ai.google.dev/gemini-api/docs/rate-limits)
+- **Get key**: [aistudio.google.com/apikey](https://aistudio.google.com/apikey) (free, no credit card)
+- **SDK**: `google-genai` (pip)
+- **Free tier**: ✅ Most generous free tier among major providers
+  - **No credit card**, no expiration, permanent free tier
+  - Google may use free-tier requests for model improvement (paid tier does not)
+- **Free tier rate limits**:
+
+  | Model | RPM | RPD | TPM |
+  |-------|-----|-----|-----|
+  | `gemini-2.5-flash` | 15 | 1,500 | 1M |
+  | `gemini-2.5-flash-lite` | 30 | 1,500 | 1M |
+  | `gemini-2.5-pro` | 5 | 50 | 1M (trial-only) |
+  | `gemma-3` | 30 | 1,500 | 1M |
+
+  Full limits: [ai.google.dev/pricing](https://ai.google.dev/pricing)
+- **Reasoning/Thinking**: ✅ native thinking support (`thought` parts in response)
+- **Vision**: ✅ multimodal input (images, audio, video, PDFs)
+- **Tools**: ✅ function calling + tool config (AUTO/ANY/NONE mode)
+- **Streaming**: ✅ native async streaming
+- **Extra capabilities**: Grounding with Google Search, code execution, long context (up to 1M), embeddings, JSON mode, Live API
+- **Implementation**: Custom `ChatProvider`, uses `google.genai.Client` / `client.aio` for async
 
 <!-- remaining providers TBD -->
