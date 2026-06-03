@@ -52,18 +52,30 @@ All providers registered in uniinfer, with configuration and capability details.
 
 ### groq — Groq
 
-Ultra-fast LPU (Language Processing Unit) inference. Custom SDK, not OpenAI-compatible base.
+Ultra-fast LPU (Language Processing Unit) chip inference. Custom SDK, not OpenAI-compatible base.
 
 - **API docs**: [console.groq.com/docs](https://console.groq.com/docs)
-- **Get key**: [console.groq.com/keys](https://console.groq.com/keys)
+- **Rate limits**: [console.groq.com/docs/rate-limits](https://console.groq.com/docs/rate-limits)
+- **Get key**: [console.groq.com/keys](https://console.groq.com/keys) (free, no credit card)
 - **SDK**: `groq` (pip)
-- **Free tier**: ✅ Yes — forever free, no credit card required
-  - 30 RPM / 6000 TPM (varies by model)
-  - 1000 requests/day
-  - All models available
-  - Rate-limited but no total token cap
-- **Notable free models**: Llama 3.3 70B, Llama 4 Scout/Maverick, DeepSeek R1 Distill 70B, Gemma 2 9B, Mixtral 8x7B
-- **Reasoning**: ✅ `reasoning_content` support (R1 models)
+- **Free tier**: ✅ Forever free, no credit card required
+  - All models available on free tier
+  - Limits are per-minute (RPM/TPM) and per-day (RPD/TPD) — whichever you hit first
+  - Rate limit headers included in every response (`x-ratelimit-remaining-tokens`, etc.)
+  - 429 response with `retry-after` header when exceeded
+- **Free tier rate limits** (per org, from official docs):
+
+  | Model | RPM | RPD | TPM | TPD |
+  |-------|-----|-----|-----|-----|
+  | `llama-3.3-70b-versatile` | 30 | 1,000 | 12,000 | 100,000 |
+  | `llama-4-scout-17b-16e-instruct` | 30 | 1,000 | 30,000 | 500,000 |
+  | `llama-3.1-8b-instant` | 30 | 14,400 | 6,000 | 500,000 |
+  | `qwen/qwen3-32b` | 60 | 1,000 | 6,000 | 500,000 |
+  | `allam-2-7b` | 30 | 7,000 | 6,000 | 500,000 |
+  | `openai/gpt-oss-120b` | 30 | 1,000 | 8,000 | 200,000 |
+  | `whisper-large-v3` (STT) | 20 | 2,000 | — | 7,200s/day |
+
+- **Reasoning**: ✅ `reasoning_content` support (DeepSeek R1 distill models)
 - **Tools**: ✅ function calling
 - **Streaming**: ✅
 - **Implementation**: Custom (`ChatProvider`), uses `groq.Groq` / `groq.AsyncGroq` SDK clients
