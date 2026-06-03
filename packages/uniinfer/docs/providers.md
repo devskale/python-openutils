@@ -16,7 +16,7 @@ All providers registered in uniinfer. See [Provider Details](#provider-details) 
 | `anthropic` | ~$5 credits (signup); no recurring free | Tier 1: 50 RPM / varies by model | [docs.anthropic.com/en/api/rate-limits](https://docs.anthropic.com/en/api/rate-limits) |
 | `gemini` | Flash: 1,500 RPD; Gemma 4: free, 30 RPM | Flash: 15 RPM / 1M TPM; Gemma: 30 RPM / 1M TPM | [ai.google.dev/pricing](https://ai.google.dev/pricing) |
 | `mistral` | All models (Experiment mode); 2 RPM, ~1B tokens/mo | Free: 2 RPM; Tier 1+: scales with spend | [docs.mistral.ai/admin/user-management-finops/tier](https://docs.mistral.ai/admin/user-management-finops/tier) |
-| `cohere` | — | — | [docs.cohere.com](https://docs.cohere.com) |
+| `cohere` | Trial: 5 RPM, 100K calls/mo (all models) | Free: 5 RPM; Paid: 500 RPM+ | [docs.cohere.com/docs/rate-limits](https://docs.cohere.com/docs/rate-limits) |
 | `huggingface` | Serverless: free, ~100s req/hr, **models <10GB only** | Free: few hundred req/hr; PRO $9/mo: much higher | [huggingface.co/docs/inference-providers](https://huggingface.co/docs/inference-providers) |
 | `cloudflare` | 10K Neurons/day (free); $0.011/1K Neurons paid | Varies by model; ~50+ req/day for 8B; ~20+ for 70B | [developers.cloudflare.com/workers-ai/platform/pricing](https://developers.cloudflare.com/workers-ai/platform/pricing) |
 | `sambanova` | — | — | [sambanova.ai](https://sambanova.ai) |
@@ -332,5 +332,39 @@ Edge inference on Cloudflare's global network. Runs models at the edge (300+ loc
 - **Streaming**: ✅
 - **Extra**: OpenAI-compatible endpoint, batch API (beta), runs at edge (low latency for users near CF locations)
 - **Implementation**: Custom `ChatProvider`, REST API to Workers AI gateway
+
+### cohere — Cohere *(info: 2026-06-03)*
+
+Enterprise-focused LLM API. Strong RAG and tool-use story (Command R series). Custom protocol, not OpenAI-compatible base.
+
+- **API docs**: [docs.cohere.com](https://docs.cohere.com)
+- **Pricing**: [cohere.com/pricing](https://cohere.com/pricing)
+- **Rate limits**: [docs.cohere.com/docs/rate-limits](https://docs.cohere.com/docs/rate-limits)
+- **Get key**: [dashboard.cohere.com](https://dashboard.cohere.com) (free trial key)
+- **SDK**: `cohere` (pip)
+- **Free tier** (Trial): ✅ Permanent, no credit card
+  - **5 RPM**, **100K calls/month**
+  - All models available (Command R+, Command R, Embed, Rerank)
+  - No SLA on trial tier
+  - Suitable for prototyping only — 100K/mo ≈ 3,300/day at ~2 req/min avg
+- **Production tier** (add credit card): Auto-upgrades
+  - 500 RPM default (can be increased)
+  - Pay-per-token, no monthly minimum
+  - 99.5% SLA
+- **Model pricing**:
+
+  | Model | Input ($/M) | Output ($/M) | Context |
+  |-------|-----------|-------------|---------|
+  | `command-r-plus` | $2.50 | $10.00 | 128K |
+  | `command-r` | $0.15 | $0.60 | 128K |
+  | `embed-v3` | $0.10 | — (input only) | — |
+  | `rerank-v3` | $1.00/1K queries | — | — |
+
+- **Reasoning**: ✅ (Command R+)
+- **Vision**: ❌ (text-only models)
+- **Tools**: ✅ native tool use / function calling (core strength)
+- **Streaming**: ✅
+- **Extra**: Best-in-class RAG support (citations), Embed v3, Rerank v3, Command A+ (open weights), enterprise focus (SOC 2, GDPR)
+- **Implementation**: Custom `ChatProvider`
 
 <!-- remaining providers TBD -->
