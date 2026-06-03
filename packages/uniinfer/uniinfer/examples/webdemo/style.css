@@ -843,6 +843,43 @@ select:disabled { color: var(--text-muted); opacity: 0.5; cursor: not-allowed; }
 
 .td-caps { letter-spacing: 1px; }
 
+/* ─── Freshness ──────────────────────────────────────────── */
+.fresh-badge {
+  background: #ecfdf5;
+  color: #059669;
+  padding: 2px 8px;
+  border-radius: var(--radius-pill);
+  font-weight: 600;
+}
+.stale-badge {
+  background: #fffbeb;
+  color: #d97706;
+  padding: 2px 8px;
+  border-radius: var(--radius-pill);
+  font-weight: 600;
+}
+
+.td-fresh {
+  text-align: center;
+  width: 44px;
+}
+.freshness-dot {
+  font-size: 1rem;
+  line-height: 1;
+  cursor: default;
+}
+.freshness-fresh { color: #059669; }
+.freshness-stale-warn { color: #d97706; }
+.freshness-stale-danger { color: #dc2626; }
+.freshness-unknown { color: #94a3b8; }
+
+tr.tr-stale td { opacity: 0.75; }
+tr.tr-stale-danger td { opacity: 0.55; }
+tr.tr-stale:hover td { opacity: 1; }
+tr.tr-stale-danger:hover td { opacity: 0.85; background: #fef2f2; }
+
+.stale-value { color: #d97706; }
+
 /* Capability badges */
 .cb {
   display: inline-block;
