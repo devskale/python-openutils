@@ -7,7 +7,7 @@ All providers registered in uniinfer. See [Provider Details](#provider-details) 
 | ID | Free Contingent | Free Rate Limits | URL |
 |----|---------------|-----------------|-----|
 | `groq` | All models, forever | 30 RPM, 100K TPD | [console.groq.com](https://console.groq.com/docs/rate-limits) |
-| `openrouter` | Free models available | Per-model | [openrouter.ai](https://openrouter.ai/models) |
+| `openrouter` | 25+ `:free` models; deposit ≥$10 → 1000 req/day | 50 req/day (free) / 1000 req/day (with credits) | [openrouter.ai/pricing](https://openrouter.ai/pricing) |
 | `ollama` | Self-hosted, all free | — | [ollama.com](https://ollama.com) |
 | `pollinations` | All models, no key | — | [pollinations.ai](https://pollinations.ai) |
 | `arli` | Qwen-3.5-27B | 1 req at a time, 12K ctx | [arliai.com/pricing](https://www.arliai.com/pricing?lang=en) |
