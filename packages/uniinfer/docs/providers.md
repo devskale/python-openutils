@@ -11,7 +11,7 @@ All providers registered in uniinfer. See [Provider Details](#provider-details) 
 | `ollama` | Self-hosted, all free | — | [ollama.com](https://ollama.com) |
 | `pollinations` | All models, no key required; sk_ = no limits | pk_: 1 pollen/hour/IP; sk_: unlimited | [gen.pollinations.ai/docs](https://gen.pollinations.ai/docs) |
 | `arli` | Qwen-3.5-27B | 1 req at a time, 12K ctx | [arliai.com/pricing](https://www.arliai.com/pricing?lang=en) |
-| `zai` | glm-4.5-flash | — | [z.ai](https://z.ai) |
+| `zai` | `glm-4.5-flash` + `glm-4.7-flash` free (permanent) | Free: no published limits; Paid: varies by plan | [docs.z.ai](https://docs.z.ai) |
 | `openai` | $5 credits (3mo); GPT-5 needs paid tier | Free: 3 RPM / 200 RPD; Tier 1: 500 RPM | [platform.openai.com/api/docs/pricing](https://platform.openai.com/api/docs/pricing) |
 | `anthropic` | ~$5 credits (signup); no recurring free | Tier 1: 50 RPM / varies by model | [docs.anthropic.com/en/api/rate-limits](https://docs.anthropic.com/en/api/rate-limits) |
 | `gemini` | Flash: 1,500 RPD; Gemma 4: free, 30 RPM | Flash: 15 RPM / 1M TPM; Gemma: 30 RPM / 1M TPM | [ai.google.dev/pricing](https://ai.google.dev/pricing) |
@@ -409,5 +409,41 @@ NVIDIA's inference platform (NVIDIA Inference Microservices). OpenAI-compatible 
 - **Streaming**: ✅
 - **Extra**: Downloadable NIM containers (free dev/test on up to 16 GPUs), strong GPU-optimized performance, Nemotron series (NVIDIA's own models)
 - **Implementation**: `OpenAICompatibleChatProvider`
+
+### zai — Zhipu AI (Z.ai) *(info: 2026-06-03)*
+
+Chinese AI lab (智谱AI). Creator of the GLM model family — MoE architecture, strong coding & agent capabilities. Custom protocol.
+
+- **API docs**: [docs.z.ai](https://docs.z.ai)
+- **Pricing / model guide**: [docs.z.ai/guides/llm/glm-4.5](https://docs.z.ai/guides/llm/glm-4.5)
+- **Get key**: [open.bigmodel.cn](https://open.bigmodel.cn) (free registration)
+- **SDK**: custom (built into uniinfer provider)
+- **Free tier** ✅ Two permanently free models:
+  - **`glm-4.5-flash`** — General-purpose lightweight, fully free
+  - **`glm-4.7-flash`** — 203K context, fully free
+  - **`glm-4.6v-flash`** — Vision model, fully free
+  - No credit card required; register and get API key
+  - Not trial-limited — genuinely free for all registered users
+- **Paid models** (API or Coding Plan subscription):
+
+  | Model | Input ($/M) | Output ($/M) | Context |
+  |-------|-----------|-------------|---------|
+  | `glm-5` | $1.00 | $3.20 | 203K |
+  | `glm-5.1` | $1.40 | $4.40 | 203K |
+  | `glm-5-turbo` | $1.20 | $4.00 | 203K |
+  | `glm-4.7` | $0.60 | $2.20 | 205K |
+  | `glm-4.5-air` | $0.20 | $1.10 | 131K |
+  | `glm-4.7-flashx` | $0.07 | $0.40 | — |
+
+- **Coding Plan** (subscription, billed quarterly):
+  - Lite ~$10/mo: GLM-5.1, 5-Turbo, 4.7, 4.6, 4.5-Air
+  - Pro ~$30/mo: +GLM-5 (flagship)
+  - Max ~$80/mo: 4x Pro usage
+- **Reasoning**: ✅
+- **Vision**: ✅ (GLM-4.6V, GLM-5V-Turbo, GLM-OCR)
+- **Tools**: ✅ function calling, web search, web reader (free MCP tools included)
+- **Streaming**: ✅
+- **Extra**: MoE architecture, native Chinese+English, competitive pricing vs Western providers (GLM-5 ≈ 3–5× cheaper than Claude Sonnet), also available free on OpenRouter (`z-ai/glm-4.5-air:free`)
+- **Implementation**: Custom `ChatProvider`
 
 <!-- remaining providers TBD -->
