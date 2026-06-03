@@ -11,7 +11,7 @@ All providers registered in uniinfer. See [Provider Details](#provider-details) 
 | `ollama` | Self-hosted, all free | — | [ollama.com](https://ollama.com) |
 | `pollinations` | All models, no key required; sk_ = no limits | pk_: 1 pollen/hour/IP; sk_: unlimited | [gen.pollinations.ai/docs](https://gen.pollinations.ai/docs) |
 | `arli` | Qwen-3.5-27B | 1 req at a time, 12K ctx | [arliai.com/pricing](https://www.arliai.com/pricing?lang=en) |
-| `zai` | `glm-4.5-flash` + `glm-4.7-flash` free (permanent) | Free: no published limits; Paid: varies by plan | [docs.z.ai](https://docs.z.ai) |
+| `zai` | `glm-4.5-flash` + `glm-4.7-flash` free (permanent) | Free Flash: no explicit limit (fair use); Trial: 5 RPM / 5M tokens | [docs.z.ai](https://docs.z.ai) |
 | `openai` | $5 credits (3mo); GPT-5 needs paid tier | Free: 3 RPM / 200 RPD; Tier 1: 500 RPM | [platform.openai.com/api/docs/pricing](https://platform.openai.com/api/docs/pricing) |
 | `anthropic` | ~$5 credits (signup); no recurring free | Tier 1: 50 RPM / varies by model | [docs.anthropic.com/en/api/rate-limits](https://docs.anthropic.com/en/api/rate-limits) |
 | `gemini` | Flash: 1,500 RPD; Gemma 4: free, 30 RPM | Flash: 15 RPM / 1M TPM; Gemma: 30 RPM / 1M TPM | [ai.google.dev/pricing](https://ai.google.dev/pricing) |
@@ -423,7 +423,8 @@ Chinese AI lab (智谱AI). Creator of the GLM model family — MoE architecture,
   - **`glm-4.7-flash`** — 203K context, fully free
   - **`glm-4.6v-flash`** — Vision model, fully free
   - No credit card required; register and get API key
-  - Not trial-limited — genuinely free for all registered users
+  - Not trial-limited — genuinely free for all registered users, **no explicit RPM/RPD limit** (fair use policy)
+  - General API trial (separate): **5M tokens**, **5 RPM**
 - **Paid models** (API or Coding Plan subscription):
 
   | Model | Input ($/M) | Output ($/M) | Context |
