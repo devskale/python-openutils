@@ -8,7 +8,7 @@ All providers registered in uniinfer. See [Provider Details](#provider-details) 
 |----|---------------|-----------------|-----|
 | `groq` | All models, forever | 30 RPM, 100K TPD | [console.groq.com](https://console.groq.com/docs/rate-limits) |
 | `openrouter` | 25+ `:free` models; deposit ≥$10 → 1000 req/day | 50 req/day (free) / 1000 req/day (with credits) | [openrouter.ai/pricing](https://openrouter.ai/pricing) |
-| `ollama` | Self-hosted, all free | — | [ollama.com](https://ollama.com) |
+| `ollama` | Self-hosted: unlimited; Cloud: light usage free | Local: unlimited; Cloud Free: 1 concurrent | [ollama.com/pricing](https://ollama.com/pricing) |
 | `pollinations` | All models, no key required; sk_ = no limits | pk_: 1 pollen/hour/IP; sk_: unlimited | [gen.pollinations.ai/docs](https://gen.pollinations.ai/docs) |
 | `arli` | Qwen-3.5-27B | 1 req at a time, 12K ctx | [arliai.com/pricing](https://www.arliai.com/pricing?lang=en) |
 | `zai` | `glm-4.5-flash` + `glm-4.7-flash` free (permanent) | Free Flash: no explicit limit (fair use); Trial: 5 RPM / 5M tokens | [docs.z.ai](https://docs.z.ai) |
@@ -21,14 +21,14 @@ All providers registered in uniinfer. See [Provider Details](#provider-details) 
 | `cloudflare` | 10K Neurons/day (free); $0.011/1K Neurons paid | Varies by model; ~50+ req/day for 8B; ~20+ for 70B | [developers.cloudflare.com/workers-ai/platform/pricing](https://developers.cloudflare.com/workers-ai/platform/pricing) |
 | `sambanova` | $5 credits (3mo) + ongoing free tier (20 RPM) | Free: 20 RPM / 200K TPD; Dev: up to 240 RPM | [docs.sambanova.ai/docs/en/models/rate-limits](https://docs.sambanova.ai/docs/en/models/rate-limits) |
 | `moonshot` | Trial credits + ~3 RPM / 40K TPM (all models) | Free: ~3 RPM; Paid: 60 RPM | [platform.moonshot.ai/docs/pricing](https://platform.moonshot.ai/docs/pricing) |
-| `stepfun` | — | — | [platform.stepfun.com](https://platform.stepfun.com) |
-| `upstage` | — | — | [upstage.ai](https://upstage.ai) |
-| `internlm` | — | — | [internlm.ai](https://internlm.ai) |
-| `minimax` | — | — | [minimaxi.com](https://minimaxi.com) |
+| `stepfun` | V0: 10 RPM / 5M TPM (free) | V0: 10 RPM; V1 ($15): 1K RPM | [platform.stepfun.ai/docs/en/guides/pricing/details](https://platform.stepfun.ai/docs/en/guides/pricing/details) |
+| `upstage` | `solar-pro-3:free` available | Varies by model | [upstage.ai](https://upstage.ai) |
+| `internlm` | Open-weight models, hosted API free tier | Varies | [internlm.ai](https://internlm.ai) |
+| `minimax` | Trial credits; M3 open-weight imminent | Subscription: $20–120/mo; OR self-host M3 | [minimax.io](https://minimax.io) |
 | `chutes` | ❌ No confirmed free tier; pay-per-token only | Varies by model | [chutes.ai/pricing](https://chutes.ai/pricing) |
 | `zai-code` | — | — | [z.ai](https://z.ai) |
 | `ngc` | Developer Program: ~40 RPM, 100+ models | Varies by model (shown in UI); ~40 RPM typical | [build.nvidia.com](https://build.nvidia.com) |
-| `ai21` | — | — | [ai21.com](https://ai21.com) |
+| `ai21` | Trial credits only | Contact sales for limits | [ai21.com](https://ai21.com) |
 | `tu` | — | — | — |
 | `tu-staging` | — | — | — |
 
@@ -542,5 +542,182 @@ Serverless GPU inference gateway for open-source models. Runs on TEE (Trusted Ex
 - **Streaming**: ✅
 - **Extra**: TEE/secure compute option, decentralized infrastructure, "permanently hot" models ready to scale, Chutes Search (AI-powered search), Fictio (custom experiences)
 - **Implementation**: `OpenAICompatibleChatProvider`
+
+### ollama — Ollama *(info: 2026-06-03)*
+
+The most popular local LLM runner. Self-hosted models on your own hardware — completely free and unlimited. Also offers **Ollama Cloud** (hosted) as a paid option.
+
+- **Website / docs**: [ollama.com](https://ollama.com)
+- **Cloud pricing**: [ollama.com/pricing](https://ollama.com/pricing)
+- **Self-hosted**: ✅ **Completely free**, unlimited usage, no API key needed
+  - Run any model (Llama, Qwen, Gemma, DeepSeek, Mistral, 1000+ models) locally
+  - Only cost is your own hardware/electricity
+  - OpenAI-compatible API at `http://localhost:11434/v1`
+- **Ollama Cloud** (hosted, paid):
+  - **Free tier**: Light usage, 1 concurrent model, session limits reset every 5 hours
+  - **Pro**: $20/mo, 3 concurrent models, ~50x more usage than free
+  - **Max**: $100/mo, 10 concurrent models, ~250x free usage
+  - Usage levels vary by model size (Level 1 = light like GPT-OSS-20B → Level 4 = heavy like DeepSeek-V4-Pro)
+- **Reasoning**: ✅ (select models)
+- **Vision**: ✅ (select models)
+- **Tools**: ✅ function calling
+- **Streaming**: ✅
+- **Extra**: Largest model library of any provider (1000+), local-first philosophy, same CLI/API for local and cloud, model upload to cloud (Pro+), GPU-time-based billing (not token-based)
+- **Implementation**: Custom `ChatProvider` (local HTTP API)
+
+### stepfun — StepFun (阶跃星辰) *(info: 2026-06-03)*
+
+Chinese AI lab. Creator of the **Step** model family — strong multimodal reasoning with aggressive pricing. OpenAI-compatible.
+
+- **API docs**: [platform.stepfun.ai/docs](https://platform.stepfun.ai/docs)
+- **Pricing & rate limits**: [platform.stepfun.ai/docs/en/guides/pricing/details](https://platform.stepfun.ai/docs/en/guides/pricing/details)
+- **Get key**: [platform.stepfun.ai](https://platform.stepfun.ai) (phone verification required)
+- **Endpoint**: `https://api.stepfun.com/v1` (OpenAI-compatible)
+- **Free tier** (V0): ✅ No payment required
+  - **5 concurrency, 10 RPM, 5M TPM**
+  - Generous for a free tier — enough for light development
+- **Paid tiers** (auto-advance by cumulative top-up):
+
+  | Tier | Cumulative Top-Up | Concurrency | RPM | TPM |
+  |------|-------------------|-------------|-----|-----|
+  | V0 | $0 | 5 | 10 | 5M |
+  | V1 | $15 | 100 | 1K | 20M |
+  | V2 | $70 | 200 | 5K | 30M |
+  | V3 | $300 | 400 | 10K | 40M |
+  | V4 | $700 | 1K | 20K | 50M |
+  | V5 | $1,500 | 10K | 200K | 100M |
+
+- **Model pricing**:
+
+  | Model | Input ($/M, cache miss) | Input (cache hit) | Output ($/M) |
+  |-------|----------------------|------------------|---------------|
+  | `step-3.7-flash` | $0.20 | $0.04 | $1.15 |
+  | `step-3.5-flash` | $0.10 | $0.02 | $0.30 |
+
+- **Reasoning**: ✅
+- **Vision**: ✅ (multimodal models)
+- **Tools**: ✅ function calling
+- **Streaming**: ✅
+- **Extra**: TTS/ASR models available (stepaudio, step-tts), prompt caching with 80% discount on cache hits, Chinese + English
+- **Implementation**: `OpenAICompatibleChatProvider`
+
+### upstage — Upstage AI *(info: 2026-06-03)*
+
+Korean AI company. Creator of the **Solar** model family — known for efficient MoE architecture and strong RAG capabilities. OpenAI-compatible.
+
+- **Website**: [upstage.ai](https://upstage.ai)
+- **API docs**: [docs.upstage.ai](https://docs.upstage.ai)
+- **Get key**: [console.upstage.ai](https://console.upstage.ai) (free signup)
+- **Endpoint**: `https://api.upstage.ai/v1/solar` (OpenAI-compatible)
+- **Free tier**: ✅ Free models available
+  - **`solar-pro-3`** available as free variant (MoE, 102B total / 12B active params)
+  - Rate limits on free tier: varies by model
+- **Model lineup**:
+
+  | Model | Notes |
+  |-------|-------|
+  | `solar-pro-3` / `solar-pro-3:free` | MoE flagship, 102B/12B active |
+  | `solar-mini` | Lightweight |
+  | `solar-embedding` | Embeddings |
+  | `solar-1-pass` | RAG / document parsing |
+
+- **Pricing** (paid): Competitive per-token rates
+- **Reasoning**: ✅
+- **Vision**: ✅
+- **Tools**: ✅ function calling
+- **Streaming**: ✅
+- **Extra**: Strong RAG story (document parsing, embeddings, passage retrieval), Korean lab with global focus, enterprise customers
+- **Implementation**: `OpenAICompatibleChatProvider`
+
+### internlm — InternLM (上海人工智能实验室) *(info: 2026-06-03)*
+
+Chinese AI lab (Shanghai AI Lab). Creator of the **InternLM** model family — open-weight models with strong bilingual (Chinese/English) capabilities. OpenAI-compatible.
+
+- **Website**: [internlm.ai](https://internlm.ai)
+- **API docs**: [chat.intern-ai.org.cn](https://chat.intern-ai.org.cn/api/v1)
+- **Get key**: [chat.intern-ai.org.cn](https://chat.intern-ai.org.cn) (free registration)
+- **Endpoint**: `https://chat.intern-ai.org.cn/api/v1` (OpenAI-compatible)
+- **Free tier**: ✅ Open-weight models available
+  - Models are open-source (can self-host)
+  - Hosted API access with rate limits; exact limits vary
+  - InternLM3 (latest) is the current flagship
+- **Model lineup**:
+
+  | Model | Notes |
+  |-------|-------|
+  | `internlm3-latest` | Flagship, bilingual CN/EN |
+  | `internlm2.5` | Previous gen |
+  | `internlm3` | Various sizes |
+
+- **Reasoning**: ✅
+- **Vision**: ✅ (select models)
+- **Tools**: ✅ function calling
+- **Streaming**: ✅
+- **Extra**: Open-weight models (self-host option), strong Chinese language capabilities, Math & coding benchmarks competitive
+- **Implementation**: `OpenAICompatibleChatProvider`
+
+### minimax — MiniMax *(info: 2026-06-03)*
+
+Chinese AI lab. Creator of **MiniMax M-series** models — known for ultra-long context (1M tokens), frontier-grade performance at low prices. Anthropic-compatible API.
+
+- **Website**: [minimax.io](https://minimax.io)
+- **API docs**: [platform.minimax.io/docs](https://platform.minimax.io/docs/api-reference/api-overview)
+- **Get key**: [platform.minimax.io](https://platform.minimax.io) (free registration)
+- **Endpoint**: `https://api.minimax.io/v1` (Anthropic-compatible)
+- **SDK**: `ai21` SDK or Anthropic-compatible
+- **Free tier**: ⚠️ Limited / trial credits only
+  - No permanent free tier documented
+  - Signup credits may be available (check dashboard — changes frequently)
+  - **M3 is open-weight** (promised release imminent) — self-host for truly free access
+  - Also available free on **OpenRouter** (`minimax/minimax-m2.5:free`)
+- **Subscription plans** (hosted API):
+
+  | Plan | Price | Tokens/month |
+  |------|------|-------------|
+  | Plus | $20/mo | ~1.7B |
+  | Max | $50/mo | ~5.1B |
+  | Ultra | $120/mo | ~9.8B |
+
+- **Model lineup**:
+
+  | Model | Context | Notes |
+  |-------|---------|-------|
+  | `MiniMax-M3` | **1M tokens** | Latest, open-weight (imminent), multimodal |
+  | `MiniMax-M2.5` | Large | SOTA productivity, free on OpenRouter |
+  | `MiniMax-M2.1` | — | Previous gen |
+
+- **Reasoning**: ✅
+- **Vision**: ✅ (M3)
+- **Tools**: ✅ function calling
+- **Streaming**: ✅
+- **Extra**: **1M token context window** (among the largest available), aggressive pricing in the Chinese LLM price war, Anthropic-compatible endpoint (unique)
+- **Implementation**: `AnthropicCompatibleProvider` (not OpenAI!)
+
+### ai21 — AI21 Labs *(info: 2026-06-03)*
+
+Israeli AI lab. Creator of the **Jamba** model family — SSM (State Space Model) + Transformer hybrid architecture. Known for efficient long-context processing. Custom SDK (`ai21`).
+
+- **Website**: [ai21.com](https://ai21.com)
+- **Product page**: [ai21.com/jamba](https://ai21.com/jamba)
+- **Get key**: [platform.ai21.com](https://platform.ai21.com) (free signup)
+- **SDK**: `ai21` (pip)
+- **Free tier**: ⚠️ Trial credits only
+  - Signup credits available for new accounts
+  - No permanent free tier advertised
+  - Enterprise-focused pricing (contact sales)
+- **Model lineup**:
+
+  | Model | Architecture | Notes |
+  |-------|------------|-------|
+  | `jamba-1.5` / `jamba-1.5-large` | SSM + Transformer hybrid | Flagship, efficient long context |
+  | `jamba-1.5-mini` | SSM + Transformer | Smaller/faster |
+  | Maestro 2 | — | Knowledge agent platform |
+
+- **Reasoning**: ✅
+- **Vision**: ✅
+- **Tools**: ✅ function calling
+- **Streaming**: ✅
+- **Extra**: **SSM architecture** (more efficient than pure Transformer for long sequences), enterprise focus (finance, healthcare, defense, manufacturing), Maestro knowledge agent product
+- **Implementation**: Custom `ChatProvider`, uses `ai21.AI21Client` SDK
 
 <!-- remaining providers TBD -->
