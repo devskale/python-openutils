@@ -12,7 +12,7 @@ All providers registered in uniinfer. See [Provider Details](#provider-details) 
 | `pollinations` | All models, no key required; sk_ = no limits | pk_: 1 pollen/hour/IP; sk_: unlimited | [gen.pollinations.ai/docs](https://gen.pollinations.ai/docs) |
 | `arli` | Qwen-3.5-27B | 1 req at a time, 12K ctx | [arliai.com/pricing](https://www.arliai.com/pricing?lang=en) |
 | `zai` | glm-4.5-flash | — | [z.ai](https://z.ai) |
-| `openai` | — | — | [platform.openai.com](https://platform.openai.com) |
+| `openai` | $5 credits (3mo); GPT-5 needs paid tier | Free: 3 RPM / 200 RPD; Tier 1: 500 RPM | [platform.openai.com/api/docs/pricing](https://platform.openai.com/api/docs/pricing) |
 | `anthropic` | — | — | [docs.anthropic.com](https://docs.anthropic.com) |
 | `gemini` | Flash: 1,500 RPD; Pro: 50 RPD (trial) | Flash: 15 RPM / 1M TPM | [ai.google.dev/pricing](https://ai.google.dev/pricing) |
 | `mistral` | — | — | [docs.mistral.ai](https://docs.mistral.ai) |
@@ -162,5 +162,33 @@ Google's flagship LLM with native SDK (`google-genai`). Not OpenAI-compatible ba
 - **Streaming**: ✅ native async streaming
 - **Extra capabilities**: Grounding with Google Search, code execution, long context (up to 1M), embeddings, JSON mode, Live API
 - **Implementation**: Custom `ChatProvider`, uses `google.genai.Client` / `client.aio` for async
+
+### openai — OpenAI *(info: 2026-06-03)*
+
+The original LLM API. Reference implementation for the OpenAI-compatible protocol.
+
+- **API docs**: [platform.openai.com/api/docs](https://platform.openai.com/api/docs)
+- **Pricing**: [platform.openai.com/api/docs/pricing](https://platform.openai.com/api/docs/pricing)
+- **Rate limits**: [platform.openai.com/api/docs/rate-limits](https://platform.openai.com/api/docs/rate-limits) (tier-based, pay-as-you-go required for full access)
+- **Get key**: [platform.openai.com/api-keys](https://platform.openai.com/api-keys)
+- **SDK**: `openai` (pip)
+- **Free tier**: ✅ $5 free credits on signup, valid 3 months
+  - No credit card needed to get credits
+  - GPT-5/GPT-5.5 **not available** on free tier — requires Tier 1 (paid top-up ≥$5)
+- **Free tier rate limits**:
+
+  | Model | RPM | TPM | RPD |
+  |-------|-----|-----|-----|
+  | `gpt-4o` | 3 | 30K | 200 |
+  | `gpt-4o-mini` | 3 | 40K | 200 |
+  | `gpt-5` / `gpt-5.5` | ❌ unavailable | — | — |
+
+  Tier 1 (paid, $5+ top-up): GPT-5.5 = 500 RPM / 500K TPM; GPT-5.4 Mini = 500 RPM / 500K TPM
+- **Reasoning**: ✅ (`o1`, `o1-mini`, reasoning_effort param)
+- **Vision**: ✅ (GPT-4o, GPT-5 series)
+- **Tools**: ✅ function calling, tool use, web search, file search, computer use, MCP
+- **Streaming**: ✅
+- **Extra capabilities**: Responses API, Batch API (50% discount), prompt caching, Agents SDK, real-time voice, Codex
+- **Implementation**: `OpenAICompatibleChatProvider`
 
 <!-- remaining providers TBD -->
