@@ -4,6 +4,39 @@
 
 This file provides guidelines for agentic coding agents operating in the uniinfer repository.
 
+## Deployment (Production)
+
+The proxy runs as a **systemd service** on `amd-1`:
+
+```bash
+# Service status
+sudo systemctl status uniioai-proxy
+
+# Restart after code changes
+sudo systemctl restart uniioai-proxy
+
+# Live logs
+sudo journalctl -u uniioai-proxy -f
+
+# Last 50 lines
+sudo journalctl -u uniioai-proxy -n 50 --no-pager
+```
+
+| Key | Value |
+|-----|-------|
+| Service file | `/etc/systemd/system/uniioai-proxy.service` |
+| Working dir | `/home/ubuntu/code/python-openutils/packages/uniinfer` |
+| Binary | `.venv/bin/python .venv/bin/uniioai-proxy --port 8124` |
+| Port | **8124** |
+| User | `ubuntu` |
+| Auto-restart | yes (`Restart=always`, 5s delay) |
+| Config | `.env` in working dir (`PROXY_KEY`, `PROXYHOST`, `PROXY_PORT`) |
+| Models refresh | systemd timer `uniioai-models-refresh.timer` runs daily at 04:00 UTC |
+
+After pushing code to `main`: `cd /home/ubuntu/code/python-openutils && git pull && cd packages/uniinfer && uv sync && sudo systemctl restart uniioai-proxy`
+
+Health check: `curl -s http://localhost:8124/v1/system/version`
+
 ## Project Overview
 
 UniInfer is a unified LLM inference interface for Python providing a consistent API across 20+ providers (OpenAI, Anthropic, Mistral, Ollama, etc.). Features include:
