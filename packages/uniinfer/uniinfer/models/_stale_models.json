@@ -1,0 +1,758 @@
+[
+  {
+    "id": "Qwen/Qwen2.5-Coder-32B-Instruct-TEE",
+    "provider": "chutes",
+    "first_seen": "2026-05-26",
+    "last_seen": "2026-05-26",
+    "days_missing": 14
+  },
+  {
+    "id": "Qwen/Qwen3-235B-A22B-Thinking-2507",
+    "provider": "chutes",
+    "first_seen": "2026-04-19",
+    "last_seen": "2026-04-19",
+    "days_missing": 51
+  },
+  {
+    "id": "@cf/defog/sqlcoder-7b-2",
+    "provider": "cloudflare",
+    "first_seen": "2026-04-19",
+    "last_seen": "2026-04-19",
+    "days_missing": 51
+  },
+  {
+    "id": "@cf/facebook/bart-large-cnn",
+    "provider": "cloudflare",
+    "first_seen": "2026-04-19",
+    "last_seen": "2026-04-19",
+    "days_missing": 51
+  },
+  {
+    "id": "@cf/google/gemma-3-12b-it",
+    "provider": "cloudflare",
+    "first_seen": "2026-04-19",
+    "last_seen": "2026-04-19",
+    "days_missing": 51
+  },
+  {
+    "id": "@cf/meta/llama-2-7b-chat-fp16",
+    "provider": "cloudflare",
+    "first_seen": "2026-04-19",
+    "last_seen": "2026-04-19",
+    "days_missing": 51
+  },
+  {
+    "id": "@cf/meta/llama-2-7b-chat-int8",
+    "provider": "cloudflare",
+    "first_seen": "2026-04-19",
+    "last_seen": "2026-04-19",
+    "days_missing": 51
+  },
+  {
+    "id": "@cf/meta/llama-3-8b-instruct",
+    "provider": "cloudflare",
+    "first_seen": "2026-04-19",
+    "last_seen": "2026-04-19",
+    "days_missing": 51
+  },
+  {
+    "id": "@cf/meta/llama-3-8b-instruct-awq",
+    "provider": "cloudflare",
+    "first_seen": "2026-04-19",
+    "last_seen": "2026-04-19",
+    "days_missing": 51
+  },
+  {
+    "id": "@cf/meta/llama-3.1-8b-instruct-awq",
+    "provider": "cloudflare",
+    "first_seen": "2026-04-19",
+    "last_seen": "2026-04-19",
+    "days_missing": 51
+  },
+  {
+    "id": "@cf/microsoft/phi-2",
+    "provider": "cloudflare",
+    "first_seen": "2026-04-19",
+    "last_seen": "2026-04-19",
+    "days_missing": 51
+  },
+  {
+    "id": "@cf/mistral/mistral-7b-instruct-v0.1",
+    "provider": "cloudflare",
+    "first_seen": "2026-04-19",
+    "last_seen": "2026-04-19",
+    "days_missing": 51
+  },
+  {
+    "id": "@cf/moonshotai/kimi-k2.5",
+    "provider": "cloudflare",
+    "first_seen": "2026-04-19",
+    "last_seen": "2026-04-19",
+    "days_missing": 51
+  },
+  {
+    "id": "@cf/unum/uform-gen2-qwen-500m",
+    "provider": "cloudflare",
+    "first_seen": "2026-04-19",
+    "last_seen": "2026-04-19",
+    "days_missing": 51
+  },
+  {
+    "id": "@hf/google/gemma-7b-it",
+    "provider": "cloudflare",
+    "first_seen": "2026-04-19",
+    "last_seen": "2026-04-19",
+    "days_missing": 51
+  },
+  {
+    "id": "@hf/mistral/mistral-7b-instruct-v0.2",
+    "provider": "cloudflare",
+    "first_seen": "2026-04-19",
+    "last_seen": "2026-04-19",
+    "days_missing": 51
+  },
+  {
+    "id": "@hf/nousresearch/hermes-2-pro-mistral-7b",
+    "provider": "cloudflare",
+    "first_seen": "2026-04-19",
+    "last_seen": "2026-04-19",
+    "days_missing": 51
+  },
+  {
+    "id": "QuantTrio/Qwen3-VL-30B-A3B-Instruct-AWQ",
+    "provider": "huggingface",
+    "first_seen": "2026-06-06",
+    "last_seen": "2026-06-07",
+    "days_missing": 2
+  },
+  {
+    "id": "Qwen/Qwen2-0.5B-Instruct",
+    "provider": "huggingface",
+    "first_seen": "2026-06-04",
+    "last_seen": "2026-06-05",
+    "days_missing": 4
+  },
+  {
+    "id": "RedHatAI/Qwen2.5-1.5B-quantized.w8a8",
+    "provider": "huggingface",
+    "first_seen": "2026-06-05",
+    "last_seen": "2026-06-05",
+    "days_missing": 4
+  },
+  {
+    "id": "nm-testing/SmolLM-1.7B-Instruct-quantized.w4a16",
+    "provider": "huggingface",
+    "first_seen": "2026-06-04",
+    "last_seen": "2026-06-04",
+    "days_missing": 5
+  },
+  {
+    "id": "nvidia/DeepSeek-R1-0528-NVFP4-v2",
+    "provider": "huggingface",
+    "first_seen": "2026-06-04",
+    "last_seen": "2026-06-08",
+    "days_missing": 1
+  },
+  {
+    "id": "nvidia/Gemma-4-26B-A4B-NVFP4",
+    "provider": "huggingface",
+    "first_seen": "2026-06-04",
+    "last_seen": "2026-06-04",
+    "days_missing": 5
+  },
+  {
+    "id": "intern-latest",
+    "provider": "internlm",
+    "first_seen": "2026-04-19",
+    "last_seen": "2026-04-19",
+    "days_missing": 51
+  },
+  {
+    "id": "intern-s1",
+    "provider": "internlm",
+    "first_seen": "2026-04-19",
+    "last_seen": "2026-04-19",
+    "days_missing": 51
+  },
+  {
+    "id": "intern-s1-mini",
+    "provider": "internlm",
+    "first_seen": "2026-04-19",
+    "last_seen": "2026-04-19",
+    "days_missing": 51
+  },
+  {
+    "id": "intern-s1-pro",
+    "provider": "internlm",
+    "first_seen": "2026-04-19",
+    "last_seen": "2026-04-19",
+    "days_missing": 51
+  },
+  {
+    "id": "intern-s2-preview",
+    "provider": "internlm",
+    "first_seen": "2026-05-26",
+    "last_seen": "2026-05-26",
+    "days_missing": 14
+  },
+  {
+    "id": "internvl-latest",
+    "provider": "internlm",
+    "first_seen": "2026-04-19",
+    "last_seen": "2026-04-19",
+    "days_missing": 51
+  },
+  {
+    "id": "internvl3.5-241b-a28b",
+    "provider": "internlm",
+    "first_seen": "2026-04-19",
+    "last_seen": "2026-04-19",
+    "days_missing": 51
+  },
+  {
+    "id": "internvl3.5-latest",
+    "provider": "internlm",
+    "first_seen": "2026-04-19",
+    "last_seen": "2026-04-19",
+    "days_missing": 51
+  },
+  {
+    "id": "devstral-medium-2507",
+    "provider": "mistral",
+    "first_seen": "2026-04-19",
+    "last_seen": "2026-04-19",
+    "days_missing": 51
+  },
+  {
+    "id": "devstral-small-2507",
+    "provider": "mistral",
+    "first_seen": "2026-04-19",
+    "last_seen": "2026-04-19",
+    "days_missing": 51
+  },
+  {
+    "id": "mistral-large-2411",
+    "provider": "mistral",
+    "first_seen": "2026-04-19",
+    "last_seen": "2026-04-19",
+    "days_missing": 51
+  },
+  {
+    "id": "mistral-large-pixtral-2411",
+    "provider": "mistral",
+    "first_seen": "2026-04-19",
+    "last_seen": "2026-04-19",
+    "days_missing": 51
+  },
+  {
+    "id": "mistral-ocr-2505",
+    "provider": "mistral",
+    "first_seen": "2026-04-19",
+    "last_seen": "2026-04-19",
+    "days_missing": 51
+  },
+  {
+    "id": "pixtral-large-2411",
+    "provider": "mistral",
+    "first_seen": "2026-04-19",
+    "last_seen": "2026-04-19",
+    "days_missing": 51
+  },
+  {
+    "id": "pixtral-large-latest",
+    "provider": "mistral",
+    "first_seen": "2026-04-19",
+    "last_seen": "2026-04-19",
+    "days_missing": 51
+  },
+  {
+    "id": "voxtral-mini-transcribe-2507",
+    "provider": "mistral",
+    "first_seen": "2026-04-19",
+    "last_seen": "2026-04-19",
+    "days_missing": 51
+  },
+  {
+    "id": "embeddinggemma:latest",
+    "provider": "ollama",
+    "first_seen": "2026-04-19",
+    "last_seen": "2026-04-19",
+    "days_missing": 51
+  },
+  {
+    "id": "nomic-embed-text:latest",
+    "provider": "ollama",
+    "first_seen": "2026-04-19",
+    "last_seen": "2026-04-19",
+    "days_missing": 51
+  },
+  {
+    "id": "alfredpros/codellama-7b-instruct-solidity",
+    "provider": "openrouter",
+    "first_seen": "2026-04-19",
+    "last_seen": "2026-04-19",
+    "days_missing": 51
+  },
+  {
+    "id": "arcee-ai/spotlight",
+    "provider": "openrouter",
+    "first_seen": "2026-04-19",
+    "last_seen": "2026-06-06",
+    "days_missing": 3
+  },
+  {
+    "id": "baidu/cobuddy:free",
+    "provider": "openrouter",
+    "first_seen": "2026-05-26",
+    "last_seen": "2026-05-26",
+    "days_missing": 14
+  },
+  {
+    "id": "baidu/ernie-4.5-21b-a3b",
+    "provider": "openrouter",
+    "first_seen": "2026-04-19",
+    "last_seen": "2026-04-19",
+    "days_missing": 51
+  },
+  {
+    "id": "baidu/ernie-4.5-21b-a3b-thinking",
+    "provider": "openrouter",
+    "first_seen": "2026-04-19",
+    "last_seen": "2026-04-19",
+    "days_missing": 51
+  },
+  {
+    "id": "baidu/ernie-4.5-300b-a47b",
+    "provider": "openrouter",
+    "first_seen": "2026-04-19",
+    "last_seen": "2026-04-19",
+    "days_missing": 51
+  },
+  {
+    "id": "baidu/ernie-4.5-vl-28b-a3b",
+    "provider": "openrouter",
+    "first_seen": "2026-04-19",
+    "last_seen": "2026-06-06",
+    "days_missing": 3
+  },
+  {
+    "id": "baidu/qianfan-ocr-fast",
+    "provider": "openrouter",
+    "first_seen": "2026-05-26",
+    "last_seen": "2026-05-26",
+    "days_missing": 14
+  },
+  {
+    "id": "deepseek/deepseek-v3.2-speciale",
+    "provider": "openrouter",
+    "first_seen": "2026-04-19",
+    "last_seen": "2026-04-19",
+    "days_missing": 51
+  },
+  {
+    "id": "deepseek/deepseek-v4-flash:free",
+    "provider": "openrouter",
+    "first_seen": "2026-05-26",
+    "last_seen": "2026-05-26",
+    "days_missing": 14
+  },
+  {
+    "id": "google/gemini-2.0-flash-001",
+    "provider": "openrouter",
+    "first_seen": "2026-04-19",
+    "last_seen": "2026-04-19",
+    "days_missing": 51
+  },
+  {
+    "id": "google/gemini-2.0-flash-lite-001",
+    "provider": "openrouter",
+    "first_seen": "2026-04-19",
+    "last_seen": "2026-04-19",
+    "days_missing": 51
+  },
+  {
+    "id": "minimax/minimax-m2.5:free",
+    "provider": "openrouter",
+    "first_seen": "2026-04-19",
+    "last_seen": "2026-04-19",
+    "days_missing": 51
+  },
+  {
+    "id": "mistralai/devstral-medium",
+    "provider": "openrouter",
+    "first_seen": "2026-04-19",
+    "last_seen": "2026-04-19",
+    "days_missing": 51
+  },
+  {
+    "id": "mistralai/devstral-small",
+    "provider": "openrouter",
+    "first_seen": "2026-04-19",
+    "last_seen": "2026-04-19",
+    "days_missing": 51
+  },
+  {
+    "id": "mistralai/mistral-7b-instruct-v0.1",
+    "provider": "openrouter",
+    "first_seen": "2026-04-19",
+    "last_seen": "2026-04-19",
+    "days_missing": 51
+  },
+  {
+    "id": "mistralai/mistral-large-2411",
+    "provider": "openrouter",
+    "first_seen": "2026-04-19",
+    "last_seen": "2026-04-19",
+    "days_missing": 51
+  },
+  {
+    "id": "mistralai/pixtral-large-2411",
+    "provider": "openrouter",
+    "first_seen": "2026-04-19",
+    "last_seen": "2026-04-19",
+    "days_missing": 51
+  },
+  {
+    "id": "nex-agi/deepseek-v3.1-nex-n1",
+    "provider": "openrouter",
+    "first_seen": "2026-04-19",
+    "last_seen": "2026-06-08",
+    "days_missing": 1
+  },
+  {
+    "id": "nousresearch/hermes-2-pro-llama-3-8b",
+    "provider": "openrouter",
+    "first_seen": "2026-04-19",
+    "last_seen": "2026-06-05",
+    "days_missing": 4
+  },
+  {
+    "id": "openai/gpt-4-0314",
+    "provider": "openrouter",
+    "first_seen": "2026-04-19",
+    "last_seen": "2026-04-19",
+    "days_missing": 51
+  },
+  {
+    "id": "openai/gpt-4-1106-preview",
+    "provider": "openrouter",
+    "first_seen": "2026-04-19",
+    "last_seen": "2026-06-06",
+    "days_missing": 3
+  },
+  {
+    "id": "openai/gpt-4o-audio-preview",
+    "provider": "openrouter",
+    "first_seen": "2026-04-19",
+    "last_seen": "2026-04-19",
+    "days_missing": 51
+  },
+  {
+    "id": "sao10k/l3-euryale-70b",
+    "provider": "openrouter",
+    "first_seen": "2026-04-19",
+    "last_seen": "2026-06-05",
+    "days_missing": 4
+  },
+  {
+    "id": "xiaomi/mimo-v2-omni",
+    "provider": "openrouter",
+    "first_seen": "2026-04-19",
+    "last_seen": "2026-04-19",
+    "days_missing": 51
+  },
+  {
+    "id": "xiaomi/mimo-v2-pro",
+    "provider": "openrouter",
+    "first_seen": "2026-04-19",
+    "last_seen": "2026-04-19",
+    "days_missing": 51
+  },
+  {
+    "id": "claude",
+    "provider": "pollinations",
+    "first_seen": "2026-05-26",
+    "last_seen": "2026-05-26",
+    "days_missing": 14
+  },
+  {
+    "id": "claude-fast",
+    "provider": "pollinations",
+    "first_seen": "2026-04-19",
+    "last_seen": "2026-04-19",
+    "days_missing": 51
+  },
+  {
+    "id": "claude-large",
+    "provider": "pollinations",
+    "first_seen": "2026-05-26",
+    "last_seen": "2026-05-26",
+    "days_missing": 14
+  },
+  {
+    "id": "claude-opus-4.7",
+    "provider": "pollinations",
+    "first_seen": "2026-05-26",
+    "last_seen": "2026-05-26",
+    "days_missing": 14
+  },
+  {
+    "id": "elevenflash",
+    "provider": "pollinations",
+    "first_seen": "2026-05-26",
+    "last_seen": "2026-05-26",
+    "days_missing": 14
+  },
+  {
+    "id": "elevenlabs",
+    "provider": "pollinations",
+    "first_seen": "2026-05-26",
+    "last_seen": "2026-05-26",
+    "days_missing": 14
+  },
+  {
+    "id": "elevenmusic",
+    "provider": "pollinations",
+    "first_seen": "2026-05-26",
+    "last_seen": "2026-05-26",
+    "days_missing": 14
+  },
+  {
+    "id": "gemini",
+    "provider": "pollinations",
+    "first_seen": "2026-05-26",
+    "last_seen": "2026-05-26",
+    "days_missing": 14
+  },
+  {
+    "id": "gemini-2",
+    "provider": "pollinations",
+    "first_seen": "2026-05-26",
+    "last_seen": "2026-05-26",
+    "days_missing": 14
+  },
+  {
+    "id": "gemini-3.5-flash",
+    "provider": "pollinations",
+    "first_seen": "2026-05-26",
+    "last_seen": "2026-05-26",
+    "days_missing": 14
+  },
+  {
+    "id": "gemini-fast",
+    "provider": "pollinations",
+    "first_seen": "2026-04-19",
+    "last_seen": "2026-04-19",
+    "days_missing": 51
+  },
+  {
+    "id": "gemini-flash-lite-3.1",
+    "provider": "pollinations",
+    "first_seen": "2026-05-26",
+    "last_seen": "2026-05-26",
+    "days_missing": 14
+  },
+  {
+    "id": "gemini-large",
+    "provider": "pollinations",
+    "first_seen": "2026-05-26",
+    "last_seen": "2026-05-26",
+    "days_missing": 14
+  },
+  {
+    "id": "gemini-search",
+    "provider": "pollinations",
+    "first_seen": "2026-04-19",
+    "last_seen": "2026-04-19",
+    "days_missing": 51
+  },
+  {
+    "id": "gpt-image-2",
+    "provider": "pollinations",
+    "first_seen": "2026-05-26",
+    "last_seen": "2026-05-26",
+    "days_missing": 14
+  },
+  {
+    "id": "grok-imagine",
+    "provider": "pollinations",
+    "first_seen": "2026-05-26",
+    "last_seen": "2026-05-26",
+    "days_missing": 14
+  },
+  {
+    "id": "grok-imagine-pro",
+    "provider": "pollinations",
+    "first_seen": "2026-05-26",
+    "last_seen": "2026-05-26",
+    "days_missing": 14
+  },
+  {
+    "id": "grok-video-pro",
+    "provider": "pollinations",
+    "first_seen": "2026-05-26",
+    "last_seen": "2026-05-26",
+    "days_missing": 14
+  },
+  {
+    "id": "llama-maverick",
+    "provider": "pollinations",
+    "first_seen": "2026-05-26",
+    "last_seen": "2026-05-26",
+    "days_missing": 14
+  },
+  {
+    "id": "nanobanana",
+    "provider": "pollinations",
+    "first_seen": "2026-05-26",
+    "last_seen": "2026-05-26",
+    "days_missing": 14
+  },
+  {
+    "id": "nanobanana-2",
+    "provider": "pollinations",
+    "first_seen": "2026-05-26",
+    "last_seen": "2026-05-26",
+    "days_missing": 14
+  },
+  {
+    "id": "nanobanana-pro",
+    "provider": "pollinations",
+    "first_seen": "2026-05-26",
+    "last_seen": "2026-05-26",
+    "days_missing": 14
+  },
+  {
+    "id": "p-image",
+    "provider": "pollinations",
+    "first_seen": "2026-05-26",
+    "last_seen": "2026-05-26",
+    "days_missing": 14
+  },
+  {
+    "id": "p-image-edit",
+    "provider": "pollinations",
+    "first_seen": "2026-05-26",
+    "last_seen": "2026-05-26",
+    "days_missing": 14
+  },
+  {
+    "id": "p-video",
+    "provider": "pollinations",
+    "first_seen": "2026-05-26",
+    "last_seen": "2026-05-26",
+    "days_missing": 14
+  },
+  {
+    "id": "qwen-coder-large",
+    "provider": "pollinations",
+    "first_seen": "2026-04-19",
+    "last_seen": "2026-04-19",
+    "days_missing": 51
+  },
+  {
+    "id": "qwen-image",
+    "provider": "pollinations",
+    "first_seen": "2026-05-26",
+    "last_seen": "2026-05-26",
+    "days_missing": 14
+  },
+  {
+    "id": "qwen-tts",
+    "provider": "pollinations",
+    "first_seen": "2026-05-26",
+    "last_seen": "2026-05-26",
+    "days_missing": 14
+  },
+  {
+    "id": "qwen-tts-instruct",
+    "provider": "pollinations",
+    "first_seen": "2026-05-26",
+    "last_seen": "2026-05-26",
+    "days_missing": 14
+  },
+  {
+    "id": "scribe",
+    "provider": "pollinations",
+    "first_seen": "2026-05-26",
+    "last_seen": "2026-05-26",
+    "days_missing": 14
+  },
+  {
+    "id": "seedance-2.0",
+    "provider": "pollinations",
+    "first_seen": "2026-05-26",
+    "last_seen": "2026-05-26",
+    "days_missing": 14
+  },
+  {
+    "id": "seedance-pro",
+    "provider": "pollinations",
+    "first_seen": "2026-05-26",
+    "last_seen": "2026-05-26",
+    "days_missing": 14
+  },
+  {
+    "id": "seedream",
+    "provider": "pollinations",
+    "first_seen": "2026-05-26",
+    "last_seen": "2026-05-26",
+    "days_missing": 14
+  },
+  {
+    "id": "seedream-pro",
+    "provider": "pollinations",
+    "first_seen": "2026-05-26",
+    "last_seen": "2026-05-26",
+    "days_missing": 14
+  },
+  {
+    "id": "seedream5",
+    "provider": "pollinations",
+    "first_seen": "2026-05-26",
+    "last_seen": "2026-05-26",
+    "days_missing": 14
+  },
+  {
+    "id": "veo",
+    "provider": "pollinations",
+    "first_seen": "2026-05-26",
+    "last_seen": "2026-05-26",
+    "days_missing": 14
+  },
+  {
+    "id": "wan",
+    "provider": "pollinations",
+    "first_seen": "2026-05-26",
+    "last_seen": "2026-05-26",
+    "days_missing": 14
+  },
+  {
+    "id": "wan-fast",
+    "provider": "pollinations",
+    "first_seen": "2026-05-26",
+    "last_seen": "2026-05-26",
+    "days_missing": 14
+  },
+  {
+    "id": "wan-image",
+    "provider": "pollinations",
+    "first_seen": "2026-05-26",
+    "last_seen": "2026-05-26",
+    "days_missing": 14
+  },
+  {
+    "id": "wan-image-pro",
+    "provider": "pollinations",
+    "first_seen": "2026-05-26",
+    "last_seen": "2026-05-26",
+    "days_missing": 14
+  },
+  {
+    "id": "step-1f-audio",
+    "provider": "stepfun",
+    "first_seen": "2026-04-19",
+    "last_seen": "2026-04-19",
+    "days_missing": 51
+  }
+]

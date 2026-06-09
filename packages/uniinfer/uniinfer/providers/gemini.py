@@ -6,7 +6,7 @@ import json
 from typing import Dict, Any, Optional, List, AsyncIterator
 
 from ..core import ChatProvider, ChatCompletionRequest, ChatCompletionResponse, ChatMessage
-from ..errors import map_provider_error, UniInferError
+from ..errors import map_provider_error, UniInferError, RateLimitError
 
 # Try to import google-genai package (latest recommended package)
 # Note: Install with 'uv pip install google-genai' if not available
@@ -16,6 +16,30 @@ try:
     HAS_GENAI = True
 except ImportError:
     HAS_GENAI = False
+
+
+def _parse_gemini_quota(error: Exception) -> dict:
+    """Extract quota info from a google-genai ClientError (429).
+
+    The error message typically contains text like:
+      "Quota exceeded for quota metric 'GenerateRequestsPerDayPerModel-FreeTier' with limit '20'"
+
+    Returns a dict with optional 'quota_metric' and 'quota_limit' keys.
+    """
+    info = {}
+
+    message = getattr(error, 'message', None) or str(error)
+
+    import re
+    metric_match = re.search(r"quota metric '([^']+)'", message)
+    if metric_match:
+        info['quota_metric'] = metric_match.group(1)
+
+    limit_match = re.search(r"limit '(\d+)'", message)
+    if limit_match:
+        info['quota_limit'] = int(limit_match.group(1))
+
+    return info
 
 
 class GeminiProvider(ChatProvider):
@@ -407,7 +431,7 @@ class GeminiProvider(ChatProvider):
             return self._process_response_common(response, api_params['model'], request.model)
 
         except Exception as e:
-            status_code = getattr(e, 'status_code', None)
+            status_code = getattr(e, 'status_code', None) or getattr(e, 'code', None)
             response_body = str(e)
             if hasattr(e, 'response') and hasattr(e.response, 'text'):
                 response_body = e.response.text
@@ -416,6 +440,12 @@ class GeminiProvider(ChatProvider):
                 response_body = e.message
 
             mapped_error = map_provider_error("gemini", e, status_code=status_code, response_body=response_body)
+
+            if status_code == 429 and isinstance(mapped_error, RateLimitError):
+                quota = _parse_gemini_quota(e)
+                mapped_error.quota_metric = quota.get('quota_metric')
+                mapped_error.quota_limit = quota.get('quota_limit')
+
             raise mapped_error
 
     async def _acomplete_impl(
@@ -436,7 +466,7 @@ class GeminiProvider(ChatProvider):
             return self._process_response_common(response, api_params['model'], request.model)
 
         except Exception as e:
-            status_code = getattr(e, 'status_code', None)
+            status_code = getattr(e, 'status_code', None) or getattr(e, 'code', None)
             response_body = str(e)
             if hasattr(e, 'response') and hasattr(e.response, 'text'):
                 response_body = e.response.text
@@ -445,6 +475,12 @@ class GeminiProvider(ChatProvider):
                 response_body = e.message
 
             mapped_error = map_provider_error("gemini", e, status_code=status_code, response_body=response_body)
+
+            if status_code == 429 and isinstance(mapped_error, RateLimitError):
+                quota = _parse_gemini_quota(e)
+                mapped_error.quota_metric = quota.get('quota_metric')
+                mapped_error.quota_limit = quota.get('quota_limit')
+
             raise mapped_error
 
     async def acomplete(
@@ -541,7 +577,7 @@ class GeminiProvider(ChatProvider):
         except Exception as e:
             if isinstance(e, UniInferError):
                 raise
-            status_code = getattr(e, 'status_code', None)
+            status_code = getattr(e, 'status_code', None) or getattr(e, 'code', None)
             response_body = str(e)
             if hasattr(e, 'response') and hasattr(e.response, 'text'):
                 response_body = e.response.text
@@ -550,4 +586,10 @@ class GeminiProvider(ChatProvider):
                 response_body = e.message
 
             mapped_error = map_provider_error("gemini", e, status_code=status_code, response_body=response_body)
+
+            if status_code == 429 and isinstance(mapped_error, RateLimitError):
+                quota = _parse_gemini_quota(e)
+                mapped_error.quota_metric = quota.get('quota_metric')
+                mapped_error.quota_limit = quota.get('quota_limit')
+
             raise mapped_error

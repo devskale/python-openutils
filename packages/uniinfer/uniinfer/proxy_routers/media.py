@@ -205,32 +205,40 @@ def create_media_router(
             raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
 
     @router.post("/v1/audio/speech")
+    @limiter.limit(get_media_rate_limit)
     async def generate_speech(
         request: Request,
         request_input: TTSRequestModel,
         api_bearer_token: Optional[str] = Depends(get_optional_proxy_token),
     ):
-        provider_name, model_name = parse_provider_model(request_input.model, allowed_providers=["tu"], task_name="TTS")
-        api_key = verify_provider_access(api_bearer_token, provider_name)
-        if not api_key:
-            raise HTTPException(status_code=401, detail="API key required for TU provider")
+        try:
+            provider_name, model_name = parse_provider_model(request_input.model, allowed_providers=["tu"], task_name="TTS")
+            api_key = verify_provider_access(api_bearer_token, provider_name)
+            if not api_key:
+                raise HTTPException(status_code=401, detail="API key required for TU provider")
 
-        from uniinfer import TTSRequest
-        from uniinfer.providers.tu_tts import TuAITTSProvider
+            from uniinfer import TTSRequest
+            from uniinfer.providers.tu_tts import TuAITTSProvider
 
-        tts_provider = TuAITTSProvider(api_key=api_key)
-        tts_request = TTSRequest(
-            input=request_input.input,
-            model=model_name,
-            voice=request_input.voice,
-            response_format=request_input.response_format or "mp3",
-            speed=request_input.speed or 1.0,
-            instructions=request_input.instructions,
-        )
-        response = await tts_provider.agenerate_speech(tts_request)
-        return Response(content=response.audio_content, media_type=response.content_type)
+            tts_provider = TuAITTSProvider(api_key=api_key)
+            tts_request = TTSRequest(
+                input=request_input.input,
+                model=model_name,
+                voice=request_input.voice,
+                response_format=request_input.response_format or "mp3",
+                speed=request_input.speed or 1.0,
+                instructions=request_input.instructions,
+            )
+            response = await tts_provider.agenerate_speech(tts_request)
+            return Response(content=response.audio_content, media_type=response.content_type)
+        except HTTPException:
+            raise
+        except Exception as e:
+            logger.exception("Unexpected error in generate_speech endpoint: %s", e)
+            raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
 
     @router.post("/v1/audio/transcriptions")
+    @limiter.limit(get_media_rate_limit)
     async def transcribe_audio(
         request: Request,
         file: UploadFile = File(...),
@@ -241,34 +249,40 @@ def create_media_router(
         temperature: Optional[float] = Form(0.0),
         api_bearer_token: Optional[str] = Depends(get_optional_proxy_token),
     ):
-        provider_name, model_name = parse_provider_model(model, allowed_providers=["tu"], task_name="STT")
-        api_key = verify_provider_access(api_bearer_token, provider_name)
-        if not api_key:
-            raise HTTPException(status_code=401, detail="API key required for TU provider")
+        try:
+            provider_name, model_name = parse_provider_model(model, allowed_providers=["tu"], task_name="STT")
+            api_key = verify_provider_access(api_bearer_token, provider_name)
+            if not api_key:
+                raise HTTPException(status_code=401, detail="API key required for TU provider")
 
-        audio_content = await file.read()
+            audio_content = await file.read()
 
-        from uniinfer import STTRequest
-        from uniinfer.providers.tu_stt import TuAISTTProvider
+            from uniinfer import STTRequest
+            from uniinfer.providers.tu_stt import TuAISTTProvider
 
-        stt_provider = TuAISTTProvider(api_key=api_key)
-        stt_request = STTRequest(
-            file=audio_content,
-            model=model_name,
-            language=language,
-            prompt=prompt,
-            response_format=response_format or "json",
-            temperature=temperature or 0.0,
-        )
-        response = await stt_provider.atranscribe(stt_request)
-
-        if response_format == "verbose_json":
-            return STTVerboseResponseModel(
-                text=response.text,
-                language=response.language,
-                duration=response.duration,
-                segments=response.segments,
+            stt_provider = TuAISTTProvider(api_key=api_key)
+            stt_request = STTRequest(
+                file=audio_content,
+                model=model_name,
+                language=language,
+                prompt=prompt,
+                response_format=response_format or "json",
+                temperature=temperature if temperature is not None else 0.0,
             )
-        return STTResponseModel(text=response.text)
+            response = await stt_provider.atranscribe(stt_request)
+
+            if response_format == "verbose_json":
+                return STTVerboseResponseModel(
+                    text=response.text,
+                    language=response.language,
+                    duration=response.duration,
+                    segments=response.segments,
+                )
+            return STTResponseModel(text=response.text)
+        except HTTPException:
+            raise
+        except Exception as e:
+            logger.exception("Unexpected error in transcribe_audio endpoint: %s", e)
+            raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
 
     return router

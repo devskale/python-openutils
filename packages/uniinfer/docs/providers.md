@@ -113,6 +113,22 @@ Most generous free tier among major providers — but per-model RPD varies signi
 
   **⚠️ Note**: RPD limits can vary by project state and region. Some projects may see lower per-model caps (e.g. 20 RPD reported for 3.5-flash) during rollout periods. If you hit unexpected 429s, check [ai.google.dev/rate-limit](https://ai.dev/rate-limit).
 
+  **Rate limit introspection**: When a 429 is raised, `RateLimitError` carries parsed quota details from the Google error response:
+  ```python
+  from uniinfer import GeminiProvider, ChatCompletionRequest, ChatMessage
+  from uniinfer.errors import RateLimitError
+
+  provider = GeminiProvider()
+  try:
+      provider.complete(ChatCompletionRequest(
+          messages=[ChatMessage(role="user", content="hello")],
+          model="gemini-3.5-flash",
+      ))
+  except RateLimitError as e:
+      print(e.quota_metric)  # e.g. "GenerateRequestsPerDayPerProjectPerModel-FreeTier"
+      print(e.quota_limit)   # e.g. 20
+  ```
+
 - **Extras**: Grounding (Google Search), code execution, 1M ctx, Live API, native thinking
 - **Implementation**: Custom `ChatProvider`, `google.genai.Client`
 
