@@ -11,7 +11,7 @@ All providers registered in uniinfer. See [Provider Details](#provider-details) 
 | `pollinations` | All models, no key needed; `sk_` = no limits | `pk_`: 1 pollen/hr/IP; `sk_`: unlimited | [gen.pollinations.ai/docs](https://gen.pollinations.ai/docs) |
 | `ollama` | Self-hosted: unlimited; Cloud: light usage free | Local: unlimited; Cloud Free: 1 concurrent | [ollama.com/pricing](https://ollama.com/pricing) |
 | `arli` | Qwen-3.5-27B-Derestricted, unlimited | 1 concurrent req, 12K ctx | [arliai.com/pricing](https://www.arliai.com/pricing?lang=en) |
-| `gemini` | Flash/3.x: 1,500 RPD; Pro: 50 RPD; ⚠️ some projects may see lower caps during rollout | Flash: 10-15 RPM / 1M TPM | [ai.google.dev/pricing](https://ai.google.dev/pricing) |
+| `gemini` | Flash 2.x: 1,500 RPD; **3.5-flash: 20 RPD** ⚠️; Pro: 50 RPD (trial) | Flash: 10-15 RPM / 1M TPM | [ai.google.dev/pricing](https://ai.google.dev/pricing) |
 | `zai` | `glm-4.5-flash` + `glm-4.7-flash` + `glm-4.6v-flash` permanent | Free Flash: no explicit limit (fair use) | [docs.z.ai](https://docs.z.ai) |
 | `mistral` | All models (Experiment mode); ~1B tokens/mo | 2 RPM all models | [docs.mistral.ai](https://docs.mistral.ai/admin/user-management-finops/tier) |
 | `cohere` | Trial: 5 RPM, 100K calls/mo, all models | 5 RPM (Trial); 500 RPM (Production) | [docs.cohere.com/docs/rate-limits](https://docs.cohere.com/docs/rate-limits) |
@@ -106,12 +106,12 @@ Most generous free tier among major providers — but per-model RPD varies signi
   | `gemini-2.5-flash-lite` | 30 | 1,500 | 1M | Faster, cheaper |
   | `gemini-3-flash-preview` | 10 | 1,500 | 1M | Preview, thinking model |
   | `gemini-3.1-flash-lite-preview` | 15 | 1,500 | 1M | Preview, very fast |
-  | `gemini-3.5-flash` | 10 | **1,500** | 1M | Thinking model, shared with Flash RPD |
+  | `gemini-3.5-flash` | 10 | **20** | 1M | ⚠️ Only 20 RPD! Thinking model |
   | `gemini-2.5-pro` | 5 | 50 (trial only) | 1M | Trial only, very limited |
   | `gemma-4-31b-it` | 30 | 1,500 | 1M | Open-weight |
   | `gemma-4-26b-a4b-it` (MoE 3.8B active) | 30 | 1,500 | 1M | Open-weight MoE |
 
-  **⚠️ Note**: RPD limits can vary by project state and region. Some projects may see lower per-model caps (e.g. 20 RPD reported for 3.5-flash) during rollout periods. If you hit unexpected 429s, check [ai.google.dev/rate-limit](https://ai.dev/rate-limit).
+  **⚠️ Critical**: `gemini-3.5-flash` has only **20 RPD** on the free tier — confirmed by live 429 errors (`GenerateRequestsPerDayPerProjectPerModel-FreeTier` limit 20). Third-party sources claiming 1,500 RPD are wrong. Other Flash models (2.5, 3.0, 3.1) have 1,500 RPD.
 
   **Rate limit introspection**: When a 429 is raised, `RateLimitError` carries parsed quota details from the Google error response:
   ```python
