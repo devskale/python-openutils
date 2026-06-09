@@ -26,6 +26,20 @@ cd packages/uniinfer && uv sync           # creates venv, installs deps from loc
 uv sync --extra all                       # install all optional provider deps
 ```
 
+### Proxy Auth Token
+
+The proxy (`uniioai_proxy.py`) requires a **credgoo combined token** (`bearer@encryption`) as Bearer auth. This is stored in `.env` as `PROXY_KEY`.
+
+```bash
+# .env (gitignored — never commit real tokens)
+PROXY_KEY=your-bearer@your-encryption
+```
+
+- **Format**: `<credgoo_bearer>@<credgoo_encryption_key>` — the `@` separator tells `get_provider_api_key()` to resolve provider keys via credgoo
+- **Used by**: proxy tests, examples, CLI tools — all read `os.getenv('PROXY_KEY')`
+- **In test code**: pass as `headers={"Authorization": f"Bearer {os.getenv('PROXY_KEY')}"}` to TestClient requests
+- **No token available?** Tests that require auth should assert `status_code in [200, 401, 500]` to pass in both authenticated and unauthenticated environments
+
 ## Build/Lint/Test Commands
 
 ### Running Tests

@@ -23,7 +23,18 @@ class AuthenticationError(ProviderError):
 
 class RateLimitError(ProviderError):
     """Rate limit error from a provider."""
-    pass
+
+    def __init__(
+        self,
+        message: str,
+        status_code: Optional[int] = None,
+        response_body: Optional[str] = None,
+        quota_metric: Optional[str] = None,
+        quota_limit: Optional[int] = None,
+    ):
+        super().__init__(message, status_code, response_body)
+        self.quota_metric = quota_metric
+        self.quota_limit = quota_limit
 
 
 class TimeoutError(ProviderError):

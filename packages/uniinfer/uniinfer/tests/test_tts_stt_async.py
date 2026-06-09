@@ -1,7 +1,6 @@
 """
 Tests for TTS (Text-to-Speech) and STT (Speech-to-Text) async functionality.
 """
-import asyncio
 import pytest
 from unittest.mock import patch, AsyncMock, MagicMock
 from uniinfer import TTSRequest, TTSResponse, STTRequest, STTResponse
@@ -33,29 +32,21 @@ class TestTuTTSAsync:
         assert callable(provider.list_models)
 
     @pytest.mark.asyncio
-    @patch('httpx.AsyncClient')
-    async def test_agenerate_speech_success(self, mock_client_class):
+    async def test_agenerate_speech_success(self):
         """Test successful async speech generation."""
-        mock_client = AsyncMock()
         mock_response = MagicMock()
         mock_response.status_code = 200
         mock_response.content = b"fake audio data"
         mock_response.headers = {"Content-Type": "audio/mpeg"}
 
-        async def mock_post(*args, **kwargs):
-            return mock_response
-
-        mock_client.__aenter__.return_value = mock_client
-        mock_client.__aexit__.return_value = None
-        mock_client.return_value.__aenter__ = mock_client.__aenter__
-        mock_client.return_value = mock_client
-        mock_client.post.return_value = await asyncio.sleep(0, mock_post)
-        mock_client_class.return_value = mock_client
+        mock_client = AsyncMock()
+        mock_client.post.return_value = mock_response
 
         provider = TuAITTSProvider(api_key="test-key")
         request = TTSRequest(input="Hello world")
 
-        response = await provider.agenerate_speech(request)
+        with patch.object(provider, '_get_async_client', return_value=mock_client):
+            response = await provider.agenerate_speech(request)
 
         assert response.audio_content == b"fake audio data"
         assert response.provider == "tu"
@@ -63,24 +54,15 @@ class TestTuTTSAsync:
         assert response.model == "kokoro"
 
     @pytest.mark.asyncio
-    @patch('httpx.AsyncClient')
-    async def test_agenerate_speech_with_voice(self, mock_client_class):
+    async def test_agenerate_speech_with_voice(self):
         """Test async speech generation with custom voice."""
-        mock_client = AsyncMock()
         mock_response = MagicMock()
         mock_response.status_code = 200
         mock_response.content = b"custom voice audio"
         mock_response.headers = {"Content-Type": "audio/mpeg"}
 
-        async def mock_post(*args, **kwargs):
-            return mock_response
-
-        mock_client.__aenter__.return_value = mock_client
-        mock_client.__aexit__.return_value = None
-        mock_client.return_value.__aenter__ = mock_client.__aenter__
-        mock_client.return_value = mock_client
-        mock_client.post.return_value = await asyncio.sleep(0, mock_post)
-        mock_client_class.return_value = mock_client
+        mock_client = AsyncMock()
+        mock_client.post.return_value = mock_response
 
         provider = TuAITTSProvider(api_key="test-key")
         request = TTSRequest(
@@ -90,7 +72,8 @@ class TestTuTTSAsync:
             speed=1.5
         )
 
-        response = await provider.agenerate_speech(request)
+        with patch.object(provider, '_get_async_client', return_value=mock_client):
+            response = await provider.agenerate_speech(request)
 
         assert response.audio_content == b"custom voice audio"
         assert response.provider == "tu"
@@ -98,16 +81,11 @@ class TestTuTTSAsync:
         assert response.model == "kokoro"
 
     @pytest.mark.asyncio
-    @patch('httpx.AsyncClient')
-    async def test_atranscribe_success(self, mock_client_class):
+    async def test_atranscribe_success(self):
         """Test successful async transcription."""
-        import asyncio
-
-        mock_client = AsyncMock()
         mock_response = MagicMock()
         mock_response.status_code = 200
-
-        response_data = {
+        mock_response.json.return_value = {
             "text": "Hello world",
             "language": "en",
             "duration": 2.5,
@@ -120,21 +98,14 @@ class TestTuTTSAsync:
             ]
         }
 
-        async def mock_post(*args, **kwargs):
-            mock_response.json.return_value = response_data
-            return mock_response
-
-        mock_client.__aenter__.return_value = mock_client
-        mock_client.__aexit__.return_value = None
-        mock_client.return_value.__aenter__ = mock_client.__aenter__
-        mock_client.return_value = mock_client
-        mock_client.post.return_value = await asyncio.sleep(0, mock_post)
-        mock_client_class.return_value = mock_client
+        mock_client = AsyncMock()
+        mock_client.post.return_value = mock_response
 
         provider = TuAISTTProvider(api_key="test-key")
         request = STTRequest(file=b"fake audio content")
 
-        response = await provider.atranscribe(request)
+        with patch.object(provider, '_get_async_client', return_value=mock_client):
+            response = await provider.atranscribe(request)
 
         assert response.text == "Hello world"
         assert response.provider == "tu"
@@ -143,30 +114,17 @@ class TestTuTTSAsync:
         assert response.duration == 2.5
 
     @pytest.mark.asyncio
-    @patch('httpx.AsyncClient')
-    async def test_atranscribe_with_language(self, mock_client_class):
+    async def test_atranscribe_with_language(self):
         """Test async transcription with language parameter."""
-        import asyncio
-
-        mock_client = AsyncMock()
         mock_response = MagicMock()
         mock_response.status_code = 200
-
-        response_data = {
+        mock_response.json.return_value = {
             "text": "Spanish text",
             "language": "es",
         }
 
-        async def mock_post(*args, **kwargs):
-            mock_response.json.return_value = response_data
-            return mock_response
-
-        mock_client.__aenter__.return_value = mock_client
-        mock_client.__aexit__.return_value = None
-        mock_client.return_value.__aenter__ = mock_client.__aenter__
-        mock_client.return_value = mock_client
-        mock_client.post.return_value = await asyncio.sleep(0, mock_post)
-        mock_client_class.return_value = mock_client
+        mock_client = AsyncMock()
+        mock_client.post.return_value = mock_response
 
         provider = TuAISTTProvider(api_key="test-key")
         request = STTRequest(
@@ -176,35 +134,23 @@ class TestTuTTSAsync:
             temperature=0.1
         )
 
-        response = await provider.atranscribe(request)
+        with patch.object(provider, '_get_async_client', return_value=mock_client):
+            response = await provider.atranscribe(request)
 
         assert response.text == "Spanish text"
         assert response.language == "es"
 
     @pytest.mark.asyncio
-    @patch('httpx.AsyncClient')
-    async def test_atranscribe_with_prompt(self, mock_client_class):
+    async def test_atranscribe_with_prompt(self):
         """Test async transcription with prompt parameter."""
-        import asyncio
-
-        mock_client = AsyncMock()
         mock_response = MagicMock()
         mock_response.status_code = 200
-
-        response_data = {
+        mock_response.json.return_value = {
             "text": "Transcribed with prompt guidance",
         }
 
-        async def mock_post(*args, **kwargs):
-            mock_response.json.return_value = response_data
-            return mock_response
-
-        mock_client.__aenter__.return_value = mock_client
-        mock_client.__aexit__.return_value = None
-        mock_client.return_value.__aenter__ = mock_client.__aenter__
-        mock_client.return_value = mock_client
-        mock_client.post.return_value = await asyncio.sleep(0, mock_post)
-        mock_client_class.return_value = mock_client
+        mock_client = AsyncMock()
+        mock_client.post.return_value = mock_response
 
         provider = TuAISTTProvider(api_key="test-key")
         request = STTRequest(
@@ -212,7 +158,8 @@ class TestTuTTSAsync:
             prompt="This is a technical document"
         )
 
-        response = await provider.atranscribe(request)
+        with patch.object(provider, '_get_async_client', return_value=mock_client):
+            response = await provider.atranscribe(request)
 
         assert response.text == "Transcribed with prompt guidance"
 
@@ -329,4 +276,3 @@ class TestTTSTTIntegration:
     async def test_stt_concurrent_requests(self):
         """Test multiple concurrent STT requests."""
         pass
-

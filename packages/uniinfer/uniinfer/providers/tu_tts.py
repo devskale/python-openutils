@@ -67,8 +67,12 @@ class TuAITTSProvider(TTSProvider):
             response = await client.post(endpoint, headers=headers, json=payload, timeout=300.0)
             if response.status_code != 200:
                 raise map_provider_error("TU", Exception(response.text), status_code=response.status_code, response_body=response.text)
-            
-            content_type = response.headers.get("Content-Type", "audio/mpeg")
+
+            content_type = response.headers.get("Content-Type", "")
+            if not content_type.startswith("audio/"):
+                fmt_map = {"mp3": "audio/mpeg", "opus": "audio/opus", "aac": "audio/aac", "flac": "audio/flac", "wav": "audio/wav", "pcm": "audio/pcm"}
+                content_type = fmt_map.get(payload.get("response_format", "mp3"), "audio/mpeg")
+
             return TTSResponse(
                 audio_content=response.content,
                 model=request.model or "kokoro",

@@ -96,9 +96,21 @@ def create_chat_router(
             if thinking and not is_openai_strict_mode():
                 message_obj.reasoning_content = thinking
 
+            usage = None
+            raw_usage = getattr(full_content, "usage", None)
+            if raw_usage and isinstance(raw_usage, dict):
+                usage = raw_usage
+            elif raw_usage:
+                usage = {
+                    "prompt_tokens": getattr(raw_usage, "prompt_tokens", 0) or 0,
+                    "completion_tokens": getattr(raw_usage, "completion_tokens", 0) or 0,
+                    "total_tokens": getattr(raw_usage, "total_tokens", 0) or 0,
+                }
+
             response_data = NonStreamingChatCompletion(
                 model=provider_model,
                 choices=[NonStreamingChoice(message=message_obj, finish_reason=finish_reason)],
+                usage=usage,
             )
             if is_openai_strict_mode():
                 return JSONResponse(content=response_data.model_dump(exclude_none=True))
