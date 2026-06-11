@@ -255,7 +255,8 @@ def update_provider_in_cache(provider_name: str, models_list) -> None:
     """Update a single provider's models in the models.json cache file.
 
     Called after a live API fetch so subsequent /v1/models calls get fresh data
-    for that provider without hitting the API again.
+    for that provider without hitting the API again. Preserves first_seen/last_seen
+    from existing cache entries and _model_history.json.
     """
     import json
     from datetime import datetime, timezone
@@ -263,9 +264,37 @@ def update_provider_in_cache(provider_name: str, models_list) -> None:
     import dataclasses
 
     models_json = os.path.join(PACKAGE_ROOT, "models", "models.json")
+    history_path = os.path.join(PACKAGE_ROOT, "models", "_model_history.json")
 
     if not models_list:
         return
+
+    today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+
+    # Load existing cache to preserve first_seen/last_seen
+    existing_models = {}
+    if os.path.exists(models_json):
+        try:
+            with open(models_json) as f:
+                data = json.load(f)
+            for m in data.get("providers", {}).get(provider_name, {}).get("models", []):
+                existing_models[m["id"]] = m
+        except (json.JSONDecodeError, OSError):
+            data = {}
+    else:
+        data = {}
+
+    # Load model history for first_seen on truly new models
+    history = {}
+    if os.path.exists(history_path):
+        try:
+            with open(history_path) as f:
+                raw = json.load(f)
+            for k, v in raw.items():
+                if isinstance(v, dict) and "first_seen" in v:
+                    history[k] = v
+        except Exception:
+            pass
 
     # Serialize ModelInfo objects to dicts
     model_dicts = []
@@ -281,14 +310,25 @@ def update_provider_in_cache(provider_name: str, models_list) -> None:
         else:
             model_dicts.append({"id": str(m)})
 
-    # Load existing cache or create new structure
-    data = {}
-    if os.path.exists(models_json):
-        try:
-            with open(models_json) as f:
-                data = json.load(f)
-        except (json.JSONDecodeError, OSError) as e:
-            logger.warning("Failed to read models.json for update: %s", e)
+    # Merge first_seen/last_seen into each model
+    for m in model_dicts:
+        mid = m["id"]
+        # 1. Preserve from existing cache entry
+        old = existing_models.get(mid, {})
+        if old.get("first_seen"):
+            m["first_seen"] = old["first_seen"]
+            m["last_seen"] = today
+        else:
+            # 2. Fall back to _model_history.json
+            hkey = f"{provider_name}/{mid}"
+            hentry = history.get(hkey)
+            if hentry:
+                m["first_seen"] = hentry["first_seen"]
+                m["last_seen"] = today
+            else:
+                # 3. Brand new model — record first_seen as today
+                m["first_seen"] = today
+                m["last_seen"] = today
 
     # Ensure structure
     if "_meta" not in data:

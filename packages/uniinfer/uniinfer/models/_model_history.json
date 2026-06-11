@@ -1,11 +1,11 @@
 {
   "ai21/jamba-large-1.7-2025-07": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "ai21/jamba-mini-2-2026-01": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "anthropic/claude-haiku-4-5-20251001": {
     "first_seen": "2026-06-04",
@@ -49,215 +49,215 @@
   },
   "arli/(TRIAL) GLM-4.6-Derestricted-v5": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "arli/(TRIAL) GLM-4.7": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "arli/(TRIAL) Gemma-4-31B-Claude-4.6-Opus-Reasoning-Distilled": {
     "first_seen": "2026-05-26",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "arli/(TRIAL) Gemma-4-31B-Cognitive-Unshackled": {
     "first_seen": "2026-05-26",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "arli/(TRIAL) Gemma-4-31B-DarkIdol": {
     "first_seen": "2026-05-26",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "arli/(TRIAL) Gemma-4-31B-GarnetV2": {
     "first_seen": "2026-05-26",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "arli/(TRIAL) Gemma-4-31B-Gemopus": {
     "first_seen": "2026-05-26",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "arli/(TRIAL) Gemma-4-31B-Musica-v1": {
     "first_seen": "2026-05-26",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "arli/(TRIAL) Gemma-4-31B-Queen": {
     "first_seen": "2026-05-26",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "arli/(TRIAL) Gemma-4-31B-it": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "arli/(TRIAL) Mistral-Medium-3.5-128B": {
     "first_seen": "2026-05-26",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "arli/(TRIAL) Qwen3.5-27B-Anko": {
     "first_seen": "2026-05-26",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "arli/(TRIAL) Qwen3.5-27B-BlueStar-Derestricted": {
     "first_seen": "2026-05-26",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "arli/(TRIAL) Qwen3.5-27B-BlueStar-Derestricted-Lite": {
     "first_seen": "2026-05-26",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "arli/(TRIAL) Qwen3.5-27B-BlueStar-v2-Derestricted": {
     "first_seen": "2026-05-26",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "arli/(TRIAL) Qwen3.5-27B-BlueStar-v2-Derestricted-Lite": {
     "first_seen": "2026-05-26",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "arli/(TRIAL) Qwen3.5-27B-BlueStar-v3-Derestricted": {
     "first_seen": "2026-05-26",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "arli/(TRIAL) Qwen3.5-27B-BlueStar-v3-Derestricted-Lite": {
     "first_seen": "2026-05-26",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "arli/(TRIAL) Qwen3.5-27B-Claude-4.6-Opus-Reasoning-Distilled-Derestricted": {
     "first_seen": "2026-05-26",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "arli/(TRIAL) Qwen3.5-27B-Claude-4.6-Opus-Reasoning-Distilled-Derestricted-Lite": {
     "first_seen": "2026-05-26",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "arli/(TRIAL) Qwen3.5-27B-Infracelestial": {
     "first_seen": "2026-05-26",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "arli/(TRIAL) Qwen3.5-27B-Marvin-DPO-V2-Derestricted": {
     "first_seen": "2026-05-26",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "arli/(TRIAL) Qwen3.5-27B-Marvin-DPO-V2-Derestricted-Lite": {
     "first_seen": "2026-05-26",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "arli/(TRIAL) Qwen3.5-27B-Marvin-V2-Derestricted": {
     "first_seen": "2026-05-26",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "arli/(TRIAL) Qwen3.5-27B-Marvin-V2-Derestricted-Lite": {
     "first_seen": "2026-05-26",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "arli/(TRIAL) Qwen3.5-27B-Musica-v1": {
     "first_seen": "2026-05-26",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "arli/(TRIAL) Qwen3.5-27B-NaNovel-Derestricted": {
     "first_seen": "2026-05-26",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "arli/(TRIAL) Qwen3.5-27B-NaNovel-Derestricted-Lite": {
     "first_seen": "2026-05-26",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "arli/(TRIAL) Qwen3.5-27B-Omega-Evolution-v2.0-Derestricted": {
     "first_seen": "2026-05-26",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "arli/(TRIAL) Qwen3.5-27B-Omega-Evolution-v2.0-Derestricted-Lite": {
     "first_seen": "2026-05-26",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "arli/(TRIAL) Qwen3.5-27B-Omega-Evolution-v2.2-Derestricted": {
     "first_seen": "2026-05-26",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "arli/(TRIAL) Qwen3.5-27B-Omega-Evolution-v2.2-Derestricted-Lite": {
     "first_seen": "2026-05-26",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "arli/(TRIAL) Qwen3.5-27B-Omnimerge-v2-Derestricted": {
     "first_seen": "2026-05-26",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "arli/(TRIAL) Qwen3.5-27B-Omnimerge-v2-Derestricted-Lite": {
     "first_seen": "2026-05-26",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "arli/(TRIAL) Qwen3.5-27B-Queen-Derestricted": {
     "first_seen": "2026-05-26",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "arli/(TRIAL) Qwen3.5-27B-Queen-Derestricted-Lite": {
     "first_seen": "2026-05-26",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "arli/(TRIAL) Qwen3.5-27B-QuettaLLMs-Koreasoner-V3-Derestricted": {
     "first_seen": "2026-05-26",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "arli/(TRIAL) Qwen3.5-27B-QuettaLLMs-Koreasoner-V3-Derestricted-Lite": {
     "first_seen": "2026-05-26",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "arli/(TRIAL) Qwen3.5-27B-RpRMax-v1": {
     "first_seen": "2026-05-26",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "arli/(TRIAL) Qwen3.5-27B-Vivid-Durian": {
     "first_seen": "2026-05-26",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "arli/(TRIAL) Qwen3.5-27B-Writer-Derestricted": {
     "first_seen": "2026-05-26",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "arli/(TRIAL) Qwen3.5-27B-Writer-Derestricted-Lite": {
     "first_seen": "2026-05-26",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "arli/(TRIAL) Qwen3.5-27B-Writer-V2-Derestricted": {
     "first_seen": "2026-05-26",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "arli/(TRIAL) Qwen3.5-27B-Writer-V2-Derestricted-Lite": {
     "first_seen": "2026-05-26",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "arli/(TRIAL) Qwen3.5-27B-earica-Derestricted": {
     "first_seen": "2026-05-26",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "arli/(TRIAL) Qwen3.5-27B-earica-Derestricted-Lite": {
     "first_seen": "2026-05-26",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "arli/(TRIAL) gemma-4-31B-Fabled": {
     "first_seen": "2026-05-26",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "arli/(TRIAL) gemma-4-31B-Garnet": {
     "first_seen": "2026-05-26",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "arli/(TRIAL) gemma-4-31B-K1-v5": {
     "first_seen": "2026-05-26",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "arli/(TRIAL) gemma-4-31B-Larkspur-v0.5": {
     "first_seen": "2026-05-26",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "arli/(TRIAL) gemma-4-31B-MeroMero": {
     "first_seen": "2026-05-26",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "arli/Qwen3.5-27B-Derestricted": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "chutes/MiniMaxAI/MiniMax-M2.5-TEE": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "chutes/Qwen/Qwen2.5-Coder-32B-Instruct-TEE": {
     "first_seen": "2026-05-26",
@@ -269,119 +269,127 @@
   },
   "chutes/Qwen/Qwen3-235B-A22B-Thinking-2507-TEE": {
     "first_seen": "2026-06-04",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "chutes/Qwen/Qwen3-32B-TEE": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "chutes/Qwen/Qwen3.5-397B-A17B-TEE": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "chutes/Qwen/Qwen3.6-27B-TEE": {
     "first_seen": "2026-05-26",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "chutes/deepseek-ai/DeepSeek-V3.2-TEE": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "chutes/google/gemma-4-31B-turbo-TEE": {
     "first_seen": "2026-05-26",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "chutes/moonshotai/Kimi-K2.5-TEE": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "chutes/moonshotai/Kimi-K2.6-TEE": {
     "first_seen": "2026-05-26",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
+  },
+  "chutes/nvidia/NVIDIA-Nemotron-3-Ultra-550B-A55B-TEE": {
+    "first_seen": "2026-06-11",
+    "last_seen": "2026-06-11"
   },
   "chutes/unsloth/Mistral-Nemo-Instruct-2407-TEE": {
     "first_seen": "2026-05-26",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
+  },
+  "chutes/zai-org/GLM-5-NVFP4-TEE": {
+    "first_seen": "2026-06-10",
+    "last_seen": "2026-06-10"
   },
   "chutes/zai-org/GLM-5-TEE": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "chutes/zai-org/GLM-5.1-TEE": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "cloudflare/@cf/ai4bharat/indictrans2-en-indic-1B": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "cloudflare/@cf/aisingapore/gemma-sea-lion-v4-27b-it": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "cloudflare/@cf/baai/bge-base-en-v1.5": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "cloudflare/@cf/baai/bge-large-en-v1.5": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "cloudflare/@cf/baai/bge-m3": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "cloudflare/@cf/baai/bge-reranker-base": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "cloudflare/@cf/baai/bge-small-en-v1.5": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "cloudflare/@cf/black-forest-labs/flux-1-schnell": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "cloudflare/@cf/black-forest-labs/flux-2-dev": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "cloudflare/@cf/black-forest-labs/flux-2-klein-4b": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "cloudflare/@cf/black-forest-labs/flux-2-klein-9b": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "cloudflare/@cf/bytedance/stable-diffusion-xl-lightning": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "cloudflare/@cf/deepgram/aura-1": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "cloudflare/@cf/deepgram/aura-2-en": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "cloudflare/@cf/deepgram/aura-2-es": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "cloudflare/@cf/deepgram/flux": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "cloudflare/@cf/deepgram/nova-3": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "cloudflare/@cf/deepseek-ai/deepseek-r1-distill-qwen-32b": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "cloudflare/@cf/defog/sqlcoder-7b-2": {
     "first_seen": "2026-04-19",
@@ -393,11 +401,11 @@
   },
   "cloudflare/@cf/google/embeddinggemma-300m": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "cloudflare/@cf/google/gemma-2b-it-lora": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "cloudflare/@cf/google/gemma-3-12b-it": {
     "first_seen": "2026-04-19",
@@ -405,39 +413,39 @@
   },
   "cloudflare/@cf/google/gemma-4-26b-a4b-it": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "cloudflare/@cf/google/gemma-7b-it-lora": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "cloudflare/@cf/huggingface/distilbert-sst-2-int8": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "cloudflare/@cf/ibm-granite/granite-4.0-h-micro": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "cloudflare/@cf/leonardo/lucid-origin": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "cloudflare/@cf/leonardo/phoenix-1.0": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "cloudflare/@cf/llava-hf/llava-1.5-7b-hf": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "cloudflare/@cf/lykon/dreamshaper-8-lcm": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "cloudflare/@cf/meta-llama/llama-2-7b-chat-hf-lora": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "cloudflare/@cf/meta/llama-2-7b-chat-fp16": {
     "first_seen": "2026-04-19",
@@ -461,35 +469,35 @@
   },
   "cloudflare/@cf/meta/llama-3.1-8b-instruct-fp8": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "cloudflare/@cf/meta/llama-3.2-11b-vision-instruct": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "cloudflare/@cf/meta/llama-3.2-1b-instruct": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "cloudflare/@cf/meta/llama-3.2-3b-instruct": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "cloudflare/@cf/meta/llama-3.3-70b-instruct-fp8-fast": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "cloudflare/@cf/meta/llama-4-scout-17b-16e-instruct": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "cloudflare/@cf/meta/llama-guard-3-8b": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "cloudflare/@cf/meta/m2m100-1.2b": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "cloudflare/@cf/microsoft/phi-2": {
     "first_seen": "2026-04-19",
@@ -497,7 +505,7 @@
   },
   "cloudflare/@cf/microsoft/resnet-50": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "cloudflare/@cf/mistral/mistral-7b-instruct-v0.1": {
     "first_seen": "2026-04-19",
@@ -505,11 +513,11 @@
   },
   "cloudflare/@cf/mistral/mistral-7b-instruct-v0.2-lora": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "cloudflare/@cf/mistralai/mistral-small-3.1-24b-instruct": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "cloudflare/@cf/moonshotai/kimi-k2.5": {
     "first_seen": "2026-04-19",
@@ -517,71 +525,71 @@
   },
   "cloudflare/@cf/moonshotai/kimi-k2.6": {
     "first_seen": "2026-05-26",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "cloudflare/@cf/myshell-ai/melotts": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "cloudflare/@cf/nvidia/nemotron-3-120b-a12b": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "cloudflare/@cf/openai/gpt-oss-120b": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "cloudflare/@cf/openai/gpt-oss-20b": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "cloudflare/@cf/openai/whisper": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "cloudflare/@cf/openai/whisper-large-v3-turbo": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "cloudflare/@cf/openai/whisper-tiny-en": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "cloudflare/@cf/pfnet/plamo-embedding-1b": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "cloudflare/@cf/pipecat-ai/smart-turn-v2": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "cloudflare/@cf/qwen/qwen2.5-coder-32b-instruct": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "cloudflare/@cf/qwen/qwen3-30b-a3b-fp8": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "cloudflare/@cf/qwen/qwen3-embedding-0.6b": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "cloudflare/@cf/qwen/qwq-32b": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "cloudflare/@cf/runwayml/stable-diffusion-v1-5-img2img": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "cloudflare/@cf/runwayml/stable-diffusion-v1-5-inpainting": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "cloudflare/@cf/stabilityai/stable-diffusion-xl-base-1.0": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "cloudflare/@cf/unum/uform-gen2-qwen-500m": {
     "first_seen": "2026-04-19",
@@ -589,7 +597,7 @@
   },
   "cloudflare/@cf/zai-org/glm-4.7-flash": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "cloudflare/@hf/google/gemma-7b-it": {
     "first_seen": "2026-04-19",
@@ -685,283 +693,287 @@
   },
   "gemini/models/antigravity-preview-05-2026": {
     "first_seen": "2026-05-26",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "gemini/models/aqa": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "gemini/models/deep-research-max-preview-04-2026": {
     "first_seen": "2026-05-26",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "gemini/models/deep-research-preview-04-2026": {
     "first_seen": "2026-05-26",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "gemini/models/deep-research-pro-preview-12-2025": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "gemini/models/gemini-2.0-flash": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "gemini/models/gemini-2.0-flash-001": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "gemini/models/gemini-2.0-flash-lite": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "gemini/models/gemini-2.0-flash-lite-001": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "gemini/models/gemini-2.5-computer-use-preview-10-2025": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "gemini/models/gemini-2.5-flash": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "gemini/models/gemini-2.5-flash-image": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "gemini/models/gemini-2.5-flash-lite": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "gemini/models/gemini-2.5-flash-native-audio-latest": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "gemini/models/gemini-2.5-flash-native-audio-preview-09-2025": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "gemini/models/gemini-2.5-flash-native-audio-preview-12-2025": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "gemini/models/gemini-2.5-flash-preview-tts": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "gemini/models/gemini-2.5-pro": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "gemini/models/gemini-2.5-pro-preview-tts": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "gemini/models/gemini-3-flash-preview": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "gemini/models/gemini-3-pro-image": {
     "first_seen": "2026-06-04",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "gemini/models/gemini-3-pro-image-preview": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "gemini/models/gemini-3-pro-preview": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "gemini/models/gemini-3.1-flash-image": {
     "first_seen": "2026-06-04",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "gemini/models/gemini-3.1-flash-image-preview": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "gemini/models/gemini-3.1-flash-lite": {
     "first_seen": "2026-05-26",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "gemini/models/gemini-3.1-flash-lite-preview": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "gemini/models/gemini-3.1-flash-live-preview": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "gemini/models/gemini-3.1-flash-tts-preview": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "gemini/models/gemini-3.1-pro-preview": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "gemini/models/gemini-3.1-pro-preview-customtools": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "gemini/models/gemini-3.5-flash": {
     "first_seen": "2026-05-26",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
+  },
+  "gemini/models/gemini-3.5-live-translate-preview": {
+    "first_seen": "2026-06-10",
+    "last_seen": "2026-06-11"
   },
   "gemini/models/gemini-embedding-001": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "gemini/models/gemini-embedding-2": {
     "first_seen": "2026-05-26",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "gemini/models/gemini-embedding-2-preview": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "gemini/models/gemini-flash-latest": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "gemini/models/gemini-flash-lite-latest": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "gemini/models/gemini-pro-latest": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "gemini/models/gemini-robotics-er-1.5-preview": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "gemini/models/gemini-robotics-er-1.6-preview": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "gemini/models/gemma-4-26b-a4b-it": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "gemini/models/gemma-4-31b-it": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "gemini/models/imagen-4.0-fast-generate-001": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "gemini/models/imagen-4.0-generate-001": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "gemini/models/imagen-4.0-ultra-generate-001": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "gemini/models/lyria-3-clip-preview": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "gemini/models/lyria-3-pro-preview": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "gemini/models/nano-banana-pro-preview": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "gemini/models/veo-2.0-generate-001": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "gemini/models/veo-3.0-fast-generate-001": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "gemini/models/veo-3.0-generate-001": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "gemini/models/veo-3.1-fast-generate-preview": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "gemini/models/veo-3.1-generate-preview": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "gemini/models/veo-3.1-lite-generate-preview": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "groq/allam-2-7b": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "groq/canopylabs/orpheus-arabic-saudi": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "groq/canopylabs/orpheus-v1-english": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "groq/groq/compound": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "groq/groq/compound-mini": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "groq/llama-3.1-8b-instant": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "groq/llama-3.3-70b-versatile": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "groq/meta-llama/llama-4-scout-17b-16e-instruct": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "groq/meta-llama/llama-prompt-guard-2-22m": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "groq/meta-llama/llama-prompt-guard-2-86m": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "groq/openai/gpt-oss-120b": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "groq/openai/gpt-oss-20b": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "groq/openai/gpt-oss-safeguard-20b": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "groq/qwen/qwen3-32b": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "groq/whisper-large-v3": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "groq/whisper-large-v3-turbo": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "huggingface/Andycurrent/Gemma-3-1B-it-GLM-4.7-Flash-Heretic-Uncensored-Thinking_GGUF": {
     "first_seen": "2026-06-04",
@@ -1453,27 +1465,27 @@
   },
   "mistral/codestral-2508": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "mistral/codestral-embed": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "mistral/codestral-embed-2505": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "mistral/codestral-latest": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "mistral/devstral-2512": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "mistral/devstral-latest": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "mistral/devstral-medium-2507": {
     "first_seen": "2026-04-19",
@@ -1481,7 +1493,7 @@
   },
   "mistral/devstral-medium-latest": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "mistral/devstral-small-2507": {
     "first_seen": "2026-04-19",
@@ -1489,67 +1501,67 @@
   },
   "mistral/labs-leanstral-2603": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "mistral/magistral-medium-2509": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "mistral/magistral-medium-latest": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "mistral/magistral-small-2509": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "mistral/magistral-small-latest": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "mistral/ministral-14b-2512": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "mistral/ministral-14b-latest": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "mistral/ministral-3b-2512": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "mistral/ministral-3b-latest": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "mistral/ministral-8b-2512": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "mistral/ministral-8b-latest": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "mistral/mistral-code-agent-latest": {
     "first_seen": "2026-06-04",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "mistral/mistral-code-fim-latest": {
     "first_seen": "2026-06-04",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "mistral/mistral-code-latest": {
     "first_seen": "2026-06-04",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "mistral/mistral-embed": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "mistral/mistral-embed-2312": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "mistral/mistral-large-2411": {
     "first_seen": "2026-04-19",
@@ -1557,11 +1569,11 @@
   },
   "mistral/mistral-large-2512": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "mistral/mistral-large-latest": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "mistral/mistral-large-pixtral-2411": {
     "first_seen": "2026-04-19",
@@ -1569,51 +1581,51 @@
   },
   "mistral/mistral-medium": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "mistral/mistral-medium-2505": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "mistral/mistral-medium-2508": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "mistral/mistral-medium-2604": {
     "first_seen": "2026-05-26",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "mistral/mistral-medium-3": {
     "first_seen": "2026-05-26",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "mistral/mistral-medium-3-5": {
     "first_seen": "2026-05-26",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "mistral/mistral-medium-3.5": {
     "first_seen": "2026-05-26",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "mistral/mistral-medium-c21211-r0-75": {
     "first_seen": "2026-05-26",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-10"
   },
   "mistral/mistral-medium-latest": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "mistral/mistral-moderation-2411": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "mistral/mistral-moderation-2603": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "mistral/mistral-moderation-latest": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "mistral/mistral-ocr-2505": {
     "first_seen": "2026-04-19",
@@ -1621,51 +1633,51 @@
   },
   "mistral/mistral-ocr-2512": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "mistral/mistral-ocr-latest": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "mistral/mistral-small-2506": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "mistral/mistral-small-2603": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "mistral/mistral-small-latest": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "mistral/mistral-tiny-2407": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "mistral/mistral-tiny-latest": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "mistral/mistral-vibe-cli-fast": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "mistral/mistral-vibe-cli-latest": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "mistral/mistral-vibe-cli-with-tools": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "mistral/open-mistral-nemo": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "mistral/open-mistral-nemo-2407": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "mistral/pixtral-large-2411": {
     "first_seen": "2026-04-19",
@@ -1677,23 +1689,23 @@
   },
   "mistral/voxtral-mini-2507": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "mistral/voxtral-mini-2602": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "mistral/voxtral-mini-latest": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "mistral/voxtral-mini-realtime-2602": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "mistral/voxtral-mini-realtime-latest": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "mistral/voxtral-mini-transcribe-2507": {
     "first_seen": "2026-04-19",
@@ -1701,547 +1713,551 @@
   },
   "mistral/voxtral-mini-transcribe-realtime-2602": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "mistral/voxtral-mini-tts-2603": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "mistral/voxtral-mini-tts-latest": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "mistral/voxtral-small-2507": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "mistral/voxtral-small-latest": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "moonshot/kimi-k2.5": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "moonshot/kimi-k2.6": {
     "first_seen": "2026-05-26",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "moonshot/moonshot-v1-128k": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "moonshot/moonshot-v1-128k-vision-preview": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "moonshot/moonshot-v1-32k": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "moonshot/moonshot-v1-32k-vision-preview": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "moonshot/moonshot-v1-8k": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "moonshot/moonshot-v1-8k-vision-preview": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "moonshot/moonshot-v1-auto": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "ngc/01-ai/yi-large": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "ngc/abacusai/dracarys-llama-3.1-70b-instruct": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "ngc/adept/fuyu-8b": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "ngc/ai21labs/jamba-1.5-large-instruct": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "ngc/aisingapore/sea-lion-7b-instruct": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "ngc/baai/bge-m3": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "ngc/bigcode/starcoder2-15b": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "ngc/bytedance/seed-oss-36b-instruct": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "ngc/databricks/dbrx-instruct": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "ngc/deepseek-ai/deepseek-coder-6.7b-instruct": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "ngc/deepseek-ai/deepseek-v4-flash": {
     "first_seen": "2026-05-26",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "ngc/deepseek-ai/deepseek-v4-pro": {
     "first_seen": "2026-05-26",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "ngc/google/codegemma-1.1-7b": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "ngc/google/codegemma-7b": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "ngc/google/deplot": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
+  },
+  "ngc/google/diffusiongemma-26b-a4b-it": {
+    "first_seen": "2026-06-11",
+    "last_seen": "2026-06-11"
   },
   "ngc/google/gemma-2-2b-it": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "ngc/google/gemma-2b": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "ngc/google/gemma-3-12b-it": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "ngc/google/gemma-3-4b-it": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "ngc/google/gemma-3n-e2b-it": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "ngc/google/gemma-3n-e4b-it": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "ngc/google/gemma-4-31b-it": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "ngc/google/recurrentgemma-2b": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "ngc/ibm/granite-3.0-3b-a800m-instruct": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "ngc/ibm/granite-3.0-8b-instruct": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "ngc/ibm/granite-34b-code-instruct": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "ngc/ibm/granite-8b-code-instruct": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "ngc/meta/codellama-70b": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "ngc/meta/llama-3.1-70b-instruct": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "ngc/meta/llama-3.1-8b-instruct": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "ngc/meta/llama-3.2-11b-vision-instruct": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "ngc/meta/llama-3.2-1b-instruct": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "ngc/meta/llama-3.2-3b-instruct": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "ngc/meta/llama-3.2-90b-vision-instruct": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "ngc/meta/llama-3.3-70b-instruct": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "ngc/meta/llama-4-maverick-17b-128e-instruct": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "ngc/meta/llama-guard-4-12b": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "ngc/meta/llama2-70b": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "ngc/microsoft/kosmos-2": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "ngc/microsoft/phi-3-vision-128k-instruct": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "ngc/microsoft/phi-3.5-moe-instruct": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "ngc/microsoft/phi-4-mini-instruct": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "ngc/microsoft/phi-4-multimodal-instruct": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "ngc/minimaxai/minimax-m2.7": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "ngc/mistralai/codestral-22b-instruct-v0.1": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "ngc/mistralai/ministral-14b-instruct-2512": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "ngc/mistralai/mistral-7b-instruct-v0.3": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "ngc/mistralai/mistral-large": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "ngc/mistralai/mistral-large-2-instruct": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "ngc/mistralai/mistral-large-3-675b-instruct-2512": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "ngc/mistralai/mistral-medium-3.5-128b": {
     "first_seen": "2026-05-26",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "ngc/mistralai/mistral-nemotron": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "ngc/mistralai/mistral-small-4-119b-2603": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "ngc/mistralai/mixtral-8x22b-v0.1": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "ngc/mistralai/mixtral-8x7b-instruct-v0.1": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "ngc/moonshotai/kimi-k2.6": {
     "first_seen": "2026-05-26",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "ngc/nv-mistralai/mistral-nemo-12b-instruct": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "ngc/nvidia/ai-synthetic-video-detector": {
     "first_seen": "2026-05-26",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "ngc/nvidia/cosmos-reason2-8b": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "ngc/nvidia/embed-qa-4": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "ngc/nvidia/gliner-pii": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "ngc/nvidia/ising-calibration-1-35b-a3b": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "ngc/nvidia/llama-3.1-nemoguard-8b-content-safety": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "ngc/nvidia/llama-3.1-nemoguard-8b-topic-control": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "ngc/nvidia/llama-3.1-nemotron-51b-instruct": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "ngc/nvidia/llama-3.1-nemotron-70b-instruct": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "ngc/nvidia/llama-3.1-nemotron-nano-8b-v1": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "ngc/nvidia/llama-3.1-nemotron-nano-vl-8b-v1": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "ngc/nvidia/llama-3.1-nemotron-safety-guard-8b-v3": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "ngc/nvidia/llama-3.1-nemotron-ultra-253b-v1": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "ngc/nvidia/llama-3.2-nemoretriever-1b-vlm-embed-v1": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "ngc/nvidia/llama-3.2-nv-embedqa-1b-v1": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "ngc/nvidia/llama-3.3-nemotron-super-49b-v1": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "ngc/nvidia/llama-3.3-nemotron-super-49b-v1.5": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "ngc/nvidia/llama-nemotron-embed-1b-v2": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "ngc/nvidia/llama-nemotron-embed-vl-1b-v2": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "ngc/nvidia/llama3-chatqa-1.5-70b": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "ngc/nvidia/mistral-nemo-minitron-8b-8k-instruct": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "ngc/nvidia/nemoretriever-parse": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "ngc/nvidia/nemotron-3-content-safety": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "ngc/nvidia/nemotron-3-nano-30b-a3b": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "ngc/nvidia/nemotron-3-nano-omni-30b-a3b-reasoning": {
     "first_seen": "2026-05-26",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "ngc/nvidia/nemotron-3-super-120b-a12b": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "ngc/nvidia/nemotron-3-ultra-550b-a55b": {
     "first_seen": "2026-06-05",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "ngc/nvidia/nemotron-3.5-content-safety": {
     "first_seen": "2026-06-04",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "ngc/nvidia/nemotron-4-340b-instruct": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "ngc/nvidia/nemotron-4-340b-reward": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "ngc/nvidia/nemotron-content-safety-reasoning-4b": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "ngc/nvidia/nemotron-mini-4b-instruct": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "ngc/nvidia/nemotron-nano-12b-v2-vl": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "ngc/nvidia/nemotron-nano-3-30b-a3b": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "ngc/nvidia/nemotron-parse": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "ngc/nvidia/neva-22b": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "ngc/nvidia/nv-embed-v1": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "ngc/nvidia/nv-embedcode-7b-v1": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "ngc/nvidia/nv-embedqa-e5-v5": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "ngc/nvidia/nv-embedqa-mistral-7b-v2": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "ngc/nvidia/nvclip": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "ngc/nvidia/nvidia-nemotron-nano-9b-v2": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "ngc/nvidia/riva-translate-4b-instruct": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "ngc/nvidia/riva-translate-4b-instruct-v1.1": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "ngc/nvidia/vila": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "ngc/openai/gpt-oss-120b": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "ngc/openai/gpt-oss-20b": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "ngc/qwen/qwen3-coder-480b-a35b-instruct": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-10"
   },
   "ngc/qwen/qwen3-next-80b-a3b-instruct": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "ngc/qwen/qwen3.5-122b-a10b": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "ngc/qwen/qwen3.5-397b-a17b": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "ngc/sarvamai/sarvam-m": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "ngc/snowflake/arctic-embed-l": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "ngc/stepfun-ai/step-3.5-flash": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "ngc/stepfun-ai/step-3.7-flash": {
     "first_seen": "2026-06-04",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "ngc/stockmark/stockmark-2-100b-instruct": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "ngc/upstage/solar-10.7b-instruct": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "ngc/writer/palmyra-creative-122b": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "ngc/writer/palmyra-fin-70b-32k": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "ngc/writer/palmyra-med-70b": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "ngc/writer/palmyra-med-70b-32k": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "ngc/z-ai/glm-5.1": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "ngc/zyphra/zamba2-7b-instruct": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "ollama/bge-m3:latest": {
     "first_seen": "2026-06-04",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "ollama/dengcao/Qwen3-Embedding-0.6B:Q8_0": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "ollama/embeddinggemma:latest": {
     "first_seen": "2026-04-19",
@@ -2249,15 +2265,15 @@
   },
   "ollama/gemma3:1b": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "ollama/jina/jina-embeddings-v2-base-de:latest": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "ollama/nomic-embed-text-v2-moe:latest": {
     "first_seen": "2026-05-26",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "ollama/nomic-embed-text:latest": {
     "first_seen": "2026-04-19",
@@ -2265,479 +2281,479 @@
   },
   "openai/babbage-002": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openai/chat-latest": {
     "first_seen": "2026-05-26",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openai/chatgpt-image-latest": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openai/davinci-002": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openai/gpt-3.5-turbo": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openai/gpt-3.5-turbo-0125": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openai/gpt-3.5-turbo-1106": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openai/gpt-3.5-turbo-16k": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openai/gpt-3.5-turbo-instruct": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openai/gpt-3.5-turbo-instruct-0914": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openai/gpt-4.1": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openai/gpt-4.1-2025-04-14": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openai/gpt-4.1-mini": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openai/gpt-4.1-mini-2025-04-14": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openai/gpt-4.1-nano": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openai/gpt-4.1-nano-2025-04-14": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openai/gpt-4o": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openai/gpt-4o-2024-05-13": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openai/gpt-4o-2024-08-06": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openai/gpt-4o-2024-11-20": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openai/gpt-4o-mini": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openai/gpt-4o-mini-2024-07-18": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openai/gpt-4o-mini-search-preview": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openai/gpt-4o-mini-search-preview-2025-03-11": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openai/gpt-4o-mini-transcribe": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openai/gpt-4o-mini-transcribe-2025-03-20": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openai/gpt-4o-mini-transcribe-2025-12-15": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openai/gpt-4o-mini-tts": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openai/gpt-4o-mini-tts-2025-03-20": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openai/gpt-4o-mini-tts-2025-12-15": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openai/gpt-4o-search-preview": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openai/gpt-4o-search-preview-2025-03-11": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openai/gpt-4o-transcribe": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openai/gpt-4o-transcribe-diarize": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openai/gpt-5": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openai/gpt-5-2025-08-07": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openai/gpt-5-chat-latest": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openai/gpt-5-codex": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openai/gpt-5-mini": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openai/gpt-5-mini-2025-08-07": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openai/gpt-5-nano": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openai/gpt-5-nano-2025-08-07": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openai/gpt-5-pro": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openai/gpt-5-pro-2025-10-06": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openai/gpt-5-search-api": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openai/gpt-5-search-api-2025-10-14": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openai/gpt-5.1": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openai/gpt-5.1-2025-11-13": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openai/gpt-5.1-chat-latest": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openai/gpt-5.1-codex": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openai/gpt-5.1-codex-max": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openai/gpt-5.1-codex-mini": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openai/gpt-5.2": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openai/gpt-5.2-2025-12-11": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openai/gpt-5.2-chat-latest": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openai/gpt-5.2-codex": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openai/gpt-5.2-pro": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openai/gpt-5.2-pro-2025-12-11": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openai/gpt-5.3-chat-latest": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openai/gpt-5.3-codex": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openai/gpt-5.4": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openai/gpt-5.4-2026-03-05": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openai/gpt-5.4-mini": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openai/gpt-5.4-mini-2026-03-17": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openai/gpt-5.4-nano": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openai/gpt-5.4-nano-2026-03-17": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openai/gpt-5.4-pro": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openai/gpt-5.4-pro-2026-03-05": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openai/gpt-5.5": {
     "first_seen": "2026-05-26",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openai/gpt-5.5-2026-04-23": {
     "first_seen": "2026-05-26",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openai/gpt-5.5-pro": {
     "first_seen": "2026-05-26",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openai/gpt-5.5-pro-2026-04-23": {
     "first_seen": "2026-05-26",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openai/gpt-audio": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openai/gpt-audio-1.5": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openai/gpt-audio-2025-08-28": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openai/gpt-audio-mini": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openai/gpt-audio-mini-2025-10-06": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openai/gpt-audio-mini-2025-12-15": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openai/gpt-image-1": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openai/gpt-image-1-mini": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openai/gpt-image-1.5": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openai/gpt-image-2": {
     "first_seen": "2026-05-26",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openai/gpt-image-2-2026-04-21": {
     "first_seen": "2026-05-26",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openai/gpt-realtime": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openai/gpt-realtime-1.5": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openai/gpt-realtime-2": {
     "first_seen": "2026-05-26",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openai/gpt-realtime-2025-08-28": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openai/gpt-realtime-mini": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openai/gpt-realtime-mini-2025-10-06": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openai/gpt-realtime-mini-2025-12-15": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openai/gpt-realtime-translate": {
     "first_seen": "2026-05-26",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openai/gpt-realtime-whisper": {
     "first_seen": "2026-05-26",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openai/o1": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openai/o1-2024-12-17": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openai/o3": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openai/o3-2025-04-16": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openai/o3-mini": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openai/o3-mini-2025-01-31": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openai/o4-mini": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openai/o4-mini-2025-04-16": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openai/omni-moderation-2024-09-26": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openai/omni-moderation-latest": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openai/sora-2": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openai/sora-2-pro": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openai/text-embedding-3-large": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openai/text-embedding-3-small": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openai/text-embedding-ada-002": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openai/tts-1": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openai/tts-1-1106": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openai/tts-1-hd": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openai/tts-1-hd-1106": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openai/whisper-1": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openaitts/tts-1": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openaitts/tts-1-hd": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/ai21/jamba-large-1.7": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/aion-labs/aion-1.0": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/aion-labs/aion-1.0-mini": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/aion-labs/aion-2.0": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/aion-labs/aion-rp-llama-3.1-8b": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/alfredpros/codellama-7b-instruct-solidity": {
     "first_seen": "2026-04-19",
@@ -2745,95 +2761,99 @@
   },
   "openrouter/allenai/olmo-3-32b-think": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/amazon/nova-2-lite-v1": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/amazon/nova-lite-v1": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/amazon/nova-micro-v1": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/amazon/nova-premier-v1": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/amazon/nova-pro-v1": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/anthracite-org/magnum-v4-72b": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/anthropic/claude-3-haiku": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/anthropic/claude-3.5-haiku": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
+  },
+  "openrouter/anthropic/claude-fable-5": {
+    "first_seen": "2026-06-10",
+    "last_seen": "2026-06-11"
   },
   "openrouter/anthropic/claude-haiku-4.5": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/anthropic/claude-opus-4": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/anthropic/claude-opus-4.1": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/anthropic/claude-opus-4.5": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/anthropic/claude-opus-4.6": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/anthropic/claude-opus-4.6-fast": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/anthropic/claude-opus-4.7": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/anthropic/claude-opus-4.7-fast": {
     "first_seen": "2026-05-26",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/anthropic/claude-opus-4.8": {
     "first_seen": "2026-06-04",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/anthropic/claude-opus-4.8-fast": {
     "first_seen": "2026-06-04",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/anthropic/claude-sonnet-4": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/anthropic/claude-sonnet-4.5": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/anthropic/claude-sonnet-4.6": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/arcee-ai/coder-large": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/arcee-ai/maestro-reasoning": {
     "first_seen": "2026-04-19",
@@ -2845,15 +2865,15 @@
   },
   "openrouter/arcee-ai/trinity-large-thinking": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/arcee-ai/trinity-mini": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/arcee-ai/virtuoso-large": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/baidu/cobuddy:free": {
     "first_seen": "2026-05-26",
@@ -2877,7 +2897,7 @@
   },
   "openrouter/baidu/ernie-4.5-vl-424b-a47b": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/baidu/qianfan-ocr-fast": {
     "first_seen": "2026-05-26",
@@ -2885,87 +2905,87 @@
   },
   "openrouter/bytedance-seed/seed-1.6": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/bytedance-seed/seed-1.6-flash": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/bytedance-seed/seed-2.0-lite": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/bytedance-seed/seed-2.0-mini": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/bytedance/ui-tars-1.5-7b": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/cognitivecomputations/dolphin-mistral-24b-venice-edition:free": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/cohere/command-a": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/cohere/command-r-08-2024": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/cohere/command-r-plus-08-2024": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/cohere/command-r7b-12-2024": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/deepcogito/cogito-v2.1-671b": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/deepseek/deepseek-chat": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/deepseek/deepseek-chat-v3-0324": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/deepseek/deepseek-chat-v3.1": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/deepseek/deepseek-r1": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/deepseek/deepseek-r1-0528": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/deepseek/deepseek-r1-distill-llama-70b": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/deepseek/deepseek-r1-distill-qwen-32b": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/deepseek/deepseek-v3.1-terminus": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/deepseek/deepseek-v3.2": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/deepseek/deepseek-v3.2-exp": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/deepseek/deepseek-v3.2-speciale": {
     "first_seen": "2026-04-19",
@@ -2973,7 +2993,7 @@
   },
   "openrouter/deepseek/deepseek-v4-flash": {
     "first_seen": "2026-05-26",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/deepseek/deepseek-v4-flash:free": {
     "first_seen": "2026-05-26",
@@ -2981,11 +3001,11 @@
   },
   "openrouter/deepseek/deepseek-v4-pro": {
     "first_seen": "2026-05-26",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/essentialai/rnj-1-instruct": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/google/gemini-2.0-flash-001": {
     "first_seen": "2026-04-19",
@@ -2997,255 +3017,255 @@
   },
   "openrouter/google/gemini-2.5-flash": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/google/gemini-2.5-flash-image": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/google/gemini-2.5-flash-lite": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/google/gemini-2.5-flash-lite-preview-09-2025": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/google/gemini-2.5-pro": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/google/gemini-2.5-pro-preview": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/google/gemini-2.5-pro-preview-05-06": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/google/gemini-3-flash-preview": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/google/gemini-3-pro-image-preview": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/google/gemini-3.1-flash-image-preview": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/google/gemini-3.1-flash-lite": {
     "first_seen": "2026-05-26",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/google/gemini-3.1-flash-lite-preview": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/google/gemini-3.1-pro-preview": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/google/gemini-3.1-pro-preview-customtools": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/google/gemini-3.5-flash": {
     "first_seen": "2026-05-26",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/google/gemma-2-27b-it": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/google/gemma-3-12b-it": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/google/gemma-3-27b-it": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/google/gemma-3-4b-it": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/google/gemma-3n-e4b-it": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/google/gemma-4-26b-a4b-it": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/google/gemma-4-26b-a4b-it:free": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/google/gemma-4-31b-it": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/google/gemma-4-31b-it:free": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/google/lyria-3-clip-preview": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/google/lyria-3-pro-preview": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/gryphe/mythomax-l2-13b": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/ibm-granite/granite-4.0-h-micro": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/ibm-granite/granite-4.1-8b": {
     "first_seen": "2026-05-26",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/inception/mercury-2": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/inclusionai/ling-2.6-1t": {
     "first_seen": "2026-05-26",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/inclusionai/ling-2.6-flash": {
     "first_seen": "2026-05-26",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/inclusionai/ring-2.6-1t": {
     "first_seen": "2026-05-26",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/inflection/inflection-3-pi": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/inflection/inflection-3-productivity": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/kwaipilot/kat-coder-pro-v2": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/liquid/lfm-2-24b-a2b": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/liquid/lfm-2.5-1.2b-instruct:free": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/liquid/lfm-2.5-1.2b-thinking:free": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/mancer/weaver": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/meta-llama/llama-3-70b-instruct": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/meta-llama/llama-3-8b-instruct": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/meta-llama/llama-3.1-70b-instruct": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/meta-llama/llama-3.1-8b-instruct": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/meta-llama/llama-3.2-11b-vision-instruct": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/meta-llama/llama-3.2-1b-instruct": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/meta-llama/llama-3.2-3b-instruct": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/meta-llama/llama-3.2-3b-instruct:free": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/meta-llama/llama-3.3-70b-instruct": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/meta-llama/llama-3.3-70b-instruct:free": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/meta-llama/llama-4-maverick": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/meta-llama/llama-4-scout": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/meta-llama/llama-guard-3-8b": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/meta-llama/llama-guard-4-12b": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/microsoft/phi-4": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/microsoft/phi-4-mini-instruct": {
     "first_seen": "2026-05-26",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/microsoft/wizardlm-2-8x22b": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/minimax/minimax-01": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/minimax/minimax-m1": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/minimax/minimax-m2": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/minimax/minimax-m2-her": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/minimax/minimax-m2.1": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/minimax/minimax-m2.5": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/minimax/minimax-m2.5:free": {
     "first_seen": "2026-04-19",
@@ -3253,19 +3273,19 @@
   },
   "openrouter/minimax/minimax-m2.7": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/minimax/minimax-m3": {
     "first_seen": "2026-06-04",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/mistralai/codestral-2508": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/mistralai/devstral-2512": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/mistralai/devstral-medium": {
     "first_seen": "2026-04-19",
@@ -3277,15 +3297,15 @@
   },
   "openrouter/mistralai/ministral-14b-2512": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/mistralai/ministral-3b-2512": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/mistralai/ministral-8b-2512": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/mistralai/mistral-7b-instruct-v0.1": {
     "first_seen": "2026-04-19",
@@ -3293,11 +3313,11 @@
   },
   "openrouter/mistralai/mistral-large": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/mistralai/mistral-large-2407": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/mistralai/mistral-large-2411": {
     "first_seen": "2026-04-19",
@@ -3305,47 +3325,47 @@
   },
   "openrouter/mistralai/mistral-large-2512": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/mistralai/mistral-medium-3": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/mistralai/mistral-medium-3-5": {
     "first_seen": "2026-05-26",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/mistralai/mistral-medium-3.1": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/mistralai/mistral-nemo": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/mistralai/mistral-saba": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/mistralai/mistral-small-24b-instruct-2501": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/mistralai/mistral-small-2603": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/mistralai/mistral-small-3.1-24b-instruct": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/mistralai/mistral-small-3.2-24b-instruct": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/mistralai/mixtral-8x22b-instruct": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/mistralai/pixtral-large-2411": {
     "first_seen": "2026-04-19",
@@ -3353,39 +3373,39 @@
   },
   "openrouter/mistralai/voxtral-small-24b-2507": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/moonshotai/kimi-k2": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/moonshotai/kimi-k2-0905": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/moonshotai/kimi-k2-thinking": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/moonshotai/kimi-k2.5": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/moonshotai/kimi-k2.6": {
     "first_seen": "2026-05-26",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/moonshotai/kimi-k2.6:free": {
     "first_seen": "2026-06-04",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-10"
   },
   "openrouter/morph/morph-v3-fast": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/morph/morph-v3-large": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/nex-agi/deepseek-v3.1-nex-n1": {
     "first_seen": "2026-04-19",
@@ -3393,7 +3413,7 @@
   },
   "openrouter/nex-agi/nex-n2-pro:free": {
     "first_seen": "2026-06-09",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/nousresearch/hermes-2-pro-llama-3-8b": {
     "first_seen": "2026-04-19",
@@ -3401,91 +3421,91 @@
   },
   "openrouter/nousresearch/hermes-3-llama-3.1-405b": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/nousresearch/hermes-3-llama-3.1-405b:free": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/nousresearch/hermes-3-llama-3.1-70b": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/nousresearch/hermes-4-405b": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/nousresearch/hermes-4-70b": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/nvidia/llama-3.3-nemotron-super-49b-v1.5": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/nvidia/nemotron-3-nano-30b-a3b": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/nvidia/nemotron-3-nano-30b-a3b:free": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free": {
     "first_seen": "2026-05-26",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/nvidia/nemotron-3-super-120b-a12b": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/nvidia/nemotron-3-super-120b-a12b:free": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/nvidia/nemotron-3-ultra-550b-a55b": {
     "first_seen": "2026-06-05",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/nvidia/nemotron-3-ultra-550b-a55b:free": {
     "first_seen": "2026-06-05",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/nvidia/nemotron-3.5-content-safety:free": {
     "first_seen": "2026-06-05",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/nvidia/nemotron-nano-12b-v2-vl:free": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/nvidia/nemotron-nano-9b-v2": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/nvidia/nemotron-nano-9b-v2:free": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/openai/gpt-3.5-turbo": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/openai/gpt-3.5-turbo-0613": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/openai/gpt-3.5-turbo-16k": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/openai/gpt-3.5-turbo-instruct": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/openai/gpt-4": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/openai/gpt-4-0314": {
     "first_seen": "2026-04-19",
@@ -3497,39 +3517,39 @@
   },
   "openrouter/openai/gpt-4-turbo": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/openai/gpt-4-turbo-preview": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/openai/gpt-4.1": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/openai/gpt-4.1-mini": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/openai/gpt-4.1-nano": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/openai/gpt-4o": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/openai/gpt-4o-2024-05-13": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/openai/gpt-4o-2024-08-06": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/openai/gpt-4o-2024-11-20": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/openai/gpt-4o-audio-preview": {
     "first_seen": "2026-04-19",
@@ -3537,467 +3557,467 @@
   },
   "openrouter/openai/gpt-4o-mini": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/openai/gpt-4o-mini-2024-07-18": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/openai/gpt-4o-mini-search-preview": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/openai/gpt-4o-search-preview": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/openai/gpt-5": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/openai/gpt-5-chat": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/openai/gpt-5-codex": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/openai/gpt-5-image": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/openai/gpt-5-image-mini": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/openai/gpt-5-mini": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/openai/gpt-5-nano": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/openai/gpt-5-pro": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/openai/gpt-5.1": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/openai/gpt-5.1-chat": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/openai/gpt-5.1-codex": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/openai/gpt-5.1-codex-max": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/openai/gpt-5.1-codex-mini": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/openai/gpt-5.2": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/openai/gpt-5.2-chat": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/openai/gpt-5.2-codex": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/openai/gpt-5.2-pro": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/openai/gpt-5.3-chat": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/openai/gpt-5.3-codex": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/openai/gpt-5.4": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/openai/gpt-5.4-image-2": {
     "first_seen": "2026-05-26",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/openai/gpt-5.4-mini": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/openai/gpt-5.4-nano": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/openai/gpt-5.4-pro": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/openai/gpt-5.5": {
     "first_seen": "2026-05-26",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/openai/gpt-5.5-pro": {
     "first_seen": "2026-05-26",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/openai/gpt-audio": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/openai/gpt-audio-mini": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/openai/gpt-chat-latest": {
     "first_seen": "2026-05-26",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/openai/gpt-oss-120b": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/openai/gpt-oss-120b:free": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/openai/gpt-oss-20b": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/openai/gpt-oss-20b:free": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/openai/gpt-oss-safeguard-20b": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/openai/o1": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/openai/o1-pro": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/openai/o3": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/openai/o3-deep-research": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/openai/o3-mini": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/openai/o3-mini-high": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/openai/o3-pro": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/openai/o4-mini": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/openai/o4-mini-deep-research": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/openai/o4-mini-high": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/openrouter/auto": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/openrouter/bodybuilder": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/openrouter/free": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/openrouter/fusion": {
     "first_seen": "2026-06-04",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/openrouter/owl-alpha": {
     "first_seen": "2026-05-26",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/openrouter/pareto-code": {
     "first_seen": "2026-05-26",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/perceptron/perceptron-mk1": {
     "first_seen": "2026-05-26",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/perplexity/sonar": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/perplexity/sonar-deep-research": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/perplexity/sonar-pro": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/perplexity/sonar-pro-search": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/perplexity/sonar-reasoning-pro": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/poolside/laguna-m.1:free": {
     "first_seen": "2026-05-26",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/poolside/laguna-xs.2:free": {
     "first_seen": "2026-05-26",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/prime-intellect/intellect-3": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/qwen/qwen-2.5-72b-instruct": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/qwen/qwen-2.5-7b-instruct": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/qwen/qwen-2.5-coder-32b-instruct": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/qwen/qwen-plus": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/qwen/qwen-plus-2025-07-28": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/qwen/qwen-plus-2025-07-28:thinking": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/qwen/qwen2.5-vl-72b-instruct": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/qwen/qwen3-14b": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/qwen/qwen3-235b-a22b": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/qwen/qwen3-235b-a22b-2507": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/qwen/qwen3-235b-a22b-thinking-2507": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/qwen/qwen3-30b-a3b": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/qwen/qwen3-30b-a3b-instruct-2507": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/qwen/qwen3-30b-a3b-thinking-2507": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/qwen/qwen3-32b": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/qwen/qwen3-8b": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/qwen/qwen3-coder": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/qwen/qwen3-coder-30b-a3b-instruct": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/qwen/qwen3-coder-flash": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/qwen/qwen3-coder-next": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/qwen/qwen3-coder-plus": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/qwen/qwen3-coder:free": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/qwen/qwen3-max": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/qwen/qwen3-max-thinking": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/qwen/qwen3-next-80b-a3b-instruct": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/qwen/qwen3-next-80b-a3b-instruct:free": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/qwen/qwen3-next-80b-a3b-thinking": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/qwen/qwen3-vl-235b-a22b-instruct": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/qwen/qwen3-vl-235b-a22b-thinking": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/qwen/qwen3-vl-30b-a3b-instruct": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/qwen/qwen3-vl-30b-a3b-thinking": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/qwen/qwen3-vl-32b-instruct": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/qwen/qwen3-vl-8b-instruct": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/qwen/qwen3-vl-8b-thinking": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/qwen/qwen3.5-122b-a10b": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/qwen/qwen3.5-27b": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/qwen/qwen3.5-35b-a3b": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/qwen/qwen3.5-397b-a17b": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/qwen/qwen3.5-9b": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/qwen/qwen3.5-flash-02-23": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/qwen/qwen3.5-plus-02-15": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/qwen/qwen3.5-plus-20260420": {
     "first_seen": "2026-05-26",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/qwen/qwen3.6-27b": {
     "first_seen": "2026-05-26",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/qwen/qwen3.6-35b-a3b": {
     "first_seen": "2026-05-26",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/qwen/qwen3.6-flash": {
     "first_seen": "2026-05-26",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/qwen/qwen3.6-max-preview": {
     "first_seen": "2026-05-26",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/qwen/qwen3.6-plus": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/qwen/qwen3.7-max": {
     "first_seen": "2026-05-26",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/qwen/qwen3.7-plus": {
     "first_seen": "2026-06-04",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/rekaai/reka-edge": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/rekaai/reka-flash-3": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/relace/relace-apply-3": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/relace/relace-search": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/sao10k/l3-euryale-70b": {
     "first_seen": "2026-04-19",
@@ -4005,87 +4025,87 @@
   },
   "openrouter/sao10k/l3-lunaris-8b": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/sao10k/l3.1-70b-hanami-x1": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/sao10k/l3.1-euryale-70b": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/sao10k/l3.3-euryale-70b": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/stepfun/step-3.5-flash": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/stepfun/step-3.7-flash": {
     "first_seen": "2026-06-04",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/switchpoint/router": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/tencent/hunyuan-a13b-instruct": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/tencent/hy3-preview": {
     "first_seen": "2026-05-26",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/thedrummer/cydonia-24b-v4.1": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/thedrummer/rocinante-12b": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/thedrummer/skyfall-36b-v2": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/thedrummer/unslopnemo-12b": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/undi95/remm-slerp-l2-13b": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/upstage/solar-pro-3": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/writer/palmyra-x5": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/x-ai/grok-4.20": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/x-ai/grok-4.20-multi-agent": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/x-ai/grok-4.3": {
     "first_seen": "2026-05-26",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/x-ai/grok-build-0.1": {
     "first_seen": "2026-05-26",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/xiaomi/mimo-v2-flash": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/xiaomi/mimo-v2-omni": {
     "first_seen": "2026-04-19",
@@ -4097,11 +4117,11 @@
   },
   "openrouter/xiaomi/mimo-v2.5": {
     "first_seen": "2026-05-26",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/xiaomi/mimo-v2.5-pro": {
     "first_seen": "2026-05-26",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/z-ai/glm-4-32b": {
     "first_seen": "2026-04-19",
@@ -4109,11 +4129,11 @@
   },
   "openrouter/z-ai/glm-4.5": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/z-ai/glm-4.5-air": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/z-ai/glm-4.5-air:free": {
     "first_seen": "2026-04-19",
@@ -4121,75 +4141,79 @@
   },
   "openrouter/z-ai/glm-4.5v": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/z-ai/glm-4.6": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/z-ai/glm-4.6v": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/z-ai/glm-4.7": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/z-ai/glm-4.7-flash": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/z-ai/glm-5": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/z-ai/glm-5-turbo": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/z-ai/glm-5.1": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/z-ai/glm-5v-turbo": {
     "first_seen": "2026-04-19",
     "last_seen": "2026-06-09"
   },
+  "openrouter/~anthropic/claude-fable-latest": {
+    "first_seen": "2026-06-10",
+    "last_seen": "2026-06-11"
+  },
   "openrouter/~anthropic/claude-haiku-latest": {
     "first_seen": "2026-05-26",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/~anthropic/claude-opus-latest": {
     "first_seen": "2026-05-26",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/~anthropic/claude-sonnet-latest": {
     "first_seen": "2026-05-26",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/~google/gemini-flash-latest": {
     "first_seen": "2026-05-26",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/~google/gemini-pro-latest": {
     "first_seen": "2026-05-26",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/~moonshotai/kimi-latest": {
     "first_seen": "2026-05-26",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/~openai/gpt-latest": {
     "first_seen": "2026-05-26",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "openrouter/~openai/gpt-mini-latest": {
     "first_seen": "2026-05-26",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "pollinations/acestep": {
     "first_seen": "2026-05-26",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "pollinations/claude": {
     "first_seen": "2026-05-26",
@@ -4209,15 +4233,15 @@
   },
   "pollinations/cohere-embed-v4": {
     "first_seen": "2026-06-04",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "pollinations/deepseek": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "pollinations/deepseek-pro": {
     "first_seen": "2026-05-26",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "pollinations/elevenflash": {
     "first_seen": "2026-05-26",
@@ -4233,7 +4257,7 @@
   },
   "pollinations/flux": {
     "first_seen": "2026-05-26",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "pollinations/gemini": {
     "first_seen": "2026-05-26",
@@ -4265,19 +4289,19 @@
   },
   "pollinations/gemma": {
     "first_seen": "2026-05-26",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "pollinations/glm": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "pollinations/gpt-5.4-mini": {
     "first_seen": "2026-05-26",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "pollinations/gpt-5.5": {
     "first_seen": "2026-05-26",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "pollinations/gpt-image-2": {
     "first_seen": "2026-05-26",
@@ -4285,23 +4309,23 @@
   },
   "pollinations/gpt-realtime-2": {
     "first_seen": "2026-06-04",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "pollinations/gptimage": {
     "first_seen": "2026-05-26",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "pollinations/gptimage-large": {
     "first_seen": "2026-05-26",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "pollinations/grok": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "pollinations/grok-4.3": {
     "first_seen": "2026-06-04",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "pollinations/grok-imagine": {
     "first_seen": "2026-05-26",
@@ -4313,7 +4337,7 @@
   },
   "pollinations/grok-large": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "pollinations/grok-video-pro": {
     "first_seen": "2026-05-26",
@@ -4321,23 +4345,23 @@
   },
   "pollinations/kimi": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "pollinations/kimi-k2.6": {
     "first_seen": "2026-05-26",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "pollinations/klein": {
     "first_seen": "2026-05-26",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "pollinations/kontext": {
     "first_seen": "2026-05-26",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "pollinations/llama": {
     "first_seen": "2026-05-26",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "pollinations/llama-maverick": {
     "first_seen": "2026-05-26",
@@ -4345,39 +4369,39 @@
   },
   "pollinations/llama-scout": {
     "first_seen": "2026-05-26",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "pollinations/ltx-2": {
     "first_seen": "2026-05-26",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "pollinations/midijourney": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "pollinations/midijourney-large": {
     "first_seen": "2026-05-26",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "pollinations/minimax": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "pollinations/minimax-m3": {
     "first_seen": "2026-06-04",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "pollinations/mistral": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "pollinations/mistral-4": {
     "first_seen": "2026-05-26",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "pollinations/mistral-large": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "pollinations/nanobanana": {
     "first_seen": "2026-05-26",
@@ -4393,47 +4417,47 @@
   },
   "pollinations/nova": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "pollinations/nova-canvas": {
     "first_seen": "2026-05-26",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "pollinations/nova-fast": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "pollinations/nova-reel": {
     "first_seen": "2026-05-26",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "pollinations/openai": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "pollinations/openai-3-large": {
     "first_seen": "2026-05-26",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "pollinations/openai-3-small": {
     "first_seen": "2026-05-26",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "pollinations/openai-audio": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "pollinations/openai-audio-large": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "pollinations/openai-fast": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "pollinations/openai-large": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "pollinations/p-image": {
     "first_seen": "2026-05-26",
@@ -4449,27 +4473,27 @@
   },
   "pollinations/perplexity": {
     "first_seen": "2026-06-04",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "pollinations/perplexity-deep": {
     "first_seen": "2026-06-04",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "pollinations/perplexity-fast": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "pollinations/perplexity-reasoning": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "pollinations/polly": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "pollinations/qwen-coder": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "pollinations/qwen-coder-large": {
     "first_seen": "2026-04-19",
@@ -4481,11 +4505,11 @@
   },
   "pollinations/qwen-large": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "pollinations/qwen-safety": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "pollinations/qwen-tts": {
     "first_seen": "2026-05-26",
@@ -4497,15 +4521,15 @@
   },
   "pollinations/qwen-vision": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "pollinations/qwen-vision-pro": {
     "first_seen": "2026-05-26",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "pollinations/qwen3-embedding-8b": {
     "first_seen": "2026-06-04",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "pollinations/scribe": {
     "first_seen": "2026-05-26",
@@ -4533,19 +4557,19 @@
   },
   "pollinations/step-3.5-flash": {
     "first_seen": "2026-06-04",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "pollinations/step-flash": {
     "first_seen": "2026-06-04",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "pollinations/universal-2": {
     "first_seen": "2026-05-26",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "pollinations/universal-3-pro": {
     "first_seen": "2026-05-26",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "pollinations/veo": {
     "first_seen": "2026-05-26",
@@ -4569,55 +4593,55 @@
   },
   "pollinations/whisper": {
     "first_seen": "2026-05-26",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "pollinations/zimage": {
     "first_seen": "2026-05-26",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "sambanova/DeepSeek-V3.1": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "sambanova/DeepSeek-V3.2": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "sambanova/Llama-4-Maverick-17B-128E-Instruct": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-10"
   },
   "sambanova/Meta-Llama-3.3-70B-Instruct": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "sambanova/MiniMax-M2.7": {
     "first_seen": "2026-05-26",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "sambanova/gemma-3-12b-it": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-10"
   },
   "sambanova/gemma-4-31B-it": {
     "first_seen": "2026-06-04",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "sambanova/gpt-oss-120b": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "stepfun/dr-search-api": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "stepfun/step-1-32k": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "stepfun/step-1-8k": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "stepfun/step-1f-audio": {
     "first_seen": "2026-04-19",
@@ -4625,23 +4649,23 @@
   },
   "stepfun/step-1o-audio": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "stepfun/step-1o-turbo-vision": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "stepfun/step-1o-vision-32k": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "stepfun/step-1v-32k": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "stepfun/step-1v-8k": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "stepfun/step-1x-edit": {
     "first_seen": "2026-04-19",
@@ -4649,71 +4673,75 @@
   },
   "stepfun/step-1x-medium": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "stepfun/step-2-16k": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "stepfun/step-2-mini": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "stepfun/step-2x-large": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "stepfun/step-3": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "stepfun/step-3.5-flash": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "stepfun/step-3.5-flash-2603": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "stepfun/step-3.7-flash": {
     "first_seen": "2026-06-04",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "stepfun/step-asr": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "stepfun/step-asr-1.1": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "stepfun/step-asr-1.1-stream": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "stepfun/step-audio-2": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "stepfun/step-audio-2-mini": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "stepfun/step-audio-2-think": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "stepfun/step-audio-r1.1": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "stepfun/step-gui": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "stepfun/step-image-edit-2": {
     "first_seen": "2026-05-26",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
+  },
+  "stepfun/step-overture-preview": {
+    "first_seen": "2026-06-11",
+    "last_seen": "2026-06-11"
   },
   "stepfun/step-r1-v-mini": {
     "first_seen": "2026-04-19",
@@ -4721,210 +4749,214 @@
   },
   "stepfun/step-router-v1": {
     "first_seen": "2026-05-26",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "stepfun/step-tts-2": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "stepfun/step-tts-mini": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "stepfun/step-tts-vivid": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "stepfun/stepaudio-2-asr-pro": {
     "first_seen": "2026-05-26",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "stepfun/stepaudio-2.5-asr": {
     "first_seen": "2026-05-26",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "stepfun/stepaudio-2.5-chat": {
     "first_seen": "2026-05-26",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "stepfun/stepaudio-2.5-realtime": {
     "first_seen": "2026-05-26",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "stepfun/stepaudio-2.5-tts": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "tu/gemma-4-e2b-it": {
     "first_seen": "2026-05-26",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
+  },
+  "tu/kimi-k2.6-1t-preview": {
+    "first_seen": "2026-06-11",
+    "last_seen": "2026-06-11"
   },
   "tu/kokoro": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "tu/piper-thorsten": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "tu/qwen-3.5-397b": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "tu/qwen-3.6-35b": {
     "first_seen": "2026-05-26",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "tu/qwen3-embedding-4b": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "tu/whisper-large": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "tu/z-image-turbo": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "upstage/embedding-passage": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-10"
   },
   "upstage/embedding-query": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-10"
   },
   "upstage/solar-embedding-1-large-passage": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-10"
   },
   "upstage/solar-embedding-1-large-query": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-10"
   },
   "upstage/solar-mini": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "upstage/solar-mini-250422": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "upstage/solar-open": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-10"
   },
   "upstage/solar-pro": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-10"
   },
   "upstage/solar-pro-250422": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-10"
   },
   "upstage/solar-pro2": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "upstage/solar-pro2-251215": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "upstage/solar-pro2-nightly": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-10"
   },
   "upstage/solar-pro2-sagemaker": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-10"
   },
   "upstage/solar-pro3": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "upstage/solar-pro3-260323": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "upstage/solar-pro3-nightly": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-10"
   },
   "upstage/solar-pro3-preview": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-10"
   },
   "upstage/syn-pro": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "upstage/syn-pro-251021": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "upstage/tripod": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-10"
   },
   "upstage/tripod-test": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-10"
   },
   "zai-code/glm-4.5": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "zai-code/glm-4.5-air": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "zai-code/glm-4.6": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "zai-code/glm-4.7": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "zai-code/glm-5": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "zai-code/glm-5-turbo": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "zai-code/glm-5.1": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "zai/glm-4.5": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "zai/glm-4.5-air": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "zai/glm-4.6": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "zai/glm-4.7": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "zai/glm-5": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "zai/glm-5-turbo": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   },
   "zai/glm-5.1": {
     "first_seen": "2026-04-19",
-    "last_seen": "2026-06-09"
+    "last_seen": "2026-06-11"
   }
 }
