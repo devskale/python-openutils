@@ -151,7 +151,7 @@
               <th data-col="dimensions" class="th-num">Dims</th>
               <th data-col="cost_input" class="th-num">$/in</th>
               <th data-col="cost_output" class="th-num">$/out</th>
-              <th data-col="freshness" class="th-sm">Fresh</th>
+              <th data-col="first_seen" class="th-num">Age</th>
               <th data-col="capabilities">Caps</th>
               <th data-col="status" class="th-sm">Status</th>
             </tr>
@@ -764,7 +764,7 @@
         else if (col === "context_window" || col === "max_output" || col === "dimensions") { va = a[col] || 0; vb = b[col] || 0; }
         else if (col === "cost_input") { va = (a.cost?.input) || 0; vb = (b.cost?.input) || 0; }
         else if (col === "cost_output") { va = (a.cost?.output) || 0; vb = (b.cost?.output) || 0; }
-        else if (col === "freshness") { va = a.days_since_seen || 0; vb = b.days_since_seen || 0; }
+        else if (col === "first_seen") { va = a.first_seen || ""; vb = b.first_seen || ""; }
         else if (col === "status") { va = a.status || ""; vb = b.status || ""; }
         else if (col === "capabilities") { va = Object.keys(a.capabilities || {}).length; vb = Object.keys(b.capabilities || {}).length; }
         else { va = a[col]; vb = b[col]; }
@@ -794,9 +794,9 @@
           `<td class="td-num td-dims">${m.dimensions ? m.dimensions.toLocaleString() : ""}</td>` +
           `<td class="td-num">${m.cost?.input != null ? m.cost.input : ""}</td>` +
           `<td class="td-num">${m.cost?.output != null ? m.cost.output : ""}</td>` +
-          `<td class="td-fresh" title="${m.freshness === "fresh" ? "Verified today" : "Last seen " + (m.last_seen || "?") + " (" + (m.days_since_seen || 0) + "d ago)"}">${freshnessBadge(m)}</td>` +
+          `<td class="td-num td-age" title="First seen ${m.first_seen || "?"}">${m.first_seen ? (() => { const d = Math.floor((Date.now() - new Date(m.first_seen + "T00:00:00Z")) / 864e5); const y = Math.floor(d/365); const mo = Math.floor(d/30); if (y >= 1) return y + "y"; if (mo >= 1) return mo + "mo"; const w = Math.floor(d/7); return w >= 1 ? w + "w" : "" + d + "d"; })() : ""}</td>` +
           `<td class="td-caps">${capBadges(m)}</td>` +
-          `<td class="td-status">${m.status === "deprecated" ? '<span class="status-dep">dep</span>' : m.first_seen ? `<span class="status-new" title="First seen ${m.first_seen}">new</span>` : ""}</td>`;
+          `<td class="td-status">${m.status === "deprecated" ? '<span class="status-dep">dep</span>' : ""}</td>`;
         tr.addEventListener("click", () => showModelDetail(m.provider || "", m.id));
         frag.appendChild(tr);
       }
