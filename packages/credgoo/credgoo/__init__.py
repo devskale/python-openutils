@@ -1,7 +1,7 @@
 """
-credentials from google
+credentials from goo
 
-A tool that gets credentials from Google Sheets via OAuth
+A tool that gets credentials from pluggable backends (gdrive, airtable, ...).
 """
 
 from importlib.metadata import version
@@ -9,9 +9,8 @@ from importlib.metadata import version
 from .credgoo import (
     get_api_key,
     setup_backend,
-    oauth_flow,
-    copy_template_sheet,
-    get_api_key_from_sheets,
+    store_credentials,
+    load_credentials,
     cache_api_key,
 )
 
