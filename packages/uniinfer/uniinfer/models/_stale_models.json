@@ -4,1903 +4,1903 @@
     "provider": "anthropic",
     "first_seen": "2026-06-04",
     "last_seen": "2026-06-09",
-    "days_missing": 2
+    "days_missing": 3
   },
   {
     "id": "claude-opus-4-1-20250805",
     "provider": "anthropic",
     "first_seen": "2026-06-04",
     "last_seen": "2026-06-09",
-    "days_missing": 2
+    "days_missing": 3
   },
   {
     "id": "claude-opus-4-20250514",
     "provider": "anthropic",
     "first_seen": "2026-06-04",
     "last_seen": "2026-06-09",
-    "days_missing": 2
+    "days_missing": 3
   },
   {
     "id": "claude-opus-4-5-20251101",
     "provider": "anthropic",
     "first_seen": "2026-06-04",
     "last_seen": "2026-06-09",
-    "days_missing": 2
+    "days_missing": 3
   },
   {
     "id": "claude-opus-4-6",
     "provider": "anthropic",
     "first_seen": "2026-06-04",
     "last_seen": "2026-06-09",
-    "days_missing": 2
+    "days_missing": 3
   },
   {
     "id": "claude-opus-4-7",
     "provider": "anthropic",
     "first_seen": "2026-06-04",
     "last_seen": "2026-06-09",
-    "days_missing": 2
+    "days_missing": 3
   },
   {
     "id": "claude-opus-4-8",
     "provider": "anthropic",
     "first_seen": "2026-06-04",
     "last_seen": "2026-06-09",
-    "days_missing": 2
+    "days_missing": 3
   },
   {
     "id": "claude-sonnet-4-20250514",
     "provider": "anthropic",
     "first_seen": "2026-06-04",
     "last_seen": "2026-06-09",
-    "days_missing": 2
+    "days_missing": 3
   },
   {
     "id": "claude-sonnet-4-5-20250929",
     "provider": "anthropic",
     "first_seen": "2026-06-04",
     "last_seen": "2026-06-09",
-    "days_missing": 2
+    "days_missing": 3
   },
   {
     "id": "claude-sonnet-4-6",
     "provider": "anthropic",
     "first_seen": "2026-06-04",
     "last_seen": "2026-06-09",
-    "days_missing": 2
+    "days_missing": 3
   },
   {
     "id": "Qwen/Qwen2.5-Coder-32B-Instruct-TEE",
     "provider": "chutes",
     "first_seen": "2026-05-26",
     "last_seen": "2026-05-26",
-    "days_missing": 16
+    "days_missing": 17
   },
   {
     "id": "Qwen/Qwen3-235B-A22B-Thinking-2507",
     "provider": "chutes",
     "first_seen": "2026-04-19",
     "last_seen": "2026-04-19",
-    "days_missing": 53
+    "days_missing": 54
   },
   {
     "id": "zai-org/GLM-5-NVFP4-TEE",
     "provider": "chutes",
     "first_seen": "2026-06-10",
     "last_seen": "2026-06-10",
-    "days_missing": 1
+    "days_missing": 2
   },
   {
     "id": "@cf/defog/sqlcoder-7b-2",
     "provider": "cloudflare",
     "first_seen": "2026-04-19",
     "last_seen": "2026-04-19",
-    "days_missing": 53
+    "days_missing": 54
   },
   {
     "id": "@cf/facebook/bart-large-cnn",
     "provider": "cloudflare",
     "first_seen": "2026-04-19",
     "last_seen": "2026-04-19",
-    "days_missing": 53
+    "days_missing": 54
   },
   {
     "id": "@cf/google/gemma-3-12b-it",
     "provider": "cloudflare",
     "first_seen": "2026-04-19",
     "last_seen": "2026-04-19",
-    "days_missing": 53
+    "days_missing": 54
   },
   {
     "id": "@cf/meta/llama-2-7b-chat-fp16",
     "provider": "cloudflare",
     "first_seen": "2026-04-19",
     "last_seen": "2026-04-19",
-    "days_missing": 53
+    "days_missing": 54
   },
   {
     "id": "@cf/meta/llama-2-7b-chat-int8",
     "provider": "cloudflare",
     "first_seen": "2026-04-19",
     "last_seen": "2026-04-19",
-    "days_missing": 53
+    "days_missing": 54
   },
   {
     "id": "@cf/meta/llama-3-8b-instruct",
     "provider": "cloudflare",
     "first_seen": "2026-04-19",
     "last_seen": "2026-04-19",
-    "days_missing": 53
+    "days_missing": 54
   },
   {
     "id": "@cf/meta/llama-3-8b-instruct-awq",
     "provider": "cloudflare",
     "first_seen": "2026-04-19",
     "last_seen": "2026-04-19",
-    "days_missing": 53
+    "days_missing": 54
   },
   {
     "id": "@cf/meta/llama-3.1-8b-instruct-awq",
     "provider": "cloudflare",
     "first_seen": "2026-04-19",
     "last_seen": "2026-04-19",
-    "days_missing": 53
+    "days_missing": 54
   },
   {
     "id": "@cf/microsoft/phi-2",
     "provider": "cloudflare",
     "first_seen": "2026-04-19",
     "last_seen": "2026-04-19",
-    "days_missing": 53
+    "days_missing": 54
   },
   {
     "id": "@cf/mistral/mistral-7b-instruct-v0.1",
     "provider": "cloudflare",
     "first_seen": "2026-04-19",
     "last_seen": "2026-04-19",
-    "days_missing": 53
+    "days_missing": 54
   },
   {
     "id": "@cf/moonshotai/kimi-k2.5",
     "provider": "cloudflare",
     "first_seen": "2026-04-19",
     "last_seen": "2026-04-19",
-    "days_missing": 53
+    "days_missing": 54
   },
   {
     "id": "@cf/unum/uform-gen2-qwen-500m",
     "provider": "cloudflare",
     "first_seen": "2026-04-19",
     "last_seen": "2026-04-19",
-    "days_missing": 53
+    "days_missing": 54
   },
   {
     "id": "@hf/google/gemma-7b-it",
     "provider": "cloudflare",
     "first_seen": "2026-04-19",
     "last_seen": "2026-04-19",
-    "days_missing": 53
+    "days_missing": 54
   },
   {
     "id": "@hf/mistral/mistral-7b-instruct-v0.2",
     "provider": "cloudflare",
     "first_seen": "2026-04-19",
     "last_seen": "2026-04-19",
-    "days_missing": 53
+    "days_missing": 54
   },
   {
     "id": "@hf/nousresearch/hermes-2-pro-mistral-7b",
     "provider": "cloudflare",
     "first_seen": "2026-04-19",
     "last_seen": "2026-04-19",
-    "days_missing": 53
+    "days_missing": 54
   },
   {
     "id": "c4ai-aya-expanse-32b",
     "provider": "cohere",
     "first_seen": "2026-06-04",
     "last_seen": "2026-06-09",
-    "days_missing": 2
+    "days_missing": 3
   },
   {
     "id": "c4ai-aya-vision-32b",
     "provider": "cohere",
     "first_seen": "2026-06-04",
     "last_seen": "2026-06-09",
-    "days_missing": 2
+    "days_missing": 3
   },
   {
     "id": "cohere-transcribe-03-2026",
     "provider": "cohere",
     "first_seen": "2026-06-04",
     "last_seen": "2026-06-09",
-    "days_missing": 2
+    "days_missing": 3
   },
   {
     "id": "command-a-03-2025",
     "provider": "cohere",
     "first_seen": "2026-06-04",
     "last_seen": "2026-06-09",
-    "days_missing": 2
+    "days_missing": 3
   },
   {
     "id": "command-a-plus-05-2026",
     "provider": "cohere",
     "first_seen": "2026-06-04",
     "last_seen": "2026-06-09",
-    "days_missing": 2
+    "days_missing": 3
   },
   {
     "id": "command-a-reasoning-08-2025",
     "provider": "cohere",
     "first_seen": "2026-06-04",
     "last_seen": "2026-06-09",
-    "days_missing": 2
+    "days_missing": 3
   },
   {
     "id": "command-a-translate-08-2025",
     "provider": "cohere",
     "first_seen": "2026-06-04",
     "last_seen": "2026-06-09",
-    "days_missing": 2
+    "days_missing": 3
   },
   {
     "id": "command-a-vision-07-2025",
     "provider": "cohere",
     "first_seen": "2026-06-04",
     "last_seen": "2026-06-09",
-    "days_missing": 2
+    "days_missing": 3
   },
   {
     "id": "command-r-08-2024",
     "provider": "cohere",
     "first_seen": "2026-06-04",
     "last_seen": "2026-06-09",
-    "days_missing": 2
+    "days_missing": 3
   },
   {
     "id": "command-r-plus-08-2024",
     "provider": "cohere",
     "first_seen": "2026-06-04",
     "last_seen": "2026-06-09",
-    "days_missing": 2
+    "days_missing": 3
   },
   {
     "id": "command-r7b-12-2024",
     "provider": "cohere",
     "first_seen": "2026-06-04",
     "last_seen": "2026-06-09",
-    "days_missing": 2
+    "days_missing": 3
   },
   {
     "id": "command-r7b-arabic-02-2025",
     "provider": "cohere",
     "first_seen": "2026-06-04",
     "last_seen": "2026-06-09",
-    "days_missing": 2
+    "days_missing": 3
   },
   {
     "id": "embed-english-light-v3.0",
     "provider": "cohere",
     "first_seen": "2026-06-04",
     "last_seen": "2026-06-09",
-    "days_missing": 2
+    "days_missing": 3
   },
   {
     "id": "embed-english-light-v3.0-image",
     "provider": "cohere",
     "first_seen": "2026-06-04",
     "last_seen": "2026-06-09",
-    "days_missing": 2
+    "days_missing": 3
   },
   {
     "id": "embed-english-v3.0",
     "provider": "cohere",
     "first_seen": "2026-06-04",
     "last_seen": "2026-06-09",
-    "days_missing": 2
+    "days_missing": 3
   },
   {
     "id": "embed-english-v3.0-image",
     "provider": "cohere",
     "first_seen": "2026-06-04",
     "last_seen": "2026-06-09",
-    "days_missing": 2
+    "days_missing": 3
   },
   {
     "id": "embed-multilingual-light-v3.0",
     "provider": "cohere",
     "first_seen": "2026-06-04",
     "last_seen": "2026-06-09",
-    "days_missing": 2
+    "days_missing": 3
   },
   {
     "id": "embed-multilingual-light-v3.0-image",
     "provider": "cohere",
     "first_seen": "2026-06-04",
     "last_seen": "2026-06-09",
-    "days_missing": 2
+    "days_missing": 3
   },
   {
     "id": "embed-multilingual-v3.0",
     "provider": "cohere",
     "first_seen": "2026-06-04",
     "last_seen": "2026-06-09",
-    "days_missing": 2
+    "days_missing": 3
   },
   {
     "id": "embed-multilingual-v3.0-image",
     "provider": "cohere",
     "first_seen": "2026-06-04",
     "last_seen": "2026-06-09",
-    "days_missing": 2
+    "days_missing": 3
   },
   {
     "id": "Andycurrent/Gemma-3-1B-it-GLM-4.7-Flash-Heretic-Uncensored-Thinking_GGUF",
     "provider": "huggingface",
     "first_seen": "2026-06-04",
     "last_seen": "2026-06-09",
-    "days_missing": 2
+    "days_missing": 3
   },
   {
     "id": "HauhauCS/Qwen3.6-35B-A3B-Uncensored-HauhauCS-Aggressive",
     "provider": "huggingface",
     "first_seen": "2026-06-04",
     "last_seen": "2026-06-09",
-    "days_missing": 2
+    "days_missing": 3
   },
   {
     "id": "HuggingFaceTB/SmolLM2-135M-Instruct",
     "provider": "huggingface",
     "first_seen": "2026-06-04",
     "last_seen": "2026-06-09",
-    "days_missing": 2
+    "days_missing": 3
   },
   {
     "id": "Lorbus/Qwen3.6-27B-int4-AutoRound",
     "provider": "huggingface",
     "first_seen": "2026-06-06",
     "last_seen": "2026-06-09",
-    "days_missing": 2
+    "days_missing": 3
   },
   {
     "id": "MiniMaxAI/MiniMax-M2.7",
     "provider": "huggingface",
     "first_seen": "2026-06-04",
     "last_seen": "2026-06-09",
-    "days_missing": 2
+    "days_missing": 3
   },
   {
     "id": "OpenGVLab/InternVL2-2B",
     "provider": "huggingface",
     "first_seen": "2026-06-04",
     "last_seen": "2026-06-09",
-    "days_missing": 2
+    "days_missing": 3
   },
   {
     "id": "QuantTrio/Qwen3-VL-30B-A3B-Instruct-AWQ",
     "provider": "huggingface",
     "first_seen": "2026-06-06",
     "last_seen": "2026-06-07",
-    "days_missing": 4
+    "days_missing": 5
   },
   {
     "id": "Qwen/Qwen2-0.5B-Instruct",
     "provider": "huggingface",
     "first_seen": "2026-06-04",
     "last_seen": "2026-06-05",
-    "days_missing": 6
+    "days_missing": 7
   },
   {
     "id": "Qwen/Qwen2-1.5B-Instruct",
     "provider": "huggingface",
     "first_seen": "2026-06-04",
     "last_seen": "2026-06-09",
-    "days_missing": 2
+    "days_missing": 3
   },
   {
     "id": "Qwen/Qwen2-VL-2B-Instruct",
     "provider": "huggingface",
     "first_seen": "2026-06-04",
     "last_seen": "2026-06-09",
-    "days_missing": 2
+    "days_missing": 3
   },
   {
     "id": "Qwen/Qwen2-VL-7B-Instruct",
     "provider": "huggingface",
     "first_seen": "2026-06-04",
     "last_seen": "2026-06-09",
-    "days_missing": 2
+    "days_missing": 3
   },
   {
     "id": "Qwen/Qwen2-VL-7B-Instruct-AWQ",
     "provider": "huggingface",
     "first_seen": "2026-06-04",
     "last_seen": "2026-06-09",
-    "days_missing": 2
+    "days_missing": 3
   },
   {
     "id": "Qwen/Qwen2.5-0.5B",
     "provider": "huggingface",
     "first_seen": "2026-06-04",
     "last_seen": "2026-06-09",
-    "days_missing": 2
+    "days_missing": 3
   },
   {
     "id": "Qwen/Qwen2.5-0.5B-Instruct",
     "provider": "huggingface",
     "first_seen": "2026-06-04",
     "last_seen": "2026-06-09",
-    "days_missing": 2
+    "days_missing": 3
   },
   {
     "id": "Qwen/Qwen2.5-1.5B-Instruct",
     "provider": "huggingface",
     "first_seen": "2026-06-04",
     "last_seen": "2026-06-09",
-    "days_missing": 2
+    "days_missing": 3
   },
   {
     "id": "Qwen/Qwen2.5-14B-Instruct",
     "provider": "huggingface",
     "first_seen": "2026-06-04",
     "last_seen": "2026-06-09",
-    "days_missing": 2
+    "days_missing": 3
   },
   {
     "id": "Qwen/Qwen2.5-14B-Instruct-AWQ",
     "provider": "huggingface",
     "first_seen": "2026-06-04",
     "last_seen": "2026-06-09",
-    "days_missing": 2
+    "days_missing": 3
   },
   {
     "id": "Qwen/Qwen2.5-3B-Instruct",
     "provider": "huggingface",
     "first_seen": "2026-06-04",
     "last_seen": "2026-06-09",
-    "days_missing": 2
+    "days_missing": 3
   },
   {
     "id": "Qwen/Qwen2.5-72B-Instruct-AWQ",
     "provider": "huggingface",
     "first_seen": "2026-06-04",
     "last_seen": "2026-06-09",
-    "days_missing": 2
+    "days_missing": 3
   },
   {
     "id": "Qwen/Qwen2.5-7B-Instruct",
     "provider": "huggingface",
     "first_seen": "2026-06-04",
     "last_seen": "2026-06-09",
-    "days_missing": 2
+    "days_missing": 3
   },
   {
     "id": "Qwen/Qwen2.5-7B-Instruct-AWQ",
     "provider": "huggingface",
     "first_seen": "2026-06-04",
     "last_seen": "2026-06-09",
-    "days_missing": 2
+    "days_missing": 3
   },
   {
     "id": "Qwen/Qwen2.5-Coder-14B-Instruct",
     "provider": "huggingface",
     "first_seen": "2026-06-04",
     "last_seen": "2026-06-09",
-    "days_missing": 2
+    "days_missing": 3
   },
   {
     "id": "Qwen/Qwen2.5-Coder-14B-Instruct-AWQ",
     "provider": "huggingface",
     "first_seen": "2026-06-04",
     "last_seen": "2026-06-09",
-    "days_missing": 2
+    "days_missing": 3
   },
   {
     "id": "Qwen/Qwen2.5-Coder-32B-Instruct",
     "provider": "huggingface",
     "first_seen": "2026-06-04",
     "last_seen": "2026-06-09",
-    "days_missing": 2
+    "days_missing": 3
   },
   {
     "id": "Qwen/Qwen2.5-Coder-7B-Instruct",
     "provider": "huggingface",
     "first_seen": "2026-06-04",
     "last_seen": "2026-06-09",
-    "days_missing": 2
+    "days_missing": 3
   },
   {
     "id": "Qwen/Qwen2.5-VL-3B-Instruct",
     "provider": "huggingface",
     "first_seen": "2026-06-04",
     "last_seen": "2026-06-09",
-    "days_missing": 2
+    "days_missing": 3
   },
   {
     "id": "Qwen/Qwen2.5-VL-7B-Instruct",
     "provider": "huggingface",
     "first_seen": "2026-06-04",
     "last_seen": "2026-06-09",
-    "days_missing": 2
+    "days_missing": 3
   },
   {
     "id": "Qwen/Qwen3-0.6B",
     "provider": "huggingface",
     "first_seen": "2026-06-04",
     "last_seen": "2026-06-09",
-    "days_missing": 2
+    "days_missing": 3
   },
   {
     "id": "Qwen/Qwen3-0.6B-FP8",
     "provider": "huggingface",
     "first_seen": "2026-06-04",
     "last_seen": "2026-06-09",
-    "days_missing": 2
+    "days_missing": 3
   },
   {
     "id": "Qwen/Qwen3-1.7B",
     "provider": "huggingface",
     "first_seen": "2026-06-04",
     "last_seen": "2026-06-09",
-    "days_missing": 2
+    "days_missing": 3
   },
   {
     "id": "Qwen/Qwen3-14B",
     "provider": "huggingface",
     "first_seen": "2026-06-04",
     "last_seen": "2026-06-09",
-    "days_missing": 2
+    "days_missing": 3
   },
   {
     "id": "Qwen/Qwen3-14B-AWQ",
     "provider": "huggingface",
     "first_seen": "2026-06-04",
     "last_seen": "2026-06-09",
-    "days_missing": 2
+    "days_missing": 3
   },
   {
     "id": "Qwen/Qwen3-32B",
     "provider": "huggingface",
     "first_seen": "2026-06-04",
     "last_seen": "2026-06-09",
-    "days_missing": 2
+    "days_missing": 3
   },
   {
     "id": "Qwen/Qwen3-4B-Instruct-2507",
     "provider": "huggingface",
     "first_seen": "2026-06-04",
     "last_seen": "2026-06-09",
-    "days_missing": 2
+    "days_missing": 3
   },
   {
     "id": "Qwen/Qwen3-8B",
     "provider": "huggingface",
     "first_seen": "2026-06-04",
     "last_seen": "2026-06-09",
-    "days_missing": 2
+    "days_missing": 3
   },
   {
     "id": "Qwen/Qwen3-8B-AWQ",
     "provider": "huggingface",
     "first_seen": "2026-06-04",
     "last_seen": "2026-06-09",
-    "days_missing": 2
+    "days_missing": 3
   },
   {
     "id": "Qwen/Qwen3-Coder-30B-A3B-Instruct",
     "provider": "huggingface",
     "first_seen": "2026-06-04",
     "last_seen": "2026-06-09",
-    "days_missing": 2
+    "days_missing": 3
   },
   {
     "id": "Qwen/Qwen3-VL-235B-A22B-Instruct",
     "provider": "huggingface",
     "first_seen": "2026-06-04",
     "last_seen": "2026-06-09",
-    "days_missing": 2
+    "days_missing": 3
   },
   {
     "id": "Qwen/Qwen3-VL-2B-Instruct",
     "provider": "huggingface",
     "first_seen": "2026-06-04",
     "last_seen": "2026-06-09",
-    "days_missing": 2
+    "days_missing": 3
   },
   {
     "id": "Qwen/Qwen3-VL-32B-Instruct",
     "provider": "huggingface",
     "first_seen": "2026-06-04",
     "last_seen": "2026-06-09",
-    "days_missing": 2
+    "days_missing": 3
   },
   {
     "id": "Qwen/Qwen3-VL-4B-Instruct",
     "provider": "huggingface",
     "first_seen": "2026-06-04",
     "last_seen": "2026-06-09",
-    "days_missing": 2
+    "days_missing": 3
   },
   {
     "id": "Qwen/Qwen3-VL-8B-Instruct",
     "provider": "huggingface",
     "first_seen": "2026-06-04",
     "last_seen": "2026-06-09",
-    "days_missing": 2
+    "days_missing": 3
   },
   {
     "id": "Qwen/Qwen3.5-0.8B",
     "provider": "huggingface",
     "first_seen": "2026-06-04",
     "last_seen": "2026-06-09",
-    "days_missing": 2
+    "days_missing": 3
   },
   {
     "id": "Qwen/Qwen3.5-122B-A10B-FP8",
     "provider": "huggingface",
     "first_seen": "2026-06-08",
     "last_seen": "2026-06-09",
-    "days_missing": 2
+    "days_missing": 3
   },
   {
     "id": "Qwen/Qwen3.5-27B",
     "provider": "huggingface",
     "first_seen": "2026-06-04",
     "last_seen": "2026-06-09",
-    "days_missing": 2
+    "days_missing": 3
   },
   {
     "id": "Qwen/Qwen3.5-27B-FP8",
     "provider": "huggingface",
     "first_seen": "2026-06-04",
     "last_seen": "2026-06-09",
-    "days_missing": 2
+    "days_missing": 3
   },
   {
     "id": "Qwen/Qwen3.5-2B",
     "provider": "huggingface",
     "first_seen": "2026-06-04",
     "last_seen": "2026-06-09",
-    "days_missing": 2
+    "days_missing": 3
   },
   {
     "id": "Qwen/Qwen3.5-35B-A3B",
     "provider": "huggingface",
     "first_seen": "2026-06-04",
     "last_seen": "2026-06-09",
-    "days_missing": 2
+    "days_missing": 3
   },
   {
     "id": "Qwen/Qwen3.5-35B-A3B-FP8",
     "provider": "huggingface",
     "first_seen": "2026-06-04",
     "last_seen": "2026-06-09",
-    "days_missing": 2
+    "days_missing": 3
   },
   {
     "id": "Qwen/Qwen3.5-4B",
     "provider": "huggingface",
     "first_seen": "2026-06-04",
     "last_seen": "2026-06-09",
-    "days_missing": 2
+    "days_missing": 3
   },
   {
     "id": "Qwen/Qwen3.5-9B",
     "provider": "huggingface",
     "first_seen": "2026-06-04",
     "last_seen": "2026-06-09",
-    "days_missing": 2
+    "days_missing": 3
   },
   {
     "id": "Qwen/Qwen3.6-27B",
     "provider": "huggingface",
     "first_seen": "2026-06-04",
     "last_seen": "2026-06-09",
-    "days_missing": 2
+    "days_missing": 3
   },
   {
     "id": "Qwen/Qwen3.6-27B-FP8",
     "provider": "huggingface",
     "first_seen": "2026-06-04",
     "last_seen": "2026-06-09",
-    "days_missing": 2
+    "days_missing": 3
   },
   {
     "id": "Qwen/Qwen3.6-35B-A3B",
     "provider": "huggingface",
     "first_seen": "2026-06-04",
     "last_seen": "2026-06-09",
-    "days_missing": 2
+    "days_missing": 3
   },
   {
     "id": "Qwen/Qwen3.6-35B-A3B-FP8",
     "provider": "huggingface",
     "first_seen": "2026-06-04",
     "last_seen": "2026-06-09",
-    "days_missing": 2
+    "days_missing": 3
   },
   {
     "id": "Qwen/Qwen3Guard-Gen-0.6B",
     "provider": "huggingface",
     "first_seen": "2026-06-04",
     "last_seen": "2026-06-09",
-    "days_missing": 2
+    "days_missing": 3
   },
   {
     "id": "RedHatAI/Llama-3.2-1B-Instruct-FP8-dynamic",
     "provider": "huggingface",
     "first_seen": "2026-06-04",
     "last_seen": "2026-06-09",
-    "days_missing": 2
+    "days_missing": 3
   },
   {
     "id": "RedHatAI/Qwen2.5-1.5B-quantized.w8a8",
     "provider": "huggingface",
     "first_seen": "2026-06-05",
     "last_seen": "2026-06-05",
-    "days_missing": 6
+    "days_missing": 7
   },
   {
     "id": "SulphurAI/Sulphur-2-base",
     "provider": "huggingface",
     "first_seen": "2026-06-04",
     "last_seen": "2026-06-09",
-    "days_missing": 2
+    "days_missing": 3
   },
   {
     "id": "TinyLlama/TinyLlama-1.1B-Chat-v1.0",
     "provider": "huggingface",
     "first_seen": "2026-06-04",
     "last_seen": "2026-06-09",
-    "days_missing": 2
+    "days_missing": 3
   },
   {
     "id": "cyankiwi/Qwen3.6-27B-AWQ-INT4",
     "provider": "huggingface",
     "first_seen": "2026-06-04",
     "last_seen": "2026-06-09",
-    "days_missing": 2
+    "days_missing": 3
   },
   {
     "id": "cyankiwi/Qwen3.6-35B-A3B-AWQ-4bit",
     "provider": "huggingface",
     "first_seen": "2026-06-04",
     "last_seen": "2026-06-09",
-    "days_missing": 2
+    "days_missing": 3
   },
   {
     "id": "datalab-to/chandra-ocr-2",
     "provider": "huggingface",
     "first_seen": "2026-06-04",
     "last_seen": "2026-06-09",
-    "days_missing": 2
+    "days_missing": 3
   },
   {
     "id": "deepseek-ai/DeepSeek-R1",
     "provider": "huggingface",
     "first_seen": "2026-06-04",
     "last_seen": "2026-06-09",
-    "days_missing": 2
+    "days_missing": 3
   },
   {
     "id": "deepseek-ai/DeepSeek-R1-0528",
     "provider": "huggingface",
     "first_seen": "2026-06-04",
     "last_seen": "2026-06-09",
-    "days_missing": 2
+    "days_missing": 3
   },
   {
     "id": "deepseek-ai/DeepSeek-V3.2",
     "provider": "huggingface",
     "first_seen": "2026-06-04",
     "last_seen": "2026-06-09",
-    "days_missing": 2
+    "days_missing": 3
   },
   {
     "id": "deepseek-ai/DeepSeek-V4-Flash",
     "provider": "huggingface",
     "first_seen": "2026-06-04",
     "last_seen": "2026-06-09",
-    "days_missing": 2
+    "days_missing": 3
   },
   {
     "id": "deepseek-ai/DeepSeek-V4-Pro",
     "provider": "huggingface",
     "first_seen": "2026-06-04",
     "last_seen": "2026-06-09",
-    "days_missing": 2
+    "days_missing": 3
   },
   {
     "id": "dphn/dolphin-2.9.1-yi-1.5-34b",
     "provider": "huggingface",
     "first_seen": "2026-06-04",
     "last_seen": "2026-06-09",
-    "days_missing": 2
+    "days_missing": 3
   },
   {
     "id": "google/gemma-3-12b-it",
     "provider": "huggingface",
     "first_seen": "2026-06-04",
     "last_seen": "2026-06-09",
-    "days_missing": 2
+    "days_missing": 3
   },
   {
     "id": "google/gemma-3-1b-it",
     "provider": "huggingface",
     "first_seen": "2026-06-04",
     "last_seen": "2026-06-09",
-    "days_missing": 2
+    "days_missing": 3
   },
   {
     "id": "google/gemma-3-27b-it",
     "provider": "huggingface",
     "first_seen": "2026-06-04",
     "last_seen": "2026-06-09",
-    "days_missing": 2
+    "days_missing": 3
   },
   {
     "id": "google/gemma-3-4b-it",
     "provider": "huggingface",
     "first_seen": "2026-06-05",
     "last_seen": "2026-06-09",
-    "days_missing": 2
+    "days_missing": 3
   },
   {
     "id": "google/gemma-4-26B-A4B-it",
     "provider": "huggingface",
     "first_seen": "2026-06-04",
     "last_seen": "2026-06-09",
-    "days_missing": 2
+    "days_missing": 3
   },
   {
     "id": "google/gemma-4-31B-it",
     "provider": "huggingface",
     "first_seen": "2026-06-04",
     "last_seen": "2026-06-09",
-    "days_missing": 2
+    "days_missing": 3
   },
   {
     "id": "hmellor/tiny-random-LlamaForCausalLM",
     "provider": "huggingface",
     "first_seen": "2026-06-04",
     "last_seen": "2026-06-09",
-    "days_missing": 2
+    "days_missing": 3
   },
   {
     "id": "llamafactory/tiny-random-Llama-3",
     "provider": "huggingface",
     "first_seen": "2026-06-04",
     "last_seen": "2026-06-09",
-    "days_missing": 2
+    "days_missing": 3
   },
   {
     "id": "llava-hf/llava-1.5-7b-hf",
     "provider": "huggingface",
     "first_seen": "2026-06-04",
     "last_seen": "2026-06-09",
-    "days_missing": 2
+    "days_missing": 3
   },
   {
     "id": "meta-llama/Llama-3.1-8B-Instruct",
     "provider": "huggingface",
     "first_seen": "2026-06-04",
     "last_seen": "2026-06-09",
-    "days_missing": 2
+    "days_missing": 3
   },
   {
     "id": "meta-llama/Llama-3.2-1B-Instruct",
     "provider": "huggingface",
     "first_seen": "2026-06-04",
     "last_seen": "2026-06-09",
-    "days_missing": 2
+    "days_missing": 3
   },
   {
     "id": "meta-llama/Llama-3.2-3B-Instruct",
     "provider": "huggingface",
     "first_seen": "2026-06-04",
     "last_seen": "2026-06-09",
-    "days_missing": 2
+    "days_missing": 3
   },
   {
     "id": "meta-llama/Meta-Llama-3-8B-Instruct",
     "provider": "huggingface",
     "first_seen": "2026-06-04",
     "last_seen": "2026-06-09",
-    "days_missing": 2
+    "days_missing": 3
   },
   {
     "id": "microsoft/Phi-3.5-vision-instruct",
     "provider": "huggingface",
     "first_seen": "2026-06-04",
     "last_seen": "2026-06-09",
-    "days_missing": 2
+    "days_missing": 3
   },
   {
     "id": "microsoft/Phi-4-mini-instruct",
     "provider": "huggingface",
     "first_seen": "2026-06-04",
     "last_seen": "2026-06-09",
-    "days_missing": 2
+    "days_missing": 3
   },
   {
     "id": "mistralai/Mistral-7B-Instruct-v0.2",
     "provider": "huggingface",
     "first_seen": "2026-06-04",
     "last_seen": "2026-06-09",
-    "days_missing": 2
+    "days_missing": 3
   },
   {
     "id": "moonshotai/Kimi-K2-Instruct-0905",
     "provider": "huggingface",
     "first_seen": "2026-06-04",
     "last_seen": "2026-06-09",
-    "days_missing": 2
+    "days_missing": 3
   },
   {
     "id": "moonshotai/Kimi-K2.5",
     "provider": "huggingface",
     "first_seen": "2026-06-04",
     "last_seen": "2026-06-09",
-    "days_missing": 2
+    "days_missing": 3
   },
   {
     "id": "moonshotai/Kimi-K2.6",
     "provider": "huggingface",
     "first_seen": "2026-06-04",
     "last_seen": "2026-06-09",
-    "days_missing": 2
+    "days_missing": 3
   },
   {
     "id": "nm-testing/SmolLM-1.7B-Instruct-quantized.w4a16",
     "provider": "huggingface",
     "first_seen": "2026-06-04",
     "last_seen": "2026-06-04",
-    "days_missing": 7
+    "days_missing": 8
   },
   {
     "id": "nvidia/DeepSeek-R1-0528-NVFP4-v2",
     "provider": "huggingface",
     "first_seen": "2026-06-04",
     "last_seen": "2026-06-08",
-    "days_missing": 3
+    "days_missing": 4
   },
   {
     "id": "nvidia/Gemma-4-26B-A4B-NVFP4",
     "provider": "huggingface",
     "first_seen": "2026-06-04",
     "last_seen": "2026-06-04",
-    "days_missing": 7
+    "days_missing": 8
   },
   {
     "id": "nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B-BF16",
     "provider": "huggingface",
     "first_seen": "2026-06-04",
     "last_seen": "2026-06-09",
-    "days_missing": 2
+    "days_missing": 3
   },
   {
     "id": "nvidia/NVIDIA-Nemotron-3-Super-120B-A12B-NVFP4",
     "provider": "huggingface",
     "first_seen": "2026-06-04",
     "last_seen": "2026-06-09",
-    "days_missing": 2
+    "days_missing": 3
   },
   {
     "id": "nvidia/Qwen3.6-35B-A3B-NVFP4",
     "provider": "huggingface",
     "first_seen": "2026-06-09",
     "last_seen": "2026-06-09",
-    "days_missing": 2
+    "days_missing": 3
   },
   {
     "id": "openai/gpt-oss-120b",
     "provider": "huggingface",
     "first_seen": "2026-06-04",
     "last_seen": "2026-06-09",
-    "days_missing": 2
+    "days_missing": 3
   },
   {
     "id": "openai/gpt-oss-20b",
     "provider": "huggingface",
     "first_seen": "2026-06-04",
     "last_seen": "2026-06-09",
-    "days_missing": 2
+    "days_missing": 3
   },
   {
     "id": "prefeitura-rio/Rio-3.0-Open-Mini",
     "provider": "huggingface",
     "first_seen": "2026-06-04",
     "last_seen": "2026-06-09",
-    "days_missing": 2
+    "days_missing": 3
   },
   {
     "id": "trl-internal-testing/tiny-Qwen2ForCausalLM-2.5",
     "provider": "huggingface",
     "first_seen": "2026-06-04",
     "last_seen": "2026-06-09",
-    "days_missing": 2
+    "days_missing": 3
   },
   {
     "id": "unsloth/Qwen3-Coder-Next-GGUF",
     "provider": "huggingface",
     "first_seen": "2026-06-04",
     "last_seen": "2026-06-09",
-    "days_missing": 2
+    "days_missing": 3
   },
   {
     "id": "unsloth/Qwen3.6-27B-GGUF",
     "provider": "huggingface",
     "first_seen": "2026-06-04",
     "last_seen": "2026-06-09",
-    "days_missing": 2
+    "days_missing": 3
   },
   {
     "id": "unsloth/Qwen3.6-35B-A3B-GGUF",
     "provider": "huggingface",
     "first_seen": "2026-06-04",
     "last_seen": "2026-06-09",
-    "days_missing": 2
+    "days_missing": 3
   },
   {
     "id": "unsloth/gemma-4-26B-A4B-it-GGUF",
     "provider": "huggingface",
     "first_seen": "2026-06-04",
     "last_seen": "2026-06-09",
-    "days_missing": 2
+    "days_missing": 3
   },
   {
     "id": "unsloth/gemma-4-E4B-it",
     "provider": "huggingface",
     "first_seen": "2026-06-04",
     "last_seen": "2026-06-09",
-    "days_missing": 2
+    "days_missing": 3
   },
   {
     "id": "zai-org/GLM-5-FP8",
     "provider": "huggingface",
     "first_seen": "2026-06-04",
     "last_seen": "2026-06-09",
-    "days_missing": 2
+    "days_missing": 3
   },
   {
     "id": "zai-org/GLM-5.1-FP8",
     "provider": "huggingface",
     "first_seen": "2026-06-04",
     "last_seen": "2026-06-09",
-    "days_missing": 2
+    "days_missing": 3
   },
   {
     "id": "zai-org/GLM-OCR",
     "provider": "huggingface",
     "first_seen": "2026-06-04",
     "last_seen": "2026-06-09",
-    "days_missing": 2
+    "days_missing": 3
   },
   {
     "id": "intern-latest",
     "provider": "internlm",
     "first_seen": "2026-04-19",
     "last_seen": "2026-04-19",
-    "days_missing": 53
+    "days_missing": 54
   },
   {
     "id": "intern-s1",
     "provider": "internlm",
     "first_seen": "2026-04-19",
     "last_seen": "2026-04-19",
-    "days_missing": 53
+    "days_missing": 54
   },
   {
     "id": "intern-s1-mini",
     "provider": "internlm",
     "first_seen": "2026-04-19",
     "last_seen": "2026-04-19",
-    "days_missing": 53
+    "days_missing": 54
   },
   {
     "id": "intern-s1-pro",
     "provider": "internlm",
     "first_seen": "2026-04-19",
     "last_seen": "2026-04-19",
-    "days_missing": 53
+    "days_missing": 54
   },
   {
     "id": "intern-s2-preview",
     "provider": "internlm",
     "first_seen": "2026-05-26",
     "last_seen": "2026-05-26",
-    "days_missing": 16
+    "days_missing": 17
   },
   {
     "id": "internvl-latest",
     "provider": "internlm",
     "first_seen": "2026-04-19",
     "last_seen": "2026-04-19",
-    "days_missing": 53
+    "days_missing": 54
   },
   {
     "id": "internvl3.5-241b-a28b",
     "provider": "internlm",
     "first_seen": "2026-04-19",
     "last_seen": "2026-04-19",
-    "days_missing": 53
+    "days_missing": 54
   },
   {
     "id": "internvl3.5-latest",
     "provider": "internlm",
     "first_seen": "2026-04-19",
     "last_seen": "2026-04-19",
-    "days_missing": 53
+    "days_missing": 54
   },
   {
     "id": "MiniMax-M2",
     "provider": "minimax",
     "first_seen": "2026-06-04",
     "last_seen": "2026-06-09",
-    "days_missing": 2
+    "days_missing": 3
   },
   {
     "id": "MiniMax-M2.1",
     "provider": "minimax",
     "first_seen": "2026-06-04",
     "last_seen": "2026-06-09",
-    "days_missing": 2
+    "days_missing": 3
   },
   {
     "id": "MiniMax-M2.1-highspeed",
     "provider": "minimax",
     "first_seen": "2026-06-04",
     "last_seen": "2026-06-09",
-    "days_missing": 2
+    "days_missing": 3
   },
   {
     "id": "MiniMax-M2.5",
     "provider": "minimax",
     "first_seen": "2026-06-04",
     "last_seen": "2026-06-09",
-    "days_missing": 2
+    "days_missing": 3
   },
   {
     "id": "MiniMax-M2.5-highspeed",
     "provider": "minimax",
     "first_seen": "2026-06-04",
     "last_seen": "2026-06-09",
-    "days_missing": 2
+    "days_missing": 3
   },
   {
     "id": "MiniMax-M2.7",
     "provider": "minimax",
     "first_seen": "2026-06-04",
     "last_seen": "2026-06-09",
-    "days_missing": 2
+    "days_missing": 3
   },
   {
     "id": "MiniMax-M2.7-highspeed",
     "provider": "minimax",
     "first_seen": "2026-06-04",
     "last_seen": "2026-06-09",
-    "days_missing": 2
+    "days_missing": 3
   },
   {
     "id": "MiniMax-M3",
     "provider": "minimax",
     "first_seen": "2026-06-04",
     "last_seen": "2026-06-09",
-    "days_missing": 2
+    "days_missing": 3
   },
   {
     "id": "devstral-medium-2507",
     "provider": "mistral",
     "first_seen": "2026-04-19",
     "last_seen": "2026-04-19",
-    "days_missing": 53
+    "days_missing": 54
   },
   {
     "id": "devstral-small-2507",
     "provider": "mistral",
     "first_seen": "2026-04-19",
     "last_seen": "2026-04-19",
-    "days_missing": 53
+    "days_missing": 54
   },
   {
     "id": "mistral-large-2411",
     "provider": "mistral",
     "first_seen": "2026-04-19",
     "last_seen": "2026-04-19",
-    "days_missing": 53
+    "days_missing": 54
   },
   {
     "id": "mistral-large-pixtral-2411",
     "provider": "mistral",
     "first_seen": "2026-04-19",
     "last_seen": "2026-04-19",
-    "days_missing": 53
+    "days_missing": 54
   },
   {
     "id": "mistral-medium-c21211-r0-75",
     "provider": "mistral",
     "first_seen": "2026-05-26",
     "last_seen": "2026-06-10",
-    "days_missing": 1
+    "days_missing": 2
   },
   {
     "id": "mistral-ocr-2505",
     "provider": "mistral",
     "first_seen": "2026-04-19",
     "last_seen": "2026-04-19",
-    "days_missing": 53
+    "days_missing": 54
   },
   {
     "id": "pixtral-large-2411",
     "provider": "mistral",
     "first_seen": "2026-04-19",
     "last_seen": "2026-04-19",
-    "days_missing": 53
+    "days_missing": 54
   },
   {
     "id": "pixtral-large-latest",
     "provider": "mistral",
     "first_seen": "2026-04-19",
     "last_seen": "2026-04-19",
-    "days_missing": 53
+    "days_missing": 54
   },
   {
     "id": "voxtral-mini-transcribe-2507",
     "provider": "mistral",
     "first_seen": "2026-04-19",
     "last_seen": "2026-04-19",
-    "days_missing": 53
+    "days_missing": 54
   },
   {
     "id": "qwen/qwen3-coder-480b-a35b-instruct",
     "provider": "ngc",
     "first_seen": "2026-04-19",
     "last_seen": "2026-06-10",
-    "days_missing": 1
+    "days_missing": 2
   },
   {
     "id": "embeddinggemma:latest",
     "provider": "ollama",
     "first_seen": "2026-04-19",
     "last_seen": "2026-04-19",
-    "days_missing": 53
+    "days_missing": 54
   },
   {
     "id": "nomic-embed-text:latest",
     "provider": "ollama",
     "first_seen": "2026-04-19",
     "last_seen": "2026-04-19",
-    "days_missing": 53
+    "days_missing": 54
   },
   {
     "id": "alfredpros/codellama-7b-instruct-solidity",
     "provider": "openrouter",
     "first_seen": "2026-04-19",
     "last_seen": "2026-04-19",
-    "days_missing": 53
+    "days_missing": 54
   },
   {
     "id": "arcee-ai/maestro-reasoning",
     "provider": "openrouter",
     "first_seen": "2026-04-19",
     "last_seen": "2026-06-09",
-    "days_missing": 2
+    "days_missing": 3
   },
   {
     "id": "arcee-ai/spotlight",
     "provider": "openrouter",
     "first_seen": "2026-04-19",
     "last_seen": "2026-06-06",
-    "days_missing": 5
+    "days_missing": 6
   },
   {
     "id": "baidu/cobuddy:free",
     "provider": "openrouter",
     "first_seen": "2026-05-26",
     "last_seen": "2026-05-26",
-    "days_missing": 16
+    "days_missing": 17
   },
   {
     "id": "baidu/ernie-4.5-21b-a3b",
     "provider": "openrouter",
     "first_seen": "2026-04-19",
     "last_seen": "2026-04-19",
-    "days_missing": 53
+    "days_missing": 54
   },
   {
     "id": "baidu/ernie-4.5-21b-a3b-thinking",
     "provider": "openrouter",
     "first_seen": "2026-04-19",
     "last_seen": "2026-04-19",
-    "days_missing": 53
+    "days_missing": 54
   },
   {
     "id": "baidu/ernie-4.5-300b-a47b",
     "provider": "openrouter",
     "first_seen": "2026-04-19",
     "last_seen": "2026-04-19",
-    "days_missing": 53
+    "days_missing": 54
   },
   {
     "id": "baidu/ernie-4.5-vl-28b-a3b",
     "provider": "openrouter",
     "first_seen": "2026-04-19",
     "last_seen": "2026-06-06",
-    "days_missing": 5
+    "days_missing": 6
   },
   {
     "id": "baidu/qianfan-ocr-fast",
     "provider": "openrouter",
     "first_seen": "2026-05-26",
     "last_seen": "2026-05-26",
-    "days_missing": 16
+    "days_missing": 17
   },
   {
     "id": "deepseek/deepseek-v3.2-speciale",
     "provider": "openrouter",
     "first_seen": "2026-04-19",
     "last_seen": "2026-04-19",
-    "days_missing": 53
+    "days_missing": 54
   },
   {
     "id": "deepseek/deepseek-v4-flash:free",
     "provider": "openrouter",
     "first_seen": "2026-05-26",
     "last_seen": "2026-05-26",
-    "days_missing": 16
+    "days_missing": 17
   },
   {
     "id": "google/gemini-2.0-flash-001",
     "provider": "openrouter",
     "first_seen": "2026-04-19",
     "last_seen": "2026-04-19",
-    "days_missing": 53
+    "days_missing": 54
   },
   {
     "id": "google/gemini-2.0-flash-lite-001",
     "provider": "openrouter",
     "first_seen": "2026-04-19",
     "last_seen": "2026-04-19",
-    "days_missing": 53
+    "days_missing": 54
   },
   {
     "id": "minimax/minimax-m2.5:free",
     "provider": "openrouter",
     "first_seen": "2026-04-19",
     "last_seen": "2026-04-19",
-    "days_missing": 53
+    "days_missing": 54
   },
   {
     "id": "mistralai/devstral-medium",
     "provider": "openrouter",
     "first_seen": "2026-04-19",
     "last_seen": "2026-04-19",
-    "days_missing": 53
+    "days_missing": 54
   },
   {
     "id": "mistralai/devstral-small",
     "provider": "openrouter",
     "first_seen": "2026-04-19",
     "last_seen": "2026-04-19",
-    "days_missing": 53
+    "days_missing": 54
   },
   {
     "id": "mistralai/mistral-7b-instruct-v0.1",
     "provider": "openrouter",
     "first_seen": "2026-04-19",
     "last_seen": "2026-04-19",
-    "days_missing": 53
+    "days_missing": 54
   },
   {
     "id": "mistralai/mistral-large-2411",
     "provider": "openrouter",
     "first_seen": "2026-04-19",
     "last_seen": "2026-04-19",
-    "days_missing": 53
+    "days_missing": 54
   },
   {
     "id": "mistralai/pixtral-large-2411",
     "provider": "openrouter",
     "first_seen": "2026-04-19",
     "last_seen": "2026-04-19",
-    "days_missing": 53
+    "days_missing": 54
   },
   {
     "id": "moonshotai/kimi-k2.6:free",
     "provider": "openrouter",
     "first_seen": "2026-06-04",
     "last_seen": "2026-06-10",
-    "days_missing": 1
+    "days_missing": 2
   },
   {
     "id": "nex-agi/deepseek-v3.1-nex-n1",
     "provider": "openrouter",
     "first_seen": "2026-04-19",
     "last_seen": "2026-06-08",
-    "days_missing": 3
+    "days_missing": 4
   },
   {
     "id": "nousresearch/hermes-2-pro-llama-3-8b",
     "provider": "openrouter",
     "first_seen": "2026-04-19",
     "last_seen": "2026-06-05",
-    "days_missing": 6
+    "days_missing": 7
   },
   {
     "id": "nvidia/nemotron-nano-9b-v2",
     "provider": "openrouter",
     "first_seen": "2026-04-19",
     "last_seen": "2026-06-11",
-    "days_missing": 0
+    "days_missing": 1
   },
   {
     "id": "openai/gpt-4-0314",
     "provider": "openrouter",
     "first_seen": "2026-04-19",
     "last_seen": "2026-04-19",
-    "days_missing": 53
+    "days_missing": 54
   },
   {
     "id": "openai/gpt-4-1106-preview",
     "provider": "openrouter",
     "first_seen": "2026-04-19",
     "last_seen": "2026-06-06",
-    "days_missing": 5
+    "days_missing": 6
   },
   {
     "id": "openai/gpt-4o-audio-preview",
     "provider": "openrouter",
     "first_seen": "2026-04-19",
     "last_seen": "2026-04-19",
-    "days_missing": 53
+    "days_missing": 54
   },
   {
     "id": "sao10k/l3-euryale-70b",
     "provider": "openrouter",
     "first_seen": "2026-04-19",
     "last_seen": "2026-06-05",
-    "days_missing": 6
+    "days_missing": 7
   },
   {
     "id": "xiaomi/mimo-v2-omni",
     "provider": "openrouter",
     "first_seen": "2026-04-19",
     "last_seen": "2026-04-19",
-    "days_missing": 53
+    "days_missing": 54
   },
   {
     "id": "xiaomi/mimo-v2-pro",
     "provider": "openrouter",
     "first_seen": "2026-04-19",
     "last_seen": "2026-04-19",
-    "days_missing": 53
+    "days_missing": 54
   },
   {
     "id": "z-ai/glm-4-32b",
     "provider": "openrouter",
     "first_seen": "2026-04-19",
     "last_seen": "2026-06-09",
-    "days_missing": 2
+    "days_missing": 3
   },
   {
     "id": "z-ai/glm-4.5-air:free",
     "provider": "openrouter",
     "first_seen": "2026-04-19",
     "last_seen": "2026-06-09",
-    "days_missing": 2
+    "days_missing": 3
   },
   {
     "id": "z-ai/glm-5v-turbo",
     "provider": "openrouter",
     "first_seen": "2026-04-19",
     "last_seen": "2026-06-09",
-    "days_missing": 2
+    "days_missing": 3
   },
   {
     "id": "claude",
     "provider": "pollinations",
     "first_seen": "2026-05-26",
     "last_seen": "2026-05-26",
-    "days_missing": 16
+    "days_missing": 17
   },
   {
     "id": "claude-fast",
     "provider": "pollinations",
     "first_seen": "2026-04-19",
     "last_seen": "2026-04-19",
-    "days_missing": 53
+    "days_missing": 54
   },
   {
     "id": "claude-large",
     "provider": "pollinations",
     "first_seen": "2026-05-26",
     "last_seen": "2026-05-26",
-    "days_missing": 16
+    "days_missing": 17
   },
   {
     "id": "claude-opus-4.7",
     "provider": "pollinations",
     "first_seen": "2026-05-26",
     "last_seen": "2026-05-26",
-    "days_missing": 16
+    "days_missing": 17
   },
   {
     "id": "elevenflash",
     "provider": "pollinations",
     "first_seen": "2026-05-26",
     "last_seen": "2026-05-26",
-    "days_missing": 16
+    "days_missing": 17
   },
   {
     "id": "elevenlabs",
     "provider": "pollinations",
     "first_seen": "2026-05-26",
     "last_seen": "2026-05-26",
-    "days_missing": 16
+    "days_missing": 17
   },
   {
     "id": "elevenmusic",
     "provider": "pollinations",
     "first_seen": "2026-05-26",
     "last_seen": "2026-05-26",
-    "days_missing": 16
+    "days_missing": 17
   },
   {
     "id": "gemini",
     "provider": "pollinations",
     "first_seen": "2026-05-26",
     "last_seen": "2026-05-26",
-    "days_missing": 16
+    "days_missing": 17
   },
   {
     "id": "gemini-2",
     "provider": "pollinations",
     "first_seen": "2026-05-26",
     "last_seen": "2026-05-26",
-    "days_missing": 16
+    "days_missing": 17
   },
   {
     "id": "gemini-3.5-flash",
     "provider": "pollinations",
     "first_seen": "2026-05-26",
     "last_seen": "2026-05-26",
-    "days_missing": 16
+    "days_missing": 17
   },
   {
     "id": "gemini-fast",
     "provider": "pollinations",
     "first_seen": "2026-04-19",
     "last_seen": "2026-04-19",
-    "days_missing": 53
+    "days_missing": 54
   },
   {
     "id": "gemini-flash-lite-3.1",
     "provider": "pollinations",
     "first_seen": "2026-05-26",
     "last_seen": "2026-05-26",
-    "days_missing": 16
+    "days_missing": 17
   },
   {
     "id": "gemini-large",
     "provider": "pollinations",
     "first_seen": "2026-05-26",
     "last_seen": "2026-05-26",
-    "days_missing": 16
+    "days_missing": 17
   },
   {
     "id": "gemini-search",
     "provider": "pollinations",
     "first_seen": "2026-04-19",
     "last_seen": "2026-04-19",
-    "days_missing": 53
+    "days_missing": 54
   },
   {
     "id": "gpt-image-2",
     "provider": "pollinations",
     "first_seen": "2026-05-26",
     "last_seen": "2026-05-26",
-    "days_missing": 16
+    "days_missing": 17
   },
   {
     "id": "grok-imagine",
     "provider": "pollinations",
     "first_seen": "2026-05-26",
     "last_seen": "2026-05-26",
-    "days_missing": 16
+    "days_missing": 17
   },
   {
     "id": "grok-imagine-pro",
     "provider": "pollinations",
     "first_seen": "2026-05-26",
     "last_seen": "2026-05-26",
-    "days_missing": 16
+    "days_missing": 17
   },
   {
     "id": "grok-video-pro",
     "provider": "pollinations",
     "first_seen": "2026-05-26",
     "last_seen": "2026-05-26",
-    "days_missing": 16
+    "days_missing": 17
   },
   {
     "id": "llama-maverick",
     "provider": "pollinations",
     "first_seen": "2026-05-26",
     "last_seen": "2026-05-26",
-    "days_missing": 16
+    "days_missing": 17
   },
   {
     "id": "nanobanana",
     "provider": "pollinations",
     "first_seen": "2026-05-26",
     "last_seen": "2026-05-26",
-    "days_missing": 16
+    "days_missing": 17
   },
   {
     "id": "nanobanana-2",
     "provider": "pollinations",
     "first_seen": "2026-05-26",
     "last_seen": "2026-05-26",
-    "days_missing": 16
+    "days_missing": 17
   },
   {
     "id": "nanobanana-pro",
     "provider": "pollinations",
     "first_seen": "2026-05-26",
     "last_seen": "2026-05-26",
-    "days_missing": 16
+    "days_missing": 17
   },
   {
     "id": "p-image",
     "provider": "pollinations",
     "first_seen": "2026-05-26",
     "last_seen": "2026-05-26",
-    "days_missing": 16
+    "days_missing": 17
   },
   {
     "id": "p-image-edit",
     "provider": "pollinations",
     "first_seen": "2026-05-26",
     "last_seen": "2026-05-26",
-    "days_missing": 16
+    "days_missing": 17
   },
   {
     "id": "p-video",
     "provider": "pollinations",
     "first_seen": "2026-05-26",
     "last_seen": "2026-05-26",
-    "days_missing": 16
+    "days_missing": 17
   },
   {
     "id": "qwen-coder-large",
     "provider": "pollinations",
     "first_seen": "2026-04-19",
     "last_seen": "2026-04-19",
-    "days_missing": 53
+    "days_missing": 54
   },
   {
     "id": "qwen-image",
     "provider": "pollinations",
     "first_seen": "2026-05-26",
     "last_seen": "2026-05-26",
-    "days_missing": 16
+    "days_missing": 17
   },
   {
     "id": "qwen-tts",
     "provider": "pollinations",
     "first_seen": "2026-05-26",
     "last_seen": "2026-05-26",
-    "days_missing": 16
+    "days_missing": 17
   },
   {
     "id": "qwen-tts-instruct",
     "provider": "pollinations",
     "first_seen": "2026-05-26",
     "last_seen": "2026-05-26",
-    "days_missing": 16
+    "days_missing": 17
   },
   {
     "id": "scribe",
     "provider": "pollinations",
     "first_seen": "2026-05-26",
     "last_seen": "2026-05-26",
-    "days_missing": 16
+    "days_missing": 17
   },
   {
     "id": "seedance-2.0",
     "provider": "pollinations",
     "first_seen": "2026-05-26",
     "last_seen": "2026-05-26",
-    "days_missing": 16
+    "days_missing": 17
   },
   {
     "id": "seedance-pro",
     "provider": "pollinations",
     "first_seen": "2026-05-26",
     "last_seen": "2026-05-26",
-    "days_missing": 16
+    "days_missing": 17
   },
   {
     "id": "seedream",
     "provider": "pollinations",
     "first_seen": "2026-05-26",
     "last_seen": "2026-05-26",
-    "days_missing": 16
+    "days_missing": 17
   },
   {
     "id": "seedream-pro",
     "provider": "pollinations",
     "first_seen": "2026-05-26",
     "last_seen": "2026-05-26",
-    "days_missing": 16
+    "days_missing": 17
   },
   {
     "id": "seedream5",
     "provider": "pollinations",
     "first_seen": "2026-05-26",
     "last_seen": "2026-05-26",
-    "days_missing": 16
+    "days_missing": 17
   },
   {
     "id": "veo",
     "provider": "pollinations",
     "first_seen": "2026-05-26",
     "last_seen": "2026-05-26",
-    "days_missing": 16
+    "days_missing": 17
   },
   {
     "id": "wan",
     "provider": "pollinations",
     "first_seen": "2026-05-26",
     "last_seen": "2026-05-26",
-    "days_missing": 16
+    "days_missing": 17
   },
   {
     "id": "wan-fast",
     "provider": "pollinations",
     "first_seen": "2026-05-26",
     "last_seen": "2026-05-26",
-    "days_missing": 16
+    "days_missing": 17
   },
   {
     "id": "wan-image",
     "provider": "pollinations",
     "first_seen": "2026-05-26",
     "last_seen": "2026-05-26",
-    "days_missing": 16
+    "days_missing": 17
   },
   {
     "id": "wan-image-pro",
     "provider": "pollinations",
     "first_seen": "2026-05-26",
     "last_seen": "2026-05-26",
-    "days_missing": 16
+    "days_missing": 17
   },
   {
     "id": "Llama-4-Maverick-17B-128E-Instruct",
     "provider": "sambanova",
     "first_seen": "2026-04-19",
     "last_seen": "2026-06-10",
-    "days_missing": 1
+    "days_missing": 2
   },
   {
     "id": "gemma-3-12b-it",
     "provider": "sambanova",
     "first_seen": "2026-04-19",
     "last_seen": "2026-06-10",
-    "days_missing": 1
+    "days_missing": 2
   },
   {
     "id": "step-1f-audio",
     "provider": "stepfun",
     "first_seen": "2026-04-19",
     "last_seen": "2026-04-19",
-    "days_missing": 53
+    "days_missing": 54
   },
   {
     "id": "step-1x-edit",
     "provider": "stepfun",
     "first_seen": "2026-04-19",
     "last_seen": "2026-06-09",
-    "days_missing": 2
+    "days_missing": 3
   },
   {
     "id": "step-r1-v-mini",
     "provider": "stepfun",
     "first_seen": "2026-04-19",
     "last_seen": "2026-06-09",
-    "days_missing": 2
+    "days_missing": 3
   },
   {
     "id": "embedding-passage",
     "provider": "upstage",
     "first_seen": "2026-04-19",
     "last_seen": "2026-06-10",
-    "days_missing": 1
+    "days_missing": 2
   },
   {
     "id": "embedding-query",
     "provider": "upstage",
     "first_seen": "2026-04-19",
     "last_seen": "2026-06-10",
-    "days_missing": 1
+    "days_missing": 2
   },
   {
     "id": "solar-embedding-1-large-passage",
     "provider": "upstage",
     "first_seen": "2026-04-19",
     "last_seen": "2026-06-10",
-    "days_missing": 1
+    "days_missing": 2
   },
   {
     "id": "solar-embedding-1-large-query",
     "provider": "upstage",
     "first_seen": "2026-04-19",
     "last_seen": "2026-06-10",
-    "days_missing": 1
+    "days_missing": 2
   },
   {
     "id": "solar-open",
     "provider": "upstage",
     "first_seen": "2026-04-19",
     "last_seen": "2026-06-10",
-    "days_missing": 1
+    "days_missing": 2
   },
   {
     "id": "solar-pro",
     "provider": "upstage",
     "first_seen": "2026-04-19",
     "last_seen": "2026-06-10",
-    "days_missing": 1
+    "days_missing": 2
   },
   {
     "id": "solar-pro-250422",
     "provider": "upstage",
     "first_seen": "2026-04-19",
     "last_seen": "2026-06-10",
-    "days_missing": 1
+    "days_missing": 2
   },
   {
     "id": "solar-pro2-nightly",
     "provider": "upstage",
     "first_seen": "2026-04-19",
     "last_seen": "2026-06-10",
-    "days_missing": 1
+    "days_missing": 2
   },
   {
     "id": "solar-pro2-sagemaker",
     "provider": "upstage",
     "first_seen": "2026-04-19",
     "last_seen": "2026-06-10",
-    "days_missing": 1
+    "days_missing": 2
   },
   {
     "id": "solar-pro3-nightly",
     "provider": "upstage",
     "first_seen": "2026-04-19",
     "last_seen": "2026-06-10",
-    "days_missing": 1
+    "days_missing": 2
   },
   {
     "id": "solar-pro3-preview",
     "provider": "upstage",
     "first_seen": "2026-04-19",
     "last_seen": "2026-06-10",
-    "days_missing": 1
+    "days_missing": 2
   },
   {
     "id": "tripod",
     "provider": "upstage",
     "first_seen": "2026-04-19",
     "last_seen": "2026-06-10",
-    "days_missing": 1
+    "days_missing": 2
   },
   {
     "id": "tripod-test",
     "provider": "upstage",
     "first_seen": "2026-04-19",
     "last_seen": "2026-06-10",
-    "days_missing": 1
+    "days_missing": 2
   }
 ]

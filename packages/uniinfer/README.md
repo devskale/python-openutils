@@ -2,34 +2,42 @@
 
 [![License](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 [![Python Versions](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/downloads/)
-[![PyPI Version](https://img.shields.io/pypi/v/uniinfer.svg)](https://pypi.org/project/uniinfer/)
 
-UniInfer provides a consistent Python interface for **LLM chat completions and text embeddings** across multiple providers with seamless API key management and OpenAI-compatible endpoints.
+Unified Python interface for **LLM chat completions, embeddings, TTS, and STT** across 20+ providers with automatic API key management and an OpenAI-compatible proxy server.
 
-## Features
+## Quick Start
 
-- 🚀 Single API for 20+ LLM providers (OpenAI, Anthropic, Google Gemini, Mistral, etc.)
-- 🔑 Secure API key management with credgoo integration
-- ⚡ Real-time streaming support
-- 📊 Embedding support for semantic search
-- 🗣️ Text-to-Speech (TTS) & Speech-to-Text (STT) support
-- 🔄 Automatic fallback strategies
-- 📋 Model discovery and management
-- 🌐 OpenAI-compatible FastAPI proxy server
-
-## Installation
-
-**Into a venv** (fastest):
 ```bash
+# Into a venv (fastest)
 uv pip install -r https://skale.dev/uniinfer
-```
 
-**Standalone CLI** (no venv needed):
-```bash
+# Standalone CLI (no venv needed)
 uv tool install "uniinfer @ git+https://github.com/devskale/python-openutils.git#subdirectory=packages/uniinfer"
 ```
 
-**As a dependency** in your `pyproject.toml`:
+```python
+from uniinfer import ProviderFactory, ChatMessage, ChatCompletionRequest
+
+provider = ProviderFactory.get_provider("openai")
+response = provider.complete(ChatCompletionRequest(
+    messages=[ChatMessage(role="user", content="Hello!")],
+    model="gpt-4",
+))
+print(response.message.content)
+```
+
+## Features
+
+- Single API for 20+ LLM providers
+- Secure API key management via credgoo
+- Streaming, embeddings, TTS, STT
+- Automatic fallback strategies
+- OpenAI-compatible FastAPI proxy server
+- CLI tool for quick interactions
+
+## Installation
+
+**As a dependency** in `pyproject.toml`:
 ```toml
 [project]
 dependencies = ["uniinfer"]
@@ -44,551 +52,172 @@ git clone https://github.com/devskale/python-openutils.git
 cd python-openutils/packages/uniinfer && uv sync
 ```
 
-Then use it anywhere in your code:
+Requires Python 3.9+. Provider-specific packages: `uv sync --extra anthropic`.
+
+## Usage
+
+### Streaming
 
 ```python
-from uniinfer import ProviderFactory, ChatMessage, ChatCompletionRequest
-
-provider = ProviderFactory.get_provider("openai")
-request = ChatCompletionRequest(
-    messages=[ChatMessage(role="user", content="Hello!")],
-    model="gpt-4",
-)
-response = provider.complete(request)
-print(response.message.content)
-```
-
-### Requirements
-
-- Python 3.9+
-- credgoo (resolved automatically via local path)
-- Provider-specific packages (installed via extras: `uv sync --extra anthropic`)
-
-## Quick Start
-
-### Basic Chat Completion
-
-```python
-from uniinfer import ProviderFactory, ChatMessage, ChatCompletionRequest
-
-# Get provider (API key retrieved automatically via credgoo)
-provider = ProviderFactory.get_provider("openai")
-
-# Create request
-request = ChatCompletionRequest(
-    messages=[ChatMessage(role="user", content="Hello, how are you?")],
-    model="gpt-4",
-    temperature=0.7
-)
-
-# Get response
-response = provider.complete(request)
-print(response.message.content)
-```
-
-### Streaming Chat Completion
-
-```python
-from uniinfer import ProviderFactory, ChatMessage, ChatCompletionRequest
-
 provider = ProviderFactory.get_provider("anthropic")
-
-request = ChatCompletionRequest(
+for chunk in provider.stream_complete(ChatCompletionRequest(
     messages=[ChatMessage(role="user", content="Tell me a story")],
     model="claude-3-sonnet-20240229",
-    streaming=True
-)
-
-# Stream response
-for chunk in provider.stream_complete(request):
+    streaming=True,
+)):
     print(chunk.message.content, end="", flush=True)
 ```
 
-### Text Embeddings
+### Embeddings
 
 ```python
 from uniinfer import EmbeddingProviderFactory, EmbeddingRequest
 
-# Get embedding provider (API keys managed automatically)
 provider = EmbeddingProviderFactory.get_provider("ollama")
-
-# Create embedding request
-request = EmbeddingRequest(
-    input=["Hello world", "How are you?", "Machine learning is awesome"],
-    model="nomic-embed-text:latest"
-)
-
-# Get embeddings
-response = provider.embed(request)
-
-# Process results
-print(f"Generated {len(response.data)} embeddings")
-for i, embedding_data in enumerate(response.data):
-    embedding = embedding_data['embedding']
-    print(f"Text {i+1}: {len(embedding)} dimensions")
-    print(f"First 5 values: {embedding[:5]}")
-```
-
-## API Documentation
-
-### Core Classes
-
-#### ChatMessage
-
-```python
-from uniinfer import ChatMessage
-
-message = ChatMessage(
-    role="user",  # "user", "assistant", "system"
-    content="Your message here"
-)
-```
-
-#### ChatCompletionRequest
-
-```python
-from uniinfer import ChatCompletionRequest, ChatMessage
-
-request = ChatCompletionRequest(
-    messages=[ChatMessage(role="user", content="Hello")],
-    model="gpt-4",
-    temperature=0.7,      # 0.0-2.0, higher = more creative
-    max_tokens=1000       # Maximum tokens to generate
-)
-```
-
-#### ChatCompletionResponse
-
-```python
-response = provider.complete(request)
-print(response.message.content)      # Response text
-print(response.message.role)         # "assistant"
-print(response.usage.total_tokens)   # Token usage
-print(response.model)                 # Model used
+response = provider.embed(EmbeddingRequest(
+    input=["Hello world", "Machine learning"],
+    model="nomic-embed-text:latest",
+))
 ```
 
 ### Fallback Strategies
 
 ```python
-from uniinfer import FallbackStrategy, ChatMessage, ChatCompletionRequest
+from uniinfer import FallbackStrategy
 
-# Create fallback strategy
-strategy = FallbackStrategy(
-    provider_names=["openai", "anthropic", "ollama"]
-)
-
-request = ChatCompletionRequest(
-    messages=[ChatMessage(role="user", content="Hello")],
-    model="gpt-4"
-)
-
+strategy = FallbackStrategy(provider_names=["openai", "anthropic", "ollama"])
 response, provider_name = strategy.complete(request)
-print(provider_name, response.message.content)
 ```
 
-## CLI Usage
-
-UniInfer provides a comprehensive command-line interface:
+## CLI
 
 ```bash
-# Basic chat
-uv run uniinfer -p openai -q "Hello, how are you?" -m gpt-4
-
-# Interactive mode
-uv run uniinfer -p anthropic -m claude-3-opus-20240229
-
-# List available models
-uv run uniinfer -p openai --list-models
-
-# Embeddings
-uv run uniinfer -p ollama --embed --embed-text "Hello world" --model nomic-embed-text:latest
-
-# Text-to-Speech
-uv run uniinfer -p tu --tts --tts-text "Hello world" --model kokoro
-
-# Speech-to-Text
-uv run uniinfer -p tu --stt --audio-file speech.mp3 --model whisper-large
-
-# With streaming
-uv run uniinfer -p openai -q "Tell me a story" -m gpt-4 --stream
+uniinfer -p openai -q "Hello" -m gpt-4           # chat
+uniinfer -p anthropic -m claude-3-opus-20240229   # interactive
+uniinfer -p openai --list-models                   # list models
+uniinfer --new-models 7                            # models added in last 7 days
+uniinfer --deprecated-models                       # deprecated models
+uniinfer -p openrouter --speedtest -m google/gemma-4-26b-a4b-it:free  # benchmark
 ```
+
+## Supported Providers
+
+**20 providers, 979 models.** See [docs/providers.md](docs/providers.md) for full details.
+
+| Provider | Chat | Embed | TTS | STT | Free | Models |
+|----------|:----:|:-----:|:---:|:---:|:----:|-------:|
+| OpenRouter | ✅ | — | — | — | ✅ | 337 |
+| NVIDIA NGC | ✅ | — | — | — | — | 120 |
+| OpenAI | ✅ | ✅ | ✅ | — | — | 112 |
+| Mistral | ✅ | — | — | — | — | 69 |
+| Cloudflare | ✅ | — | — | — | — | 58 |
+| Pollinations | ✅ | — | — | — | ✅ | 57 |
+| Gemini | ✅ | — | — | — | — | 55 |
+| Arli AI | ✅ | — | — | — | — | 52 |
+| StepFun | ✅ | — | — | — | — | 35 |
+| Groq | ✅ | — | — | — | — | 16 |
+| Chutes | ✅ | — | — | — | — | 13 |
+| TU Wien | ✅ | ✅ | ✅ | ✅ | — | 9 |
+| Moonshot | ✅ | — | — | — | — | 9 |
+| Upstage | ✅ | — | — | — | — | 8 |
+| Z.AI | ✅ | — | — | — | ✅ | 7 |
+| Z.AI Code | ✅ | — | — | — | — | 7 |
+| SambaNova | ✅ | — | — | — | — | 6 |
+| Ollama | ✅ | ✅ | — | — | ✅ | 5 |
+| OpenAI TTS | — | — | ✅ | — | — | 2 |
+| AI21 | ✅ | — | — | — | — | 2 |
+| Anthropic | ✅ | — | — | — | — | — |
+| Cohere | ✅ | — | — | — | — | — |
+| HuggingFace | ✅ | — | — | — | — | — |
+| InternLM | ✅ | — | — | — | — | — |
+| MiniMax | ✅ | — | — | — | — | — |
+
+Model counts from `models.json` — regenerated daily at 04:00 UTC. Free = provider offers free-tier models.
 
 ## API Server
 
-UniInfer includes an OpenAI-compatible FastAPI server:
+OpenAI-compatible FastAPI proxy:
 
 ```bash
-# Install server dependencies
-uv pip install uniinfer[api]
-
-# Start server
 uv run uvicorn uniinfer.uniioai_proxy:app --host 0.0.0.0 --port 8123
 ```
 
 ### Authentication
 
-The API server uses the Bearer token scheme in the `Authorization` header. You can provide the token in two formats:
+Bearer token in `Authorization` header. Two formats:
 
-1. **Direct API Key**: If you are using a single provider, you can pass the provider's API key directly.
+1. **Direct API key**: `Bearer YOUR_PROVIDER_API_KEY`
+2. **Credgoo token** (multi-provider): `Bearer CREDGOO_BEARER@ENCRYPTION_KEY`
 
-   ```
-   Authorization: Bearer YOUR_PROVIDER_API_KEY
-   ```
-
-2. **Credgoo Token**: To use multiple providers managed by `credgoo`, pass a combined token in the format `bearer_token@encryption_key`.
-   ```
-   Authorization: Bearer YOUR_CREDGOO_BEARER@YOUR_ENCRYPTION_KEY
-   ```
-   You can retrieve these values from your environment variables (`CREDGOO_BEARER_TOKEN` and `CREDGOO_ENCRYPTION_KEY`) or your credgoo configuration.
-
-If no token is provided in the header, the server will attempt to use the `CREDGOO_BEARER_TOKEN` and `CREDGOO_ENCRYPTION_KEY` environment variables as a fallback.
+Falls back to `CREDGOO_BEARER_TOKEN` and `CREDGOO_ENCRYPTION_KEY` env vars if no header.
 
 ### Endpoints
 
-- `POST /v1/chat/completions` - OpenAI-compatible chat completions
-- `POST /v1/embeddings` - OpenAI-compatible embeddings
-- `GET /v1/models` - List available models
-- `POST /v1/images/generations` - Image generation
-- `POST /v1/audio/speech` - Text-to-Speech
-- `POST /v1/audio/transcriptions` - Speech-to-Text
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/v1/chat/completions` | POST | Chat completions |
+| `/v1/embeddings` | POST | Embeddings |
+| `/v1/models` | GET | All models (cached) |
+| `/v1/models/{provider}` | GET | Live provider models |
+| `/v1/models/new?days=7` | GET | Recently added models |
+| `/v1/models/deprecated` | GET | Deprecated models |
+| `/v1/images/generations` | POST | Image generation |
+| `/v1/audio/speech` | POST | TTS |
+| `/v1/audio/transcriptions` | POST | STT |
+| `/v1/system/version` | GET | Package version |
 
-### Security Features
+### Security
 
-The API server includes built-in security features for production deployments:
+- Rate limiting: chat 100/min, embeddings 200/min, media 50/min (configurable via env)
+- Auth enforced on `/v1/chat/completions`, `/v1/embeddings`, `/v1/images/*`, `/v1/audio/*`
+- Ollama bypasses auth for local dev
+- Configure: `UNIINFER_RATE_LIMIT_CHAT`, `UNIINFER_RATE_LIMIT_EMBEDDINGS`, `UNIINFER_RATE_LIMIT_MEDIA`
 
-1.  **Rate Limiting**: Protects your API from abuse.
-    - **Chat Completions**: 100 requests/minute (default)
-    - **Embeddings**: 200 requests/minute (default)
-    - **Media Generation**: 50 requests/minute (default)
-    - **Headers**: Responses include `X-RateLimit-Limit`, `X-RateLimit-Remaining`, and `X-RateLimit-Reset` headers.
-    - **Configuration**: Configurable via environment variables.
-
-2.  **Authentication**: Enforces strict token validation.
-    - **Protected Endpoints**: `/v1/chat/completions`, `/v1/embeddings` (except Ollama), `/v1/images/*`, `/v1/audio/*`.
-    - **Public Endpoints**: `/v1/models`, `/webdemo` (alias) / `/webdemo/webdemo.html`, `/` (root).
-    - **Ollama Bypass**: Local Ollama instances are accessible without authentication for easier local development.
-
-### How to Setup Security Features
-
-To configure security settings for your deployment:
-
-**1. Configure Rate Limits**
-
-Set the following environment variables to customize rate limits:
-
-```bash
-export UNIINFER_RATE_LIMIT_CHAT="50/minute"
-export UNIINFER_RATE_LIMIT_EMBEDDINGS="100/minute"
-export UNIINFER_RATE_LIMIT_MEDIA="10/minute"
-```
-
-**2. Configure Authentication**
-
-Ensure your clients send the correct Bearer token in the `Authorization` header:
-
-```http
-Authorization: Bearer YOUR_PROVIDER_API_KEY
-# OR for multi-provider access via credgoo:
-Authorization: Bearer YOUR_CREDGOO_TOKEN@YOUR_ENCRYPTION_KEY
-```
-
-**3. Verify Security**
-
-You can verify your security configuration using the included test script:
-
-```bash
-uv run python uniinfer/tests/verify_live_proxy.py
-```
-
-### Example Client Usage
+### Example Client
 
 ```python
 from openai import OpenAI
 
 client = OpenAI(
     base_url="http://localhost:8123/v1",
-    # Use either a provider API key or credgoo combo token
-    api_key="YOUR_PROVIDER_KEY_OR_CREDGOO_BEARER@ENCRYPTION"
+    api_key="YOUR_CREDGOO_BEARER@ENCRYPTION",
 )
 
 response = client.chat.completions.create(
-    # UniInfer proxy expects provider-prefixed model IDs
     model="tu@glm-4.7-355b",
-    messages=[{"role": "user", "content": "Hello!"}]
+    messages=[{"role": "user", "content": "Hello!"}],
 )
-
-print(response.choices[0].message.content)
 ```
 
-> Note: Some reasoning models/providers (e.g., TU/vLLM) may additionally return
-> `reasoning_content` in the assistant message for visible thinking traces.
+> Model IDs are `provider@model` format for the proxy (e.g. `tu@glm-4.7-355b`).
 
 ## Configuration
 
-### API Key Management
-
-UniInfer uses credgoo for secure API key management:
+API keys are managed by credgoo:
 
 ```bash
-# Set API key
 credgoo set openai YOUR_API_KEY
-
-# List stored keys
 credgoo list
-
-# Remove key
-credgoo remove openai
 ```
 
-### Environment Variables
-
-Optional environment variables:
-
-```bash
-# Override default API key for testing
-export OPENAI_API_KEY=your_key_here
-export ANTHROPIC_API_KEY=your_key_here
-```
-
-## Supported Providers
-
-See **[docs/providers.md](docs/providers.md)** for the full provider index with base URLs, default models, credgoo service names, and implementation patterns.
-
-| Provider | Chat | Embed | TTS | STT | Free |
-|----------|------|-------|-----|-----|------|
-| OpenAI | ✅ | ✅ | — | — | — |
-| Anthropic | ✅ | — | — | — | — |
-| Google Gemini | ✅ | — | — | — | — |
-| Mistral | ✅ | — | — | — | — |
-| Groq | ✅ | — | — | — | — |
-| Cohere | ✅ | — | — | — | — |
-| OpenRouter | ✅ | — | — | — | — |
-| Ollama | ✅ | ✅ | — | — | ✅ |
-| HuggingFace | ✅ | — | — | — | — |
-| Cloudflare | ✅ | — | — | — | — |
-| SambaNova | ✅ | — | — | — | — |
-| Pollinations | ✅ | — | — | — | ✅ |
-| Arli AI | ✅ | — | — | — | — |
-| Moonshot | ✅ | — | — | — | — |
-| StepFun | ✅ | — | — | — | — |
-| Upstage | ✅ | — | — | — | — |
-| InternLM | ✅ | — | — | — | — |
-| MiniMax | ✅ | — | — | — | — |
-| Chutes | ✅ | — | — | — | — |
-| Z.AI | ✅ | — | — | — | ✅ |
-| Z.AI Code | ✅ | — | — | — | — |
-| NVIDIA NGC | ✅ | — | — | — | — |
-| AI21 | ✅ | — | — | — | — |
-| TU Wien | ✅ | ✅ | ✅ | ✅ | — |
-
-### Gemini Async Support
-
-**Async Support**: ✅ Gemini provider supports both sync and async operations (`complete()`, `stream_complete()`, `acomplete()`, `astream_complete()`).
-
-**Native Async**: Uses `genai.AsyncClient` which is natively async for optimal performance.
-
-```python
-# Example usage
-from uniinfer import GeminiProvider, ChatMessage, ChatCompletionRequest
-import asyncio
-
-provider = GeminiProvider(api_key="your-gemini-api-key")
-
-# Async completion
-async def async_example():
-    request = ChatCompletionRequest(
-        messages=[ChatMessage(role="user", content="Hello!")],
-        model="gemini-1.5-flash"
-    )
-    response = await provider.acomplete(request)
-    print(response.message.content)
-    await provider.close()
-
-# Async streaming
-async def async_stream_example():
-    request = ChatCompletionRequest(
-        messages=[ChatMessage(role="user", content="Tell me a story")],
-        model="gemini-1.5-flash"
-    )
-    async for chunk in provider.astream_complete(request):
-        print(chunk.message.content, end="", flush=True)
-    await provider.close()
-
-# Run async examples
-asyncio.run(async_example())
-asyncio.run(async_stream_example())
-
-# List available models
-models = GeminiProvider.list_models()
-print(f"Available models: {len(models)}")
-for i, model in enumerate(models):
-    print(f"  {i+1}. {model.get('id')}")
-```
-
-## Troubleshooting
-
-### Common Issues
-
-**ImportError: No module named 'anthropic'**
-
-```bash
-# Install the required extra
-uv pip install uniinfer[anthropic]
-```
-
-**API key not found**
-
-```bash
-# Check if key is stored
-credgoo list
-
-# Set the missing key
-credgoo set PROVIDER_NAME YOUR_API_KEY
-```
-
-**Connection timeout**
-
-```python
-# Increase timeout in request
-request = ChatCompletionRequest(
-    messages=[...],
-    model="gpt-4",
-    timeout=60  # seconds
-)
-```
-
-**Model not found**
-
-```bash
-# List available models for the provider
-uv run uniinfer -p PROVIDER_NAME --list-models
-```
+Override with env vars for testing: `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`.
 
 ## Development
 
-### Architecture
-
-- [Proxy Architecture Overview](ARCHITECTURE.md)
-- [Agent/Contributor Rules](AGENTS.md)
-
-### Running Tests
-
 ```bash
-uv sync
-uv run pytest
-uv run pytest --cov=uniinfer --cov-report=term-missing
+uv sync                              # install deps
+uv run pytest                        # run tests
+uv run pytest -k "test_name"         # single test
+uv run black . && uv run isort . && uv run ruff check . --fix  # format + lint
 ```
 
-### Code Formatting
-
-```bash
-uv run black .
-uv run isort .
-uv run ruff check . --fix
-```
+See [AGENTS.md](AGENTS.md) for contributor rules, [ARCHITECTURE.md](ARCHITECTURE.md) for proxy layout, and [docs/models.md](docs/models.md) for the model catalog.
 
 ## Contributing
 
-Contributions are welcome! Please follow these steps:
-
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Add tests for new functionality
-4. Ensure all tests pass (`uv run pytest`)
-5. Format code (`uv run black . && uv run isort . && uv run ruff check . --fix`)
-6. Commit your changes (`git commit -m 'Add amazing feature'`)
-7. Push to the branch (`git push origin feature/amazing-feature`)
-8. Submit a pull request
-
-### Adding New Providers
-
-#### Dev Guide Index
-
-- [OpenAI-Compatible Provider Guide](#openai-compatible-provider-guide)
-- [Anthropic-Compatible Provider Guide](#anthropic-compatible-provider-guide)
-
-#### OpenAI-Compatible Provider Guide
-
-Use this path when the provider exposes OpenAI-style chat endpoints.
-
-1. Create `uniinfer/providers/<provider_name>.py`
-2. Inherit from `OpenAICompatibleChatProvider`
-3. Set constants:
-   - `BASE_URL`
-   - `PROVIDER_ID`
-   - `ERROR_PROVIDER_NAME`
-   - `DEFAULT_MODEL`
-   - `CREDGOO_SERVICE` (if key is managed via credgoo)
-4. Override only provider-specific behavior:
-   - `list_models()` when provider model listing differs
-   - headers/default params hooks if needed
-5. Export provider in `uniinfer/providers/__init__.py`
-6. Register provider in `uniinfer/__init__.py` via `ProviderFactory.register_provider(...)`
-7. Add tests in `uniinfer/tests/` (sync, async, streaming, list-models, error mapping)
-
-Minimal template:
-
-```python
-from typing import Optional
-from .openai_compatible import OpenAICompatibleChatProvider
-
-
-class NewProvider(OpenAICompatibleChatProvider):
-    BASE_URL = "https://api.example.com/v1"
-    PROVIDER_ID = "newprovider"
-    ERROR_PROVIDER_NAME = "NewProvider"
-    DEFAULT_MODEL = "example-model"
-    CREDGOO_SERVICE = "newprovider"
-
-    def __init__(self, api_key: Optional[str] = None, base_url: Optional[str] = None):
-        super().__init__(api_key=api_key, base_url=base_url or self.BASE_URL)
-```
-
-#### Anthropic-Compatible Provider Guide
-
-Use this path when the provider exposes Anthropic-style `messages` APIs.
-
-1. Create `uniinfer/providers/<provider_name>.py`
-2. Inherit from `AnthropicCompatibleProvider`
-3. Set constants:
-   - `BASE_URL`
-   - `PROVIDER_ID`
-   - `ERROR_PROVIDER_NAME`
-   - `DEFAULT_MODEL`
-   - `CREDGOO_SERVICE` (if key is managed via credgoo)
-4. Override provider-specific behavior where needed:
-   - `list_models()` for providers that do not implement Anthropic model list
-   - `_default_headers()` or class header hooks for vendor headers
-5. Export provider in `uniinfer/providers/__init__.py`
-6. Register provider in `uniinfer/__init__.py` via `ProviderFactory.register_provider(...)`
-7. Add tests in `uniinfer/tests/` (sync, async, streaming, list-models fallback, error mapping)
-
-Minimal template:
-
-```python
-from typing import Optional
-from .anthropic_compatible import AnthropicCompatibleProvider
-
-
-class NewAnthropicProvider(AnthropicCompatibleProvider):
-    BASE_URL = "https://api.example.com/anthropic"
-    PROVIDER_ID = "newanthropic"
-    ERROR_PROVIDER_NAME = "NewAnthropic"
-    DEFAULT_MODEL = "example-anthropic-model"
-    CREDGOO_SERVICE = "newanthropic"
-
-    def __init__(self, api_key: Optional[str] = None, base_url: Optional[str] = None):
-        super().__init__(api_key=api_key, base_url=base_url or self.BASE_URL)
-```
-
-See [AGENTS.md](AGENTS.md) for contributor rules and test expectations.
+1. Fork → feature branch → tests → all tests pass → format → commit → PR
+2. See [AGENTS.md](AGENTS.md) for provider implementation patterns
 
 ## License
 
-MIT License - see [LICENSE](LICENSE) for details.
-
-## Links
-
-- [GitHub Repository](https://github.com/devskale/python-openutils)
-- [PyPI Package](https://pypi.org/project/uniinfer/)
-- [Issues](https://github.com/devskale/python-openutils/issues)
+MIT
