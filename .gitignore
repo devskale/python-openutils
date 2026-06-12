@@ -27,3 +27,5 @@ uvinit.log
 models.txt
 activate_uv.sh
 .handoff
+.DS_Store
+client_secret_*.json

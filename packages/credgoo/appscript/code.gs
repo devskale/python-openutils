@@ -1,3 +1,29 @@
+function doPost(e) {
+  var props = PropertiesService.getScriptProperties();
+  if (props.getProperty("SECRET_TOKEN")) {
+    return ContentService.createTextOutput(JSON.stringify({
+      status: "error", message: "Already configured"
+    })).setMimeType(ContentService.MimeType.JSON);
+  }
+  try {
+    var body = JSON.parse(e.postData.contents);
+    if (!body.token || !body.key) {
+      return ContentService.createTextOutput(JSON.stringify({
+        status: "error", message: "Missing token or key"
+      })).setMimeType(ContentService.MimeType.JSON);
+    }
+    props.setProperty("SECRET_TOKEN", body.token);
+    props.setProperty("ENCRYPTION_KEY", body.key);
+    return ContentService.createTextOutput(JSON.stringify({
+      status: "ok"
+    })).setMimeType(ContentService.MimeType.JSON);
+  } catch (err) {
+    return ContentService.createTextOutput(JSON.stringify({
+      status: "error", message: err.toString()
+    })).setMimeType(ContentService.MimeType.JSON);
+  }
+}
+
 function doGet(e) {
   // Retrieve credentials from script properties
   const scriptProperties = PropertiesService.getScriptProperties();
