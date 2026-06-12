@@ -7,37 +7,26 @@ import sys
 import json
 import time
 import getpass
+import secrets as _secrets
+import string
+import http.server
+import webbrowser
+import urllib.parse
 from pathlib import Path
 from importlib.metadata import version
 
 logger = logging.getLogger("credgoo")
 
+OAUTH_CLIENT_ID = "REDACTED"
+OAUTH_CLIENT_SECRET = "REDACTED"
+OAUTH_SCOPES = [
+    "https://www.googleapis.com/auth/spreadsheets.readonly",
+    "https://www.googleapis.com/auth/drive.file",
+]
+TEMPLATE_SHEET_ID = "19IJncFxaZcitwiwcvTjCWsvXfrFSLXJ7pPCmz3Sw2Zc"
 
-def decrypt_key(encrypted_key, encryption_key):
-    """Decrypt the API key using the encryption key."""
-    try:
-        # Decode the base64 string
-        decoded = base64.b64decode(encrypted_key).decode(
-            'utf-8', errors='replace')
 
-        # Perform XOR decryption with key
-        result = ""
-        for i in range(len(decoded)):
-            # Match the encryption algorithm's key usage pattern
-            key_char = ord(encryption_key[(i * 7) % len(encryption_key)])
-            decoded_char = ord(decoded[i])
-            result += chr(decoded_char ^ key_char)
-
-        # Remove the 8-character initialization vector
-        if len(result) > 8:
-            return result[8:]
-        else:
-            logger.warning("Decrypted result too short")
-            return result
-    except Exception as e:
-        logger.error("Decryption error: %s", e)
-        return None
-
+# ---- Encryption (for local cache) ----
 
 def encrypt_local_key(api_key, encryption_key):
     """Encrypt the API key for local caching using XOR and Base64."""
@@ -70,41 +59,128 @@ def decrypt_local_key(encrypted_api_key, encryption_key):
         return None
 
 
-def get_api_key_from_google(service, bearer_token, encryption_key, api_url=None):
-    """Retrieve and decrypt an API key for the specified service from Google Sheets."""
-    # Use provided URL or fall back to default
-    url = api_url
+# ---- OAuth ----
 
-    logger.info("Fetching key for %s from Google Sheets", service)
-    logger.debug("Using URL: %s", url)
+def oauth_flow():
+    """Run OAuth2 desktop flow. Returns (access_token, refresh_token) or (None, None)."""
+    auth_code = None
+    state_token = _secrets.token_urlsafe(16)
 
-    params = {
-        "service": service,
-        "token": bearer_token
-    }
-
-    try:
-        response = requests.get(url, params=params, timeout=10)
-
-        if response.status_code == 200:
-            data = response.json()
-
-            if data.get("status") == "success":
-                encrypted_key = data.get("encryptedKey")
-                if encrypted_key:
-                    api_key = decrypt_key(encrypted_key, encryption_key)
-                    return api_key
-                else:
-                    logger.error("No encrypted key in response")
+    class Handler(http.server.BaseHTTPRequestHandler):
+        def do_GET(self):
+            nonlocal auth_code
+            parsed = urllib.parse.urlparse(self.path)
+            params = urllib.parse.parse_qs(parsed.query)
+            if params.get("state", [None])[0] != state_token:
+                self.send_response(400)
+                self.end_headers()
+                self.wfile.write(b"Invalid state")
+                return
+            auth_code = params.get("code", [None])[0]
+            self.send_response(200)
+            self.send_header("Content-Type", "text/html")
+            self.end_headers()
+            if auth_code:
+                self.wfile.write(b"<html><body><h1>credgoo: Authorized! You can close this tab.</h1></body></html>")
             else:
-                logger.error("%s", data.get('message', 'Unknown error'))
-        else:
-            logger.error("Failed to retrieve key (HTTP %d)", response.status_code)
-    except requests.exceptions.RequestException as e:
-        logger.error("Request error: %s", e)
+                self.wfile.write(b"<html><body><h1>credgoo: Authorization failed.</h1></body></html>")
 
+        def log_message(self, *args):
+            pass
+
+    server = http.server.HTTPServer(("127.0.0.1", 0), Handler)
+    port = server.server_address[1]
+    redirect_uri = f"http://localhost:{port}"
+    server.timeout = 120
+
+    params = urllib.parse.urlencode({
+        "client_id": OAUTH_CLIENT_ID,
+        "redirect_uri": redirect_uri,
+        "response_type": "code",
+        "scope": " ".join(OAUTH_SCOPES),
+        "state": state_token,
+        "access_type": "offline",
+        "prompt": "consent",
+    })
+    auth_url = f"https://accounts.google.com/o/oauth2/v2/auth?{params}"
+
+    print("Opening browser for Google authorization...")
+    webbrowser.open(auth_url)
+
+    server.handle_request()
+    server.server_close()
+
+    if not auth_code:
+        return None, None
+
+    resp = requests.post("https://oauth2.googleapis.com/token", data={
+        "client_id": OAUTH_CLIENT_ID,
+        "client_secret": OAUTH_CLIENT_SECRET,
+        "code": auth_code,
+        "redirect_uri": redirect_uri,
+        "grant_type": "authorization_code",
+    }, timeout=15)
+
+    data = resp.json()
+    if "error" in data:
+        logger.error("Token exchange failed: %s", data.get("error"))
+        return None, None
+
+    return data.get("access_token"), data.get("refresh_token")
+
+
+def get_access_token(refresh_token):
+    """Get a fresh access token using the refresh token."""
+    resp = requests.post("https://oauth2.googleapis.com/token", data={
+        "client_id": OAUTH_CLIENT_ID,
+        "client_secret": OAUTH_CLIENT_SECRET,
+        "refresh_token": refresh_token,
+        "grant_type": "refresh_token",
+    }, timeout=15)
+    data = resp.json()
+    if "access_token" in data:
+        return data["access_token"]
+    logger.error("Token refresh failed: %s", data.get("error"))
     return None
 
+
+def copy_template_sheet(access_token):
+    """Copy the template sheet to the user's Google Drive. Returns new sheet ID."""
+    resp = requests.post(
+        f"https://www.googleapis.com/drive/v3/files/{TEMPLATE_SHEET_ID}/copy",
+        headers={"Authorization": f"Bearer {access_token}"},
+        json={"name": "API Keys (credgoo)"},
+        timeout=15,
+    )
+    if resp.status_code == 200:
+        return resp.json()["id"]
+    logger.error("Failed to copy template: %s", resp.text)
+    return None
+
+
+def get_api_key_from_sheets(service, access_token, sheet_id):
+    """Retrieve an API key directly from Google Sheets API."""
+    url = f"https://sheets.googleapis.com/v4/spreadsheets/{sheet_id}/values/keys!A:B"
+    try:
+        resp = requests.get(
+            url,
+            headers={"Authorization": f"Bearer {access_token}"},
+            timeout=10
+        )
+        if resp.status_code != 200:
+            logger.error("Sheets API error (HTTP %d): %s", resp.status_code, resp.text)
+            return None
+        values = resp.json().get("values", [])
+        for row in values:
+            if row and row[0] == service:
+                return row[1] if len(row) > 1 else None
+        logger.error("Service '%s' not found in sheet", service)
+    except requests.exceptions.RequestException as e:
+        logger.error("Sheets API error: %s", e)
+    return None
+
+
+# ---- Caching ----
 
 def cache_api_key(service, api_key, encryption_key, cache_dir):
     """Store encrypted API key in service-specific cache file."""
@@ -118,37 +194,29 @@ def cache_api_key(service, api_key, encryption_key, cache_dir):
         return
 
     try:
-        # Ensure directory exists
         cache_dir.mkdir(parents=True, exist_ok=True)
 
-        # Create cache data with service information and encrypted key
         cache_data = {
             "service": service,
             "api_key": encrypted_key_for_cache,
             "timestamp": str(int(time.time()))
         }
 
-        # Define cache file path - now using JSON format
         cache_file = cache_dir / 'api_keys.json'
 
-        # Load existing cache if it exists
         existing_cache = {}
         if cache_file.exists():
             try:
                 with open(cache_file, 'r') as f:
                     existing_cache = json.load(f)
             except json.JSONDecodeError:
-                # If file is corrupt, start with empty cache
                 existing_cache = {}
 
-        # Update cache with new key
         existing_cache[service] = cache_data
 
-        # Write updated cache to file
         with open(cache_file, 'w') as f:
             json.dump(existing_cache, f, indent=2)
 
-        # Set restrictive permissions
         os.chmod(cache_file, 0o600)
         logger.info("API key for %s cached (encrypted)", service)
     except Exception as e:
@@ -170,11 +238,9 @@ def get_cached_api_key(service, encryption_key, cache_dir):
         with open(cache_file, 'r') as f:
             cache = json.load(f)
 
-        # Check if requested service exists in cache
         if service in cache:
             encrypted_cached_key = cache[service].get("api_key")
             if encrypted_cached_key:
-                # Decrypt the key
                 decrypted_key = decrypt_local_key(
                     encrypted_cached_key, encryption_key)
                 if decrypted_key:
@@ -191,65 +257,39 @@ def get_cached_api_key(service, encryption_key, cache_dir):
     return None
 
 
-def store_credentials(token, encryption_key, url, cred_file, save_token_flag, save_key_flag, save_url_flag):
-    """Store authentication credentials and URL securely based on flags."""
+# ---- Credential storage ----
+
+def store_credentials(creds, cred_file):
+    """Store credentials dict to file."""
     try:
-        # Ensure directory exists
         cred_file.parent.mkdir(parents=True, exist_ok=True)
-
-        # Load existing credentials if file exists
-        credentials = {}
-        if cred_file.exists():
-            try:
-                with open(cred_file, 'r') as f:
-                    credentials = json.load(f)
-            except json.JSONDecodeError:
-                logger.warning("Corrupt credentials file %s. Starting fresh.", cred_file)
-                credentials = {}  # Start fresh if file is corrupt
-
-        # Update credentials dictionary conditionally based on flags
-        if save_token_flag and token is not None:
-            credentials["token"] = token
-        if save_key_flag and encryption_key is not None:
-            credentials["encryption_key"] = encryption_key
-        if save_url_flag and url is not None:
-            credentials["url"] = url
-
-        # Write updated credentials to file only if there's something to write
-        if credentials:
-            with open(cred_file, 'w') as f:
-                json.dump(credentials, f)
-
-            # Set restrictive permissions
-            os.chmod(cred_file, 0o600)
-            logger.info("Credentials updated in %s", cred_file)
-        else:
-            logger.info("No credentials to store.")
-
+        with open(cred_file, 'w') as f:
+            json.dump(creds, f)
+        os.chmod(cred_file, 0o600)
+        logger.info("Credentials saved to %s", cred_file)
     except Exception as e:
         logger.warning("Failed to store credentials: %s", e)
 
 
 def load_credentials(cred_file):
-    """Load authentication credentials and URL from file."""
+    """Load credentials as a dict. Returns empty dict if missing."""
     try:
         if cred_file.exists():
             with open(cred_file, 'r') as f:
-                credentials = json.load(f)
-            return credentials.get("token"), credentials.get("encryption_key"), credentials.get("url")
-        return None, None, None
+                return json.load(f)
+        return {}
     except Exception as e:
         logger.warning("Failed to load credentials: %s", e)
-        return None, None, None
+        return {}
 
 
-def get_api_key(service, bearer_token=None, encryption_key=None, api_url=None, cache_dir=None, no_cache=False):
+# ---- Main public API ----
+
+def get_api_key(service, cache_dir=None, no_cache=False):
     """
-    Get API key with service-specific caching support.
-    First checks for a cached key, then falls back to Google Sheets if needed.
-    This function can be imported and used in other Python scripts.
+    Get API key for a service. Uses OAuth + Sheets API.
+    Returns plaintext key (str) or None.
     """
-    # Set default cache directory if not provided
     if cache_dir is None:
         cache_dir = Path.home() / '.config' / 'api_keys'
     else:
@@ -257,40 +297,74 @@ def get_api_key(service, bearer_token=None, encryption_key=None, api_url=None, c
 
     cache_dir.mkdir(parents=True, exist_ok=True)
     cred_file = cache_dir / 'credgoo.txt'
+    creds = load_credentials(cred_file)
 
-    # Handle credentials
-    stored_token, stored_key, stored_url = load_credentials(cred_file)
+    refresh_token = creds.get("refresh_token")
+    sheet_id = creds.get("sheet_id")
+    enc_key = creds.get("encryption_key")
 
-    # Determine if new credentials were provided
-    new_token_provided = bearer_token is not None
-    new_key_provided = encryption_key is not None
-    new_url_provided = api_url is not None
-
-    # Use provided credentials or fall back to stored ones
-    final_token = bearer_token if new_token_provided else stored_token
-    final_key = encryption_key if new_key_provided else stored_key
-    final_url = api_url if new_url_provided else stored_url
-
-    # Use the final determined credentials for the API call
-    if not final_token or not final_key:
-        logger.error("Bearer token and encryption key are required (either provided or stored).")
+    if not refresh_token or not sheet_id:
+        logger.error("No credentials configured. Run 'credgoo --setup-backend'.")
         return None
 
-    # Check cache first unless no_cache is specified
-    if not no_cache:
-        cached_key = get_cached_api_key(service, final_key, cache_dir)
+    if not no_cache and enc_key:
+        cached_key = get_cached_api_key(service, enc_key, cache_dir)
         if cached_key:
             return cached_key
 
-    # If no cached key for this service, get from Google Sheets using final credentials
-    api_key = get_api_key_from_google(
-        service, final_token, final_key, final_url)
+    access_token = get_access_token(refresh_token)
+    if not access_token:
+        return None
 
-    # Cache the key if retrieval was successful
-    if api_key and not no_cache:
-        cache_api_key(service, api_key, final_key, cache_dir)
-
+    api_key = get_api_key_from_sheets(service, access_token, sheet_id)
+    if api_key and not no_cache and enc_key:
+        cache_api_key(service, api_key, enc_key, cache_dir)
     return api_key
+
+
+# ---- Setup ----
+
+def setup_backend(cache_dir):
+    """Guided setup: OAuth authorize → copy template sheet → test → save."""
+    print("\ncredgoo: Backend setup\n")
+
+    access_token, refresh_token = oauth_flow()
+    if not refresh_token:
+        print("credgoo: Authorization failed.", file=sys.stderr)
+        return False
+
+    print("Copying template sheet to your Google Drive...")
+    sheet_id = copy_template_sheet(access_token)
+    if not sheet_id:
+        print("credgoo: Failed to copy template sheet.", file=sys.stderr)
+        return False
+
+    encryption_key = ''.join(_secrets.choice(string.ascii_letters + string.digits) for _ in range(32))
+
+    sheet_url = f"https://docs.google.com/spreadsheets/d/{sheet_id}"
+    print(f"\nDone! Add your API keys here:")
+    print(f"  {sheet_url}")
+    print(f"\n  Column A = service name (e.g. openai, groq, gemini)")
+    print(f"  Column B = API key")
+
+    cred_file = cache_dir / 'credgoo.txt'
+    store_credentials({
+        "mode": "oauth",
+        "refresh_token": refresh_token,
+        "sheet_id": sheet_id,
+        "encryption_key": encryption_key,
+    }, cred_file)
+
+    api_key = get_api_key_from_sheets("demo", access_token, sheet_id)
+    if api_key:
+        cache_api_key("demo", api_key, encryption_key, cache_dir)
+        print(f"\ncredgoo: Setup complete. Tested with 'demo' — everything works.")
+        print(f"⚠️  Replace the demo key with your real API keys!")
+    else:
+        print(f"\ncredgoo: Setup complete. Add keys to your sheet, then run 'credgoo <service>'.")
+
+    print(f"Sheet: {sheet_url}\n")
+    return True
 
 
 def _prompt_required(prompt_text, secret=False):
@@ -305,63 +379,19 @@ def _prompt_required(prompt_text, secret=False):
         print("Value is required.")
 
 
-def _prompt_service_name():
-    """Prompt for a required service name used for setup validation."""
-    return _prompt_required("Service name to test setup: ", secret=False)
-
-
-def interactive_setup(service, cache_dir, existing_url=None):
-    """Run first-time interactive setup and validate credentials with a live request."""
-    print("credgoo: First-time setup")
-    default_url_text = f" [{existing_url}]" if existing_url else ""
-    entered_url = input(
-        f"Google Apps Script URL{default_url_text}: ").strip()
-    api_url = entered_url or existing_url
-    while not api_url:
-        print("URL is required.")
-        entered_url = input("Google Apps Script URL: ").strip()
-        api_url = entered_url
-    token = _prompt_required("Bearer token: ", secret=True)
-    encryption_key = _prompt_required("Encryption key: ", secret=True)
-    logger.info("Testing credentials with service '%s'...", service)
-    api_key = get_api_key_from_google(service, token, encryption_key, api_url)
-    if not api_key:
-        print("credgoo: Setup test failed. Credentials were not saved.", file=sys.stderr)
-        return None, None, None, None, False
-    cred_file = cache_dir / 'credgoo.txt'
-    store_credentials(
-        token,
-        encryption_key,
-        api_url,
-        cred_file,
-        True,
-        True,
-        True
-    )
-    cache_api_key(service, api_key, encryption_key, cache_dir)
-    print("credgoo: Setup complete. Everything looks good.", file=sys.stderr)
-    return token, encryption_key, api_url, api_key, True
-
-
 def main():
     parser = argparse.ArgumentParser(
-        description="Retrieve API keys securely with caching")
+        description="Retrieve API keys securely from Google Sheets")
     parser.add_argument(
         "service", nargs="?", help="Service name to retrieve the API key for")
-    parser.add_argument("--setup", action="store_true",
-                        help="Run interactive first-time setup and validate credentials")
-    parser.add_argument("--token", help="Bearer token for authentication")
-    parser.add_argument("--key", help="Encryption key for decryption")
-    parser.add_argument("--url", help="URL of the Google Apps Script web app")
+    parser.add_argument("--setup-backend", action="store_true",
+                        help="Guided setup: authorize Google, copy template sheet")
     parser.add_argument(
         "--cache-dir", help="Directory to store cached API keys (default: ~/.config/api_keys/)")
     parser.add_argument("--no-cache", action="store_true",
                         help="Bypass cache and force retrieval from source")
     parser.add_argument("--update", action="store_true",
-                        help="Update cached key: checks if another key is online, updates it, and provides verbose output if the online key has changed.")
-    parser.add_argument('--save', choices=['all', 'token', 'key', 'url', 'none'],
-                        default='all',
-                        help="Specify which credentials to persist: 'all' (default), 'token', 'key', 'url', or 'none' to disable saving")
+                        help="Force fresh fetch and update cache")
     parser.add_argument('--version', action='version',
                         version='%(prog)s ' + version('credgoo'),
                         help="Show program's version number and exit")
@@ -375,110 +405,46 @@ def main():
     else:
         logging.basicConfig(level=logging.WARNING, format='%(message)s', stream=sys.stderr)
 
-    if not args.setup and not args.service:
+    if not args.setup_backend and not args.service:
         parser.error("the following arguments are required: service")
 
-    # Determine cache directory
     cache_dir = Path(args.cache_dir) if args.cache_dir else (Path.home() / '.config' / 'api_keys')
 
-    cred_file = (cache_dir or Path.home() / '.config' / 'api_keys') / 'credgoo.txt'
-    save_token = args.save in ('all', 'token')
-    save_key = args.save in ('all', 'key')
-    save_url = args.save in ('all', 'url')
-    if args.save != 'none' and (args.token is not None or args.key is not None or args.url is not None):
-        store_credentials(
-            args.token if save_token else None,
-            args.key if save_key else None,
-            args.url if save_url else None,
-            cred_file,
-            save_token,
-            save_key,
-            save_url
-        )
-
-    # Determine the final credentials (either provided or previously stored)
-    stored_token, stored_key, stored_url = load_credentials(cred_file)
-    final_token = args.token if args.token else stored_token
-    final_key = args.key if args.key else stored_key
-    final_url = args.url if args.url else stored_url
-
-    if args.setup:
+    if args.setup_backend:
         if not sys.stdin.isatty():
-            print("Error: Interactive setup requires a TTY.", file=sys.stderr)
+            print("Error: Backend setup requires a TTY.", file=sys.stderr)
             return 1
-        setup_service = _prompt_service_name()
-        _, _, _, _, setup_ok = interactive_setup(
-            setup_service,
-            cache_dir,
-            existing_url=final_url
-        )
-        return 0 if setup_ok else 1
+        return 0 if setup_backend(cache_dir) else 1
 
-    setup_api_key = None
-    setup_required = not final_token or not final_key or not final_url
-    if setup_required:
-        if not sys.stdin.isatty():
-            print("Error: Missing credentials and non-interactive mode.", file=sys.stderr)
-            return 1
-        final_token, final_key, final_url, setup_api_key, setup_ok = interactive_setup(
-            args.service,
-            cache_dir,
-            existing_url=final_url
-        )
-        if not setup_ok:
-            return 1
-
-    # Get API key using the more flexible function
-    # If --update is used, force no_cache to true to fetch from source
     force_no_cache = args.no_cache or args.update
 
-    # Retrieve the current cached key for comparison if --update is active
     current_cached_key = None
     if args.update:
-        # Temporarily set no_cache to False to read from cache first
-        current_cached_key = get_api_key(
-            args.service,
-            bearer_token=final_token,
-            encryption_key=final_key,
-            api_url=final_url,
-            cache_dir=cache_dir,
-            no_cache=False  # Read from cache for comparison
-        )
+        current_cached_key = get_api_key(args.service, cache_dir=cache_dir, no_cache=False)
         if current_cached_key:
             print(f"credgoo: Found cached key for {args.service}.", file=sys.stderr)
         else:
             print(f"credgoo: No cached key found for {args.service}.", file=sys.stderr)
 
-    if setup_api_key and not args.update and not force_no_cache:
-        api_key = setup_api_key
-    else:
-        api_key = get_api_key(
-            args.service,
-            bearer_token=final_token,
-            encryption_key=final_key,
-            api_url=final_url,
-            cache_dir=cache_dir,
-            no_cache=force_no_cache
-        )
+    api_key = get_api_key(args.service, cache_dir=cache_dir, no_cache=force_no_cache)
 
-    should_cache_update = False
+    if api_key and api_key == "replace-with-your-api-key":
+        print(f"⚠️  You still have the demo key for '{args.service}'. Replace it in your sheet:", file=sys.stderr)
+        creds = load_credentials(cache_dir / 'credgoo.txt')
+        sheet_id = creds.get("sheet_id", "")
+        if sheet_id:
+            print(f"   https://docs.google.com/spreadsheets/d/{sheet_id}", file=sys.stderr)
+        return 1
+
     if args.update and api_key and current_cached_key:
         if api_key != current_cached_key:
             print(f"credgoo: Online key for {args.service} has changed. Updating cache.", file=sys.stderr)
-            should_cache_update = True
         else:
             print(f"credgoo: Online key for {args.service} is up to date.", file=sys.stderr)
     elif args.update and api_key and not current_cached_key:
         print(f"credgoo: Fetched online key for {args.service}. No previous cache.", file=sys.stderr)
-        should_cache_update = True
     elif args.update and not api_key:
         print(f"credgoo: Failed to fetch online key for {args.service}.", file=sys.stderr)
-
-    if should_cache_update and force_no_cache:
-        if final_key:
-            cache_api_key(args.service, api_key, final_key, cache_dir)
-        else:
-            print("credgoo: Skipping cache update — no encryption key.", file=sys.stderr)
 
     if api_key:
         print(api_key)
@@ -488,6 +454,5 @@ def main():
         return 1
 
 
-# This allows the script to be both imported as a module and run as a command-line tool
 if __name__ == "__main__":
     sys.exit(main())
