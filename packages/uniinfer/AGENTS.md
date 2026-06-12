@@ -1,340 +1,136 @@
-# AGENTS.md - UniInfer Development Guide
+# AGENTS.md - UniInfer
 
 **Package**: uniinfer (python-openutils) · **Repo map**: [../AGENTS.md](../AGENTS.md)
 
-This file provides guidelines for agentic coding agents operating in the uniinfer repository.
+## Stack
+
+- Python 3.9+, **uv** for package management (not pip)
+- Formatting: black (line-length 88), isort (profile: black), ruff
+- Tests: pytest with unittest.mock
+- Proxy: FastAPI + uvicorn
+
+## Commands
+
+```bash
+uv sync                                    # install deps from lockfile
+uv sync --extra all                        # install all optional provider deps
+
+uv run pytest                              # all tests
+uv run pytest uniinfer/tests/test_auth.py  # single file
+uv run pytest -k "test_token_validation"   # by keyword
+uv run pytest -v --cov=uniinfer --cov-report=term-missing  # with coverage
+
+uv run black .                             # format
+uv run isort .                             # sort imports
+uv run ruff check . --fix                  # lint + auto-fix
+
+uv build                                   # build package
+uv run python3 scripts/generate_models.py  # regenerate models.json
+```
 
 ## Deployment (Production)
 
-The proxy runs as a **systemd service** on `amd-1`:
+Proxy runs as **systemd service** on `amd-1`, port **8124**.
 
 ```bash
-# Service status
 sudo systemctl status uniioai-proxy
-
-# Restart after code changes
 sudo systemctl restart uniioai-proxy
-
-# Live logs
-sudo journalctl -u uniioai-proxy -f
-
-# Last 50 lines
-sudo journalctl -u uniioai-proxy -n 50 --no-pager
+sudo journalctl -u uniioai-proxy -f        # live logs
+curl -s http://localhost:8124/v1/system/version  # health check
 ```
+
+After pushing to `main`: `cd /home/ubuntu/code/python-openutils && git pull && cd packages/uniinfer && uv sync && sudo systemctl restart uniioai-proxy`
 
 | Key | Value |
 |-----|-------|
 | Service file | `/etc/systemd/system/uniioai-proxy.service` |
 | Working dir | `/home/ubuntu/code/python-openutils/packages/uniinfer` |
 | Binary | `.venv/bin/python .venv/bin/uniioai-proxy --port 8124` |
-| Port | **8124** |
-| User | `ubuntu` |
-| Auto-restart | yes (`Restart=always`, 5s delay) |
-| Config | `.env` in working dir (`PROXY_KEY`, `PROXYHOST`, `PROXY_PORT`) |
-| Models refresh | systemd timer `uniioai-models-refresh.timer` runs daily at 04:00 UTC |
+| Config | `.env` (`PROXY_KEY`, `PROXYHOST`, `PROXY_PORT`) — gitignored |
+| Models refresh | `uniioai-models-refresh.timer` daily at 04:00 UTC |
 
-After pushing code to `main`: `cd /home/ubuntu/code/python-openutils && git pull && cd packages/uniinfer && uv sync && sudo systemctl restart uniioai-proxy`
+## Proxy Auth Token
 
-Health check: `curl -s http://localhost:8124/v1/system/version`
+Proxy requires a **credgoo combined token** (`bearer@encryption`) as Bearer auth, stored in `.env` as `PROXY_KEY`.
 
-## Project Overview
+- **Format**: `<credgoo_bearer>@<credgoo_encryption_key>` — `@` separator triggers credgoo resolution
+- **In test code**: `headers={"Authorization": f"Bearer {os.getenv('PROXY_KEY')}"}`
+- **No token?** Assert `status_code in [200, 401, 500]` to pass in both authed and unauthed environments
 
-UniInfer is a unified LLM inference interface for Python providing a consistent API across 20+ providers (OpenAI, Anthropic, Mistral, Ollama, etc.). Features include:
+## Docs
 
-- Unified Chat/Embedding/TTS/STT API with streaming and fallback strategies
-- CLI tool for quick interactions (`uniinfer_cli.py`)
-- OpenAI-compatible FastAPI proxy server (`uniioai_proxy.py`)
+| File | Owns |
+|------|------|
+| `README.md` | User-facing usage, installation, provider table |
+| `ARCHITECTURE.md` | Proxy router/service/schema layout |
+| `AGENTS.md` | This file — contributor rules |
+| `docs/models.md` | Model catalog, types, metadata richness |
+| `docs/providers.md` | Full provider index with base URLs, defaults |
 
-## Docs Index
+## Code Style
 
-- `README.md` – user-facing usage, API examples, development commands
-- `ARCHITECTURE.md` – current proxy router/service/schema layout
-- `AGENTS.md` – contributor and agent workflow rules
-- `docs/models.md` – model catalog, types, metadata richness, generation
+- PEP 8, enforced by black + isort + ruff (see config in files)
+- **No comments** unless explicitly requested
+- Docstrings required for all public functions/classes/modules (Google style)
+- Type hints on all public APIs
+- Imports: absolute from package root, grouped stdlib → third-party → local
+- Error handling: use `map_provider_error()` from `uniinfer/errors.py`
 
-## Environment Setup
+## Testing
 
-```bash
-cd packages/uniinfer && uv sync           # creates venv, installs deps from lockfile
-uv sync --extra all                       # install all optional provider deps
-```
-
-### Proxy Auth Token
-
-The proxy (`uniioai_proxy.py`) requires a **credgoo combined token** (`bearer@encryption`) as Bearer auth. This is stored in `.env` as `PROXY_KEY`.
-
-```bash
-# .env (gitignored — never commit real tokens)
-PROXY_KEY=your-bearer@your-encryption
-```
-
-- **Format**: `<credgoo_bearer>@<credgoo_encryption_key>` — the `@` separator tells `get_provider_api_key()` to resolve provider keys via credgoo
-- **Used by**: proxy tests, examples, CLI tools — all read `os.getenv('PROXY_KEY')`
-- **In test code**: pass as `headers={"Authorization": f"Bearer {os.getenv('PROXY_KEY')}"}` to TestClient requests
-- **No token available?** Tests that require auth should assert `status_code in [200, 401, 500]` to pass in both authenticated and unauthenticated environments
-
-## Build/Lint/Test Commands
-
-### Running Tests
-
-```bash
-# Run all tests
-uv run pytest
-
-# Run a single test file
-uv run pytest uniinfer/tests/test_auth.py
-
-# Run a specific test class
-uv run pytest uniinfer/tests/test_auth.py::TestAuth
-
-# Run a specific test method
-uv run pytest uniinfer/tests/test_auth.py::TestAuth::test_token_validation
-
-# Run tests by keyword (function name)
-uv run pytest -k "test_token_validation"
-
-# Verbose output with coverage
-uv run pytest -v --cov=uniinfer --cov-report=term-missing
-```
-
-### Code Formatting
-
-```bash
-uv run black .                      # Format code (line-length: 88)
-uv run isort .                      # Sort imports (profile: black)
-uv run ruff check .                 # Run linter
-uv run ruff check . --fix           # Auto-fix linting issues
-```
-
-### Package Distribution
-
-```bash
-uv build
-```
-
-## Writing Tests
-
-Place tests in `uniinfer/tests/` directory. Name files `test_*.py`.
-
-```python
-# Example: uniinfer/tests/test_feature.py
-import pytest
-from unittest.mock import patch, MagicMock
-
-class TestFeature:
-    """Test suite for feature X."""
-    
-    def test_success_case(self):
-        """Test the happy path."""
-        assert True
-    
-    @patch('uniinfer.module.external_call')
-    def test_with_mock(self, mock_call):
-        """Test with mocked external API."""
-        mock_call.return_value = {'result': 'success'}
-        # test code here
-        mock_call.assert_called_once()
-    
-    def test_error_handling(self):
-        """Test error conditions."""
-        with pytest.raises(ValueError):
-            raise ValueError("expected")
-```
-
-Testing best practices:
-- Use descriptive test names that explain what's being tested
+- Place in `uniinfer/tests/`, name `test_*.py`
 - Mock external API calls with `unittest.mock`
-- Test both sync and async methods
-- Test edge cases and error conditions
+- Test sync + async + streaming + list-models + error mapping for providers
 - Test proxy request limits and security validators (size, message count, auth)
-- Use pytest fixtures for shared setup
 
-## Code Style Guidelines
+## Model Catalog
 
-### General
+- `list_models()` returns `list[ModelInfo]` — `ModelInfo.__str__` returns `id`, `__eq__` matches strings
+- Fix model types in `uniinfer/models/type_overrides.json`
+- Regenerate: `uv run python3 scripts/generate_models.py`
+- Auto-managed: `_model_history.json` (first_seen), `_speed_results.json` (speed tests)
 
-- Follow PEP 8 style guidelines
-- Write docstrings for all functions, classes, modules
-- Use type hints where appropriate (Python 3.7+)
-- Avoid `Any` when possible
+## Provider Implementation
 
-### Imports
+### Adding a New Provider
 
-- Use absolute imports from package root
-- Group: stdlib, third-party, local
-- Sort with isort (profile: black, multi_line_output: 3)
-
-```python
-import json
-import requests
-from typing import Dict, Any, Iterator, Optional
-
-from ..core import ChatProvider, ChatCompletionRequest, ChatMessage
-```
-
-### Naming Conventions
-
-- **Classes**: PascalCase (`ChatCompletionRequest`, `OllamaProvider`)
-- **Functions/variables**: snake_case (`complete()`, `api_key`)
-- **Constants**: UPPER_SNAKE_CASE (`DEFAULT_TIMEOUT`)
-- **Private methods**: leading underscore (`_normalize_base_url()`)
-
-### Type Hints
-
-- Use `Optional[T]` not `Union[T, None]`
-- Use `List[T]`, `Dict[K, V]` from typing
-
-```python
-def complete(
-    self,
-    request: ChatCompletionRequest,
-    **provider_specific_kwargs
-) -> ChatCompletionResponse:
-```
-
-### File Structure
-
-- `uniinfer/core.py`: Core classes (ChatMessage, ChatCompletionRequest, ModelInfo, etc.)
-- `uniinfer/providers/{provider_name}.py`: Provider implementations
-- `uniinfer/models/models.json`: Generated model catalog (rich metadata for all providers)
-- `uniinfer/models/type_overrides.json`: Curated model type assignments (edit this to fix types)
-- `uniinfer/models/_model_history.json`: first_seen date tracking (auto-managed)
-- `uniinfer/models/_speed_results.json`: Speed test results (auto-managed by `--speedtest` CLI)
-- `scripts/generate_models.py`: Regenerates models.json from live provider APIs + models.dev
-- `uniinfer/proxy_routers/models.py`: Proxy endpoints for models, new models, deprecated models, version
-- `uniinfer/proxy_services/models_registry.py`: Model loading, caching, override persistence
-- `uniinfer/errors.py`: Error handling
-- `uniinfer/factory.py`, `embedding_factory.py`: Factories
-- `uniinfer/tests/test_*.py`: Tests
-
-### Error Handling
-
-Use standardized exceptions from `uniinfer/errors.py`:
-
-```python
-from uniinfer.errors import (
-    UniInferError, ProviderError, AuthenticationError,
-    RateLimitError, TimeoutError, InvalidRequestError
-)
-
-mapped_error = map_provider_error("provider_name", original_error)
-raise mapped_error
-```
-
-### Model Catalog
-
-See `docs/models.md` for full details.
-
-- All `list_models()` methods return `list[ModelInfo]` (not `list[str]`)
-- `ModelInfo` has `__str__` → returns `id` for backward compat, `__eq__` matches strings
-- To fix a model's type, add it to `uniinfer/models/type_overrides.json`
-- To regenerate the catalog: `uv run python3 scripts/generate_models.py`
-- Provider metadata richness varies — see docs/models.md for the matrix
-
-**CLI commands:**
-```bash
-uniinfer --new-models           # models first seen in last 7 days
-uniinfer --new-models 30        # last 30 days
-uniinfer --deprecated-models   # deprecated models with dates + replacements
-uniinfer --speedtest -p tu -m qwen-coder-30b  # speed test a model
-uniinfer --speedtest -p openrouter --models m1 m2 --runs 3  # multiple models, averaged
-```
-
-**Proxy endpoints:**
-- `GET /v1/models` — all models from cache (includes `version` and `speed` fields)
-- `GET /v1/models/{provider}` — live provider models
-- `GET /v1/models/new?days=7` — recently added models
-- `GET /v1/models/deprecated` — deprecated models
-- `GET /v1/system/version` — package version
-- `POST /v1/system/update-models` — trigger models.json regeneration
-- `GET/PUT/DELETE /v1/models/overrides[/{model_id}]` — runtime model metadata overrides
-
-### Provider Implementation Pattern
-
-1. Create `uniinfer/providers/newprovider.py`
-2. Inherit from `ChatProvider` (or `EmbeddingProvider`, `TTSProvider`, `STTProvider`)
-3. Implement: `complete()`, `stream_complete()`, `list_models()`
-4. Use `map_provider_error()` for error handling
-5. Register in `uniinfer/__init__.py` with `ProviderFactory.register_provider()`
-6. Add conditional import for optional dependencies
-7. Export in `uniinfer/providers/__init__.py`
-
-### Dev Guide Index
-
-- Proxy architecture/layout: `ARCHITECTURE.md`
-- OpenAI-compatible provider flow
-- Anthropic-compatible provider flow
-
-### OpenAI-Compatible Provider Flow
-
-Use this when the target provider exposes OpenAI-style chat endpoints.
-
-1. Create `uniinfer/providers/<provider_name>.py`
-2. Inherit from `OpenAICompatibleChatProvider`
-3. Set constants:
-   - `BASE_URL`
-   - `PROVIDER_ID`
-   - `ERROR_PROVIDER_NAME`
-   - `DEFAULT_MODEL`
-   - `CREDGOO_SERVICE` when credgoo-managed
-4. Override only provider-specific pieces:
-   - `list_models()` if provider uses non-standard models endpoint or payload
-   - header/default-parameter hooks as needed
+1. Create `uniinfer/providers/<name>.py`
+2. Inherit from `ChatProvider`, `OpenAICompatibleChatProvider`, or `AnthropicCompatibleProvider`
+3. Set constants: `BASE_URL`, `PROVIDER_ID`, `ERROR_PROVIDER_NAME`, `DEFAULT_MODEL`, `CREDGOO_SERVICE`
+4. Implement: `complete()`, `stream_complete()`, `list_models()` (+ async variants)
 5. Export in `uniinfer/providers/__init__.py`
-6. Register in `uniinfer/__init__.py`
-7. Add tests for sync, async, streaming, list-models, and error mapping
+6. Register in `uniinfer/__init__.py` via `ProviderFactory.register_provider()`
+7. Add conditional import for optional deps
+8. Add tests (sync, async, streaming, list-models, error mapping)
 
-### Anthropic-Compatible Provider Flow
+### OpenAI-Compatible Flow
 
-Use this when the target provider exposes Anthropic-style `messages` APIs.
+Inherit `OpenAICompatibleChatProvider` → override only `list_models()` and header hooks if non-standard.
 
-1. Create `uniinfer/providers/<provider_name>.py`
-2. Inherit from `AnthropicCompatibleProvider`
-3. Set constants:
-   - `BASE_URL`
-   - `PROVIDER_ID`
-   - `ERROR_PROVIDER_NAME`
-   - `DEFAULT_MODEL`
-   - `CREDGOO_SERVICE` when credgoo-managed
-4. Override provider-specific behavior as needed:
-   - `list_models()` fallback where Anthropic model-list endpoint is unavailable
-   - `_default_headers()` or class-level header hooks for vendor requirements
-5. Export in `uniinfer/providers/__init__.py`
-6. Register in `uniinfer/__init__.py`
-7. Add tests for sync, async, streaming, list-models fallback, and error mapping
+### Anthropic-Compatible Flow
 
-### API Compatibility
+Inherit `AnthropicCompatibleProvider` → override `list_models()` fallback if no Anthropic model-list endpoint.
 
-- Maintain backward compatibility for public APIs
-- Use OpenAI-compatible response formats
-- Follow OpenAI response structure for embeddings, chat completions, TTS, STT
+## Boundaries
 
-### Version Updates
+- ✅ Always run tests + lint before committing
+- ✅ Use `map_provider_error()` for all provider error handling
+- ✅ Maintain OpenAI-compatible response formats
+- ⚠️ Ask before modifying `core.py` public API (backward compat)
+- ⚠️ Ask before adding new dependencies
+- 🚫 Never commit real tokens or `.env` files
+- 🚫 Never remove a failing test without explicit approval
+- 🚫 Never modify auto-generated files (`_model_history.json`, `_speed_results.json`) by hand
 
-When asked to update the version in `pyproject.toml`:
+## Version Updates
 
-- **Minor version bump** (default): Increment the patch number (e.g., `0.3.5` → `0.3.6`)
-- **Major version bump**: Increment the minor number and reset patch to 0 (e.g., `0.3.5` → `0.4.0`)
+- **Minor** (default): increment patch (`0.3.5` → `0.3.6`)
+- **Major**: increment minor, reset patch (`0.3.5` → `0.4.0`)
 
-### Response Formats
+## Known Footguns
 
-Maintain OpenAI-compatible response structures:
-
-- **Chat Completions**: `message.content`, `message.role`, `usage.prompt_tokens`, `usage.completion_tokens`
-- **Embeddings**: `data[].embedding` as a list of floats, `usage.total_tokens`
-- **TTS**: Audio in base64 or binary format with `model` and `duration`
-- **STT**: `text` field with transcribed content, optionally `duration` and `language`
-
-### Async/Sync Patterns
-
-Providers should implement both sync and async methods where applicable:
-
-```python
-async def acomplete(self, request: ChatCompletionRequest) -> ChatCompletionResponse:
-    """Async version of complete() for concurrent requests."""
-
-def complete(self, request: ChatCompletionRequest) -> ChatCompletionResponse:
-    """Sync wrapper that calls acomplete() in executor."""
-    import asyncio
-    return asyncio.run(self.acomplete(request))
-```
+- `PROXY_KEY` format is `bearer@encryption` — the `@` is the delimiter, not part of either value
+- `ModelInfo` equality matches strings — `model_info == "gpt-4"` works but is easy to miss
+- Ollama bypasses proxy auth — don't assume all endpoints require auth in tests
+- Provider metadata richness varies widely — see `docs/models.md` for the matrix
+- Reasoning models (TU/vLLM) may return `reasoning_content` in the assistant message

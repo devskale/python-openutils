@@ -1,26 +1,22 @@
 # Models Catalog
 
-UniInfer maintains a model catalog with rich metadata for all supported providers.
+Generated model catalog with rich metadata for all supported providers.
 
 ## Architecture
 
 ```
 uniinfer/models/
   models.json            # Generated catalog (DO NOT edit manually)
-  type_overrides.json    # Curated model type assignments (edit this)
-  _model_history.json    # first_seen tracking (auto-managed by generator)
+  type_overrides.json    # Curated model type assignments (edit this to fix types)
+  _model_history.json    # first_seen/last_seen tracking (auto-managed)
   _speed_results.json    # Speed test results (auto-managed by --speedtest CLI)
 scripts/
   generate_models.py     # Regenerates models.json from live APIs + models.dev
-  explore_models_dev.py  # Explore models.dev mapping and data
-  _models_dev_cache.json # Cached models.dev API response
 ```
 
-## Provider Guidelines
+## No Hardcoded Model Lists
 
-### No hardcoded model lists
-
-When a provider's API key is missing or the API call fails, `list_models()` **must return `[]`** — never fall back to a hardcoded list of model IDs. Hardcoded lists go stale and pollute the catalog with non-existent models.
+When a provider's API key is missing or the API call fails, `list_models()` **must return `[]`** — never fall back to a hardcoded list. Hardcoded lists go stale.
 
 ```python
 # ❌ Wrong
@@ -32,31 +28,23 @@ if api_key is None:
     return []
 ```
 
-The generator script (`generate_models.py`) already logs a warning when a provider returns 0 models.
+## Type Assignment
 
-## Model Types
-
-Each model has a `type` field: `chat | embed | tts | stt | image`.
-
-Type assignment follows a three-layer priority:
+Three-layer priority:
 
 | Layer | Source | Priority |
 |-------|--------|----------|
-| `type_overrides.json` | Curated DB — always wins | **Highest** |
-| `ModelInfo.derive_type()` | Audio modalities + name patterns (whisper, kokoro/piper) | Medium |
-| Provider factory kind | Default from provider registration (chat/embed/tts/stt) | Lowest |
+| `type_overrides.json` | Curated — always wins | **Highest** |
+| `ModelInfo.derive_type()` | Audio modalities + name patterns | Medium |
+| Provider factory kind | Default from registration | Lowest |
 
-### derive_type() rules (conservative — only catches unambiguous cases)
+### derive_type() rules
 
-- **stt**: `modalities.output == ["text"]` and `modalities.input` contains only `audio`
-- **tts**: `modalities.output == ["audio"]` and `modalities.input` contains only `text`
-- **stt**: model ID contains `whisper`
-- **tts**: model ID contains `kokoro` or `piper-`
+- **stt**: `modalities.output == ["text"]` + input is only audio, or ID contains `whisper`
+- **tts**: `modalities.output == ["audio"]` + input is only text, or ID contains `kokoro`/`piper-`
 - **chat**: everything else (default)
 
 ### type_overrides.json
-
-Curated type assignments that override all other sources. Add entries here for any model that needs a non-default type. Format:
 
 ```json
 {
@@ -69,84 +57,46 @@ Curated type assignments that override all other sources. Add entries here for a
 }
 ```
 
-Matches by bare model ID (no provider prefix). Add entries as you discover models with wrong types — this is the knowledge base that grows with the project.
+Matches by bare model ID (no provider prefix). Add entries as you discover wrong types.
 
-## ModelInfo Dataclass
+## Embedding Dimensions
 
-All `list_models()` methods return `list[ModelInfo]` (not `list[str]`).
-
-```python
-@dataclass
-class ModelInfo:
-    id: str                        # Unique model ID within provider
-    name: str | None               # Display name
-    type: str                      # "chat" | "embed" | "tts" | "stt" | "image"
-    status: str                    # "active" | "deprecated" | "alpha" | "beta"
-    context_window: int | None     # Max context tokens
-    max_output: int | None         # Max output tokens
-    dimensions: int | None         # Embedding vector dimensions (embed models only)
-    modalities: dict | None        # {"input": ["text","image"], "output": ["text"]}
-    capabilities: dict | None      # {"reasoning": true, "vision": true, "tool_call": true}
-    cost: dict | None              # {"input": 2.5, "output": 10.0} per 1M tokens USD
-    owned_by: str | None           # Provider or organisation
-    created: int | None            # Unix timestamp
-    first_seen: str | None         # "YYYY-MM-DD" — first appearance in our catalog
-    deprecation_date: str | None   # ISO date from provider API (e.g. "2026-05-31T12:00:00Z")
-    deprecation_replacement: str | None  # Suggested replacement model ID
-    raw: dict | None               # Full raw API response
-```
-
-Backward compat: `str(m)` returns `m.id`, `m == "model-id"` works, hashable.
-
-### Embedding-Specific Metadata
-
-Embed models have a `dimensions` field (vector size). Sources:
-- **Ollama**: `POST /api/show` returns `model_info.{arch}.context_length` and `model_info.{arch}.embedding_length` — free, no embed call
+Sources for the `dimensions` field:
+- **Ollama**: `POST /api/show` returns `model_info.{arch}.embedding_length` — free, no embed call
 - **models.dev**: `limit.output` mapped to dimensions during merge
-- **Other providers**: dimensions from provider's `/v1/models` response or models.dev merge
+- **Other providers**: from `/v1/models` response or models.dev merge
 
 ## Provider Metadata Richness
 
-| Provider | Context | Max Output | Modalities | Capabilities | Cost | Dimensions |
-|----------|---------|------------|------------|--------------|------|------------|
+| Provider | Context | Max Output | Modalities | Capabilities | Cost | Deprecation |
+|----------|:-------:|:----------:|:----------:|:------------:|:----:|:-----------:|
+| **Mistral** | ✅ | ✅ | ✅ | ✅ reasoning, vision, tools, audio, ocr | — | ✅ dates + replacements |
 | **Anthropic** | ✅ | ✅ | ✅ | ✅ thinking, vision, pdf, code_exec, tools | — | — |
-| **Mistral** | ✅ | ✅ | ✅ | ✅ reasoning, vision, tools, audio, ocr + deprecation dates | — | — |
-| **Gemini** | ✅ | ✅ | — | ✅ thinking | — | — |
 | **OpenRouter** | ✅ | ✅ | ✅ | ✅ tools, reasoning, structured_outputs | ✅ | — |
+| **Gemini** | ✅ | ✅ | — | ✅ thinking | — | — |
 | **Moonshot** | ✅ | — | ✅ | ✅ vision | — | — |
-| **Groq** | ✅ | — | — | — | — | — |
-| **Cohere** | ✅ | — | — | — | — | — |
-| **Arli** | ✅ (14/130) | — | ✅ | ✅ reasoning, vision | — | — |
 | **SambaNova** | ✅ | ✅ | — | — | ✅ | — |
 | **AI21** | ✅ | ✅ | — | — | ✅ | — |
+| **Arli** | ✅ (14/130) | — | ✅ | ✅ reasoning, vision | — | — |
 | **Pollinations** | — | — | ✅ | ✅ reasoning, vision, tools | — | — |
-| **TU** | — | — | — | — | — | — |
-| **Ollama** | — | — | — | — | — | ✅ (`/api/show` probe) |
-| OpenAI, NGC, Stepfun, Upstage, InternLM, Chutes, Cloudflare, BigModel, HuggingFace | bare (id only) | | | | | |
+| **Groq** | ✅ | — | — | — | — | — |
+| **Cohere** | ✅ | — | — | — | — | — |
+| **Ollama** | — | — | — | — | — | ✅ dimensions via `/api/show` |
+| OpenAI, NGC, StepFun, Upstage, InternLM, Chutes, Cloudflare, HuggingFace, TU | bare (id only) | | | | | |
 
-## Generating models.json
+## Generation Pipeline
 
 ```bash
-cd packages/uniinfer
 uv run python3 scripts/generate_models.py
 ```
 
-Pipeline:
 1. Calls `list_models()` on all installed providers
-2. Applies type overrides from `type_overrides.json`, then `derive_type()` fallback
-3. Merges enrichment from models.dev (context, cost, modalities, capabilities, dimensions, release_date, knowledge_cutoff)
-4. Probes Ollama embed models via `/api/show` for context_window + dimensions (free metadata read, no embed call)
-5. Tracks `first_seen` via `_model_history.json`, reports new and disappeared models
+2. Applies type overrides → derive_type() fallback
+3. Merges enrichment from models.dev (context, cost, modalities, capabilities, dimensions)
+4. Probes Ollama embed models via `/api/show`
+5. Tracks `first_seen`/`last_seen` via `_model_history.json`
 
-### models.dev Merge
-
-19 providers map to models.dev for enrichment. Matching strategy:
-- **Exact ID** first (e.g. `gpt-4o` → `gpt-4o`)
-- **Fuzzy** second: strips date suffixes (`gpt-5.4-nano-2026-03-17` → `gpt-5.4-nano`) and `@cf/` prefixes (`@cf/baai/bge-m3` → `baai/bge-m3`)
-- **Zero values skipped**: `limit.context: 0` is ignored (e.g. image models)
-- **Priority**: live API always wins over models.dev
-
-Provider mapping (uniinfer → models.dev):
+### models.dev Mapping
 
 | uniinfer | models.dev |
 |----------|-----------|
@@ -160,69 +110,24 @@ Provider mapping (uniinfer → models.dev):
 | ollama | ollama-cloud |
 | chutes | chutes |
 | cloudflare | cloudflare-ai-gateway |
-| minimax | minimax |
-| upstage | upstage |
-| stepfun | stepfun |
-| moonshot | moonshotai |
-| huggingface | huggingface |
-| zai, zai-code | zai |
 | sambanova | nova |
 | ngc | nvidia |
+| moonshot | moonshotai |
+| upstage | upstage |
+| stepfun | stepfun |
+| huggingface | huggingface |
+| zai, zai-code | zai |
 
 Unmapped: arli, pollinations, internlm, tu, ai21.
 
-## Date Tracking
+Matching: exact ID first, then fuzzy (strip date suffixes, `@cf/` prefixes). Live API always wins over models.dev.
 
-### first_seen
+## Model Lifecycle
 
-Every model gets a `first_seen` date (`YYYY-MM-DD`). Tracked in `_model_history.json` — a flat `{provider/model_id: date}` dict. New models get today's date on first appearance. The file persists across generations.
+| State | Condition | In models.json? |
+|-------|-----------|----------------|
+| `fresh` | `last_seen` == today | ✅ |
+| `stale` | `last_seen` < today, < 90 days | ✅ (with `days_since_seen`) |
+| `pruned` | `last_seen` > 90 days | ❌ kept in history only |
 
-### Deprecation
-
-Two sources of deprecation info:
-- **Provider API**: Mistral exposes `deprecation` date + `deprecation_replacement_model` in `/v1/models`
-- **Disappeared models**: models present in `_model_history.json` but missing from current generation are reported as deprecated and removed from history
-
-## CLI Commands
-
-```bash
-# List models first seen in the last 7 days (default)
-uniinfer --new-models
-uniinfer --new-models 30    # last 30 days
-
-# List all deprecated models with deprecation date and replacement
-uniinfer --deprecated-models
-
-# Speed test one or more models
-uniinfer --speedtest -p tu -m qwen-coder-30b
-uniinfer --speedtest -p openrouter --models google/gemma-4-26b-a4b-it:free meta-llama/llama-3.3-70b-instruct:free
-uniinfer --speedtest -p zai-code --models glm-4.7 glm-5 --runs 3
-```
-
-### Speed Test
-
-The `--speedtest` command measures per-model performance and persists results to `_speed_results.json`. Results are merged into `models.json` on next regeneration and exposed via `/v1/models` as the `speed` field.
-
-Measured metrics:
-- **TFT** (time to first token): seconds until first text token arrives
-- **TFT thinking**: seconds until first thinking token (for thinking models)
-- **Thinking tokens**: reasoning token count (from `usage.completion_tokens_details.reasoning_tokens` or char-based estimate)
-- **Text tokens**: output text token count
-- **Total tokens**: thinking + text
-- **tok/s**: tokens per second (generation speed)
-- **Wall time**: total request duration
-
-Prompts are auto-generated from a pool of German ML questions. Multiple runs (`--runs N`) produce averaged results.
-
-## Proxy Endpoints
-
-| Endpoint | Description |
-|----------|-------------|
-| `GET /v1/models` | All models from cache (auto-refresh if stale, includes `version` field) |
-| `GET /v1/models/{provider}` | Live provider models (updates cache) |
-| `GET /v1/models/new?days=7` | Models first seen in last N days |
-| `GET /v1/models/deprecated` | Deprecated models with deprecation info |
-| `GET /v1/system/version` | Package version |
-| `POST /v1/system/update-models` | Trigger models.json regeneration |
-
-`models.txt` is deprecated — `models.json` is the single source of truth.
+Deprecation sources: Mistral API (`deprecation` date + replacement), disappeared models.
