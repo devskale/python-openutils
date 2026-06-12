@@ -1,165 +1,94 @@
-# AGENTS.md - Python Open Utils
+# AGENTS.md — Python Open Utils
 
 > **Meta repo**: [kontext.one](https://github.com/devskale/kontext.one) — deploy, release, cross-repo orchestration. See [GUIDE.md](https://github.com/devskale/kontext.one/blob/main/GUIDE.md).
 
-## Repo Map
+## Tooling
 
-This repo works in two modes:
+- Python 3.9+, **uv** for package management (not pip)
+- Monorepo: `packages/credgoo/` and `packages/uniinfer/` — each has own `pyproject.toml` + `uv.lock`
 
-**Meta setup** (alongside kontext.one):
+## Commands
 
-| Repo | Local path |
-|------|------------|
+```bash
+# Per-package sync (creates venv, installs from lockfile)
+cd packages/<pkg> && uv sync
+
+# Tests
+cd packages/<pkg> && uv run pytest
+cd packages/<pkg> && uv run pytest -k "test_name"          # single test
+
+# Optional provider extras (uniinfer only)
+cd packages/uniinfer && uv sync --extra anthropic --extra gemini
+cd packages/uniinfer && uv sync --extra all
+```
+
+## Repo Modes
+
+**Meta setup** (`../repos.yml` exists):
+
+| Repo | Path |
+|------|------|
 | kontext.one (meta) | `..` |
 | klark0 | `../klark0` |
 | python-utils | `../python-utils` |
-| python-openutils (this repo) | `.` |
 
-**Standalone**: just this repo, no siblings. Packages install standalone via `uv sync`.
+**Standalone**: no siblings. Packages install via `uv sync`.
 
-Detect: `../repos.yml` exists → meta setup. Otherwise standalone.
+**Deploy** (meta only): `../scripts/deploy.sh dev` or `../scripts/deploy.sh production`
 
-**Identity**: `machine@python-openutils` or `machine@<package>` (e.g. `pi5@uniinfer`). Run `me.one` to check.
+## Consumers
 
-**Consumers**:
 - python-utils imports credgoo/uniinfer via **git URL** from GitHub (not local path)
 - klark0 calls uniinfer proxy via `/api/ai/uniinfer/stream` — see `../klark0/lib/ai/uniinferApi.ts`
-- Standalone tools: `uv tool install` from git URL (see Install section)
+- External install: `uv pip install -r https://skale.dev/credgoo` / `uniinfer`
 
-**Deploy** (meta setup only): `../scripts/deploy.sh dev` or `../scripts/deploy.sh production`
+## Frontend Code
 
-## Frontend code — where to find it
+| Backend | Frontend (klark0) | GitHub |
+|---------|-------------------|--------|
+| Uniinfer streaming | `../klark0/app/api/ai/uniinfer/stream/route.ts` | [route.ts](https://github.com/devskale/klark0/blob/main/app/api/ai/uniinfer/stream/route.ts) |
+| Uniinfer client | `../klark0/lib/ai/uniinferApi.ts` | [uniinferApi.ts](https://github.com/devskale/klark0/blob/main/lib/ai/uniinferApi.ts) |
+| AI settings | `../klark0/lib/ai/settings.ts` | [settings.ts](https://github.com/devskale/klark0/blob/main/lib/ai/settings.ts) |
 
-| Backend concept | Frontend location | GitHub |
-|----------------|-------------------|--------|
-| Uniinfer streaming API | `../klark0/app/api/ai/uniinfer/stream/route.ts` | [route.ts](https://github.com/devskale/klark0/blob/main/app/api/ai/uniinfer/stream/route.ts) |
-| Uniinfer client adapter | `../klark0/lib/ai/uniinferApi.ts` | [uniinferApi.ts](https://github.com/devskale/klark0/blob/main/lib/ai/uniinferApi.ts) |
-| AI provider settings | `../klark0/lib/ai/settings.ts` | [settings.ts](https://github.com/devskale/klark0/blob/main/lib/ai/settings.ts) |
+## Critical Rules
 
-If `../klark0` doesn't exist (standalone), the code lives on GitHub at the URLs above.
+- ✅ **Always** run `uv run pytest` in the relevant package before committing
+- ✅ **Always** make atomic commits with descriptive messages
+- ⚠️ **Ask first** before adding dependencies or changing pyproject.toml
+- ⚠️ **Ask first** before modifying database schema or CI config
+- 🚫 **Never** commit secrets or API keys
+- 🚫 **Never** log plaintext credentials (credgoo: XOR + Base64 only)
+- 🚫 **Never** use file permissions looser than `0o600` for cached credentials
 
----
+## Within This Repo: Local Paths
 
-Monorepo for Python utility packages.
-
-## Packages
-
-- `packages/credgoo/` - Secure API key retrieval from Google Sheets with local caching
-- `packages/uniinfer/` - Unified LLM inference interface across 20+ providers
-
-## Dependency flow
-
-```
-credgoo ←── uniinfer (local path within this repo)
-  ↑              ↑
-  └──────────── python-utils packages (via git URL from GitHub)
-```
-
-### Within this repo: use local paths
-
-uniinfer depends on credgoo via `path =` source:
+uniinfer depends on credgoo via editable path source:
 ```toml
 [tool.uv.sources]
 credgoo = { path = "../credgoo", editable = true }
 ```
 
-### External repos (python-utils): use git URLs
+External repos use git URLs — see README.md for the pattern.
 
-See python-utils/AGENTS.md for the full guide. Pattern:
-```toml
-[tool.uv.sources]
-credgoo = { git = "https://github.com/devskale/python-openutils.git", subdirectory = "packages/credgoo" }
-uniinfer = { git = "https://github.com/devskale/python-openutils.git", subdirectory = "packages/uniinfer" }
-```
-
-### When to bump versions
+## Version Bumps
 
 After changing credgoo or uniinfer:
 1. Commit and push to `main` on python-openutils
-2. In python-utils: `cd packages/THAT_PACKAGE && uv lock -U` to pick up the new commit
-3. Deploy: `pushto` runs `uvinit.sh` which does `uv sync` from the pinned lockfile
+2. In python-utils: `cd packages/THAT_PACKAGE && uv lock -U`
+3. Deploy: `pushto` → `uvinit.sh` → `uv sync` from pinned lockfile
 
-## Install
-
-```bash
-# Short URL (needs active venv)
-uv pip install -r https://skale.dev/credgoo
-uv pip install -r https://skale.dev/uniinfer
-
-# Standalone tool (no venv needed)
-uv tool install "credgoo @ git+https://github.com/devskale/python-openutils.git#subdirectory=packages/credgoo"
-uv tool install "uniinfer @ git+https://github.com/devskale/python-openutils.git#subdirectory=packages/uniinfer"
-
-# As dependency in pyproject.toml
-[project]
-dependencies = ["uniinfer", "credgoo"]
-
-[tool.uv.sources]
-uniinfer = { git = "https://github.com/devskale/python-openutils.git", subdirectory = "packages/uniinfer" }
-credgoo = { git = "https://github.com/devskale/python-openutils.git", subdirectory = "packages/credgoo" }
-```
-
-## Environment Setup
-
-```bash
-# From source — sync all packages (creates venvs, installs deps from lockfile)
-cd packages/credgoo && uv sync
-cd packages/uniinfer && uv sync
-```
+Version in `pyproject.toml`:
+- **Patch** (default): `0.1.5` → `0.1.6`
+- **Minor**: `0.1.5` → `0.2.0`
 
 ## Package-Specific Docs
 
-Detailed guidelines for each package are in their respective AGENTS.md:
+- **UniInfer**: `packages/uniinfer/AGENTS.md` — provider patterns, API compatibility, async/sync
+- **Credgoo**: `packages/credgoo/AGENTS.md` — security, encryption, file permissions
 
-- **UniInfer**: `packages/uniinfer/AGENTS.md` - provider implementation patterns, API compatibility, async/sync patterns
-- **Credgoo**: `packages/credgoo/AGENTS.md` - security requirements, encryption, file permissions
+## Code Style
 
-## Quick Commands
-
-### UniInfer
-```bash
-cd packages/uniinfer
-uv sync                                # Install/update deps
-uv run pytest                           # All tests
-uv run pytest -k "test_name"            # By keyword
-```
-
-### Credgoo
-```bash
-cd packages/credgoo
-uv sync                                # Install/update deps
-uv run pytest                           # All tests
-uv run pytest -k "test_name"            # By keyword
-```
-
-## Shared Code Style
-
-- **PEP 8** - Follow Python style guidelines
 - **No comments** unless explicitly requested
-- **Docstrings** required for all functions/classes/modules
+- **Docstrings** required for all public functions/classes/modules
 - **Type hints** where appropriate
-- **Imports**: stdlib → third-party → local (use `isort`)
-- **Naming**: PascalCase (classes), snake_case (functions/vars), UPPER_SNAKE (constants)
-
-### Imports Example
-```python
-import json
-import requests
-from pathlib import Path
-from typing import Dict, List, Optional
-from uniinfer.core import ChatProvider
-```
-
-## Security (Credgoo)
-
-- Never log plaintext API keys or encryption keys
-- Use restrictive file permissions (0o600) for cached credentials
-- Encrypt keys before storage (XOR + Base64)
-- Decrypt only when needed for API calls
-
-## Version Updates
-
-When asked to update version in `pyproject.toml`:
-- **Minor bump** (default): Increment patch (0.1.5 → 0.1.6)
-- **Major bump**: Increment minor, reset patch (0.1.5 → 0.2.0)
- if both
+- Imports: stdlib → third-party → local (use `isort`)

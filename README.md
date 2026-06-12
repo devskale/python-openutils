@@ -1,5 +1,7 @@
 # Python Open Utils
 
+> Monorepo for secure credential management and unified LLM inference across 20+ providers.
+
 [GitHub](https://github.com/devskale/python-openutils) · [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![GitHub Stars](https://img.shields.io/github/stars/devskale/python-openutils)](https://github.com/devskale/python-openutils/stargazers)
 [![GitHub Issues](https://img.shields.io/github/issues/devskale/python-openutils)](https://github.com/devskale/python-openutils/issues)
@@ -53,7 +55,7 @@ Securely manage your credentials in Google Sheets with encrypted Apps Script int
 - **Smart Local Caching**: Performance optimized with restrictive permissions.
 - **Centralized Control**: Single source of truth for all your secrets.
 
-### [UniInfer](packages/uniinfer/) `v0.5.24`
+### [UniInfer](packages/uniinfer/) `v0.5.30`
 
 OpenAI-compatible proxy server providing unified access to 500+ models from 20+ providers with multi-modal support.
 

@@ -1,22 +1,22 @@
-# Credgoo
+# Credgoo `v0.1.11`
 
-Secure API key manager backed by Google Sheets.
+> Secure API key retrieval from Google Sheets with encrypted local caching.
 
-Keys are stored encrypted in a Google Sheet, fetched over HTTPS, and cached locally at `~/.config/api_keys/`.
+Keys are stored encrypted in a Google Sheet, fetched over HTTPS, and cached locally at `~/.config/api_keys/`. One function, one CLI, zero config in code.
 
 ## Install
 
-**Into a venv** (fastest):
+**Into a venv:**
 ```bash
 uv pip install -r https://skale.dev/credgoo
 ```
 
-**Standalone CLI** (no venv needed):
+**Standalone CLI:**
 ```bash
 uv tool install "credgoo @ git+https://github.com/devskale/python-openutils.git#subdirectory=packages/credgoo"
 ```
 
-**As a dependency** in your `pyproject.toml`:
+**As a dependency:**
 ```toml
 [project]
 dependencies = ["credgoo"]
@@ -25,55 +25,96 @@ dependencies = ["credgoo"]
 credgoo = { git = "https://github.com/devskale/python-openutils.git", subdirectory = "packages/credgoo" }
 ```
 
-## Python usage
+## Quick Start
+
+```bash
+credgoo --setup    # first time: enter token + encryption key + Apps Script URL
+credgoo openai     # prints the API key
+```
 
 ```python
 from credgoo import get_api_key
 
-api_key = get_api_key("openai")  # returns str or None
+api_key = get_api_key("openai")  # str or None
 ```
 
-That's the entire API. Call `get_api_key()` with a service name, get the key back.
-
-## CLI usage
+## CLI Reference
 
 ```bash
-credgoo openai              # print the API key (cached or fresh)
-credgoo openai --update     # force fresh fetch + update cache (after key rotation)
-credgoo openai --no-cache   # force fresh fetch without updating cache
-credgoo --setup             # interactive first-time setup
-credgoo --version           # show version
+credgoo SERVICE              # print key (cached or fresh)
+credgoo SERVICE --update     # force fresh fetch + update cache (after key rotation)
+credgoo SERVICE --no-cache   # force fresh fetch without caching
+credgoo --setup              # interactive first-time setup
+credgoo --version
+credgoo -v SERVICE           # verbose output
 ```
 
-## How it works
+## How It Works
 
-1. First call fetches the encrypted key from your Google Sheet via Apps Script
-2. Decrypts it in memory and caches it locally (`~/.config/api_keys/api_keys.json`)
-3. Subsequent calls return from cache — no network needed
-
-## First-time setup
-
-```bash
-credgoo --setup
+```
+get_api_key("openai")
+  1. Check ~/.config/api_keys/api_keys.json for cached key
+  2. If cached → decrypt (XOR) with stored encryption key → return plaintext
+  3. If not cached → fetch encrypted key from Google Sheets via Apps Script
+  4. Decrypt → cache locally (encrypted) → return plaintext
 ```
 
-Interactive prompt for:
-- **Bearer token** — authenticates with your Google Apps Script
-- **Encryption key** — decrypts the stored keys
-- **Apps Script URL** — your Google Sheet endpoint
+Files on disk:
+| File | Purpose |
+|------|---------|
+| `~/.config/api_keys/credgoo.txt` | Stored credentials (token, encryption key, URL) |
+| `~/.config/api_keys/api_keys.json` | Cached encrypted keys per service |
 
-After setup, all `get_api_key()` calls work automatically. No config in code needed.
+Both use `0o600` (owner-only) permissions.
 
-## Security
+## Python API
 
-- Keys are encrypted (XOR + Base64) before caching
-- Cache files use `0o600` (owner-only) permissions
-- Credentials stored at `~/.config/api_keys/credgoo.txt` (also `0o600`)
-- Never log or print plaintext keys
+The public API is a single function:
 
-## Google Apps Script setup
+```python
+from credgoo import get_api_key
 
-See [appscript/README.md](appscript/README.md) for setting up the Google Sheet backend.
+api_key = get_api_key("openai")           # uses stored credentials
+api_key = get_api_key("openai", no_cache=True)  # force fresh fetch
+```
+
+Returns `str` (plaintext key) or `None`. Always handle the `None` case:
+
+```python
+api_key = get_api_key("openai")
+if not api_key:
+    raise RuntimeError("No API key for openai. Run 'credgoo --setup' first.")
+```
+
+Full signature (overrides are rarely needed):
+
+```python
+get_api_key(
+    service: str,
+    bearer_token: str = None,
+    encryption_key: str = None,
+    api_url: str = None,
+    cache_dir: str = None,         # default: ~/.config/api_keys
+    no_cache: bool = False,
+) -> str | None
+```
+
+## Google Apps Script Setup
+
+See [appscript/README.md](appscript/README.md) for setting up the Google Sheet backend that credgoo talks to.
+
+## Examples
+
+```python
+# Basic usage
+from credgoo import get_api_key
+key = get_api_key("openai")
+
+# With Google Gemini
+import google.generativeai as genai
+from credgoo import get_api_key
+genai.configure(api_key=get_api_key("gemini"))
+```
 
 ## License
 
