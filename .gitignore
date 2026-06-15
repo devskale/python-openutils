@@ -29,3 +29,6 @@ activate_uv.sh
 .handoff
 .DS_Store
 client_secret_*.json
+
+# uniinfer model cache (regen via scripts/explore_models_dev.py)
+packages/uniinfer/scripts/_models_dev_cache.json
