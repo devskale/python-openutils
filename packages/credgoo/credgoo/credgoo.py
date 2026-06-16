@@ -257,12 +257,21 @@ def _resolve_backend(creds, backend_name=None):
 
 # ---- Main public API ----
 
-def get_api_key(service, cache_dir=None, no_cache=False, backend_name=None):
+def get_api_key(service, cache_dir=None, no_cache=False, backend_name=None,
+                bearer_token=None, encryption_key=None, api_url=None):
     """
     Get API key for a service. Auto-detects backend from stored credentials.
     Use *backend_name* to override the default backend for this call.
     Returns plaintext key (str) or None.
+
+    Legacy params (*bearer_token*, *encryption_key*, *api_url*) are accepted
+    for backward compatibility but ignored — credentials are resolved from
+    the configured backend.
     """
+    if any(v is not None for v in (bearer_token, encryption_key, api_url)):
+        logger.debug(
+            "get_api_key() called with legacy params (bearer_token, encryption_key, api_url). "
+            "These are ignored; credentials are resolved from the configured backend.")
     if cache_dir is None:
         cache_dir = Path.home() / '.config' / 'api_keys'
     else:
