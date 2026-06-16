@@ -345,9 +345,12 @@ def setup_backend(cache_dir):
     backend._cred_file = cred_file
 
     ok = backend.setup(cache_dir)
-    if ok and "default_backend" not in existing:
-        existing["default_backend"] = chosen
-        store_credentials(existing, cred_file)
+    if ok:
+        # Reload to pick up any creds saved by backend.setup() via _store_creds
+        existing = load_credentials(cred_file)
+        if "default_backend" not in existing:
+            existing["default_backend"] = chosen
+            store_credentials(existing, cred_file)
     return ok
 
 
