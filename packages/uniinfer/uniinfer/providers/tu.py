@@ -114,6 +114,20 @@ class TUProvider(ChatProvider):
             
         if request.tools:
             payload["tools"] = request.tools
+            # `tool_choice="required"` is intentionally NOT supported on TU.
+            # vLLM's required path uses constrained decoding, which conflicts
+            # with the GLM-5.x reasoning/tool parser and produces deterministic
+            # upstream 500s on reasoning models (e.g. glm-5.2-744b-preview).
+            # See vLLM #42400, #39757, #36857 and vLLM forum #1945.
+            # Fail fast with a clear message instead of forwarding a broken call.
+            # To force a specific tool, pass a named tool_choice, e.g.:
+            #   {"type": "function", "function": {"name": "..."}}
+            if request.tool_choice == "required":
+                raise ValueError(
+                    "tool_choice='required' is not supported by the TU provider "
+                    "(upstream vLLM constrained-decoding bug on reasoning models). "
+                    "Use tool_choice='auto', or a named tool_choice to force a specific tool."
+                )
             if request.tool_choice:
                 payload["tool_choice"] = request.tool_choice
         
@@ -125,6 +139,14 @@ class TUProvider(ChatProvider):
             payload["enable_thinking"] = request.enable_thinking
         if hasattr(request, 'thinking_budget') and request.thinking_budget is not None:
             payload["thinking_budget"] = request.thinking_budget
+
+        # chat_template_kwargs — the RELIABLE way to control thinking for
+        # Qwen3.x / GLM-5.x on vLLM. The top-level `enable_thinking` above is
+        # silently ignored by these backends (vLLM #35574); this field is
+        # actually honored. e.g. {"enable_thinking": False} fully disables
+        # reasoning (0 reasoning_content tokens, ~35x faster for Qwen3.6-35b).
+        if hasattr(request, 'chat_template_kwargs') and request.chat_template_kwargs:
+            payload["chat_template_kwargs"] = request.chat_template_kwargs
 
         return payload
 

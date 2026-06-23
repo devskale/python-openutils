@@ -65,6 +65,7 @@ def create_chat_router(
                         request_id=getattr(request.state, "request_id", None),
                         reasoning_effort=request_input.reasoning_effort,
                         think=request_input.think if provider_name == "ollama" else None,
+                        chat_template_kwargs=request_input.chat_template_kwargs,
                     ),
                     media_type="text/event-stream",
                     headers={
@@ -84,6 +85,7 @@ def create_chat_router(
                 tools=request_input.tools,
                 tool_choice=request_input.tool_choice,
                 reasoning_effort=request_input.reasoning_effort,
+                chat_template_kwargs=request_input.chat_template_kwargs,
             )
 
             raw_content = full_content.message.content

@@ -25,6 +25,12 @@ class ChatCompletionRequestInput(BaseModel):
     tool_choice: Any | None = None
     reasoning_effort: str | None = None
     think: bool | str | None = None
+    # Forwarded to the backend's chat template (vLLM/HuggingFace). This is the
+    # RELIABLE way to control thinking for Qwen3.x / GLM-5.x models: many
+    # backends silently ignore top-level `enable_thinking` but honor
+    # chat_template_kwargs.enable_thinking (see vLLM #35574).
+    # e.g. {"enable_thinking": false} fully disables reasoning.
+    chat_template_kwargs: dict | None = None
 
     def get_effective_max_tokens(self) -> int | None:
         return self.max_completion_tokens or self.max_tokens
