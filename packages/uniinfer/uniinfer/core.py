@@ -149,7 +149,31 @@ class ChatCompletionRequest:
         reasoning_effort: str | None = None,
         enable_thinking: bool | None = None,
         thinking_budget: int | None = None,
+        chat_template_kwargs: dict | None = None,
     ):
+        """Initialize a chat completion request.
+
+        Args:
+            messages: The conversation history.
+            model: The model to use for completion.
+            temperature: Controls randomness in generation.
+            max_tokens: Maximum tokens to generate.
+            streaming: Whether to stream the response.
+            tools: List of tools available to the model.
+            tool_choice: Tool choice preference.
+            reasoning_effort: Reasoning effort hint (provider-specific; many
+                backends reject this).
+            enable_thinking: Top-level enable_thinking flag. NOTE: many vLLM
+                backends (incl. Qwen3.x, GLM-5.x via TU Aqueduct) silently
+                IGNORE this top-level field; prefer ``chat_template_kwargs``
+                for reliable thinking control. See vLLM #35574.
+            thinking_budget: Max tokens to spend on thinking.
+            chat_template_kwargs: Values forwarded to the serving backend's
+                chat template (e.g. vLLM/HuggingFace). This is the reliable
+                way to control thinking for Qwen3.x / GLM-5.x models:
+                ``{"enable_thinking": False}`` disables reasoning; the model
+                emits no ``reasoning_content`` and responds much faster.
+        """
         self.messages = messages
         self.model = model
         self.temperature = temperature
@@ -160,6 +184,7 @@ class ChatCompletionRequest:
         self.reasoning_effort = reasoning_effort
         self.enable_thinking = enable_thinking
         self.thinking_budget = thinking_budget
+        self.chat_template_kwargs = chat_template_kwargs
 
 
 class ChatCompletionResponse:

@@ -12,6 +12,7 @@ from uniinfer.proxy_schemas.chat import (
     StreamingChatCompletionChunk,
     StreamingChoice,
 )
+from uniinfer.proxy_services.glm_leak_repair import GlmLeakInterceptor
 
 logger = logging.getLogger("uniioai_proxy")
 
@@ -42,6 +43,7 @@ async def astream_response_generator(
     request_id: str | None = None,
     reasoning_effort: str | None = None,
     think: bool | str | None = None,
+    chat_template_kwargs: dict | None = None,
 ) -> AsyncGenerator[str, None]:
     completion_id = f"chatcmpl-{uuid.uuid4()}"
     created_time = int(time.time())
@@ -67,6 +69,11 @@ async def astream_response_generator(
     seen_tool_calls = False
     sent_finish_reason = False
 
+    # GLM-5.x leak repair: detects leaked XML tool-calls in streamed content
+    # and reconstructs them as structured tool_calls. Only active when tools
+    # are offered; harmless for normal chat.
+    leak_repair = GlmLeakInterceptor(tools=tools, model=model_name)
+
     try:
         async_iter = astream_completion(
             messages,
@@ -78,6 +85,7 @@ async def astream_response_generator(
             tools=tools,
             tool_choice=tool_choice,
             reasoning_effort=reasoning_effort,
+            chat_template_kwargs=chat_template_kwargs,
         ).__aiter__()
         while True:
             try:
@@ -104,11 +112,31 @@ async def astream_response_generator(
                 break
 
             if isinstance(chunk, dict):
-                for choice in chunk.get("choices", []):
-                    delta = choice.get("delta", {}) or {}
-                    if not isinstance(delta, dict):
-                        continue
+                choice = chunk.get("choices", [{}])[0]
+                delta = choice.get("delta", {}) if isinstance(choice.get("delta", {}), dict) else {}
 
+                # Apply GLM leak repair to streamed content (only when tools offered).
+                raw_content = delta.get("content") if delta else None
+                extra_tc_chunks = []
+                if raw_content:
+                    safe, leak_done = leak_repair.feed(raw_content)
+                    if safe is None:
+                        # Interceptor is buffering a tail; hold ALL content back.
+                        delta.pop("content", None)
+                    elif safe == "":
+                        delta.pop("content", None)
+                    else:
+                        delta["content"] = safe
+                    if leak_done:
+                        tcs = leak_repair.reconstructed_tool_calls()
+                        if tcs:
+                            extra_tc_chunks.append(tcs)
+                if delta.get("tool_calls"):
+                    seen_tool_calls = True
+                    leak_repair.note_structured_tool_calls()
+
+                # normalise thinking -> reasoning_content
+                if delta:
                     if is_openai_strict_mode():
                         delta.pop("reasoning_content", None)
                         delta.pop("thinking", None)
@@ -117,18 +145,27 @@ async def astream_response_generator(
                             delta["reasoning_content"] = delta["thinking"]
                         delta.pop("thinking", None)
 
-                yield f"data: {json.dumps(chunk)}\n\n"
-                chunk_count += 1
-                now = time.monotonic()
-                if now - last_yield_time > idle_warning_threshold:
-                    logger.warning("%sAsync stream idle gap %.2fs for %s", stream_label, now - last_yield_time, model_name)
-                last_yield_time = now
-
-                choice = chunk.get("choices", [{}])[0]
                 if choice.get("finish_reason"):
                     sent_finish_reason = True
-                delta = choice.get("delta", {})
-                if delta.get("tool_calls"):
+
+                # Yield the (possibly repaired) content chunk if it still has something.
+                if delta or choice.get("finish_reason"):
+                    yield f"data: {json.dumps(chunk)}\n\n"
+                    chunk_count += 1
+                    last_yield_time = time.monotonic()
+
+                # Emit any reconstructed tool_calls as their own delta(s).
+                for tcs in extra_tc_chunks:
+                    tc_obj = {
+                        "id": chunk.get("id", completion_id),
+                        "object": "chat.completion.chunk",
+                        "created": chunk.get("created", created_time),
+                        "model": model_name,
+                        "choices": [{"index": 0, "delta": {"tool_calls": tcs}}],
+                    }
+                    yield f"data: {json.dumps(tc_obj)}\n\n"
+                    chunk_count += 1
+                    last_yield_time = time.monotonic()
                     seen_tool_calls = True
             else:
                 chunk_finish_reason = getattr(chunk, "finish_reason", None)
@@ -153,13 +190,39 @@ async def astream_response_generator(
                 
                 if chunk.message:
                     choice_kwargs = {}
-                    if chunk.message.content:
-                        choice_kwargs["content"] = chunk.message.content
-                    if chunk.thinking and not is_openai_strict_mode():
-                        choice_kwargs["reasoning_content"] = chunk.thinking
                     if chunk.message.tool_calls:
                         choice_kwargs["tool_calls"] = chunk.message.tool_calls
                         seen_tool_calls = True
+                        leak_repair.note_structured_tool_calls()
+
+                    # GLM leak repair: route content through the interceptor
+                    # so leaked XML never reaches the client as prose.
+                    raw_content = chunk.message.content
+                    if raw_content:
+                        safe, leak_done = leak_repair.feed(raw_content)
+                        if safe is not None:
+                            choice_kwargs["content"] = safe
+                        if leak_done:
+                            # Emit any reconstructed tool_calls as a delta.
+                            tcs = leak_repair.reconstructed_tool_calls()
+                            if tcs:
+                                tc_chunk_data = StreamingChatCompletionChunk(
+                                    id=completion_id,
+                                    created=created_time,
+                                    model=model_name,
+                                    choices=[StreamingChoice(delta=ChoiceDelta(tool_calls=tcs))],
+                                )
+                                yield f"data: {tc_chunk_data.model_dump_json(exclude_none=True)}\n\n"
+                                chunk_count += 1
+                                last_yield_time = time.monotonic()
+                                seen_tool_calls = True
+                    else:
+                        # No content this chunk; make sure the interceptor has a
+                        # chance to see a (rare) empty-but-marker situation.
+                        pass
+
+                    if chunk.thinking and not is_openai_strict_mode():
+                        choice_kwargs["reasoning_content"] = chunk.thinking
 
                     choice_kwargs_with_delta = {
                         "delta": ChoiceDelta(**choice_kwargs) if choice_kwargs else ChoiceDelta()
@@ -180,7 +243,19 @@ async def astream_response_generator(
                         last_yield_time = time.monotonic()
 
         if not sent_finish_reason:
-            finish_reason = "tool_calls" if seen_tool_calls else "stop"
+            # Flush any leftover pending content (e.g. a tail kept for
+            # split-marker detection that never turned into a leak).
+            tail = leak_repair.flush_tail()
+            if tail:
+                tail_chunk_data = StreamingChatCompletionChunk(
+                    id=completion_id,
+                    created=created_time,
+                    model=model_name,
+                    choices=[StreamingChoice(delta=ChoiceDelta(content=tail))],
+                )
+                yield f"data: {tail_chunk_data.model_dump_json(exclude_none=True)}\n\n"
+                chunk_count += 1
+            finish_reason = "tool_calls" if (seen_tool_calls or leak_repair.has_leak()) else "stop"
             final_chunk_data = StreamingChatCompletionChunk(
                 id=completion_id,
                 created=created_time,
