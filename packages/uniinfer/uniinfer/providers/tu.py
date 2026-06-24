@@ -18,6 +18,14 @@ TU_BASE_URL = "https://aqueduct.ai.datalab.tuwien.ac.at/v1"
 TU_STAGING_BASE_URL = "https://aqueduct-staging.ai.datalab.tuwien.ac.at/v1"
 
 
+# Raw per-request/chunk logging to logs/tu_raw_chat.log is extremely verbose
+# (every SSE line) and was filling disk (196 MB+). It is now gated behind
+# the UNIINFER_DEBUG_RAW env var (off by default). Rare error-path diagnostics
+# (preemption / empty stream) are still logged regardless of this flag.
+def _raw_logging_enabled() -> bool:
+    return os.getenv("UNIINFER_DEBUG_RAW", "").lower() in {"1", "true", "yes"}
+
+
 class TUProvider(ChatProvider):
     """TU (Tencent Unbounded) LLM Provider implementation."""
 
@@ -159,17 +167,18 @@ class TUProvider(ChatProvider):
         try:
             response = await client.post("/chat/completions", json=payload)
             
-            # Log raw response for debugging
+            # Log raw response for debugging (gated: very verbose)
             raw_text = response.text
-            log_raw_response(
-                provider=self._CREDGOO_SERVICE,
-                operation="chat.completions",
-                raw_response={
-                    "status_code": response.status_code,
-                    "body": raw_text[:1000] if raw_text else "(empty)",
-                },
-                log_file=os.path.join(os.getcwd(), "logs", "tu_raw_chat.log"),
-            )
+            if _raw_logging_enabled():
+                log_raw_response(
+                    provider=self._CREDGOO_SERVICE,
+                    operation="chat.completions",
+                    raw_response={
+                        "status_code": response.status_code,
+                        "body": raw_text[:1000] if raw_text else "(empty)",
+                    },
+                    log_file=os.path.join(os.getcwd(), "logs", "tu_raw_chat.log"),
+                )
             
             if response.status_code != 200:
                 raise map_provider_error(self._CREDGOO_SERVICE, Exception(f"TU API error: {response.status_code} - {raw_text}"), status_code=response.status_code, response_body=raw_text)
@@ -243,12 +252,15 @@ class TUProvider(ChatProvider):
                         break
                     if not line.startswith('data: '):
                         continue
-                    log_raw_response(
-                        provider=self._CREDGOO_SERVICE,
-                        operation="chat.completions.stream",
-                        raw_response={"line": line},
-                        log_file=os.path.join(os.getcwd(), "logs", "tu_raw_chat.log"),
-                    )
+                    # Per-chunk logging is extremely verbose and was filling disk.
+                    # Only enabled when UNIINFER_DEBUG_RAW=1.
+                    if _raw_logging_enabled():
+                        log_raw_response(
+                            provider=self._CREDGOO_SERVICE,
+                            operation="chat.completions.stream",
+                            raw_response={"line": line},
+                            log_file=os.path.join(os.getcwd(), "logs", "tu_raw_chat.log"),
+                        )
                     
                     try:
                         data_str = line[6:]
