@@ -158,6 +158,7 @@ Falls back to `CREDGOO_BEARER_TOKEN` and `CREDGOO_ENCRYPTION_KEY` env vars if no
 | `/v1/chat/completions` | POST | Chat completions |
 | `/v1/embeddings` | POST | Embeddings |
 | `/v1/models` | GET | All models (cached) |
+| `/v1/catalog` | GET | Raw nested catalog (`?providers=openai,gemini`, `&download=1`) — public, no auth |
 | `/v1/models/{provider}` | GET | Live provider models |
 | `/v1/models/new?days=7` | GET | Recently added models |
 | `/v1/models/deprecated` | GET | Deprecated models |
