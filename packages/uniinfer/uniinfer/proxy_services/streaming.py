@@ -73,6 +73,11 @@ async def astream_response_generator(
     # and reconstructs them as structured tool_calls. Only active when tools
     # are offered; harmless for normal chat.
     leak_repair = GlmLeakInterceptor(tools=tools, model=model_name)
+    # The TU vLLM glm47 tool parser also leaks <tool_call> XML into
+    # reasoning_content (thinking). Strip it there too so the agent's thinking
+    # renderer doesn't display raw XML; we don't reconstruct tool_calls from
+    # reasoning leaks (the content path / structured deltas handle that).
+    reasoning_leak_repair = GlmLeakInterceptor(tools=tools, model=model_name)
 
     try:
         async_iter = astream_completion(
@@ -144,8 +149,46 @@ async def astream_response_generator(
                         if delta.get("thinking") and not delta.get("reasoning_content"):
                             delta["reasoning_content"] = delta["thinking"]
                         delta.pop("thinking", None)
+                        # Strip leaked tool-call XML from reasoning_content too
+                        # (the glm47 parser leaks into thinking as well as content).
+                        raw_reasoning = delta.get("reasoning_content")
+                        if raw_reasoning:
+                            rsafe, _ = reasoning_leak_repair.feed(raw_reasoning)
+                            if rsafe is None or rsafe == "":
+                                delta.pop("reasoning_content", None)
+                            else:
+                                delta["reasoning_content"] = rsafe
 
                 if choice.get("finish_reason"):
+                    # The provider is signalling completion. Flush any content
+                    # still held in the leak-repair rolling tail BEFORE we emit
+                    # the finish chunk, otherwise the buffered tail is lost
+                    # (the post-loop flush_tail() only runs when no finish_reason
+                    # was ever sent).
+                    tail = leak_repair.flush_tail()
+                    if tail:
+                        tail_chunk = {
+                            "id": chunk.get("id", completion_id),
+                            "object": "chat.completion.chunk",
+                            "created": chunk.get("created", created_time),
+                            "model": model_name,
+                            "choices": [{"index": 0, "delta": {"content": tail}}],
+                        }
+                        yield f"data: {json.dumps(tail_chunk)}\n\n"
+                        chunk_count += 1
+                        last_yield_time = time.monotonic()
+                    rtail = reasoning_leak_repair.flush_tail()
+                    if rtail:
+                        rtail_chunk = {
+                            "id": chunk.get("id", completion_id),
+                            "object": "chat.completion.chunk",
+                            "created": chunk.get("created", created_time),
+                            "model": model_name,
+                            "choices": [{"index": 0, "delta": {"reasoning_content": rtail}}],
+                        }
+                        yield f"data: {json.dumps(rtail_chunk)}\n\n"
+                        chunk_count += 1
+                        last_yield_time = time.monotonic()
                     sent_finish_reason = True
 
                 # Yield the (possibly repaired) content chunk if it still has something.
@@ -222,12 +265,38 @@ async def astream_response_generator(
                         pass
 
                     if chunk.thinking and not is_openai_strict_mode():
-                        choice_kwargs["reasoning_content"] = chunk.thinking
+                        rsafe, _ = reasoning_leak_repair.feed(chunk.thinking)
+                        if rsafe is not None and rsafe != "":
+                            choice_kwargs["reasoning_content"] = rsafe
 
                     choice_kwargs_with_delta = {
                         "delta": ChoiceDelta(**choice_kwargs) if choice_kwargs else ChoiceDelta()
                     }
                     if chunk_finish_reason:
+                        # Flush any content still held in the leak-repair rolling
+                        # tail before signalling completion (see dict branch).
+                        tail = leak_repair.flush_tail()
+                        if tail:
+                            tail_chunk_data = StreamingChatCompletionChunk(
+                                id=completion_id,
+                                created=created_time,
+                                model=model_name,
+                                choices=[StreamingChoice(delta=ChoiceDelta(content=tail))],
+                            )
+                            yield f"data: {tail_chunk_data.model_dump_json(exclude_none=True)}\n\n"
+                            chunk_count += 1
+                            last_yield_time = time.monotonic()
+                        rtail = reasoning_leak_repair.flush_tail()
+                        if rtail:
+                            rtail_chunk_data = StreamingChatCompletionChunk(
+                                id=completion_id,
+                                created=created_time,
+                                model=model_name,
+                                choices=[StreamingChoice(delta=ChoiceDelta(reasoning_content=rtail))],
+                            )
+                            yield f"data: {rtail_chunk_data.model_dump_json(exclude_none=True)}\n\n"
+                            chunk_count += 1
+                            last_yield_time = time.monotonic()
                         choice_kwargs_with_delta["finish_reason"] = chunk_finish_reason
                         sent_finish_reason = True
 
@@ -254,6 +323,16 @@ async def astream_response_generator(
                     choices=[StreamingChoice(delta=ChoiceDelta(content=tail))],
                 )
                 yield f"data: {tail_chunk_data.model_dump_json(exclude_none=True)}\n\n"
+                chunk_count += 1
+            rtail = reasoning_leak_repair.flush_tail()
+            if rtail:
+                rtail_chunk_data = StreamingChatCompletionChunk(
+                    id=completion_id,
+                    created=created_time,
+                    model=model_name,
+                    choices=[StreamingChoice(delta=ChoiceDelta(reasoning_content=rtail))],
+                )
+                yield f"data: {rtail_chunk_data.model_dump_json(exclude_none=True)}\n\n"
                 chunk_count += 1
             finish_reason = "tool_calls" if (seen_tool_calls or leak_repair.has_leak()) else "stop"
             final_chunk_data = StreamingChatCompletionChunk(
