@@ -147,6 +147,50 @@ def delete_model_override(model_id: str) -> bool:
     return True
 
 
+def load_catalog(provider_filter: str | None = None) -> dict:
+    """Load the raw nested models.json catalog, optionally filtered by provider(s).
+
+    Unlike list_all_models_from_factories (which flattens into an OpenAI-style
+    list and merges overrides), this returns the catalog in its native nested
+    shape: {"_meta": {...}, "providers": {pid: {provider_class, kind, models}}}.
+
+    Args:
+        provider_filter: Comma-separated provider IDs to include.
+            None or empty string returns all providers.
+
+    Returns:
+        Dict with '_meta' and 'providers' keys. Meta totals are recomputed
+        to reflect the filtered subset.
+    """
+    import json
+
+    models_json = os.path.join(PACKAGE_ROOT, "models", "models.json")
+    empty = {
+        "_meta": {"generated": None, "total_models": 0, "total_providers": 0},
+        "providers": {},
+    }
+    if not os.path.exists(models_json):
+        return empty
+    try:
+        with open(models_json) as f:
+            data = json.load(f)
+    except Exception as e:
+        logger.error("Error reading models.json: %s", e)
+        return empty
+
+    providers = data.get("providers", {})
+    if provider_filter:
+        wanted = {p.strip() for p in provider_filter.split(",") if p.strip()}
+        providers = {k: v for k, v in providers.items() if k in wanted}
+
+    total = sum(len(p.get("models", [])) for p in providers.values())
+    meta = dict(data.get("_meta", {}))
+    meta["total_models"] = total
+    meta["total_providers"] = len(providers)
+    meta["filtered"] = bool(provider_filter)
+    return {"_meta": meta, "providers": providers}
+
+
 def load_stale_models() -> list[dict]:
     """Load stale models from _stale_models.json (written by generate_models.py)."""
     path = os.path.join(PACKAGE_ROOT, "models", "_stale_models.json")

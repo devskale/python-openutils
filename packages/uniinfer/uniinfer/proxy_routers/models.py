@@ -1,4 +1,5 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi.responses import Response
 
 from uniinfer.auth import get_optional_proxy_token, validate_proxy_token
 from uniinfer.uniioai import (
@@ -12,6 +13,7 @@ from uniinfer.proxy_services.models_registry import (
     ensure_fresh_models_file,
     refresh_models_file,
     list_all_models_from_factories,
+    load_catalog,
     update_provider_in_cache,
     save_model_override,
     load_model_overrides,
@@ -69,6 +71,35 @@ def create_models_router(version: str) -> APIRouter:
             return await refresh_models_file()
         except Exception as e:
             raise HTTPException(status_code=500, detail=f"Failed to update models: {e}")
+
+    @router.get("/v1/catalog")
+    async def get_catalog(
+        providers: str | None = Query(
+            None, description="Comma-separated provider IDs to include (e.g. 'openai,gemini'). Omit for all."
+        ),
+        download: bool = Query(
+            False, description="If true, send as attachment (Content-Disposition) for direct download."
+        ),
+    ):
+        """Return the raw nested models.json catalog, optionally filtered by provider(s).
+
+        Public endpoint (no auth) so the catalog regenerated daily at 04:00 UTC
+        can be fetched and downloaded via web. Returns the native nested shape:
+        {"_meta": {...}, "providers": {pid: {provider_class, kind, models}}}.
+        """
+        await ensure_fresh_models_file()
+        catalog = load_catalog(providers)
+        import json as _json
+        body = _json.dumps(catalog, indent=2, ensure_ascii=False)
+        headers = {}
+        if download:
+            if providers:
+                slug = "-".join(p.strip() for p in providers.split(",") if p.strip())
+                filename = f"models-{slug}.json"
+            else:
+                filename = "models.json"
+            headers["Content-Disposition"] = f'attachment; filename="{filename}"'
+        return Response(content=body, media_type="application/json", headers=headers)
 
     @router.get("/v1/models/deprecated")
     async def list_deprecated_models():

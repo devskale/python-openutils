@@ -130,6 +130,7 @@
         </div>
         <div class="models-provider-filter">
           <select id="models-browser-provider"><option value="">All providers</option></select>
+          <button id="models-download-btn" class="btn-link" title="Download catalog JSON (filtered by current provider selection)">⬇ JSON</button>
         </div>
         <div class="models-stats">
           <span id="models-count">0 models</span>
@@ -836,6 +837,15 @@
     });
     $("#models-browser-search").addEventListener("input", e => { modelsSearchText = e.target.value; renderModelsTable(); });
     $("#models-browser-provider").addEventListener("change", e => { modelsProviderFilter = e.target.value; renderModelsTable(); });
+    $("#models-download-btn").addEventListener("click", () => {
+      const params = new URLSearchParams();
+      if (modelsProviderFilter) params.set("providers", modelsProviderFilter);
+      params.set("download", "1");
+      const a = document.createElement("a");
+      a.href = `${window.uniinferConfig.apiBaseUrl}/v1/catalog?${params}`;
+      a.download = modelsProviderFilter ? `models-${modelsProviderFilter}.json` : "models.json";
+      document.body.appendChild(a); a.click(); a.remove();
+    });
 
     // Track current overrides loaded from server
     let serverOverrides = {};
