@@ -21,4 +21,6 @@ logs/
 # Runtime-generated (server-local, not source)
 uniinfer/models/_speed_results.json
 uniinfer/models/model_overrides.json
+uniinfer/models/models.json
+uniinfer/models/_stale_models.json
 uniinfer/models/_model_history.json
