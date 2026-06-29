@@ -29,12 +29,8 @@ from credgoo import get_api_key
 
 ## Architecture
 
-```
-credgoo/
-├── __init__.py          # exports: get_api_key, get_api_key_from_google, decrypt_key, cache_api_key
-├── __main__.py          # CLI entry point → credgoo:main
-└── credgoo.py           # all logic: fetch, encrypt, decrypt, cache, CLI, interactive setup
-```
+All logic lives in `credgoo.py` (fetch, encrypt, decrypt, cache, CLI,
+interactive setup) — `__init__.py` re-exports, `__main__.py` is the CLI entry.
 
 Flow: cache check → fetch from Apps Script → decrypt (XOR + Base64) → cache encrypted locally.
 
