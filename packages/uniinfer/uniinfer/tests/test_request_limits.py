@@ -31,9 +31,11 @@ def test_request_size_limit(client):
 
 
 def test_too_many_messages(client):
+    from uniinfer.proxy_schemas.chat import ChatCompletionRequestInput
+    over = ChatCompletionRequestInput.MAX_MESSAGES + 1
     response = client.post("/v1/chat/completions", json={
         "model": "openai@gpt-3.5-turbo",
-        "messages": [{"role": "user", "content": "m"}] * 501
+        "messages": [{"role": "user", "content": "m"}] * over
     })
     assert response.status_code == 422
     assert "Too many messages" in str(response.json())

@@ -95,10 +95,19 @@ app.add_middleware(SlowAPIMiddleware)
 @app.exception_handler(RequestValidationError)
 async def validation_exception_handler(request: Request, exc: RequestValidationError):
     request_id = getattr(request.state, "request_id", "unknown")
-    logger.error(f"[{request_id}] Validation error for {request.method} {request.url}: {exc.errors()}")
+    # Strip the `input` and `ctx` fields from each error and DO NOT echo the
+    # full request body. Large chat requests (hundreds of messages) made the
+    # old 422 body megabytes-large, which the OpenAI SDK on the client side
+    # cannot fold into `error.message` — surfacing as the opaque
+    # "422 status code (no body)". Keep the errors actionable but compact.
+    compact_errors = [
+        {k: v for k, v in err.items() if k not in ("input", "ctx")}
+        for err in exc.errors()
+    ]
+    logger.error(f"[{request_id}] Validation error for {request.method} {request.url}: {compact_errors}")
     return JSONResponse(
         status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-        content=jsonable_encoder({"detail": exc.errors(), "body": exc.body}),
+        content=jsonable_encoder({"detail": compact_errors}),
     )
 
 # --- Rate Limit Helpers ---

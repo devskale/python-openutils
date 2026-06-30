@@ -1,7 +1,7 @@
 import re
 import time
 import uuid
-from typing import Any
+from typing import Any, ClassVar
 
 from pydantic import BaseModel, Field, field_validator
 
@@ -35,11 +35,13 @@ class ChatCompletionRequestInput(BaseModel):
     def get_effective_max_tokens(self) -> int | None:
         return self.max_completion_tokens or self.max_tokens
 
+    MAX_MESSAGES: ClassVar[int] = 5000
+
     @field_validator("messages")
     @classmethod
     def validate_messages_count(cls, v):
-        if len(v) > 500:
-            raise ValueError("Too many messages. Maximum allowed is 500.")
+        if len(v) > cls.MAX_MESSAGES:
+            raise ValueError(f"Too many messages. Maximum allowed is {cls.MAX_MESSAGES}.")
         return v
 
     @field_validator("model")
