@@ -72,14 +72,43 @@ External repos use git URLs — see README.md for the pattern.
 
 After changing credgoo or uniinfer:
 1. Commit and push to `main` on python-openutils
-2. In python-utils: `cd packages/THAT_PACKAGE && uv lock -U`
-3. Push python-utils to `dev`
-
-Deploy (`pushto` → `uvinit.sh` → `uv sync` on target hosts) is **only done on explicit request** — do not run it automatically.
+2. In python-utils: `cd packages/THAT_PACKAGE && uv lock -U`, then push to `dev`
 
 Version in `pyproject.toml`:
 - **Patch** (default): `0.1.5` → `0.1.6`
 - **Minor**: `0.1.5` → `0.2.0`
+
+## Deploy
+
+There are two deploy targets — do not confuse them.
+
+### 1. The uniioai proxy on `amd` (this host)
+
+The `uniioai-proxy` systemd service runs **on amd** from this local checkout
+(`/home/ubuntu/code/python-openutils/packages/uniinfer`), served by uvicorn on
+port `8124` (nginx TLS front on `8123`). It is **not** pulled via git URL —
+it *is* this repo.
+
+To deploy a uniinfer change to the live proxy:
+```bash
+ssh amd 'cd code/python-openutils/packages/uniinfer && ./deploy.sh'
+# deploy.sh = git pull → uv sync --all-extras → sudo systemctl restart uniioai-proxy
+```
+If you're already on amd editing in-place, the equivalent is:
+```bash
+cd packages/uniinfer && uv sync --all-extras && sudo systemctl restart uniioai-proxy
+```
+Related systemd units on amd: `uniioai-proxy.service` (always-on),
+`uniioai-models-refresh.timer` (daily model-list refresh at 04:00 UTC).
+
+### 2. Consumer apps (python-utils)
+
+`python-utils` packages import uniinfer via **git URL** from GitHub, so they
+pick up new versions through their pinned `uv.lock` after step 2 above.
+
+Rolling those changes out to the hosts that run those apps
+(`pushto` → `uvinit.sh` → `uv sync`) is **only done on explicit request** —
+do not run it automatically.
 
 ## Package-Specific Docs
 
