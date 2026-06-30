@@ -34,8 +34,6 @@ cd packages/uniinfer && uv sync --extra all
 
 **Standalone**: no siblings. Packages install via `uv sync`.
 
-**Deploy** (meta only): `../scripts/deploy.sh dev` or `../scripts/deploy.sh production`
-
 ## Consumers
 
 - python-utils imports credgoo/uniinfer via **git URL** from GitHub (not local path)
@@ -75,7 +73,9 @@ External repos use git URLs — see README.md for the pattern.
 After changing credgoo or uniinfer:
 1. Commit and push to `main` on python-openutils
 2. In python-utils: `cd packages/THAT_PACKAGE && uv lock -U`
-3. Deploy: `pushto` → `uvinit.sh` → `uv sync` from pinned lockfile
+3. Push python-utils to `dev`
+
+Deploy (`pushto` → `uvinit.sh` → `uv sync` on target hosts) is **only done on explicit request** — do not run it automatically.
 
 Version in `pyproject.toml`:
 - **Patch** (default): `0.1.5` → `0.1.6`
