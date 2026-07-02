@@ -62,21 +62,27 @@
 
 <section>
   <h2>Models — <span class="pill" id="winLabel">last 24h</span></h2>
-  <div style="overflow-x:auto">
-    <table id="models">
-      <thead><tr>
-        <th>Model</th><th>Requests</th><th>Errors</th><th>Err%</th>
-        <th>Prompt tok</th><th>Completion tok</th><th>Total tok</th><th>Avg latency</th>
-      </tr></thead>
-      <tbody></tbody>
-    </table>
+  <div class="grid2">
+    <div style="overflow-x:auto">
+      <table id="models">
+        <thead><tr>
+          <th>Model</th><th>Requests</th><th>% req</th><th>Errors</th><th>Err%</th>
+          <th>Total tok</th><th>% tok</th><th>Avg latency</th>
+        </tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+    <div>
+      <h2>Request share</h2>
+      <div class="chart-box" style="height:280px"><canvas id="shareChart"></canvas></div>
+    </div>
   </div>
 </section>
 
 <script>
 let data = null;
 let win = 'last_24h';
-let reqChart = null, tokChart = null;
+let reqChart = null, tokChart = null, shareChart = null;
 
 const fmt = n => (n||0).toLocaleString();
 const fmtDur = ms => ms ? (ms>=1000 ? (ms/1000).toFixed(1)+'s' : ms+'ms') : '–';
@@ -119,24 +125,45 @@ function render(){
   ], true);
   // table
   const tb = document.querySelector('#models tbody');
+  const totalReq = pm.reduce((s,m)=>s+m.requests,0) || 1;
+  const totalTok = pm.reduce((s,m)=>s+m.total_tokens,0) || 1;
   tb.innerHTML = pm.map(m=>`<tr>
-    <td>${m.model}</td><td>${fmt(m.requests)}</td>
+    <td>${m.model}</td><td>${fmt(m.requests)}</td><td>${(m.requests/totalReq*100).toFixed(1)}%</td>
     <td class="${m.errors?'err':''}">${fmt(m.errors)}</td><td>${(m.error_rate*100).toFixed(1)}%</td>
-    <td>${fmt(m.prompt_tokens)}</td><td>${fmt(m.completion_tokens)}</td><td>${fmt(m.total_tokens)}</td>
+    <td>${fmt(m.total_tokens)}</td><td>${(m.total_tokens/totalTok*100).toFixed(1)}%</td>
     <td>${fmtDur(m.avg_latency_ms)}</td></tr>`).join('') || '<tr><td colspan="8" style="text-align:center;color:#8a93a3">no data yet</td></tr>';
+  // donut: request share by model
+  drawShare(pm, totalReq);
 }
 
 function drawChart(id, kind, labels, datasets, stacked){
   const ctx = document.getElementById(id);
   if(reqChart && id==='reqChart'){ reqChart.destroy(); }
   if(tokChart && id==='tokChart'){ tokChart.destroy(); }
+  if(shareChart && id==='shareChart'){ shareChart.destroy(); }
   const cfg = {
     type:'bar',
     data:{ labels, datasets: datasets.map(d=>({ label:d.label, data:d.data, backgroundColor:d.color, borderRadius:3, borderSkipped:false, stack: stacked?'s':undefined })) },
     options:{ responsive:true, maintainAspectRatio:false, scales:{ x:{ stacked:!!stacked, grid:{display:false}, ticks:{color:'#8a93a3', maxRotation:0, autoSkip:true} }, y:{ stacked:!!stacked, beginAtZero:true, grid:{color:'#232834'}, ticks:{color:'#8a93a3'} } }, plugins:{ legend:{labels:{color:'#c2c8d4'}}, tooltip:{mode:'index'} } }
   };
   const c = new Chart(ctx, cfg);
-  if(id==='reqChart') reqChart=c; else tokChart=c;
+  if(id==='reqChart') reqChart=c; else if(id==='tokChart') tokChart=c; else shareChart=c;
+}
+
+const PALETTE = ['#3b82f6','#22c55e','#f59e0b','#a855f7','#ec4899','#14b8a6','#eab308','#ef4444','#8b5cf6','#06b6d4'];
+function drawShare(pm, total){
+  const ctx = document.getElementById('shareChart');
+  if(!ctx) return;
+  const top = pm.slice(0, 8);
+  const labels = top.map(m=>m.model.replace(/^tu@/, ''));
+  const vals = top.map(m=>m.requests);
+  const cfg = {
+    type:'doughnut',
+    data:{ labels, datasets:[{ data:vals, backgroundColor: top.map((_,i)=>PALETTE[i%PALETTE.length]), borderWidth:0 }] },
+    options:{ responsive:true, maintainAspectRatio:false, cutout:'62%', plugins:{ legend:{ position:'right', labels:{ color:'#c2c8d4', boxWidth:12, font:{size:11} } }, tooltip:{ callbacks:{ label:(c)=>` ${c.label}: ${fmt(c.parsed)} (${(c.parsed/(total||1)*100).toFixed(1)}%)` } } } }
+  };
+  if(shareChart) shareChart.destroy();
+  shareChart = new Chart(ctx, cfg);
 }
 
 load();
