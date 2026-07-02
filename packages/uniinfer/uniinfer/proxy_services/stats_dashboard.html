@@ -61,6 +61,25 @@
 </section>
 
 <section>
+  <h2>Errors — <span class="pill" id="winLabelErr">last 24h</span></h2>
+  <div class="grid2">
+    <div>
+      <h2>Status codes</h2>
+      <div class="chart-box" style="height:280px"><canvas id="statusChart"></canvas></div>
+    </div>
+    <div>
+      <h2>Top failing models</h2>
+      <div style="overflow-x:auto">
+        <table id="errModels">
+          <thead><tr><th>Model</th><th>Errors</th><th>Requests</th><th>Err%</th><th>Avg latency</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section>
   <h2>Models — <span class="pill" id="winLabel">last 24h</span></h2>
   <div class="grid2">
     <div style="overflow-x:auto">
@@ -82,7 +101,7 @@
 <script>
 let data = null;
 let win = 'last_24h';
-let reqChart = null, tokChart = null, shareChart = null;
+let reqChart = null, tokChart = null, shareChart = null, statusChart = null;
 
 const fmt = n => (n||0).toLocaleString();
 const fmtDur = ms => ms ? (ms>=1000 ? (ms/1000).toFixed(1)+'s' : ms+'ms') : '–';
@@ -134,6 +153,13 @@ function render(){
     <td>${fmtDur(m.avg_latency_ms)}</td></tr>`).join('') || '<tr><td colspan="8" style="text-align:center;color:#8a93a3">no data yet</td></tr>';
   // donut: request share by model
   drawShare(pm, totalReq);
+  // errors section
+  document.getElementById('winLabelErr').textContent = win==='last_24h'?'last 24h':'last 7d';
+  drawStatus(w.status_codes || {});
+  const errModels = pm.filter(m=>m.errors>0).sort((a,b)=>b.errors-a.errors);
+  document.querySelector('#errModels tbody').innerHTML = errModels.map(m=>`<tr>
+    <td>${m.model}</td><td class="err">${fmt(m.errors)}</td><td>${fmt(m.requests)}</td>
+    <td>${(m.error_rate*100).toFixed(1)}%</td><td>${fmtDur(m.avg_latency_ms)}</td></tr>`).join('') || '<tr><td colspan="5" style="text-align:center;color:#8a93a3">no errors 🎉</td></tr>';
 }
 
 function drawChart(id, kind, labels, datasets, stacked){
@@ -164,6 +190,34 @@ function drawShare(pm, total){
   };
   if(shareChart) shareChart.destroy();
   shareChart = new Chart(ctx, cfg);
+}
+
+function statusColor(code){
+  if(code.startsWith('2')) return '#22c55e';
+  if(code==='400'||code==='422') return '#f59e0b';
+  if(code==='401'||code==='403') return '#a855f7';
+  if(code==='429') return '#eab308';
+  if(code.startsWith('5')) return '#ef4444';
+  return '#8a93a3';
+}
+function statusLabel(code){
+  const m={'200':'OK','400':'Bad Request','401':'Unauthorized','403':'Forbidden','404':'Not Found','413':'Payload Too Large','422':'Unprocessable','429':'Rate Limited','500':'Server Error','502':'Bad Gateway','503':'Unavailable','504':'Gateway Timeout'};
+  return m[code]||code;
+}
+function drawStatus(codes){
+  const ctx = document.getElementById('statusChart');
+  if(!ctx) return;
+  const entries = Object.entries(codes).sort((a,b)=>b[1]-a[1]);
+  const labels = entries.map(([c])=>c+' '+statusLabel(c));
+  const vals = entries.map(([,n])=>n);
+  const total = vals.reduce((s,v)=>s+v,0) || 1;
+  const cfg = {
+    type:'doughnut',
+    data:{ labels, datasets:[{ data:vals, backgroundColor: entries.map(([c])=>statusColor(c)), borderWidth:0 }] },
+    options:{ responsive:true, maintainAspectRatio:false, cutout:'58%', plugins:{ legend:{ position:'right', labels:{ color:'#c2c8d4', boxWidth:12, font:{size:11} } }, tooltip:{ callbacks:{ label:(c)=>` ${c.label}: ${fmt(c.parsed)} (${(c.parsed/total*100).toFixed(1)}%)` } } } }
+  };
+  if(statusChart) statusChart.destroy();
+  statusChart = new Chart(ctx, cfg);
 }
 
 load();
