@@ -59,11 +59,11 @@ try:
 except ImportError:
     HAS_AI21 = False
 
-try:
-    from .providers import GeminiProvider
-    HAS_GENAI = True
-except ImportError:
-    HAS_GENAI = False
+# Whether google-genai is *installed* (cheap check, no import). The GeminiProvider
+# module is heavy (~50s to import on some boxes), so we register it lazily below
+# and only import it when actually used.
+import importlib.util as _importlib_util
+HAS_GENAI = _importlib_util.find_spec("google.genai") is not None
 
 # Register built-in providers
 ProviderFactory.register_provider("mistral", MistralProvider)
@@ -107,7 +107,9 @@ if HAS_AI21:
     ProviderFactory.register_provider("ai21", AI21Provider)
 
 if HAS_GENAI:
-    ProviderFactory.register_provider("gemini", GeminiProvider)
+    # Lazy: avoid importing the heavy google-genai SDK at startup. The module is
+    # only imported on the first gemini request (or direct GeminiProvider access).
+    ProviderFactory.register_lazy("gemini", "uniinfer.providers.gemini:GeminiProvider")
 
 try:
     from importlib.metadata import version, PackageNotFoundError
@@ -188,3 +190,18 @@ if HAS_AI21:
 
 if HAS_GENAI:
     __all__.append('GeminiProvider')
+
+
+def __getattr__(name):
+    """Lazy attribute access (PEP 562).
+
+    GeminiProvider is intentionally not imported at module load (google-genai is
+    ~50s to import). It is resolved here on first access, preserving
+n    ``from uniinfer import GeminiProvider`` for callers that need the class.
+    """
+    if name == "GeminiProvider":
+        if HAS_GENAI:
+            from uniinfer.providers.gemini import GeminiProvider as _G
+            return _G
+        raise ImportError("GeminiProvider requires the 'gemini' extra (google-genai)")
+    raise AttributeError(f"module 'uniinfer' has no attribute {name!r}")
