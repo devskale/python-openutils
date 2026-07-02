@@ -2,6 +2,7 @@ from __future__ import annotations
 """
 OpenAI-compliant TU provider implementation.
 """
+from collections import deque
 from typing import Any, AsyncIterator
 import httpx
 import json
@@ -17,6 +18,25 @@ from ..logging_utils import log_raw_response
 TU_BASE_URL = "https://aqueduct.ai.datalab.tuwien.ac.at/v1"
 TU_STAGING_BASE_URL = "https://aqueduct-staging.ai.datalab.tuwien.ac.at/v1"
 
+# Default backend rate limit (requests/minute) for the TU/Aqueduct API.
+# Configurable via the ``tu_rate_limit_per_minute`` key in the JSON config file
+# at the path given by the ``UNIINFER_CONFIG`` env var (defaults to
+# config.json in the provider's working directory). Falls back to 25 on any error.
+
+
+def _load_tu_rate_limit() -> int:
+    """Read tu_rate_limit_per_minute from the JSON config file, default 25."""
+    config_path = os.getenv("UNIINFER_CONFIG", "config.json")
+    try:
+        with open(config_path) as f:
+            value = int(json.load(f).get("tu_rate_limit_per_minute", 25))
+        return value if value > 0 else 25
+    except (FileNotFoundError, json.JSONDecodeError, TypeError, ValueError):
+        return 25
+
+
+_DEFAULT_TU_RATE_LIMIT = _load_tu_rate_limit()
+
 
 # Raw per-request/chunk logging to logs/tu_raw_chat.log is extremely verbose
 # (every SSE line) and was filling disk (196 MB+). It is now gated behind
@@ -29,8 +49,9 @@ def _raw_logging_enabled() -> bool:
 class TUProvider(ChatProvider):
     """TU (Tencent Unbounded) LLM Provider implementation."""
 
-    _global_last_request_time: datetime | None = None
+    _global_request_times: deque[datetime] = deque()
     _global_lock = asyncio.Lock()
+    _max_requests_per_minute = _DEFAULT_TU_RATE_LIMIT
     _min_request_interval = timedelta(seconds=2)
 
     _DEFAULT_MAX_TOKENS = 8192
@@ -71,15 +92,33 @@ class TUProvider(ChatProvider):
         return self._async_client
 
     async def _throttle(self) -> None:
-        """Simple async throttling to respect rate limits."""
+        """Throttle requests to respect the TU backend's 25 requests/minute rate limit.
+
+        Maintains a sliding 60-second window of request timestamps. If the window
+        is full, waits until the oldest request falls outside it before proceeding.
+        Also enforces a minimum 2-second spacing between consecutive requests to
+        avoid bursting.
+        """
         cls = type(self)
         async with cls._global_lock:
-            if cls._global_last_request_time is not None:
-                elapsed = datetime.now() - cls._global_last_request_time
+            now = datetime.now()
+            window_start = now - timedelta(seconds=60)
+            while cls._global_request_times and cls._global_request_times[0] < window_start:
+                cls._global_request_times.popleft()
+            if len(cls._global_request_times) >= cls._max_requests_per_minute:
+                wait_time = (cls._global_request_times[0] - window_start).total_seconds()
+                if wait_time > 0:
+                    await asyncio.sleep(wait_time)
+                now = datetime.now()
+                window_start = now - timedelta(seconds=60)
+                while cls._global_request_times and cls._global_request_times[0] < window_start:
+                    cls._global_request_times.popleft()
+            if cls._global_request_times:
+                elapsed = now - cls._global_request_times[-1]
                 if elapsed < cls._min_request_interval:
                     wait_time = (cls._min_request_interval - elapsed).total_seconds()
                     await asyncio.sleep(wait_time)
-            cls._global_last_request_time = datetime.now()
+            cls._global_request_times.append(datetime.now())
 
     def _prepare_payload(self, request: ChatCompletionRequest) -> dict[str, Any]:
         """Prepare the request payload for the TU API.
