@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>UniIOAI Proxy — Stats</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<style>
+  :root { color-scheme: light dark; }
+  body { font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; margin: 0; background: #0f1115; color: #e6e6e6; }
+  header { padding: 16px 20px; background: #161a21; border-bottom: 1px solid #232834; }
+  header h1 { margin: 0; font-size: 18px; font-weight: 600; }
+  header .meta { font-size: 12px; color: #8a93a3; margin-top: 4px; }
+  .cards { display: flex; gap: 12px; padding: 16px 20px; flex-wrap: wrap; }
+  .card { background: #161a21; border: 1px solid #232834; border-radius: 8px; padding: 14px 18px; min-width: 140px; }
+  .card .label { font-size: 11px; text-transform: uppercase; letter-spacing: .04em; color: #8a93a3; }
+  .card .value { font-size: 22px; font-weight: 700; margin-top: 4px; }
+  .card .sub { font-size: 11px; color: #8a93a3; margin-top: 2px; }
+  section { padding: 8px 20px 24px; }
+  section h2 { font-size: 14px; font-weight: 600; color: #c2c8d4; margin: 16px 0 8px; }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  @media (max-width: 900px) { .grid2 { grid-template-columns: 1fr; } }
+  .chart-box { background: #161a21; border: 1px solid #232834; border-radius: 8px; padding: 12px; height: 280px; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th, td { text-align: right; padding: 6px 10px; border-bottom: 1px solid #232834; }
+  th:first-child, td:first-child { text-align: left; }
+  th { color: #8a93a3; font-weight: 600; font-size: 11px; text-transform: uppercase; letter-spacing: .03em; }
+  tbody tr:hover { background: #1b2029; }
+  .err { color: #ff6b6b; }
+  .pill { display:inline-block; font-size:11px; padding:1px 8px; border-radius:10px; background:#1f2937; color:#9fb3c8; }
+  .toolbar { display:flex; gap:8px; align-items:center; }
+  .toolbar button { background:#1f2937; color:#e6e6e6; border:1px solid #2d3748; border-radius:6px; padding:5px 12px; cursor:pointer; font-size:12px; }
+  .toolbar button.active { background:#3b82f6; border-color:#3b82f6; color:#fff; }
+</style>
+</head>
+<body>
+<header>
+  <h1>UniIOAI Proxy — Usage Stats</h1>
+  <div class="meta" id="meta">loading…</div>
+</header>
+
+<div class="cards" id="cards"></div>
+
+<section>
+  <div class="toolbar">
+    <button data-win="last_24h" class="active" onclick="setWindow('last_24h')">Last 24h (hourly)</button>
+    <button data-win="last_7d" onclick="setWindow('last_7d')">Last 7d (daily)</button>
+    <span style="flex:1"></span>
+    <button onclick="load()">↻ Refresh</button>
+  </div>
+  <div class="grid2" style="margin-top:12px">
+    <div>
+      <h2>Requests / errors</h2>
+      <div class="chart-box"><canvas id="reqChart"></canvas></div>
+    </div>
+    <div>
+      <h2>Tokens</h2>
+      <div class="chart-box"><canvas id="tokChart"></canvas></div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2>Models — <span class="pill" id="winLabel">last 24h</span></h2>
+  <div style="overflow-x:auto">
+    <table id="models">
+      <thead><tr>
+        <th>Model</th><th>Requests</th><th>Errors</th><th>Err%</th>
+        <th>Prompt tok</th><th>Completion tok</th><th>Total tok</th><th>Avg latency</th>
+      </tr></thead>
+      <tbody></tbody>
+    </table>
+  </div>
+</section>
+
+<script>
+let data = null;
+let win = 'last_24h';
+let reqChart = null, tokChart = null;
+
+const fmt = n => (n||0).toLocaleString();
+const fmtDur = ms => ms ? (ms>=1000 ? (ms/1000).toFixed(1)+'s' : ms+'ms') : '–';
+
+function setWindow(w){ win=w; document.querySelectorAll('.toolbar button[data-win]').forEach(b=>b.classList.toggle('active', b.dataset.win===w)); document.getElementById('winLabel').textContent = w==='last_24h'?'last 24h':'last 7d'; render(); }
+
+async function load(){
+  try {
+    const r = await fetch('/v1/system/stats?_='+Date.now());
+    data = await r.json();
+    render();
+  } catch(e){ document.getElementById('meta').textContent = 'failed to load: '+e; }
+}
+
+function render(){
+  if(!data) return;
+  document.getElementById('meta').textContent =
+    'since '+new Date(data.since*1000).toLocaleString()+  '  •  updated '+new Date(data.generated_at).toLocaleTimeString();
+  const w = data[win];
+  const pm = w.per_model || [];
+  // cards: window totals
+  let req=0, err=0, ptok=0, ctok=0, ttok=0;
+  pm.forEach(m=>{ req+=m.requests; err+=m.errors; ptok+=m.prompt_tokens; ctok+=m.completion_tokens; ttok+=m.total_tokens; });
+  const cards = [
+    ['Requests', fmt(req)], ['Errors', fmt(err), err>0?'err':''],
+    ['Prompt tokens', fmt(ptok)], ['Completion tokens', fmt(ctok)], ['Total tokens', fmt(ttok)],
+    ['Models seen', fmt(pm.length)],
+  ];
+  document.getElementById('cards').innerHTML = cards.map(c=>`<div class="card"><div class="label">${c[0]}</div><div class="value">${c[1]}</div>${c[2]!=null?`<div class="sub">${c[2]}</div>`:''}</div>`).join('');
+  // charts
+  const series = w.series || [];
+  const labels = series.map(s => win==='last_24h' ? new Date(s.ts*1000).toLocaleString([], {hour:'2-digit', day:'2-digit', month:'2-digit'}) : new Date(s.ts*1000).toLocaleDateString());
+  drawChart('reqChart', 'reqChart', labels, [
+    {label:'requests', data:series.map(s=>s.req), color:'#3b82f6'},
+    {label:'errors', data:series.map(s=>s.errors), color:'#ff6b6b'},
+  ]);
+  drawChart('tokChart', 'tokChart', labels, [
+    {label:'prompt', data:series.map(s=>s.prompt_tokens), color:'#22c55e'},
+    {label:'completion', data:series.map(s=>s.completion_tokens), color:'#f59e0b'},
+  ], true);
+  // table
+  const tb = document.querySelector('#models tbody');
+  tb.innerHTML = pm.map(m=>`<tr>
+    <td>${m.model}</td><td>${fmt(m.requests)}</td>
+    <td class="${m.errors?'err':''}">${fmt(m.errors)}</td><td>${(m.error_rate*100).toFixed(1)}%</td>
+    <td>${fmt(m.prompt_tokens)}</td><td>${fmt(m.completion_tokens)}</td><td>${fmt(m.total_tokens)}</td>
+    <td>${fmtDur(m.avg_latency_ms)}</td></tr>`).join('') || '<tr><td colspan="8" style="text-align:center;color:#8a93a3">no data yet</td></tr>';
+}
+
+function drawChart(id, kind, labels, datasets, stacked){
+  const ctx = document.getElementById(id);
+  if(reqChart && id==='reqChart'){ reqChart.destroy(); }
+  if(tokChart && id==='tokChart'){ tokChart.destroy(); }
+  const cfg = {
+    type:'bar',
+    data:{ labels, datasets: datasets.map(d=>({ label:d.label, data:d.data, backgroundColor:d.color, borderRadius:3, borderSkipped:false, stack: stacked?'s':undefined })) },
+    options:{ responsive:true, maintainAspectRatio:false, scales:{ x:{ stacked:!!stacked, grid:{display:false}, ticks:{color:'#8a93a3', maxRotation:0, autoSkip:true} }, y:{ stacked:!!stacked, beginAtZero:true, grid:{color:'#232834'}, ticks:{color:'#8a93a3'} } }, plugins:{ legend:{labels:{color:'#c2c8d4'}}, tooltip:{mode:'index'} } }
+  };
+  const c = new Chart(ctx, cfg);
+  if(id==='reqChart') reqChart=c; else tokChart=c;
+}
+
+load();
+setInterval(load, 30000);
+</script>
+</body>
+</html>

@@ -1,4 +1,5 @@
 import logging
+import time
 from typing import Any, Callable
 
 from fastapi import APIRouter, Depends, HTTPException, Request
@@ -17,6 +18,7 @@ from uniinfer.proxy_schemas.chat import (
     NonStreamingChoice,
 )
 from uniinfer.proxy_services.streaming import astream_response_generator, is_openai_strict_mode, normalize_nonstream_content
+from uniinfer.proxy_services.stats import get_stats
 from uniinfer.uniioai import aget_completion, astream_completion, get_embeddings
 
 logger = logging.getLogger("uniioai_proxy")
@@ -42,6 +44,7 @@ def create_chat_router(
         base_url = request_input.base_url
         provider_model = request_input.model
         messages_dict = [msg.model_dump() for msg in request_input.messages]
+        _req_t0 = time.monotonic()
 
         try:
             provider_name, _ = parse_provider_model(provider_model)
@@ -115,7 +118,9 @@ def create_chat_router(
                 usage=usage,
             )
             if is_openai_strict_mode():
+                get_stats().record(provider_model, status=200, latency_ms=(time.monotonic()-_req_t0)*1000, usage=usage)
                 return JSONResponse(content=response_data.model_dump(exclude_none=True))
+            get_stats().record(provider_model, status=200, latency_ms=(time.monotonic()-_req_t0)*1000, usage=usage)
             return JSONResponse(content=response_data.model_dump())
 
         except ValueError as e:
@@ -132,11 +137,14 @@ def create_chat_router(
             detail = f"Provider Error ({provider_name}): {e}"
             if e.response_body:
                 detail = f"{detail} | Response: {e.response_body}"
-            raise HTTPException(status_code=getattr(e, "status_code", 500) or 500, detail=detail)
+            sc = getattr(e, "status_code", 500) or 500
+            get_stats().record(provider_model, status=sc, latency_ms=(time.monotonic()-_req_t0)*1000, usage=None)
+            raise HTTPException(status_code=sc, detail=detail)
         except UniInferError as e:
             raise HTTPException(status_code=500, detail=f"UniInfer Error: {e}")
         except Exception as e:
             logger.exception("Unexpected error in /v1/chat/completions: %s: %s", type(e).__name__, e)
+            get_stats().record(provider_model, status=500, latency_ms=(time.monotonic()-_req_t0)*1000, usage=None)
             raise HTTPException(status_code=500, detail=f"Internal Server Error: {type(e).__name__}")
 
     @router.post("/v1/embeddings", response_model=EmbeddingResponse)
