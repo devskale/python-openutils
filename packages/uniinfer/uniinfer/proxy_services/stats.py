@@ -50,6 +50,10 @@ class StatsCollector:
     def _init(self) -> None:
         self._hourly: dict[int, dict[str, dict[str, int]]] = defaultdict(lambda: defaultdict(_empty_counters))
         self._daily: dict[int, dict[str, dict[str, int]]] = defaultdict(lambda: defaultdict(_empty_counters))
+        # Status-code counts per window: ts -> {"200": n, "400": n, ...}
+        self._status_hourly: dict[int, dict[str, int]] = defaultdict(lambda: defaultdict(int))
+        self._status_daily: dict[int, dict[str, int]] = defaultdict(lambda: defaultdict(int))
+        self._status_total: dict[str, int] = defaultdict(int)
         # Per-model all-time totals (kept small — one entry per distinct model).
         self._totals: dict[str, dict[str, int]] = defaultdict(_empty_counters)
         self._since = time.time()
@@ -79,6 +83,11 @@ class StatsCollector:
 
         hour = now - (now % _HOUR)
         day = now - (now % _DAY)
+
+        code = str(status) if status is not None else "unknown"
+        self._status_hourly[hour][code] += 1
+        self._status_daily[day][code] += 1
+        self._status_total[code] += 1
 
         for store, key in ((self._hourly, hour), (self._daily, day)):
             c = store[key][provider_model]
@@ -125,9 +134,10 @@ class StatsCollector:
         return {
             "generated_at": datetime.now(timezone.utc).isoformat(),
             "since": datetime.fromtimestamp(self._since, timezone.utc).isoformat(),
-            "last_24h": self._aggregate(self._hourly),
-            "last_7d": self._aggregate(self._daily),
+            "last_24h": self._aggregate(self._hourly, self._status_hourly),
+            "last_7d": self._aggregate(self._daily, self._status_daily),
             "per_model_total": self._per_model(self._totals),
+            "status_total": dict(self._status_total),
         }
 
     # --- internals ---
@@ -139,12 +149,17 @@ class StatsCollector:
             del self._hourly[k]
         for k in [k for k in self._daily if k < cutoff_d]:
             del self._daily[k]
+        for k in [k for k in self._status_hourly if k < cutoff_h]:
+            del self._status_hourly[k]
+        for k in [k for k in self._status_daily if k < cutoff_d]:
+            del self._status_daily[k]
 
     @staticmethod
-    def _aggregate(buckets: dict[int, dict[str, dict[str, int]]]) -> dict[str, Any]:
-        """Collapse time-buckets into a per-model summary + a time series."""
+    def _aggregate(buckets: dict[int, dict[str, dict[str, int]]], status_buckets: dict[int, dict[str, int]]) -> dict[str, Any]:
+        """Collapse time-buckets into a per-model summary + a time series + status codes."""
         per_model: dict[str, dict[str, int]] = defaultdict(_empty_counters)
         series: list[dict[str, Any]] = []
+        status_totals: dict[str, int] = defaultdict(int)
         for ts in sorted(buckets):
             models = buckets[ts]
             bucket_req = bucket_err = bucket_prompt = bucket_completion = bucket_total = 0
@@ -157,6 +172,8 @@ class StatsCollector:
                 bucket_prompt += c["prompt"]
                 bucket_completion += c["completion"]
                 bucket_total += c["total"]
+            for code, n in status_buckets.get(ts, {}).items():
+                status_totals[code] += n
             series.append({
                 "ts": ts,
                 "req": bucket_req,
@@ -165,7 +182,7 @@ class StatsCollector:
                 "completion_tokens": bucket_completion,
                 "total_tokens": bucket_total,
             })
-        return {"series": series, "per_model": StatsCollector._per_model(per_model)}
+        return {"series": series, "per_model": StatsCollector._per_model(per_model), "status_codes": dict(status_totals)}
 
     @staticmethod
     def _per_model(src: dict[str, dict[str, int]]) -> list[dict[str, Any]]:
@@ -190,6 +207,9 @@ class StatsCollector:
             "since": self._since,
             "hourly": {str(k): {m: dict(v) for m, v in models.items()} for k, models in self._hourly.items()},
             "daily": {str(k): {m: dict(v) for m, v in models.items()} for k, models in self._daily.items()},
+            "status_hourly": {str(k): dict(v) for k, v in self._status_hourly.items()},
+            "status_daily": {str(k): dict(v) for k, v in self._status_daily.items()},
+            "status_total": dict(self._status_total),
             "totals": {m: dict(v) for m, v in self._totals.items()},
         }
 
@@ -202,8 +222,13 @@ class StatsCollector:
                 self._hourly[int(k)] = {m: dict(v) for m, v in models.items()}
             for k, models in data.get("daily", {}).items():
                 self._daily[int(k)] = {m: dict(v) for m, v in models.items()}
+            for k, v in data.get("status_hourly", {}).items():
+                self._status_hourly[int(k)] = dict(v)
+            for k, v in data.get("status_daily", {}).items():
+                self._status_daily[int(k)] = dict(v)
             for m, v in data.get("totals", {}).items():
                 self._totals[m] = dict(v)
+            self._status_total.update(data.get("status_total", {}))
         except FileNotFoundError:
             pass
         except Exception as e:  # noqa: BLE001
