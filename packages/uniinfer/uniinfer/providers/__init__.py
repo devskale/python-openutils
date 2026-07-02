@@ -22,12 +22,6 @@ from .zai import ZAIProvider, ZAICodeProvider
 
 # Import providers with optional dependencies
 try:
-    from .gemini import GeminiProvider  # noqa: F401
-    HAS_GENAI = True
-except ImportError:
-    HAS_GENAI = False
-
-try:
     from .tu import TUProvider, TUStagingProvider
     from .tu_embedding import TuAIEmbeddingProvider
     from .tu_tts import TuAITTSProvider
@@ -111,5 +105,7 @@ if HAS_GROQ:
 if HAS_AI21:
     __all__.append('AI21Provider')
 
-if HAS_GENAI:
-    __all__.append('GeminiProvider')
+# GeminiProvider is intentionally NOT imported here — it pulls in google-genai
+# which is very slow to import (~50s). It is exposed lazily via the package
+# __getattr__ / ProviderFactory.register_lazy. Import it directly from
+# uniinfer.providers.gemini if you need the class.

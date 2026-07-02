@@ -44,12 +44,10 @@ try:
 except ImportError:
     HAS_AI21 = False
 
-# Check if Gemini support is available
-try:
-    from uniinfer import GeminiProvider  # noqa: F401
-    HAS_GENAI = True
-except ImportError:
-    HAS_GENAI = False
+# Check if Gemini support is available (cheap spec check — do NOT import
+# GeminiProvider here, it pulls in the heavy google-genai SDK at startup).
+import importlib.util as _importlib_util
+HAS_GENAI = _importlib_util.find_spec("google.genai") is not None
 
 
 PROVIDER_CONFIGS = {
