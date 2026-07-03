@@ -107,7 +107,7 @@ Related systemd units on amd: `uniioai-proxy.service` (always-on),
 pick up new versions through their pinned `uv.lock` after step 2 above.
 
 Rolling those changes out to the hosts that run those apps
-(`pushto` → `uvinit.sh` → `uv sync`) is **only done on explicit request** —
+(`deployto` → `uvinit.sh` → `uv sync`) is **only done on explicit request** —
 do not run it automatically.
 
 ## Package-Specific Docs
