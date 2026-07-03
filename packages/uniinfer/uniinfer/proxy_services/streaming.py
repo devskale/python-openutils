@@ -51,6 +51,9 @@ async def astream_response_generator(
 
     stream_label = f"[{request_id}] " if request_id else ""
     logger.info("%sAsync stream start for %s", stream_label, model_name)
+    _stats_t0 = time.monotonic()
+    _stats_usage: dict = {}
+    _stats_status = 200
     chunk_count = 0
     heartbeat_count = 0
     last_yield_time = time.monotonic()
@@ -95,6 +98,10 @@ async def astream_response_generator(
         while True:
             try:
                 chunk = await asyncio.wait_for(async_iter.__anext__(), timeout=heartbeat_interval)
+                # Capture usage if the backend emits it (often on the final chunk).
+                _raw = getattr(chunk, "raw_response", None)
+                if isinstance(_raw, dict) and isinstance(_raw.get("usage"), dict):
+                    _stats_usage = _raw["usage"]
             except asyncio.TimeoutError:
                 now = time.monotonic()
                 idle_for = now - last_yield_time
@@ -344,12 +351,14 @@ async def astream_response_generator(
             yield f"data: {final_chunk_data.model_dump_json(exclude_none=True)}\n\n"
 
     except (UniInferError, ValueError) as e:
+        _stats_status = int(getattr(e, "status_code", 500) or 500)
         message = str(e)
         if isinstance(e, ProviderError) and e.response_body:
             message = f"{message} | Provider Response: {e.response_body}"
         error_chunk = {"error": {"message": message, "type": type(e).__name__, "code": getattr(e, 'status_code', None)}}
         yield f"data: {json.dumps(error_chunk)}\n\n"
     except Exception as e:
+        _stats_status = 500
         error_chunk = {
             "error": {
                 "message": f"Unexpected server error: {type(e).__name__}",
@@ -358,6 +367,13 @@ async def astream_response_generator(
             }
         }
         yield f"data: {json.dumps(error_chunk)}\n\n"
+    finally:
+        # Always record — runs on success, error, and early client disconnect.
+        try:
+            from uniinfer.proxy_services.stats import get_stats
+            get_stats().record(model_name, status=_stats_status, latency_ms=(time.monotonic() - _stats_t0) * 1000, usage=_stats_usage or None)
+        except Exception:
+            pass
 
     logger.info("%sAsync stream end for %s (chunks=%s, heartbeats=%s)", stream_label, model_name, chunk_count, heartbeat_count)
     yield "data: [DONE]\n\n"
