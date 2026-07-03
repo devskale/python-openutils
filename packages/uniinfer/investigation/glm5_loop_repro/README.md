@@ -27,15 +27,23 @@ real tokens then degenerates into garbage until `max_tokens` is hit
 |---|---|---|
 | Bug is in the **uniinfer package** | ❌ **Falsified** | `check_model_vs_package.py` — identical prompt sent DIRECT to TU Aqueduct and THROUGH the proxy; both degenerate identically. Path A never touches uniinfer. |
 | Driven by **`max_tokens`** being too large | ❌ **Falsified** | `check_max_tokens.py` — at 8k input, `max_tokens=220` loops identically to `max_tokens=50000`. The cap is irrelevant; the loop onset is in the first output tokens. |
-| Driven by **input context size** | ⚠️ **Partially** | Context ≥ ~180k tokens degenerates **consistently/reliably** (`check_glm_ctx.py`). Below that it is intermittent. |
-| **Transient backend instability** at any size | ✅ **Confirmed** | The same 8k prompt looped 4/4 during one window, then was clean 4/4 ~40 min later. The TU GLM deployment enters degraded episodes that loop even small inputs, then self-recovers. |
+| Driven by **input context size** | ⚠️ **Correlation only** | Large context raises the *probability* of degeneration, but is **NOT a deterministic cliff**. The same ~92k config was degenerate **4/4** in one window, clean **0/5** an hour later (`check_glm_ctx.py`, this dir). |
+| **Transient backend instability** at any size | ✅ **Dominant factor (confirmed)** | Across every deterministic variable tested (size 8k–230k, repetitive/varied content, single-turn vs 842-message multi-turn, `max_tokens` 220–50000, temp 0.0–0.2), results flip between clean and degenerate **over time** for identical inputs. Same 8k prompt: 4/4 degenerate then 4/4 clean ~40 min later. This fingerprints a serving-layer (preemption / KV-cache restore) instability, not an input property. |
 | GLM-specific (not TU-wide) | ✅ **Likely** | `qwen-3.5-397b` stays coherent at the same sizes and hard-rejects oversized contexts (`400 context length`). |
 
-### The one stable trigger: large input context
+### The dominant factor: transient backend instability
 
-GLM-5.2-preview is advertised at ~500k context but its **stable regime is far
-below that**. Reliable degeneration at ≥ ~180k input tokens (≈36% of the
-advertised window), every run, both direct and via the proxy.
+After iteration, **no deterministic client-side trigger was found**. The
+degeneration is a transient backend-state phenomenon on TU's GLM-5.2-FP8
+(`asc_amd/zai-org/GLM-5.2-FP8`) deployment — consistent with preemption /
+KV-cache restore races. Evidence: identical inputs flip between clean and
+degenerate across time windows; per-request latency for the *same* payload
+varies 10× (8s vs 86s), another fingerprint of scheduling churn.
+
+Large input context raises the **probability** of hitting a bad state (the
+first reproductions all happened at ≥180k), so capping context remains the
+best practical mitigation — but it is not a clean cliff and cannot be relied
+on as a deterministic test.
 
 ### Context-window note (why "large" looks different per model)
 
