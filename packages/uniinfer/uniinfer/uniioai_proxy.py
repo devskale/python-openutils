@@ -1,4 +1,5 @@
 from logging.handlers import RotatingFileHandler
+import json
 import logging
 from importlib.metadata import PackageNotFoundError, version
 import uuid
@@ -239,6 +240,63 @@ async def get_web_demo():
     return FileResponse(html_file_path)
 
 
+# --- Performance Dashboard (TTFT / tok/s / caching) ---
+# Serves the perf dashboard HTML and reads/writes the same _speed_results.json
+# that `uniinfer --speedtest` produces, so CLI and dashboard share one history.
+SPEED_RESULTS_PATH = os.path.join(script_dir, "models", "_speed_results.json")
+
+
+@app.get("/perf", include_in_schema=False)
+async def get_perf_dashboard():
+    """Serves the LLM performance dashboard (TTFT / tok/s / caching)."""
+    html_file_path = os.path.join(script_dir, "examples", "webdemo", "perf.html")
+    if not os.path.exists(html_file_path):
+        raise HTTPException(status_code=404, detail="perf.html not found")
+    return FileResponse(html_file_path)
+
+
+@app.get("/perf/results", include_in_schema=False)
+async def get_perf_results():
+    """Returns the saved speed-test history (provider/model -> aggregated metrics)."""
+    if not os.path.exists(SPEED_RESULTS_PATH):
+        return {}
+    try:
+        with open(SPEED_RESULTS_PATH, "r", encoding="utf-8") as f:
+            return json.load(f)
+    except (json.JSONDecodeError, OSError):
+        return {}
+
+
+@app.post("/perf/results", include_in_schema=False)
+async def save_perf_result(request: Request):
+    """Saves a live-measured run into the shared history.
+
+    Body: {"key": "tu/qwen-3.6-35b", "result": {...metrics...}}
+    Merges into _speed_results.json (same file the CLI writes).
+    """
+    try:
+        body = await request.json()
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid JSON body")
+    key = body.get("key")
+    result = body.get("result")
+    if not key or not isinstance(result, dict):
+        raise HTTPException(status_code=400, detail="Body must contain 'key' and 'result'")
+
+    existing = {}
+    if os.path.exists(SPEED_RESULTS_PATH):
+        try:
+            with open(SPEED_RESULTS_PATH, "r", encoding="utf-8") as f:
+                existing = json.load(f)
+        except (json.JSONDecodeError, OSError):
+            existing = {}
+    existing[key] = result
+    os.makedirs(os.path.dirname(SPEED_RESULTS_PATH), exist_ok=True)
+    with open(SPEED_RESULTS_PATH, "w", encoding="utf-8") as f:
+        json.dump(existing, f, indent=2, ensure_ascii=False)
+    return {"ok": True, "saved": key}
+
+
 app.include_router(create_tools_router())
 app.include_router(create_models_router(UNIINFER_VERSION))
 app.include_router(create_smoke_router())
@@ -259,7 +317,7 @@ app.include_router(
 
 @app.get("/")
 async def root():
-    return {"message": "UniIOAI API is running. Visit /webdemo or /webdemo/webdemo.html for the interactive demo, or use POST /v1/chat/completions, POST /v1/embeddings, or GET /v1/models"}
+    return {"message": "UniIOAI API is running. Visit /webdemo or /webdemo/webdemo.html for the interactive demo, /perf for the performance dashboard, or use POST /v1/chat/completions, POST /v1/embeddings, or GET /v1/models"}
 
 
 # --- Run the API (for local development) ---

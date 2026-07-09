@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>UniInfer | Performance Dashboard</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/webdemo/style.css" />
+  <link rel="stylesheet" href="/webdemo/perf.css" />
+</head>
+<body>
+  <div class="perf-container">
+    <header class="perf-header">
+      <h1>Performance Dashboard</h1>
+      <div class="header-right">
+        <a href="/webdemo" class="back-link">← Webdemo</a>
+        <button id="refresh-history" class="btn-secondary" title="Historie neu laden">↻ Historie</button>
+      </div>
+    </header>
+
+    <p class="perf-intro">
+      Misst <strong>Time to First Token (TTFT)</strong>, <strong>Tokens/Sekunde</strong>
+      und <strong>Caching-Auswirkungen</strong> direkt über die Proxy-API.
+      Live-Messungen und die CLI-Historie (<code>uniinfer --speedtest</code>) teilen
+      sich dieselbe History-Datei (<code>_speed_results.json</code>).
+    </p>
+
+    <!-- ─── Live-Messung ─────────────────────────────────────────── -->
+    <section class="card">
+      <div class="card-title">
+        <span>⚡ Live-Messung</span>
+        <span id="live-status" class="status-pill status-idle">bereit</span>
+      </div>
+
+      <div class="run-controls">
+        <div class="form-group form-group--inline">
+          <label>Modell</label>
+          <select id="model-select"><option>wird geladen…</option></select>
+        </div>
+        <div class="form-group form-group--inline form-group--sm">
+          <label>Max Tokens</label>
+          <input type="number" id="max-tokens" value="1000" min="16" />
+        </div>
+        <div class="form-group form-group--inline form-group--sm">
+          <label>Runs</label>
+          <input type="number" id="run-count" value="1" min="1" max="10" />
+        </div>
+        <div class="form-group form-group--inline form-group--grow">
+          <label>Prompt</label>
+          <input type="text" id="prompt-input" value="Erkläre den Attention-Mechanismus in einfachen Worten." />
+        </div>
+        <button id="run-btn" class="btn-primary">▶ Start</button>
+      </div>
+
+      <div class="form-group api-key-row">
+        <label>API Key <span class="form-hint" style="display:inline">(Bearer token, z.B. )</span></label>
+        <input type="password" id="api-key" placeholder="Bearer token" autocomplete="off" />
+        <label class="checkbox-label" style="margin-left:12px"><input type="checkbox" id="remember-key" checked /> merken</label>
+      </div>
+
+      <div class="form-group">
+        <label class="checkbox-label"><input type="checkbox" id="unique-prompt" checked /> Eindeutigen Prompt erzwingen (Zufalls-Suffix → verhindert Provider-Caching)</label>
+      </div>
+
+      <div id="live-results" class="live-results"></div>
+    </section>
+
+    <!-- ─── Caching-Vergleich ────────────────────────────────────── -->
+    <section class="card">
+      <div class="card-title">
+        <span>🗄️ Caching-Vergleich (cold vs. warm)</span>
+        <span id="cache-status" class="status-pill status-idle">bereit</span>
+      </div>
+      <p class="card-hint">
+        Sendet denselben Prompt zweimal. Run 1 = <strong>cold</strong> (uncached),
+        Run 2 = <strong>warm</strong> (gleicher Prompt → Provider-Cache möglich).
+        TTFT-Differenz = Caching-Gewinn. Output-Speed sollte konstant bleiben.
+      </p>
+      <div class="run-controls">
+        <div class="form-group form-group--inline form-group--grow">
+          <label>Cache-Test-Prompt (lang, identisch)</label>
+          <input type="text" id="cache-prompt" value="Fasse das Konzept der Gradientenabstieg-Optimierung in neuronalen Netzen zusammen. Erkläre Lernrate, Batch-Größe und Konvergenz." />
+        </div>
+        <button id="cache-btn" class="btn-primary">▶ Caching-Test</button>
+      </div>
+      <p class="card-hint">Nutzt dasselbe Modell und denselben API-Key wie die Live-Messung oben.</p>
+      <div id="cache-results" class="cache-results"></div>
+    </section>
+
+    <!-- ─── Historie ─────────────────────────────────────────────── -->
+    <section class="card">
+      <div class="card-title">
+        <span>📊 Historie (CLI + Live)</span>
+        <span id="history-count" class="status-pill status-muted">0 Modelle</span>
+      </div>
+      <div id="history-table" class="history-table">Lädt…</div>
+    </section>
+  </div>
+
+  <script src="/webdemo/perf.js"></script>
+</body>
+</html>
