@@ -1,3 +1,4 @@
+import os
 """Validate GLM-5.2-preview degeneration threshold, determinism, and qwen's
 behavior at/over its ~200k limit.
 
@@ -13,7 +14,7 @@ import time
 import httpx
 
 BASE = "http://localhost:8124/v1"
-KEY = ""
+KEY = os.getenv("PROXY_KEY")
 MAXTOK = 220
 
 BLOCK = (

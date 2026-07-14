@@ -1,9 +1,10 @@
+import os
 """Quick smoke test for TU chat models via uniioai-proxy."""
 import asyncio
 import httpx
 
 BASE_URL = "http://localhost:8123/v1"
-API_KEY = ""
+API_KEY = os.getenv("PROXY_KEY")
 
 # Chat models to test (excluding TTS/STT/image models)
 CHAT_MODELS = [
