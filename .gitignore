@@ -35,3 +35,6 @@ packages/uniinfer/scripts/_models_dev_cache.json
 
 # editor prefs
 .vscode/
+
+# Local proxy env (real key) — do not commit
+packages/uniinfer/.env

@@ -212,5 +212,5 @@ scripts/
 6. Integrate with `models_registry.py` and CLI
 
 ## Key Paths
-- Project root: `/Users/johannwaldherr/code/kontext.one/python-openutils/packages/uniinfer`
+- Project root: `<repo-root>/python-openutils/packages/uniinfer`
 - Cached models.dev API: `/tmp/models_dev_api.json` (may be stale, re-fetch from `https://models.dev/api.json`)
