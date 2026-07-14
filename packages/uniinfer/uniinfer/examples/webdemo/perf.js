@@ -4,7 +4,7 @@
 
 const API_BASE = window.location.origin;
 const STORAGE_KEY = "uniinfer_perf_api_key";
-const DEFAULT_API_KEY = "test23@test34";
+const DEFAULT_API_KEY = "";  // enter your PROXY_KEY in the form (persisted to localStorage)
 
 // ─── Helpers ──────────────────────────────────────────────────
 const $ = (id) => document.getElementById(id);
