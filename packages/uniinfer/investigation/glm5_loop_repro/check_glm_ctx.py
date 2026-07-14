@@ -1,3 +1,4 @@
+import os
 """Reproduce the GLM-5.2-preview degeneration at extreme context (~240k tokens).
 
 Evidence (logs/tu_raw_chat.log, 2026-06-30): a real request carried 249,038
@@ -14,7 +15,7 @@ import time
 import httpx
 
 BASE = "http://localhost:8124/v1"
-KEY = "test23@test34"
+KEY = os.getenv("PROXY_KEY")
 
 # Target input-token budgets near the 262144 ceiling.
 TARGETS = [180_000, 230_000, 245_000]

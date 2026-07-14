@@ -1,3 +1,4 @@
+import os
 """Probe the most likely real-world trigger: large context WITH tools offered.
 
 The TU glm47 tool parser is the known-fragile path (see glm_leak_repair.py).
@@ -10,7 +11,7 @@ import time
 import httpx
 
 BASE = "http://localhost:8124/v1"
-KEY = "test23@test34"
+KEY = os.getenv("PROXY_KEY")
 
 TOOLS = [
     {

@@ -1,3 +1,4 @@
+import os
 """Live check: does GLM-5.2-preview degenerate on large context?
 
 Compares a short prompt vs a large-context prompt on tu@glm-5.2-744b-preview,
@@ -9,7 +10,7 @@ import time
 import httpx
 
 BASE = "http://localhost:8124/v1"
-KEY = "test23@test34"
+KEY = os.getenv("PROXY_KEY")
 
 SHORT_PROMPT = "Say 'OK' and nothing else."
 

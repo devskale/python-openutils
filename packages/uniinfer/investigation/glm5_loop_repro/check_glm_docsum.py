@@ -1,3 +1,4 @@
+import os
 """Large-document task probe: throw a big coherent doc at the model and ask it
 to summarize / extract. This stresses the reasoning path far more than
 homogeneous padding, and mirrors the real-world situation where GLM-5.2-preview
@@ -12,7 +13,7 @@ import time
 import httpx
 
 BASE = "http://localhost:8124/v1"
-KEY = "test23@test34"
+KEY = os.getenv("PROXY_KEY")
 
 
 def approx_tokens(text: str) -> int:

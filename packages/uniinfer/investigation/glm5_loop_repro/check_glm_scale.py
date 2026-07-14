@@ -1,3 +1,4 @@
+import os
 """Scaling probe: find the context size at which GLM-5.2-preview starts emitting
 degenerate / looping output in content OR reasoning_content.
 
@@ -9,7 +10,7 @@ import time
 import httpx
 
 BASE = "http://localhost:8124/v1"
-KEY = "test23@test34"
+KEY = os.getenv("PROXY_KEY")
 
 # Roughly ~1.3 tokens/word. Sizes are approximate token budgets for the padding.
 SIZES = [8_000, 20_000, 40_000, 70_000, 100_000]

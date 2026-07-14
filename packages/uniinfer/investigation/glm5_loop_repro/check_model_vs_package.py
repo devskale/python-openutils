@@ -1,3 +1,4 @@
+import os
 """Decisive isolation test: is the GLM-5.2-preview degeneration a model/serving
 bug, or a uniinfer-package bug?
 
@@ -22,7 +23,7 @@ from credgoo import get_api_key
 TU_KEY = get_api_key("tu")
 TU_DIRECT = "https://aqueduct.ai.datalab.tuwien.ac.at/v1/chat/completions"
 PROXY = "http://localhost:8124/v1/chat/completions"
-PROXY_KEY = "test23@test34"
+PROXY_KEY = os.getenv("PROXY_KEY")
 
 MODEL_DIRECT = "glm-5.2-744b-preview"   # raw model id as TU expects it
 MODEL_PROXY = "tu@glm-5.2-744b-preview"  # proxy-prefixed id
