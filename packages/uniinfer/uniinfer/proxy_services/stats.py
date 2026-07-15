@@ -35,6 +35,13 @@ def _empty_counters() -> dict[str, int]:
     return {"req": 0, "errors": 0, "prompt": 0, "completion": 0, "total": 0, "latency_sum": 0, "latency_n": 0}
 
 
+def _merged_counters(v: Any) -> dict[str, int]:
+    """Restore a persisted counter dict with every key present (schema-drift safe)."""
+    c = _empty_counters()
+    c.update(v)
+    return c
+
+
 class StatsCollector:
     """Singleton stats collector with rolling hourly (24h) and daily (7d) windows."""
 
@@ -218,16 +225,19 @@ class StatsCollector:
             with open(_SNAPSHOT_PATH) as f:
                 data = json.load(f)
             self._since = data.get("since", time.time())
+            # Re-wrap inner containers as defaultdicts so record()'s auto-create
+            # invariants hold; plain dicts from JSON made [code] += 1 KeyError on
+            # any status/model absent from the snapshot, turning 4xx/5xx into 500s.
             for k, models in data.get("hourly", {}).items():
-                self._hourly[int(k)] = {m: dict(v) for m, v in models.items()}
+                self._hourly[int(k)] = defaultdict(_empty_counters, {m: _merged_counters(v) for m, v in models.items()})
             for k, models in data.get("daily", {}).items():
-                self._daily[int(k)] = {m: dict(v) for m, v in models.items()}
+                self._daily[int(k)] = defaultdict(_empty_counters, {m: _merged_counters(v) for m, v in models.items()})
             for k, v in data.get("status_hourly", {}).items():
-                self._status_hourly[int(k)] = dict(v)
+                self._status_hourly[int(k)] = defaultdict(int, v)
             for k, v in data.get("status_daily", {}).items():
-                self._status_daily[int(k)] = dict(v)
+                self._status_daily[int(k)] = defaultdict(int, v)
             for m, v in data.get("totals", {}).items():
-                self._totals[m] = dict(v)
+                self._totals[m] = _merged_counters(v)
             self._status_total.update(data.get("status_total", {}))
         except FileNotFoundError:
             pass
