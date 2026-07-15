@@ -2,6 +2,7 @@
 
 import json
 import sys
+import enum
 import dataclasses
 from uniinfer.core import ModelInfo
 import logging
@@ -81,6 +82,30 @@ def discover_providers():
     return entries
 
 
+def _json_safe(obj):
+    """Recursively coerce to JSON-serializable primitives.
+
+    Provider list_models() can leak non-primitive objects into ModelInfo fields
+    (e.g. the anthropic SDK's ThinkingCapability in capabilities.thinking). Left
+    raw, such objects crash json.dump mid-stream and truncate the catalog.
+    """
+    if obj is None or isinstance(obj, (bool, int, float, str)):
+        return obj
+    if isinstance(obj, enum.Enum):
+        return obj.value
+    if isinstance(obj, dict):
+        return {str(k): _json_safe(v) for k, v in obj.items()}
+    if isinstance(obj, (list, tuple, set)):
+        return [_json_safe(v) for v in obj]
+    if dataclasses.is_dataclass(obj):
+        return {f.name: _json_safe(getattr(obj, f.name)) for f in dataclasses.fields(obj)}
+    # Pydantic / arbitrary objects: best-effort dict of public attrs, else str().
+    attrs = {k: v for k, v in getattr(obj, "__dict__", {}).items() if not k.startswith("_")}
+    if attrs:
+        return {k: _json_safe(v) for k, v in attrs.items()}
+    return str(obj)
+
+
 def model_info_to_dict(m) -> dict:
     """Serialize a ModelInfo to a JSON-safe dict."""
     d = {"id": m.id}
@@ -90,7 +115,7 @@ def model_info_to_dict(m) -> dict:
             continue
         if field.name == "raw":
             continue
-        d[field.name] = val
+        d[field.name] = _json_safe(val)
     return d
 
 
