@@ -4,6 +4,15 @@ All notable changes to **uniinfer** are documented in this file.
 Versions follow [Semantic Versioning](https://semver.org/); this file
 adheres to [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.5.40] - 2026-07-15
+
+### Added
+- **CLI thinking-control flags**: `uniinfer --no-think` sets
+  `chat_template_kwargs.enable_thinking=false` (for Qwen3.x / GLM-5.x style
+  vLLM-served models — handy for A/B comparing thinking vs non-thinking), and
+  `--chat-template-kwargs JSON` forwards an arbitrary object to the backend
+  chat template (overrides `--no-think`).
+
 ## [0.5.39] - 2026-07-15
 
 ### Added
