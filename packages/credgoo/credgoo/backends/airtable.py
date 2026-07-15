@@ -5,6 +5,7 @@ Setup: user provides Personal Access Token only.
 Fetch: filters the table by service name, returns the key field.
 """
 
+import hashlib
 import logging
 import sys
 
@@ -29,9 +30,215 @@ def _headers(token):
     return {"Authorization": f"Bearer {token}", "Content-Type": "application/json"}
 
 
+def _derive_key_from_pat(pat):
+    """Derive a 32-char cache-encryption key from an Airtable PAT via SHA-256."""
+    return hashlib.sha256(pat.encode('utf-8')).hexdigest()[:32]
+
+
+class AirtableClient:
+    """Resolved handle to one Airtable keys table.
+
+    Holds the credentials, builds table URLs, and absorbs the plumbing that was
+    duplicated across the backend's record methods: the credential guard, the
+    transport-error handling, and the offset-pagination loop. Constructed per
+    operation from the backend's creds.
+    """
+
+    def __init__(self, creds):
+        self.token = creds.get("airtable_token")
+        self.base_id = creds.get("airtable_base")
+        self.table = creds.get("airtable_table", TABLE_NAME)
+
+    @property
+    def configured(self):
+        return bool(self.token and self.base_id)
+
+    def _table_url(self, *parts):
+        url = f"{AIRTABLE_API_BASE}/{self.base_id}/{self.table}"
+        return f"{url}/{'/'.join(parts)}" if parts else url
+
+    def _request(self, method, url, **kwargs):
+        """Issue a request, returning the response or None on transport error."""
+        kwargs.setdefault("timeout", 10)
+        try:
+            return getattr(requests, method.lower())(url, headers=_headers(self.token), **kwargs)
+        except requests.exceptions.RequestException as e:
+            logger.error("Airtable %s request error: %s", method, e)
+            return None
+
+    def find_record(self, service):
+        """One record matching *service* (filterByFormula), or None."""
+        resp = self._request(
+            "GET", self._table_url(),
+            params={"filterByFormula": f"{{service}} = '{service}'", "maxRecords": 1})
+        if resp and resp.status_code == 200:
+            records = resp.json().get("records", [])
+            if records:
+                return records[0]
+        return None
+
+    def get_field(self, service, field):
+        """A single *field* for *service*, or None."""
+        resp = self._request(
+            "GET", self._table_url(),
+            params={"filterByFormula": f"{{service}} = '{service}'", "maxRecords": 1, "fields[]": [field]})
+        if not resp or resp.status_code != 200:
+            if resp:
+                logger.error("Airtable API error (HTTP %d): %s", resp.status_code, resp.text)
+            return None
+        records = resp.json().get("records", [])
+        if not records:
+            logger.error("Service '%s' not found in Airtable", service)
+            return None
+        return records[0].get("fields", {}).get(field)
+
+    def upsert(self, service, api_key):
+        """Insert or update the key for *service*. Returns True on success."""
+        existing = self.find_record(service)
+        if existing:
+            resp = self._request("PATCH", self._table_url(existing["id"]),
+                                 json={"fields": {"key": api_key}})
+        else:
+            resp = self._request("POST", self._table_url(),
+                                 json={"fields": {"service": service, "key": api_key}})
+        if resp and resp.status_code in (200, 201):
+            return True
+        if resp:
+            logger.error("Airtable write error (HTTP %d): %s", resp.status_code, resp.text)
+        return False
+
+    def patch_record(self, record_id, fields):
+        """Patch a record's fields. Returns True on success."""
+        resp = self._request("PATCH", self._table_url(record_id), json={"fields": fields})
+        if resp and resp.status_code == 200:
+            return True
+        if resp:
+            logger.error("Airtable patch error (HTTP %d): %s", resp.status_code, resp.text)
+        return False
+
+    def delete_record(self, record_id):
+        """Delete one record. Returns True on success."""
+        resp = self._request("DELETE", self._table_url(record_id))
+        if resp and resp.status_code == 200:
+            return True
+        if resp:
+            logger.error("Airtable delete error (HTTP %d): %s", resp.status_code, resp.text)
+        return False
+
+    def iter_records(self, fields):
+        """Yield records page by page, following Airtable's offset cursor."""
+        offset = None
+        while True:
+            params = {"fields[]": fields}
+            if offset:
+                params["offset"] = offset
+            resp = self._request("GET", self._table_url(), params=params)
+            if not resp or resp.status_code != 200:
+                if resp:
+                    logger.error("Airtable list error (HTTP %d): %s", resp.status_code, resp.text)
+                return
+            data = resp.json()
+            yield from data.get("records", [])
+            offset = data.get("offset")
+            if not offset:
+                return
+
+    def delete_records(self, record_ids):
+        """Batch-delete records (Airtable caps at 10 per request)."""
+        for i in range(0, len(record_ids), 10):
+            self._request("DELETE", self._table_url(), params={"records[]": record_ids[i:i + 10]})
+
+
 class AirtableBackend(CredgooBackend):
+    """Airtable backend. Record operations delegate to AirtableClient; setup and
+    base/table provisioning run against the meta API directly."""
 
     name = "airtable"
+
+    cache_integrity = True
+
+    def cache_key(self, creds):
+        """Derive the cache key from the PAT (no PAT -> no caching)."""
+        pat = creds.get("airtable_token")
+        return _derive_key_from_pat(pat) if pat else None
+
+    def _client(self, creds):
+        """Build a configured AirtableClient, or None if creds are incomplete."""
+        client = AirtableClient(creds)
+        if not client.configured:
+            logger.error("airtable backend requires airtable_token and airtable_base.")
+            return None
+        return client
+
+    def fetch_key(self, service, creds):
+        """Query Airtable for a service, return the key field."""
+        client = self._client(creds)
+        return client.get_field(service, "key") if client else None
+
+    def add_key(self, service, api_key, creds):
+        """Add or update an API key for a service."""
+        client = self._client(creds)
+        if not client:
+            return False
+        if client.upsert(service, api_key):
+            logger.info("Key for '%s' saved to Airtable.", service)
+            return True
+        return False
+
+    def delete_key(self, service, creds):
+        """Delete a key by service name."""
+        client = self._client(creds)
+        if not client:
+            return False
+        record = client.find_record(service)
+        if not record:
+            logger.error("Service '%s' not found in Airtable.", service)
+            return False
+        if client.delete_record(record["id"]):
+            logger.info("Key for '%s' deleted from Airtable.", service)
+            return True
+        return False
+
+    def clear_key(self, service, creds):
+        """Blank a key and add a 'cleared at' timestamp in the note column."""
+        from datetime import datetime, timezone
+
+        client = self._client(creds)
+        if not client:
+            return False
+        record = client.find_record(service)
+        if not record:
+            logger.error("Service '%s' not found in Airtable.", service)
+            return False
+        now = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+        if client.patch_record(record["id"], {"key": "", "note": f"cleared {now}"}):
+            logger.info("Key for '%s' cleared at %s.", service, now)
+            return True
+        return False
+
+    def list_keys(self, creds):
+        """List all service names."""
+        client = self._client(creds)
+        if not client:
+            return []
+        return sorted(r["fields"].get("service", "") for r in client.iter_records(["service"]))
+
+    def dedupe_keys(self, creds):
+        """Remove duplicate service entries, keeping the first. Returns (kept, removed)."""
+        client = self._client(creds)
+        if not client:
+            return 0, 0
+        records = list(client.iter_records(["service"]))
+        seen, to_delete = set(), []
+        for r in records:
+            svc = r["fields"].get("service", "")
+            if not svc or svc in seen:
+                to_delete.append(r["id"])
+            else:
+                seen.add(svc)
+        if to_delete:
+            client.delete_records(to_delete)
+        return len(records) - len(to_delete), len(to_delete)
 
     def setup(self, cache_dir):
         """Interactive setup: prompt for PAT, auto-create base + table."""
@@ -96,133 +303,7 @@ class AirtableBackend(CredgooBackend):
         print(f"  Or use: credgoo --add <service> <key>\n")
         return True
 
-    def fetch_key(self, service, creds):
-        """Query Airtable for a specific service, return the key field."""
-        token = creds.get("airtable_token")
-        base_id = creds.get("airtable_base")
-        table = creds.get("airtable_table", TABLE_NAME)
-
-        if not token or not base_id:
-            logger.error("airtable backend requires airtable_token and airtable_base.")
-            return None
-
-        url = f"{AIRTABLE_API_BASE}/{base_id}/{table}"
-        params = {
-            "filterByFormula": f"{{service}} = '{service}'",
-            "maxRecords": 1,
-            "fields[]": ["key"],
-        }
-        try:
-            resp = requests.get(url, headers=_headers(token), params=params, timeout=10)
-            if resp.status_code != 200:
-                logger.error("Airtable API error (HTTP %d): %s", resp.status_code, resp.text)
-                return None
-            records = resp.json().get("records", [])
-            if not records:
-                logger.error("Service '%s' not found in Airtable", service)
-                return None
-            return records[0].get("fields", {}).get("key")
-        except requests.exceptions.RequestException as e:
-            logger.error("Airtable request error: %s", e)
-        return None
-
-    def add_key(self, service, api_key, creds):
-        """Add or update an API key for a service."""
-        token = creds.get("airtable_token")
-        base_id = creds.get("airtable_base")
-        table = creds.get("airtable_table", TABLE_NAME)
-
-        if not token or not base_id:
-            logger.error("airtable backend requires airtable_token and airtable_base.")
-            return False
-
-        existing = self._find_record(token, base_id, table, service)
-        try:
-            if existing:
-                record_id = existing["id"]
-                resp = requests.patch(
-                    f"{AIRTABLE_API_BASE}/{base_id}/{table}/{record_id}",
-                    headers=_headers(token),
-                    json={"fields": {"key": api_key}},
-                    timeout=10,
-                )
-            else:
-                resp = requests.post(
-                    f"{AIRTABLE_API_BASE}/{base_id}/{table}",
-                    headers=_headers(token),
-                    json={"fields": {"service": service, "key": api_key}},
-                    timeout=10,
-                )
-            if resp.status_code in (200, 201):
-                logger.info("Key for '%s' saved to Airtable.", service)
-                return True
-            logger.error("Airtable write error (HTTP %d): %s", resp.status_code, resp.text)
-        except requests.exceptions.RequestException as e:
-            logger.error("Airtable write error: %s", e)
-        return False
-
-    def delete_key(self, service, creds):
-        """Delete a key by service name. Returns True if deleted."""
-        token = creds.get("airtable_token")
-        base_id = creds.get("airtable_base")
-        table = creds.get("airtable_table", TABLE_NAME)
-
-        if not token or not base_id:
-            logger.error("airtable backend requires airtable_token and airtable_base.")
-            return False
-
-        record = self._find_record(token, base_id, table, service)
-        if not record:
-            logger.error("Service '%s' not found in Airtable.", service)
-            return False
-        try:
-            resp = requests.delete(
-                f"{AIRTABLE_API_BASE}/{base_id}/{table}/{record['id']}",
-                headers=_headers(token),
-                timeout=10,
-            )
-            if resp.status_code == 200:
-                logger.info("Key for '%s' deleted from Airtable.", service)
-                return True
-            logger.error("Airtable delete error (HTTP %d): %s", resp.status_code, resp.text)
-        except requests.exceptions.RequestException as e:
-            logger.error("Airtable delete error: %s", e)
-        return False
-
-    def clear_key(self, service, creds):
-        """Blank a key and add 'cleared at' timestamp in the note column."""
-        from datetime import datetime, timezone
-
-        token = creds.get("airtable_token")
-        base_id = creds.get("airtable_base")
-        table = creds.get("airtable_table", TABLE_NAME)
-
-        if not token or not base_id:
-            logger.error("airtable backend requires airtable_token and airtable_base.")
-            return False
-
-        record = self._find_record(token, base_id, table, service)
-        if not record:
-            logger.error("Service '%s' not found in Airtable.", service)
-            return False
-
-        now = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
-        try:
-            resp = requests.patch(
-                f"{AIRTABLE_API_BASE}/{base_id}/{table}/{record['id']}",
-                headers=_headers(token),
-                json={"fields": {"key": "", "note": f"cleared {now}"}},
-                timeout=10,
-            )
-            if resp.status_code == 200:
-                logger.info("Key for '%s' cleared at %s.", service, now)
-                return True
-            logger.error("Airtable clear error (HTTP %d): %s", resp.status_code, resp.text)
-        except requests.exceptions.RequestException as e:
-            logger.error("Airtable clear error: %s", e)
-        return False
-
-    # ---- Auto-setup helpers ----
+    # ---- Auto-setup helpers (meta API — one-time provisioning) ----
 
     def _find_base(self, token):
         """Find an existing base named BASE_NAME. Returns base_id or None."""
@@ -292,107 +373,3 @@ class AirtableBackend(CredgooBackend):
         except requests.exceptions.RequestException as e:
             logger.error("Ensure table error: %s", e)
         return False
-
-    def _find_record(self, token, base_id, table, service):
-        """Find a record by service name. Returns record dict or None."""
-        try:
-            resp = requests.get(
-                f"{AIRTABLE_API_BASE}/{base_id}/{table}",
-                headers=_headers(token),
-                params={"filterByFormula": f"{{service}} = '{service}'", "maxRecords": 1},
-                timeout=10,
-            )
-            if resp.status_code == 200:
-                records = resp.json().get("records", [])
-                if records:
-                    return records[0]
-        except requests.exceptions.RequestException:
-            pass
-        return None
-
-    def list_keys(self, creds):
-        """List all service names. Returns list of str."""
-        token = creds.get("airtable_token")
-        base_id = creds.get("airtable_base")
-        table = creds.get("airtable_table", TABLE_NAME)
-        if not token or not base_id:
-            return []
-        try:
-            all_records = []
-            offset = None
-            while True:
-                params = {"fields[]": ["service"]}
-                if offset:
-                    params["offset"] = offset
-                resp = requests.get(
-                    f"{AIRTABLE_API_BASE}/{base_id}/{table}",
-                    headers=_headers(token),
-                    params=params,
-                    timeout=10,
-                )
-                if resp.status_code != 200:
-                    logger.error("Airtable list error (HTTP %d): %s", resp.status_code, resp.text)
-                    break
-                data = resp.json()
-                all_records.extend(data.get("records", []))
-                offset = data.get("offset")
-                if not offset:
-                    break
-            return sorted(r["fields"].get("service", "") for r in all_records)
-        except requests.exceptions.RequestException as e:
-            logger.error("Airtable list error: %s", e)
-        return []
-
-    def dedupe_keys(self, creds):
-        """Remove duplicate service entries, keeping the first. Returns (kept, removed) counts."""
-        token = creds.get("airtable_token")
-        base_id = creds.get("airtable_base")
-        table = creds.get("airtable_table", TABLE_NAME)
-        if not token or not base_id:
-            return 0, 0
-
-        try:
-            all_records = []
-            offset = None
-            while True:
-                params = {"fields[]": ["service"]}
-                if offset:
-                    params["offset"] = offset
-                resp = requests.get(
-                    f"{AIRTABLE_API_BASE}/{base_id}/{table}",
-                    headers=_headers(token),
-                    params=params,
-                    timeout=10,
-                )
-                if resp.status_code != 200:
-                    break
-                data = resp.json()
-                all_records.extend(data.get("records", []))
-                offset = data.get("offset")
-                if not offset:
-                    break
-
-            seen = {}
-            to_delete = []
-            for r in all_records:
-                svc = r["fields"].get("service", "")
-                if not svc or svc in seen:
-                    to_delete.append(r["id"])
-                else:
-                    seen[svc] = r["id"]
-
-            if not to_delete:
-                return len(all_records), 0
-
-            for i in range(0, len(to_delete), 10):
-                batch = to_delete[i:i + 10]
-                requests.delete(
-                    f"{AIRTABLE_API_BASE}/{base_id}/{table}",
-                    headers=_headers(token),
-                    params={"records[]": batch},
-                    timeout=10,
-                )
-            return len(all_records) - len(to_delete), len(to_delete)
-        except requests.exceptions.RequestException as e:
-            logger.error("Airtable dedupe error: %s", e)
-        return 0, 0
