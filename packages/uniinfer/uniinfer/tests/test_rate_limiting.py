@@ -52,3 +52,12 @@ def test_limiter_is_initialized():
     """The global limiter object exists and is configured."""
     from uniinfer.uniioai_proxy import limiter
     assert limiter is not None
+
+
+def test_rate_limits_endpoint(client):
+    """The /v1/system/rate-limits observability endpoint returns live limiter state."""
+    resp = client.get("/v1/system/rate-limits")
+    assert resp.status_code == 200
+    data = resp.json()
+    assert isinstance(data, dict)
+    assert "tu" in data

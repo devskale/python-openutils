@@ -2,18 +2,21 @@ from __future__ import annotations
 """
 OpenAI-compliant TU provider implementation.
 """
-from collections import deque
 from typing import Any, AsyncIterator
+import asyncio
 import httpx
 import json
+import logging
 import os
-import asyncio
-from datetime import datetime, timedelta
+from datetime import datetime
 
 from ..core import ChatProvider, ChatCompletionRequest, ChatCompletionResponse, ChatMessage
 
 from ..errors import map_provider_error, UniInferError
 from ..logging_utils import log_raw_response
+from ..ratelimit import get_rate_limiter
+
+logger = logging.getLogger(__name__)
 
 TU_BASE_URL = "https://aqueduct.ai.datalab.tuwien.ac.at/v1"
 TU_STAGING_BASE_URL = "https://aqueduct-staging.ai.datalab.tuwien.ac.at/v1"
@@ -46,13 +49,43 @@ def _raw_logging_enabled() -> bool:
     return os.getenv("UNIINFER_DEBUG_RAW", "").lower() in {"1", "true", "yes"}
 
 
+_TU_LIMITER = get_rate_limiter(
+    "tu",
+    default_rpm=float(_DEFAULT_TU_RATE_LIMIT),
+    on_rechallenge=lambda pid, st: logger.info(
+        "[tu] daily rate-limit re-challenge: probing higher limit (rpm=%.2f, ceiling=%.2f)",
+        st.rpm, st.ceiling,
+    ),
+)
+
+
+def _parse_retry_after(headers: Any) -> float | None:
+    """Parse a Retry-After header (delta-seconds or HTTP-date) if present."""
+    raw = None
+    if hasattr(headers, "get"):
+        raw = headers.get("retry-after") or headers.get("Retry-After")
+    if raw is None:
+        return None
+    raw = str(raw).strip()
+    if not raw:
+        return None
+    try:
+        return float(raw)
+    except ValueError:
+        pass
+    try:
+        from email.utils import parsedate_to_datetime
+        dt = parsedate_to_datetime(raw)
+        if dt is not None:
+            delta = (dt - datetime.now()).total_seconds()
+            return delta if delta > 0 else None
+    except (TypeError, ValueError):
+        pass
+    return None
+
+
 class TUProvider(ChatProvider):
     """TU (Tencent Unbounded) LLM Provider implementation."""
-
-    _global_request_times: deque[datetime] = deque()
-    _global_lock = asyncio.Lock()
-    _max_requests_per_minute = _DEFAULT_TU_RATE_LIMIT
-    _min_request_interval = timedelta(seconds=2)
 
     _DEFAULT_MAX_TOKENS = 8192
     _CREDGOO_SERVICE = "tu"
@@ -91,34 +124,137 @@ class TUProvider(ChatProvider):
             )
         return self._async_client
 
-    async def _throttle(self) -> None:
-        """Throttle requests to respect the TU backend's 25 requests/minute rate limit.
+    async def _throttle(self, model: str | None = None) -> dict[str, Any]:
+        """Wait for a send slot from the adaptive per-model rate limiter.
 
-        Maintains a sliding 60-second window of request timestamps. If the window
-        is full, waits until the oldest request falls outside it before proceeding.
-        Also enforces a minimum 2-second spacing between consecutive requests to
-        avoid bursting.
+        The limiter enforces the currently estimated safe requests/minute for
+        ``model`` (seeded from the configured TU limit and self-tuning from
+        real 429 responses). Returns the limiter info dict.
         """
-        cls = type(self)
-        async with cls._global_lock:
-            now = datetime.now()
-            window_start = now - timedelta(seconds=60)
-            while cls._global_request_times and cls._global_request_times[0] < window_start:
-                cls._global_request_times.popleft()
-            if len(cls._global_request_times) >= cls._max_requests_per_minute:
-                wait_time = (cls._global_request_times[0] - window_start).total_seconds()
-                if wait_time > 0:
-                    await asyncio.sleep(wait_time)
-                now = datetime.now()
-                window_start = now - timedelta(seconds=60)
-                while cls._global_request_times and cls._global_request_times[0] < window_start:
-                    cls._global_request_times.popleft()
-            if cls._global_request_times:
-                elapsed = now - cls._global_request_times[-1]
-                if elapsed < cls._min_request_interval:
-                    wait_time = (cls._min_request_interval - elapsed).total_seconds()
-                    await asyncio.sleep(wait_time)
-            cls._global_request_times.append(datetime.now())
+        return await self._rate_limiter().acquire(model or "")
+
+    def _rate_limiter(self):
+        """Return this provider's adaptive limiter (cached per backend service).
+
+        Production TU and TU Staging are distinct backends with independent
+        rate limits, so each resolves its own limiter via ``_CREDGOO_SERVICE``
+        rather than sharing the module-level TU limiter.
+        """
+        return get_rate_limiter(self._CREDGOO_SERVICE, default_rpm=float(_DEFAULT_TU_RATE_LIMIT))
+
+    async def _post_with_ratelimit_retry(
+        self, client: httpx.AsyncClient, url: str, payload: dict[str, Any], model: str, max_retries: int = 4
+    ) -> httpx.Response:
+        """POST with adaptive 429 backoff and retries.
+
+        On HTTP 429 the limiter is told about the failure (which lowers the
+        estimated rate and applies a cooldown); the call is then retried after
+        the computed backoff. Non-429 errors are returned to the caller.
+        """
+        last_exc: Exception | None = None
+        for attempt in range(max_retries + 1):
+            await self._throttle(model)
+            try:
+                response = await client.post(url, json=payload)
+            except (httpx.TimeoutException, httpx.TransportError) as e:
+                last_exc = e
+                logger.warning("[tu] network error on %s (attempt %d/%d): %s", model, attempt + 1, max_retries + 1, e)
+                if attempt < max_retries:
+                    await asyncio.sleep(min(2.0 * (attempt + 1), 8.0))
+                    continue
+                raise map_provider_error(self._CREDGOO_SERVICE, e)
+            if response.status_code == 429:
+                retry_after = _parse_retry_after(response.headers)
+                lim = self._rate_limiter()
+                backoff = lim.on_429(model=model, retry_after_s=retry_after)
+                logger.warning(
+                    "[%s] 429 on model %s — backing off %.1fs; current estimate %.2f/min",
+                    self._CREDGOO_SERVICE, model, backoff, lim.status().get(model, {}).get("rpm", 0),
+                )
+                if attempt < max_retries:
+                    await asyncio.sleep(backoff)
+                    continue
+                raise map_provider_error(
+                    self._CREDGOO_SERVICE,
+                    Exception(f"TU API error: 429 - {response.text}"),
+                    status_code=429,
+                    response_body=response.text,
+                )
+            return response
+        if last_exc is not None:
+            raise map_provider_error(self._CREDGOO_SERVICE, last_exc)
+        raise map_provider_error(self._CREDGOO_SERVICE, Exception("TU API error: exhausted retries"))
+
+    async def _open_stream_with_ratelimit_retry(
+        self, client: httpx.AsyncClient, url: str, payload: dict[str, Any], model: str, max_retries: int = 4
+    ):
+        """Open a streaming POST with adaptive 429 backoff and retries.
+
+        Returns the ``(context_manager, response)`` pair; the caller must exit
+        the context manager (e.g. via ``finally``). 429s are retried after the
+        computed backoff; other non-200 statuses raise immediately.
+        """
+        last_exc: Exception | None = None
+        for attempt in range(max_retries + 1):
+            await self._throttle(model)
+            try:
+                cm = client.stream("POST", url, json=payload)
+                response = await cm.__aenter__()
+            except (httpx.TimeoutException, httpx.TransportError) as e:
+                last_exc = e
+                logger.warning("[tu] network error on %s stream (attempt %d/%d): %s", model, attempt + 1, max_retries + 1, e)
+                if attempt < max_retries:
+                    await asyncio.sleep(min(2.0 * (attempt + 1), 8.0))
+                    continue
+                raise map_provider_error(self._CREDGOO_SERVICE, e)
+            if response.status_code == 429:
+                retry_after = _parse_retry_after(response.headers)
+                lim = self._rate_limiter()
+                backoff = lim.on_429(model=model, retry_after_s=retry_after)
+                logger.warning(
+                    "[%s] 429 on model %s stream — backing off %.1fs; current estimate %.2f/min",
+                    self._CREDGOO_SERVICE, model, backoff, lim.status().get(model, {}).get("rpm", 0),
+                )
+                try:
+                    await cm.__aexit__(None, None, None)
+                except Exception:
+                    pass
+                if attempt < max_retries:
+                    await asyncio.sleep(backoff)
+                    continue
+                error_body = await response.aread()
+                raise map_provider_error(
+                    self._CREDGOO_SERVICE,
+                    Exception(f"TU API error: 429 - {error_body}"),
+                    status_code=429,
+                    response_body=error_body,
+                )
+            if response.status_code != 200:
+                error_body = await response.aread()
+                log_raw_response(
+                    provider=self._CREDGOO_SERVICE,
+                    operation="chat.completions.stream",
+                    raw_response={
+                        "status_code": response.status_code,
+                        "body": error_body.decode("utf-8", errors="replace"),
+                    },
+                    log_file=os.path.join(os.getcwd(), "logs", "tu_raw_chat.log"),
+                )
+                try:
+                    await cm.__aexit__(None, None, None)
+                except Exception:
+                    pass
+                raise map_provider_error(
+                    self._CREDGOO_SERVICE,
+                    Exception(f"TU API error: {response.status_code} - {error_body}"),
+                    status_code=response.status_code,
+                    response_body=error_body,
+                )
+            self._rate_limiter().on_success(model)
+            return cm, response
+        if last_exc is not None:
+            raise map_provider_error(self._CREDGOO_SERVICE, last_exc)
+        raise map_provider_error(self._CREDGOO_SERVICE, Exception("TU API error: exhausted stream retries"))
 
     def _prepare_payload(self, request: ChatCompletionRequest) -> dict[str, Any]:
         """Prepare the request payload for the TU API.
@@ -199,13 +335,13 @@ class TUProvider(ChatProvider):
 
     async def acomplete(self, request: ChatCompletionRequest) -> ChatCompletionResponse:
         """Async completion implementation for TU."""
-        await self._throttle()
+        await self._throttle(request.model)
         client = await self._get_async_client()
         payload = self._prepare_payload(request)
 
         try:
-            response = await client.post("/chat/completions", json=payload)
-            
+            response = await self._post_with_ratelimit_retry(client, "/chat/completions", payload, request.model)
+
             # Log raw response for debugging (gated: very verbose)
             raw_text = response.text
             if _raw_logging_enabled():
@@ -222,7 +358,7 @@ class TUProvider(ChatProvider):
             if response.status_code != 200:
                 raise map_provider_error(self._CREDGOO_SERVICE, Exception(f"TU API error: {response.status_code} - {raw_text}"), status_code=response.status_code, response_body=raw_text)
             
-            # Check for empty response
+            self._rate_limiter().on_success(request.model)
             if not raw_text or not raw_text.strip():
                 raise map_provider_error(self._CREDGOO_SERVICE, Exception("TU API returned empty response"), status_code=500, response_body="(empty)")
             
@@ -260,130 +396,121 @@ class TUProvider(ChatProvider):
     async def astream_complete(self, request: ChatCompletionRequest) -> AsyncIterator[ChatCompletionResponse]:
         """Async streaming completion implementation for TU."""
         request.streaming = True
-        await self._throttle()
+        await self._throttle(request.model)
         client = await self._get_async_client()
         payload = self._prepare_payload(request)
 
+        cm, response = await self._open_stream_with_ratelimit_retry(client, "/chat/completions", payload, request.model)
         try:
             chunks_yielded = 0  # Track if we receive any valid chunks
             received_done = False  # Track if we received [DONE] marker
             received_finish_reason = False  # Track if we received finish_reason
-            async with client.stream("POST", "/chat/completions", json=payload) as response:
-                if response.status_code != 200:
-                    error_body = await response.aread()
+            async for line in response.aiter_lines():
+                if not line:
+                    continue
+                if line.strip() == 'data: [DONE]':
+                    received_done = True
+                    break
+                if not line.startswith('data: '):
+                    continue
+                # Per-chunk logging is extremely verbose and was filling disk.
+                # Only enabled when UNIINFER_DEBUG_RAW=1.
+                if _raw_logging_enabled():
                     log_raw_response(
                         provider=self._CREDGOO_SERVICE,
                         operation="chat.completions.stream",
-                        raw_response={
-                            "status_code": response.status_code,
-                            "body": error_body.decode("utf-8", errors="replace"),
-                        },
+                        raw_response={"line": line},
                         log_file=os.path.join(os.getcwd(), "logs", "tu_raw_chat.log"),
                     )
-                    error_msg = f"TU API error: {response.status_code} - {error_body}"
-                    raise map_provider_error(self._CREDGOO_SERVICE, Exception(error_msg), status_code=response.status_code, response_body=error_body)
                 
-                async for line in response.aiter_lines():
-                    if not line:
-                        continue
-                    if line.strip() == 'data: [DONE]':
-                        received_done = True
-                        break
-                    if not line.startswith('data: '):
-                        continue
-                    # Per-chunk logging is extremely verbose and was filling disk.
-                    # Only enabled when UNIINFER_DEBUG_RAW=1.
-                    if _raw_logging_enabled():
-                        log_raw_response(
-                            provider=self._CREDGOO_SERVICE,
-                            operation="chat.completions.stream",
-                            raw_response={"line": line},
-                            log_file=os.path.join(os.getcwd(), "logs", "tu_raw_chat.log"),
+                try:
+                    data_str = line[6:]
+                    data = json.loads(data_str)
+                    if 'choices' in data and len(data['choices']) > 0:
+                        choice = data['choices'][0]
+                        delta = choice.get('delta', {})
+                        finish_reason = choice.get('finish_reason')
+                        
+                        if finish_reason:
+                            received_finish_reason = True
+                        
+                        content = delta.get('content')
+                        # Handle reasoning_content (TU thinking models)
+                        reasoning_content = delta.get('reasoning_content') or delta.get('reasoning')
+                        tool_calls = delta.get('tool_calls')
+                        
+                        if not content and not reasoning_content and not tool_calls and not finish_reason:
+                            continue
+                            
+                        chunks_yielded += 1
+                        message = ChatMessage(
+                            role=delta.get('role', 'assistant'),
+                            content=content,
+                            tool_calls=tool_calls
                         )
-                    
-                    try:
-                        data_str = line[6:]
-                        data = json.loads(data_str)
-                        if 'choices' in data and len(data['choices']) > 0:
-                            choice = data['choices'][0]
-                            delta = choice.get('delta', {})
-                            finish_reason = choice.get('finish_reason')
-                            
-                            if finish_reason:
-                                received_finish_reason = True
-                            
-                            content = delta.get('content')
-                            # Handle reasoning_content (TU thinking models)
-                            reasoning_content = delta.get('reasoning_content') or delta.get('reasoning')
-                            tool_calls = delta.get('tool_calls')
-                            
-                            if not content and not reasoning_content and not tool_calls and not finish_reason:
-                                continue
-                                
-                            chunks_yielded += 1
-                            message = ChatMessage(
-                                role=delta.get('role', 'assistant'),
-                                content=content,
-                                tool_calls=tool_calls
-                            )
-                            
-                            yield ChatCompletionResponse(
-                                message=message,
-                                provider=self._CREDGOO_SERVICE,
-                                model=data.get("model", request.model),
-                                usage={},
-                                raw_response=data,
-                                finish_reason=finish_reason,
-                                thinking=reasoning_content  # Separate thinking content
-                            )
-                    except json.JSONDecodeError:
-                        continue
-                
-                # Detect incomplete stream (preemption) - stream ended without proper completion
-                if chunks_yielded == 0:
-                    log_raw_response(
-                        provider=self._CREDGOO_SERVICE,
-                        operation="chat.completions.stream",
-                        raw_response={"error": "Empty stream - no chunks received (possible preemption)"},
-                        log_file=os.path.join(os.getcwd(), "logs", "tu_raw_chat.log"),
-                    )
-                    # Yield error response instead of raising - exception would be swallowed by StopAsyncIteration
-                    yield ChatCompletionResponse(
-                        message=ChatMessage(role="assistant", content=""),
-                        provider=self._CREDGOO_SERVICE,
-                        model=request.model,
-                        usage={},
-                        raw_response={"error": "TU API returned empty stream - model may have preempted"},
-                        finish_reason="error",
-                        thinking=None
-                    )
-                    return  # Exit generator cleanly
-                
-                # Detect premature stream termination - stream had chunks but no finish_reason or [DONE]
-                if not received_done and not received_finish_reason:
-                    import sys
-                    print(f"[DEBUG] PREEMPTION DETECTED: {chunks_yielded} chunks, no finish_reason or [DONE]", file=sys.stderr, flush=True)
-                    log_raw_response(
-                        provider=self._CREDGOO_SERVICE,
-                        operation="chat.completions.stream",
-                        raw_response={"error": f"Stream terminated prematurely - {chunks_yielded} chunks but no finish_reason or [DONE] (possible preemption)"},
-                        log_file=os.path.join(os.getcwd(), "logs", "tu_raw_chat.log"),
-                    )
-                    # Yield error response instead of raising - exception would be swallowed by StopAsyncIteration
-                    yield ChatCompletionResponse(
-                        message=ChatMessage(role="assistant", content=""),
-                        provider=self._CREDGOO_SERVICE,
-                        model=request.model,
-                        usage={},
-                        raw_response={"error": f"TU API stream terminated prematurely after {chunks_yielded} chunks - model may have preempted"},
-                        finish_reason="error",
-                        thinking=None
-                    )
-                    return  # Exit generator cleanly
+                        
+                        yield ChatCompletionResponse(
+                            message=message,
+                            provider=self._CREDGOO_SERVICE,
+                            model=data.get("model", request.model),
+                            usage={},
+                            raw_response=data,
+                            finish_reason=finish_reason,
+                            thinking=reasoning_content  # Separate thinking content
+                        )
+                except json.JSONDecodeError:
+                    continue
+            
+            # Detect incomplete stream (preemption) - stream ended without proper completion
+            if chunks_yielded == 0:
+                log_raw_response(
+                    provider=self._CREDGOO_SERVICE,
+                    operation="chat.completions.stream",
+                    raw_response={"error": "Empty stream - no chunks received (possible preemption)"},
+                    log_file=os.path.join(os.getcwd(), "logs", "tu_raw_chat.log"),
+                )
+                # Yield error response instead of raising - exception would be swallowed by StopAsyncIteration
+                yield ChatCompletionResponse(
+                    message=ChatMessage(role="assistant", content=""),
+                    provider=self._CREDGOO_SERVICE,
+                    model=request.model,
+                    usage={},
+                    raw_response={"error": "TU API returned empty stream - model may have preempted"},
+                    finish_reason="error",
+                    thinking=None
+                )
+                return  # Exit generator cleanly
+            
+            # Detect premature stream termination - stream had chunks but no finish_reason or [DONE]
+            if not received_done and not received_finish_reason:
+                import sys
+                print(f"[DEBUG] PREEMPTION DETECTED: {chunks_yielded} chunks, no finish_reason or [DONE]", file=sys.stderr, flush=True)
+                log_raw_response(
+                    provider=self._CREDGOO_SERVICE,
+                    operation="chat.completions.stream",
+                    raw_response={"error": f"Stream terminated prematurely - {chunks_yielded} chunks but no finish_reason or [DONE] (possible preemption)"},
+                    log_file=os.path.join(os.getcwd(), "logs", "tu_raw_chat.log"),
+                )
+                # Yield error response instead of raising - exception would be swallowed by StopAsyncIteration
+                yield ChatCompletionResponse(
+                    message=ChatMessage(role="assistant", content=""),
+                    provider=self._CREDGOO_SERVICE,
+                    model=request.model,
+                    usage={},
+                    raw_response={"error": f"TU API stream terminated prematurely after {chunks_yielded} chunks - model may have preempted"},
+                    finish_reason="error",
+                    thinking=None
+                )
+                return  # Exit generator cleanly
         except Exception as e:
             if isinstance(e, UniInferError):
                 raise
             raise map_provider_error(self._CREDGOO_SERVICE, e)
+        finally:
+            try:
+                await cm.__aexit__(None, None, None)
+            except Exception:
+                pass
 
     @classmethod
     def list_models(cls, api_key: str | None = None, **kwargs) -> list[ModelInfo]:
