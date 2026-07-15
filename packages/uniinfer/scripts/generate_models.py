@@ -561,8 +561,12 @@ def main():
     }
 
     OUTPUT_PATH.parent.mkdir(parents=True, exist_ok=True)
-    with open(OUTPUT_PATH, "w") as f:
+    # Atomic write: stage to a tmp file then rename, so a crash/timeout mid-dump
+    # never leaves a truncated catalog (the live file stays intact until done).
+    tmp = OUTPUT_PATH.parent / (OUTPUT_PATH.name + ".tmp")
+    with open(tmp, "w") as f:
         json.dump(output, f, indent=2, ensure_ascii=False)
+    tmp.replace(OUTPUT_PATH)
 
     log.info("\nWrote %s (%d models across %d providers)",
              OUTPUT_PATH, total_models, len(result))
