@@ -4,6 +4,38 @@ All notable changes to **uniinfer** are documented in this file.
 Versions follow [Semantic Versioning](https://semver.org/); this file
 adheres to [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.5.39] - 2026-07-15
+
+### Added
+- **Adaptive per-model rate limiting for TU.** Replaced the fixed
+  25 req/min throttle in the TU provider with a self-tuning AIMD
+  (Additive-Increase / Multiplicative-Decrease) controller
+  (`uniinfer/ratelimit.py`). TU advertises "25/min" but the real effective
+  limit is far lower (especially for heavy models such as
+  `glm-5.2-744b-preview`, ~5/min) and changes without notice. The limiter:
+  - enforces a sliding-window cap at the *estimated* safe rate per
+    `(provider, model)`, with even temporal spacing;
+  - on HTTP 429 infers the real limit from the burst that tripped it and
+    halves the estimate, applying an exponential cooldown; the failed call
+    is retried with backoff instead of erroring straight to the client;
+  - nudges the estimate upward on success once a 429-free period elapses;
+  - **re-challenges daily**: restores the ceiling and probes higher so a
+    silent 25 -> 100 -> 1000/min upgrade is discovered automatically;
+  - persists learned limits to `_rate_limits.json` across restarts.
+  Configurable via `UNIINFER_RATE_LIMIT_*` env vars.
+- **`GET /v1/system/rate-limits`** observability endpoint: returns the live
+  per-(provider, model) learned rate, ceiling, active cooldown, 429 streak
+  and last re-challenge time so the tracked limits are readable in prod.
+
+### Fixed
+- Re-entrant locking in the rate limiter (`RLock`) so persistence writes
+  from within `on_429`/`on_success`/`reset` no longer deadlock.
+- **TU Staging isolation**: `TUStagingProvider` (a distinct backend,
+  `aqueduct-staging`) now resolves its own rate limiter (`tu-staging`)
+  instead of sharing production TU's learned limit.
+- `_KeyState.from_dict` tolerates corrupt/partial `_rate_limits.json`
+  values (falls back to defaults instead of crashing at load).
+
 ## [0.5.34] - 2026-06-24
 
 ### Fixed

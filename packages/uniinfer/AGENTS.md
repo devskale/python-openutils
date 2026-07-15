@@ -127,6 +127,38 @@ Inherit `AnthropicCompatibleProvider` → override `list_models()` fallback if n
 - **Minor** (default): increment patch (`0.3.5` → `0.3.6`)
 - **Major**: increment minor, reset patch (`0.3.5` → `0.4.0`)
 
+## Adaptive Rate Limiting
+
+TU enforces a **self-tuning AIMD** rate limit (`uniinfer/ratelimit.py`),
+keyed per `(provider, model). It does **not** trust the provider's advertised
+limit (TU says "25/min" but the real ceiling is far lower, especially for
+heavy models like `glm-5.2-744b-preview`).
+
+- On a 429 it halves the estimate, applies an exponential cooldown, and
+  **retries** the call (so clients rarely see a 429).
+- On success (after a stable period) it nudges the estimate up.
+- **Daily re-challenge**: restores the ceiling and probes higher, so a silent
+  25 → 100 → 1000/min upgrade is discovered automatically.
+- Learned limits persist to `_rate_limits.json` (gitignored) across restarts.
+- Production TU (`tu`) and TU Staging (`tu-staging`) have **separate**
+  limiters (distinct backends).
+- **Observability**: `GET /v1/system/rate-limits` returns the live per-(provider,
+  model) state — learned rpm, ceiling, active cooldown, 429 streak, last
+  re-challenge. Public/read-only.
+
+Env vars (all optional):
+
+| Var | Default | Meaning |
+|-----|---------|---------|
+| `UNIINFER_RATE_LIMIT_DEFAULT` | 25 | initial rpm estimate |
+| `UNIINFER_RATE_LIMIT_MIN` | 0.5 | floor (never fully stalls) |
+| `UNIINFER_RATE_LIMIT_CEILING` | 1000 | hard cap additive-increase won't pass |
+| `UNIINFER_RATE_LIMIT_WINDOW` | 60 | sliding-window size (seconds) |
+| `UNIINFER_RATE_LIMIT_RECHALLENGE_HOURS` | 24 | re-challenge interval |
+| `UNIINFER_RATE_LIMIT_PERSIST` | `_rate_limits.json` | state file (empty = disable) |
+
+The config.json `tu_rate_limit_per_minute` still seeds the initial estimate.
+
 ## Known Footguns
 
 - `PROXY_KEY` format is `bearer@encryption` — the `@` is the delimiter, not part of either value
