@@ -275,6 +275,13 @@ def main():
                         help='Path to a JSON file containing tool definitions (object or array)')
     parser.add_argument('--tool-choice', type=str,
                         help='Tool choice preference (e.g., "auto", "none", or JSON object)')
+    parser.add_argument('--no-think', action='store_true',
+                        help='Disable reasoning/thinking for Qwen3.x / GLM-5.x style models on vLLM '
+                             '(sets chat_template_kwargs.enable_thinking=false). Useful for A/B comparing '
+                             'thinking vs non-thinking output.')
+    parser.add_argument('--chat-template-kwargs', type=str, metavar='JSON',
+                        help='JSON object forwarded to the serving backend chat template, e.g. '
+                             '\'"{\\"enable_thinking\\": false}"\'. Overrides --no-think.')
     parser.add_argument('--encryption-key', type=str,
                         help='Specify the CREDGOO encryption key')
     parser.add_argument('--bearer-token', type=str,
@@ -868,13 +875,24 @@ def main():
         except Exception:
             tool_choice = tc
 
+    chat_template_kwargs = None
+    if args.chat_template_kwargs:
+        try:
+            chat_template_kwargs = json.loads(args.chat_template_kwargs)
+        except json.JSONDecodeError as e:
+            print(f"Error: invalid JSON for --chat-template-kwargs: {e}")
+            return
+    elif args.no_think:
+        chat_template_kwargs = {"enable_thinking": False}
+
     request = ChatCompletionRequest(
         messages=messages,
         model=model,
         streaming=True,
         max_tokens=args.max_tokens,
         tools=tools,
-        tool_choice=tool_choice
+        tool_choice=tool_choice,
+        chat_template_kwargs=chat_template_kwargs,
     )
     # Make the request with timing statistics
     response_text = ""
