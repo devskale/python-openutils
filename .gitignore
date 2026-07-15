@@ -36,5 +36,9 @@ packages/uniinfer/scripts/_models_dev_cache.json
 # editor prefs
 .vscode/
 
+# Agent tooling (installed locally via the skills CLI; not project deliverables)
+.agents/
+skills-lock.json
+
 # Local proxy env (real key) — do not commit
 packages/uniinfer/.env
