@@ -705,7 +705,7 @@ def save_probe_result(report: CapabilityReport) -> None:
     entry = {
         "profile": report.profile,
         "results": [
-            {"name": r.name, "status": r.status, "evidence": r.evidence}
+            {"name": r.name, "status": r.status, "evidence": r.evidence, "detail": r.detail}
             for r in report.results
         ],
         "summary": report.summary,
