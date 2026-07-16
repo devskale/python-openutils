@@ -48,7 +48,9 @@ class ProbeResult:
 
     def __post_init__(self) -> None:
         if self.status not in VALID_STATUS:
-            raise ValueError(f"status must be one of {VALID_STATUS}, got {self.status!r}")
+            raise ValueError(
+                f"status must be one of {VALID_STATUS}, got {self.status!r}"
+            )
 
     @property
     def ok(self) -> bool:
@@ -74,7 +76,9 @@ class Target:
             )
         self.provider_name, self.model_name = self.provider_model.split("@", 1)
         if not self.provider_name or not self.model_name:
-            raise ValueError("provider_model: provider and model must both be non-empty")
+            raise ValueError(
+                "provider_model: provider and model must both be non-empty"
+            )
 
 
 @dataclass
@@ -148,7 +152,9 @@ async def probe_profile(t: Target) -> ProbeResult:
             detail={"profile": profile},
         )
     except Exception as e:  # noqa: BLE001
-        return ProbeResult("probe", "error", f"{type(e).__name__}: {e}"[:200], latency_ms=_ms(started))
+        return ProbeResult(
+            "probe", "error", f"{type(e).__name__}: {e}"[:200], latency_ms=_ms(started)
+        )
 
 
 async def _ollama_show_profile(t: Target) -> dict[str, Any]:
@@ -177,7 +183,9 @@ async def _catalog_profile(t: Target) -> dict[str, Any]:
         from uniinfer.proxy_services.models_registry import load_catalog
 
         catalog = load_catalog([t.provider_name])
-        for m in catalog.get("providers", {}).get(t.provider_name, {}).get("models", []):
+        for m in (
+            catalog.get("providers", {}).get(t.provider_name, {}).get("models", [])
+        ):
             if m.get("id") == t.model_name:
                 return {
                     "capabilities": [],
@@ -193,31 +201,46 @@ async def _catalog_profile(t: Target) -> dict[str, Any]:
 # --------------------------------------------------------------------------- #
 # Generation helper — unifies thinking control across backends
 # --------------------------------------------------------------------------- #
-async def _generate(t: Target, prompt: str, thinking_on: bool) -> tuple[str, str]:
+async def _generate(
+    t: Target, prompt: str, thinking_on: bool, *, max_tokens: Optional[int] = None
+) -> tuple[str, str]:
     """Return (content, thinking). Thinking is toggled via the backend-native
     knob: Ollama ``think`` (provider-direct, since the uniioai wrappers do not
-    forward it for non-stream) or vLLM ``chat_template_kwargs.enable_thinking``."""
+    forward it for non-stream) or vLLM ``chat_template_kwargs.enable_thinking``.
+
+    ``max_tokens`` overrides ``t.max_tokens``. The thinking probes pass a
+    *moderate* cap — capability detection only needs to observe that reasoning
+    is produced, not generate a full ≫1–2k chain (which on slow models blows the
+    probe timeout). Real callers should still use a generous ``t.max_tokens``.
+    """
+    mt = max_tokens or t.max_tokens
     if t.provider_name == "ollama":
-        provider = ProviderFactory.get_provider("ollama", api_key=t.api_key, base_url=t.base_url)
+        provider = ProviderFactory.get_provider(
+            "ollama", api_key=t.api_key, base_url=t.base_url
+        )
         req = ChatCompletionRequest(
             messages=[ChatMessage(role="user", content=prompt)],
             model=t.model_name,
             temperature=0.7,
-            max_tokens=t.max_tokens,
-            streaming=True,
+            max_tokens=mt,
+            streaming=False,
         )
-        content = thinking = ""
-        async for chunk in provider.astream_complete(req, think=thinking_on):
-            content += getattr(chunk.message, "content", "") or ""
-            if getattr(chunk, "thinking", None):
-                thinking += chunk.thinking
-        return content, thinking
-    resp = await asyncio.wait_for(
-        _complete(t, prompt, chat_template_kwargs={"enable_thinking": thinking_on}), t.timeout
+        resp = await provider.acomplete(req, think=thinking_on)
+        return getattr(resp.message, "content", "") or "", getattr(
+            resp, "thinking", ""
+        ) or ""
+    resp = await aget_completion(
+        messages=[{"role": "user", "content": prompt}],
+        provider_model_string=t.provider_model,
+        temperature=0.7,
+        max_tokens=mt,
+        provider_api_key=t.api_key,
+        base_url=t.base_url,
+        chat_template_kwargs={"enable_thinking": thinking_on},
     )
-    content = getattr(resp.message, "content", "") or ""
-    thinking = getattr(resp, "thinking", "") or ""
-    return content, thinking
+    return getattr(resp.message, "content", "") or "", getattr(
+        resp, "thinking", ""
+    ) or ""
 
 
 # --------------------------------------------------------------------------- #
@@ -229,20 +252,25 @@ async def _complete_quiet(
     *,
     tools: Optional[list[dict]] = None,
     tool_choice: Optional[Any] = None,
+    max_tokens: Optional[int] = None,
 ) -> Any:
     """Non-streaming completion with thinking OFF.
 
     Ollama is called provider-direct so the native ``think`` field is honoured
     (the uniioai wrappers do not forward it for non-stream) and ``tools``/
-    images reach the backend.
+    images reach the backend. ``max_tokens`` overrides ``t.max_tokens`` (used by
+    the perf probe to cap generation and stay token-frugal).
     """
+    mt = max_tokens or t.max_tokens
     if t.provider_name == "ollama":
-        provider = ProviderFactory.get_provider("ollama", api_key=t.api_key, base_url=t.base_url)
+        provider = ProviderFactory.get_provider(
+            "ollama", api_key=t.api_key, base_url=t.base_url
+        )
         req = ChatCompletionRequest(
             messages=[ChatMessage(**m) for m in messages],
             model=t.model_name,
             temperature=0.7,
-            max_tokens=t.max_tokens,
+            max_tokens=mt,
             streaming=False,
             tools=tools,
             tool_choice=tool_choice,
@@ -252,7 +280,7 @@ async def _complete_quiet(
         messages=messages,
         provider_model_string=t.provider_model,
         temperature=0.7,
-        max_tokens=t.max_tokens,
+        max_tokens=mt,
         provider_api_key=t.api_key,
         base_url=t.base_url,
         tools=tools,
@@ -268,14 +296,20 @@ async def probe_chat(t: Target) -> ProbeResult:
     started = time.monotonic()
     try:
         resp = await asyncio.wait_for(
-            _complete_quiet(t, [{"role": "user", "content": "Reply with exactly one word: ready"}]),
+            _complete_quiet(
+                t, [{"role": "user", "content": "Reply with exactly one word: ready"}]
+            ),
             t.timeout,
         )
         content = (getattr(resp.message, "content", "") or "").strip()
         status = "pass" if content else "fail"
-        return ProbeResult("chat", status, evidence=_preview(content), latency_ms=_ms(started))
+        return ProbeResult(
+            "chat", status, evidence=_preview(content), latency_ms=_ms(started)
+        )
     except Exception as e:  # noqa: BLE001
-        return ProbeResult("chat", "error", f"{type(e).__name__}: {e}"[:200], latency_ms=_ms(started))
+        return ProbeResult(
+            "chat", "error", f"{type(e).__name__}: {e}"[:200], latency_ms=_ms(started)
+        )
 
 
 # --------------------------------------------------------------------------- #
@@ -284,13 +318,20 @@ async def probe_chat(t: Target) -> ProbeResult:
 async def probe_tool_calling(t: Target) -> ProbeResult:
     caps = getattr(t, "profile", {}).get("capabilities") or []
     if caps and "tools" not in caps:
-        return ProbeResult("tool_calling", "skip", evidence="model declares no tools capability")
+        return ProbeResult(
+            "tool_calling", "skip", evidence="model declares no tools capability"
+        )
     started = time.monotonic()
     try:
         resp = await asyncio.wait_for(
             _complete_quiet(
                 t,
-                [{"role": "user", "content": "What is the weather in Paris right now? You must call the get_weather tool."}],
+                [
+                    {
+                        "role": "user",
+                        "content": "What is the weather in Paris right now? You must call the get_weather tool.",
+                    }
+                ],
                 tools=load_tools(),
                 tool_choice="auto",
             ),
@@ -304,15 +345,37 @@ async def probe_tool_calling(t: Target) -> ProbeResult:
                 tc.get("function", {}).get("name", "?") if isinstance(tc, dict) else "?"
                 for tc in tool_calls
             )
-            return ProbeResult("tool_calling", "pass", evidence=f"tool_calls=[{names}]", latency_ms=_ms(started), detail={"tool_calls": tool_calls})
+            return ProbeResult(
+                "tool_calling",
+                "pass",
+                evidence=f"tool_calls=[{names}]",
+                latency_ms=_ms(started),
+                detail={"tool_calls": tool_calls},
+            )
         leaked = "get_weather" in content or "tool_call" in content
         evidence = f"no structured tool_call; finish={finish}; content_hint={leaked}"
-        return ProbeResult("tool_calling", "fail", evidence=evidence, latency_ms=_ms(started), detail={"content_preview": _preview(content, 120)})
+        return ProbeResult(
+            "tool_calling",
+            "fail",
+            evidence=evidence,
+            latency_ms=_ms(started),
+            detail={"content_preview": _preview(content, 120)},
+        )
     except Exception as e:  # noqa: BLE001
         msg = str(e)
         if "does not support tools" in msg.lower():
-            return ProbeResult("tool_calling", "skip", evidence="model does not support tools (400)", latency_ms=_ms(started))
-        return ProbeResult("tool_calling", "error", f"{type(e).__name__}: {msg}"[:200], latency_ms=_ms(started))
+            return ProbeResult(
+                "tool_calling",
+                "skip",
+                evidence="model does not support tools (400)",
+                latency_ms=_ms(started),
+            )
+        return ProbeResult(
+            "tool_calling",
+            "error",
+            f"{type(e).__name__}: {msg}"[:200],
+            latency_ms=_ms(started),
+        )
 
 
 # --------------------------------------------------------------------------- #
@@ -321,16 +384,25 @@ async def probe_tool_calling(t: Target) -> ProbeResult:
 async def probe_image(t: Target) -> ProbeResult:
     caps = getattr(t, "profile", {}).get("capabilities") or []
     if caps and "vision" not in caps:
-        return ProbeResult("image", "skip", evidence="model declares no vision capability")
+        return ProbeResult(
+            "image", "skip", evidence="model declares no vision capability"
+        )
     if t.provider_name in _PROVIDERS_WITHOUT_IMAGE_FORWARD:
-        return ProbeResult("image", "skip", evidence=f"{t.provider_name} provider does not forward images")
+        return ProbeResult(
+            "image",
+            "skip",
+            evidence=f"{t.provider_name} provider does not forward images",
+        )
     started = time.monotonic()
     try:
         messages = [
             {
                 "role": "user",
                 "content": [
-                    {"type": "text", "text": "What colors are in this image? Answer briefly."},
+                    {
+                        "type": "text",
+                        "text": "What colors are in this image? Answer briefly.",
+                    },
                     {"type": "image_url", "image_url": {"url": image_data_url()}},
                 ],
             }
@@ -338,9 +410,13 @@ async def probe_image(t: Target) -> ProbeResult:
         resp = await asyncio.wait_for(_complete_quiet(t, messages), t.timeout)
         content = (getattr(resp.message, "content", "") or "").strip()
         status = "pass" if content else "fail"
-        return ProbeResult("image", status, evidence=_preview(content), latency_ms=_ms(started))
+        return ProbeResult(
+            "image", status, evidence=_preview(content), latency_ms=_ms(started)
+        )
     except Exception as e:  # noqa: BLE001
-        return ProbeResult("image", "error", f"{type(e).__name__}: {e}"[:200], latency_ms=_ms(started))
+        return ProbeResult(
+            "image", "error", f"{type(e).__name__}: {e}"[:200], latency_ms=_ms(started)
+        )
 
 
 # --------------------------------------------------------------------------- #
@@ -360,10 +436,13 @@ async def _thinking(t: Target, on: bool) -> ProbeResult:
     label = "thinking_on" if on else "thinking_off"
     caps = getattr(t, "profile", {}).get("capabilities") or []
     if caps and "thinking" not in caps:
-        return ProbeResult(label, "skip", evidence="model declares no thinking capability")
+        return ProbeResult(
+            label, "skip", evidence="model declares no thinking capability"
+        )
     try:
         content, thinking = await asyncio.wait_for(
-            _generate(t, "What is 7 times 6? Show your reasoning.", on), t.timeout
+            _generate(t, "What is 7 times 6? Show your reasoning.", on, max_tokens=768),
+            t.timeout,
         )
         produced = bool(thinking) or "<think>" in content
         if on:
@@ -373,33 +452,92 @@ async def _thinking(t: Target, on: bool) -> ProbeResult:
             # off: pass if the call succeeded; report whether any leaked through
             status = "pass"
             evidence = f"reasoning_chars={len(thinking)} ({'none' if not thinking else 'LEAKED'})"
-        return ProbeResult(label, status, evidence=evidence, latency_ms=_ms(started),
-                           detail={"thinking_chars": len(thinking), "content_preview": _preview(content, 80)})
+        return ProbeResult(
+            label,
+            status,
+            evidence=evidence,
+            latency_ms=_ms(started),
+            detail={
+                "thinking_chars": len(thinking),
+                "content_preview": _preview(content, 80),
+            },
+        )
     except Exception as e:  # noqa: BLE001
         msg = str(e)
         if "does not support thinking" in msg.lower():
-            return ProbeResult(label, "fail", evidence="model does not support thinking (400)", latency_ms=_ms(started))
-        return ProbeResult(label, "error", f"{type(e).__name__}: {msg}"[:200], latency_ms=_ms(started))
+            return ProbeResult(
+                label,
+                "fail",
+                evidence="model does not support thinking (400)",
+                latency_ms=_ms(started),
+            )
+        return ProbeResult(
+            label, "error", f"{type(e).__name__}: {msg}"[:200], latency_ms=_ms(started)
+        )
 
 
 # --------------------------------------------------------------------------- #
 # Perf probes (opt-in)
 # --------------------------------------------------------------------------- #
 async def perf_maxspeed(t: Target) -> ProbeResult:
-    """Throughput (tok/min) swept across varying context sizes."""
+    """Throughput (tok/min) swept across varying context sizes.
+
+    Token-frugal by design: tiny capped output, one run per size, thinking OFF —
+    long perf runs exhaust token-limited (free-tier) models fast. Sizes that
+    exceed the model's declared context are skipped.
+    """
     started = time.monotonic()
-    sizes = getattr(t, "perf_context_sizes", None) or (256, 1024)
+    sizes = getattr(t, "perf_context_sizes", None) or (128, 1024)
+    declared_ctx = (getattr(t, "profile", {}).get("context_length") or 0) or None
     rows = []
-    try:
-        for n in sizes:
+    for n in sizes:
+        if declared_ctx and n >= declared_ctx:
+            rows.append(
+                {
+                    "context_tokens": n,
+                    "tok_s": None,
+                    "tok_min": None,
+                    "note": "exceeds declared ctx",
+                }
+            )
+            continue
+        try:
             tok_s = await _measure_throughput(t, n)
-            rows.append({"context_tokens": n, "tok_s": tok_s, "tok_min": round((tok_s or 0) * 60)})
-        best = max((r["tok_min"] for r in rows), default=0)
-        evidence = " ; ".join(f"{r['context_tokens']}t→{r['tok_min']} tok/min" for r in rows)
-        return ProbeResult("perf_maxspeed", "pass", evidence=f"max≈{best} tok/min | {evidence}",
-                           latency_ms=_ms(started), detail={"sweep": rows})
-    except Exception as e:  # noqa: BLE001
-        return ProbeResult("perf_maxspeed", "error", f"{type(e).__name__}: {e}"[:200], latency_ms=_ms(started))
+        except Exception as e:  # noqa: BLE001
+            rows.append(
+                {
+                    "context_tokens": n,
+                    "tok_s": None,
+                    "tok_min": None,
+                    "note": type(e).__name__,
+                }
+            )
+            continue
+        rows.append(
+            {
+                "context_tokens": n,
+                "tok_s": tok_s,
+                "tok_min": round(tok_s * 60) if tok_s else None,
+            }
+        )
+    valid = [r["tok_min"] for r in rows if r.get("tok_min")]
+    best = max(valid) if valid else None
+    parts = []
+    for r in rows:
+        v = r.get("tok_min")
+        parts.append(
+            f"{r['context_tokens']}t→{v if v is not None else r.get('note','?')}"
+            + (" tok/min" if v is not None else "")
+        )
+    status = "pass" if valid else "fail"
+    head = f"max≈{best} tok/min | " if best else ""
+    return ProbeResult(
+        "perf_maxspeed",
+        status,
+        evidence=head + " ; ".join(parts),
+        latency_ms=_ms(started),
+        detail={"sweep": rows, "declared_context": declared_ctx},
+    )
 
 
 async def perf_context(t: Target) -> ProbeResult:
@@ -408,13 +546,22 @@ async def perf_context(t: Target) -> ProbeResult:
     try:
         declared = t.profile.get("context_length") if hasattr(t, "profile") else None
         return ProbeResult(
-            "perf_context", "pass",
+            "perf_context",
+            "pass",
             evidence=f"declared_context={declared}",
             latency_ms=_ms(started),
-            detail={"declared": declared, "note": "empirical grow-probe not run by default (expensive)"},
+            detail={
+                "declared": declared,
+                "note": "empirical grow-probe not run by default (expensive)",
+            },
         )
     except Exception as e:  # noqa: BLE001
-        return ProbeResult("perf_context", "error", f"{type(e).__name__}: {e}"[:200], latency_ms=_ms(started))
+        return ProbeResult(
+            "perf_context",
+            "error",
+            f"{type(e).__name__}: {e}"[:200],
+            latency_ms=_ms(started),
+        )
 
 
 async def perf_ratelimit(t: Target) -> ProbeResult:
@@ -422,12 +569,18 @@ async def perf_ratelimit(t: Target) -> ProbeResult:
     proxy base is configured; otherwise skips (empirical burst-probe is TODO)."""
     proxy = getattr(t, "proxy_base_url", None)
     if not proxy:
-        return ProbeResult("perf_ratelimit", "skip", evidence="no proxy base; empirical burst-probe not implemented")
+        return ProbeResult(
+            "perf_ratelimit",
+            "skip",
+            evidence="no proxy base; empirical burst-probe not implemented",
+        )
     started = time.monotonic()
     try:
         async with httpx.AsyncClient(timeout=t.timeout) as client:
-            r = await client.get(f"{proxy.rstrip('/')}/v1/system/rate-limits",
-                                 headers={"Authorization": f"Bearer {t.api_key}"} if t.api_key else {})
+            r = await client.get(
+                f"{proxy.rstrip('/')}/v1/system/rate-limits",
+                headers={"Authorization": f"Bearer {t.api_key}"} if t.api_key else {},
+            )
             r.raise_for_status()
             data = r.json()
         entry = None
@@ -436,55 +589,45 @@ async def perf_ratelimit(t: Target) -> ProbeResult:
                 entry = val
                 break
         if not entry:
-            return ProbeResult("perf_ratelimit", "skip", evidence="no learned limit for this model", latency_ms=_ms(started))
-        return ProbeResult("perf_ratelimit", "pass", evidence=f"learned_rpm={entry}", latency_ms=_ms(started), detail={"entry": entry})
+            return ProbeResult(
+                "perf_ratelimit",
+                "skip",
+                evidence="no learned limit for this model",
+                latency_ms=_ms(started),
+            )
+        return ProbeResult(
+            "perf_ratelimit",
+            "pass",
+            evidence=f"learned_rpm={entry}",
+            latency_ms=_ms(started),
+            detail={"entry": entry},
+        )
     except Exception as e:  # noqa: BLE001
-        return ProbeResult("perf_ratelimit", "error", f"{type(e).__name__}: {e}"[:200], latency_ms=_ms(started))
-
-
-# --------------------------------------------------------------------------- #
-# Completion helpers
-# --------------------------------------------------------------------------- #
-async def _complete(
-    t: Target,
-    prompt: Optional[str] = None,
-    *,
-    messages: Optional[list[dict]] = None,
-    tools: Optional[list[dict]] = None,
-    tool_choice: Optional[Any] = None,
-    chat_template_kwargs: Optional[dict] = None,
-) -> Any:
-    if messages is None:
-        messages = [{"role": "user", "content": prompt}]
-    return await aget_completion(
-        messages=messages,
-        provider_model_string=t.provider_model,
-        temperature=0.7,
-        max_tokens=t.max_tokens,
-        provider_api_key=t.api_key,
-        base_url=t.base_url,
-        tools=tools,
-        tool_choice=tool_choice,
-        chat_template_kwargs=chat_template_kwargs,
-    )
+        return ProbeResult(
+            "perf_ratelimit",
+            "error",
+            f"{type(e).__name__}: {e}"[:200],
+            latency_ms=_ms(started),
+        )
 
 
 async def _measure_throughput(t: Target, context_tokens: int) -> Optional[float]:
-    """Measure output tok/s for a generation prefilled with ~context_tokens."""
-    filler = "lorem ipsum dolor sit amet consectetur adipiscing elit " * max(1, context_tokens // 10)
+    """Measure output tok/s for a generation prefilled with ~context_tokens.
+
+    Thinking OFF, output capped at 32 tokens (a short count) — so the token
+    cost is ~context_tokens input + a few dozen output.
+    """
+    filler = "lorem ipsum dolor sit amet " * max(1, context_tokens // 6)
     filler = filler[: context_tokens * 4]
-    messages = [{"role": "user", "content": f"Context: {filler}\n\nReply with a single short sentence."}]
+    messages = [
+        {
+            "role": "user",
+            "content": f"Context: {filler}\n\nCount from 1 to 30, one number per line.",
+        }
+    ]
     started = time.monotonic()
     resp = await asyncio.wait_for(
-        aget_completion(
-            messages=messages,
-            provider_model_string=t.provider_model,
-            temperature=0.7,
-            max_tokens=64,
-            provider_api_key=t.api_key,
-            base_url=t.base_url,
-        ),
-        t.timeout,
+        _complete_quiet(t, messages, max_tokens=32), t.timeout
     )
     elapsed = max(time.monotonic() - started, 1e-3)
     usage = getattr(resp, "usage", {}) or {}
@@ -512,7 +655,14 @@ PERF_PROBES: dict[str, Callable[[Target], "Any"]] = {
     "ratelimit": perf_ratelimit,
 }
 
-DEFAULT_PROBES = ["probe", "chat", "tool_calling", "image", "thinking_on", "thinking_off"]
+DEFAULT_PROBES = [
+    "probe",
+    "chat",
+    "tool_calling",
+    "image",
+    "thinking_on",
+    "thinking_off",
+]
 
 
 async def run_capabilities(
@@ -540,14 +690,18 @@ async def run_capabilities(
         for name, fn in PERF_PROBES.items():
             results.append(await _safe(fn, target))
 
-    return CapabilityReport(target=target.provider_model, profile=profile, results=results)
+    return CapabilityReport(
+        target=target.provider_model, profile=profile, results=results
+    )
 
 
 async def _safe(fn: Callable[[Target], Any], t: Target) -> ProbeResult:
     try:
         return await fn(t)
     except Exception as e:  # noqa: BLE001
-        return ProbeResult(getattr(fn, "__name__", "probe"), "error", f"{type(e).__name__}: {e}"[:200])
+        return ProbeResult(
+            getattr(fn, "__name__", "probe"), "error", f"{type(e).__name__}: {e}"[:200]
+        )
 
 
 # --------------------------------------------------------------------------- #
