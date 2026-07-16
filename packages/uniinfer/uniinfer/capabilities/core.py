@@ -20,6 +20,7 @@ import base64
 import json
 import re
 import time
+from datetime import datetime, timezone
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Callable, Optional
@@ -30,6 +31,8 @@ from uniinfer import ChatCompletionRequest, ChatMessage, ProviderFactory
 from uniinfer.uniioai import aget_completion
 
 FIXTURES = Path(__file__).parent / "fixtures"
+PROBE_RESULTS_PATH = Path(__file__).parent.parent / "models" / "_probe_results.json"
+MODELS_JSON_PATH = Path(__file__).parent.parent / "models" / "models.json"
 
 VALID_STATUS = ("pass", "fail", "skip", "error")
 
@@ -693,12 +696,69 @@ DEFAULT_PROBES = [
 ]
 
 
+def save_probe_result(report: CapabilityReport) -> None:
+    """Persist a probe result to the sidecar and the models.json entry.
+
+    Mirrors the ``_speed_results.json`` pattern so ``generate_models.py`` can
+    re-merge on regeneration. Keyed by ``provider/model``.
+    """
+    entry = {
+        "profile": report.profile,
+        "results": [
+            {"name": r.name, "status": r.status, "evidence": r.evidence}
+            for r in report.results
+        ],
+        "summary": report.summary,
+        "tested_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+    }
+    key = _probe_key(report.target)
+    data = {}
+    if PROBE_RESULTS_PATH.exists():
+        try:
+            data = json.loads(PROBE_RESULTS_PATH.read_text())
+        except Exception:  # noqa: BLE001
+            data = {}
+    data[key] = entry
+    PROBE_RESULTS_PATH.parent.mkdir(parents=True, exist_ok=True)
+    PROBE_RESULTS_PATH.write_text(json.dumps(data, indent=2, sort_keys=True))
+    _merge_probe_into_models_json(key, entry)
+
+
+def _probe_key(target: str) -> str:
+    provider, model = target.split("@", 1)
+    return f"{provider}/{model}"
+
+
+def _merge_probe_into_models_json(key: str, entry: dict) -> None:
+    """Update the matching model entry in models.json with a ``probed`` field."""
+    if not MODELS_JSON_PATH.exists():
+        return
+    try:
+        catalog = json.loads(MODELS_JSON_PATH.read_text())
+    except Exception:  # noqa: BLE001
+        return
+    provider, model = key.split("/", 1)
+    prov = catalog.get("providers", {}).get(provider, {})
+    for m in prov.get("models", []):
+        if m.get("id") == model:
+            m["probed"] = entry
+            break
+    else:
+        return
+    MODELS_JSON_PATH.write_text(json.dumps(catalog, indent=2))
+
+
 async def run_capabilities(
     target: Target,
     probes: Optional[list[str]] = None,
     perf: bool = False,
+    save: bool = False,
 ) -> CapabilityReport:
-    """Run the capability matrix against ``target`` (sequential)."""
+    """Run the capability matrix against ``target`` (sequential).
+
+    If ``save``, persist the result to ``_probe_results.json`` and the matching
+    models.json ``probed`` field.
+    """
     selected = probes or DEFAULT_PROBES
     results: list[ProbeResult] = []
     profile: dict[str, Any] = {}
@@ -718,9 +778,15 @@ async def run_capabilities(
         for name, fn in PERF_PROBES.items():
             results.append(await _safe(fn, target))
 
-    return CapabilityReport(
+    report = CapabilityReport(
         target=target.provider_model, profile=profile, results=results
     )
+    if save:
+        try:
+            save_probe_result(report)
+        except Exception:  # noqa: BLE001
+            pass  # persistence must never break a probe run
+    return report
 
 
 async def _safe(fn: Callable[[Target], Any], t: Target) -> ProbeResult:

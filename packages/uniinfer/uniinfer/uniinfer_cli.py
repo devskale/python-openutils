@@ -243,7 +243,7 @@ def _capabilities(args):
     probes = [p.strip() for p in args.probes.split(",")] if args.probes else None
     tag = " +perf" if args.perf else ""
     print(f"Capability matrix: {provider}@{model}{tag}")
-    report = asyncio.run(run_capabilities(target, probes=probes, perf=args.perf))
+    report = asyncio.run(run_capabilities(target, probes=probes, perf=args.perf, save=not args.no_save))
     print()
     print(format_report(report))
 
@@ -335,6 +335,8 @@ def main():
                         help='With --capabilities: also run perf probes (maxspeed across contexts, context ceiling, rate-limit).')
     parser.add_argument('--probes', type=str, metavar='CSV',
                         help='With --capabilities: comma-separated subset, e.g. probe,chat,tool_calling,image,thinking_on,thinking_off.')
+    parser.add_argument('--no-save', action='store_true',
+                        help='With --capabilities: do not persist the result to _probe_results.json / models.json (saved by default).')
 
     args = parser.parse_args()
 

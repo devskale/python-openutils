@@ -18,6 +18,7 @@ MODELS_DEV_CACHE = PROJECT_ROOT / "scripts" / "_models_dev_cache.json"
 MODELS_DEV_URL = "https://models.dev/api.json"
 MODEL_HISTORY_PATH = PROJECT_ROOT / "uniinfer" / "models" / "_model_history.json"
 SPEED_RESULTS_PATH = PROJECT_ROOT / "uniinfer" / "models" / "_speed_results.json"
+PROBE_RESULTS_PATH = PROJECT_ROOT / "uniinfer" / "models" / "_probe_results.json"
 
 UNIINFER_TO_MODELS_DEV = {
     "openai": "openai",
@@ -261,6 +262,28 @@ def merge_speed_results(models: list[dict], provider_id: str) -> list[dict]:
     return models
 
 
+def merge_probe_results(models: list[dict], provider_id: str) -> list[dict]:
+    """Merge capability-probe results from _probe_results.json into model dicts."""
+    if not PROBE_RESULTS_PATH.exists():
+        return models
+    try:
+        with open(PROBE_RESULTS_PATH) as f:
+            probe_data = json.load(f)
+    except (json.JSONDecodeError, OSError):
+        return models
+    if not probe_data:
+        return models
+    enriched = 0
+    for m in models:
+        key = f"{provider_id}/{m['id']}"
+        if key in probe_data:
+            m["probed"] = probe_data[key]
+            enriched += 1
+    if enriched:
+        log.info("  probed: merged results for %d/%d models", enriched, len(models))
+    return models
+
+
 def _days_between(d1: str, d2: str) -> int:
     """Days between two YYYY-MM-DD strings."""
     from datetime import datetime
@@ -494,6 +517,8 @@ def main():
 
             # Merge speed test results
             models = merge_speed_results(models, provider_id)
+            # Merge capability-probe results
+            models = merge_probe_results(models, provider_id)
 
             if provider_id in result:
                 # Merge models from a second factory (e.g. embed) for the same provider.

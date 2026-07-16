@@ -25,6 +25,7 @@ def create_capabilities_router(*, parse_provider_model, provider_configs) -> API
         model: str = Query(..., description="provider@model, e.g. ollama@qwen3.5:0.8b"),
         probes: str | None = Query(None, description="comma-separated probe subset"),
         perf: bool = Query(False, description="also run perf probes"),
+        save: bool = Query(False, description="persist result to _probe_results.json + models.json `probed` field"),
         api_bearer_token: str | None = Depends(get_optional_proxy_token),
     ):
         try:
@@ -51,7 +52,7 @@ def create_capabilities_router(*, parse_provider_model, provider_configs) -> API
         probe_list = [p.strip() for p in probes.split(",") if p.strip()] if probes else None
         target = Target(provider_model=model, api_key=provider_api_key, base_url=base_url)
         try:
-            report = await run_capabilities(target, probes=probe_list, perf=perf)
+            report = await run_capabilities(target, probes=probe_list, perf=perf, save=save)
             return JSONResponse(content=report.as_dict())
         except Exception as e:  # noqa: BLE001
             logger.exception("capabilities failed for %s: %s", model, e)
