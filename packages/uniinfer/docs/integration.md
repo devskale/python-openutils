@@ -94,18 +94,49 @@ print(resp.message.tool_calls)   # [{ "function": { "name": "get_weather", ... }
 
 ### Thinking control (Qwen3.x / GLM-5.x)
 
+Thinking models reason before answering — powerful, but it costs tokens and
+latency. Disable it for speed or deterministic output.
+
+**CLI — `--no-think`** sets `chat_template_kwargs.enable_thinking=false`:
+
+```bash
+# fast, non-reasoning answer from a thinking model
+uv run uniinfer -p tu -m qwen-3.6-35b --no-think -q "Summarise in one sentence: ..."
+```
+
+> ⚠️ `--no-think` targets **vLLM** backends (tu, ngc, …) via `enable_thinking`.
+> **Ollama** ignores it — Ollama uses the native `think` field instead.
+
+**Python** — per backend:
+
 ```python
-# vLLM backends (tu): chat_template_kwargs
+# vLLM (tu): chat_template_kwargs
 get_completion(..., chat_template_kwargs={"enable_thinking": False})
 
-# Ollama: native `think` field (provider-direct; see capabilities runner)
+# Ollama: native `think` field (provider-direct)
 provider = ProviderFactory.get_provider("ollama", api_key=key, base_url=url)
 req = ChatCompletionRequest(messages=[...], model="qwen3.5:0.8b", streaming=False)
 resp = await provider.acomplete(req, think=False)
 ```
 
-> ⚠️ The CLI `--no-think` flag targets **vLLM** only (`enable_thinking`), not
-> Ollama's `think`.
+**Proxy** — pass `chat_template_kwargs` (vLLM) or `think` (ollama) in the body.
+Both stream and non-stream honour it:
+
+```bash
+# Ollama: native `think` field (false disables reasoning)
+curl -s $PROXY/chat/completions -H "Authorization: Bearer $KEY" \
+  -d '{"model":"ollama@qwen3.5:0.8b","think":false,
+        "messages":[{"role":"user","content":"What is 7*6?"}]}'
+
+# vLLM (tu): chat_template_kwargs
+curl -s $PROXY/chat/completions -H "Authorization: Bearer $KEY" \
+  -d '{"model":"tu@qwen-3.6-35b",
+        "messages":[{"role":"user","content":"hi"}],
+        "chat_template_kwargs":{"enable_thinking":false}}'
+```
+
+Reasoning (when present) is returned as `message.reasoning_content` (non-stream)
+or `delta.reasoning_content` (stream).
 
 ### List models + embeddings
 
