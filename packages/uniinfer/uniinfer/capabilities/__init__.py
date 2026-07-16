@@ -26,6 +26,7 @@ from .core import (
     probe_tool_calling,
     run_capabilities,
     save_probe_result,
+    softprobe_catalog,
 )
 
 __all__ = [

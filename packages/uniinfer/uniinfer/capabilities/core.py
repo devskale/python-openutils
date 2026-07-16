@@ -20,7 +20,7 @@ import base64
 import json
 import re
 import time
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Callable, Optional
@@ -915,6 +915,81 @@ def _merge_probe_into_models_json(key: str, entry: dict) -> None:
     else:
         return
     MODELS_JSON_PATH.write_text(json.dumps(catalog, indent=2))
+
+
+async def softprobe_catalog(
+    *,
+    providers: Optional[str] = None,
+    stale_days: Optional[int] = None,
+    force: bool = False,
+    ollama_key: Optional[str] = None,
+    ollama_url: Optional[str] = None,
+    on_progress: Optional[Callable[[str, Any, str], None]] = None,
+) -> dict[str, int]:
+    """Probe (metadata ONLY — zero inference tokens) every catalog model.
+
+    Reads declared capabilities from the catalog (local JSON) or Ollama
+    ``/api/show``. Never calls chat/tools/image/thinking/perf. Skips entries
+    fresher than ``stale_days`` so reprobes stagger. Persists to
+    ``_probe_results.json`` and updates each model's ``probed`` field in
+    ``models.json``. Shared by the ``--softprobe`` CLI and the daily refresh.
+    """
+    from uniinfer.proxy_services.models_registry import load_catalog
+
+    existing: dict[str, Any] = {}
+    if PROBE_RESULTS_PATH.exists():
+        try:
+            existing = json.loads(PROBE_RESULTS_PATH.read_text())
+        except Exception:  # noqa: BLE001
+            existing = {}
+    cutoff = (
+        datetime.now(timezone.utc) - timedelta(days=stale_days)
+        if (stale_days and not force)
+        else None
+    )
+    catalog = load_catalog(providers) if providers else load_catalog()
+    provs = catalog.get("providers", {})
+
+    probed = skipped = errors = 0
+    for pname, pdata in provs.items():
+        for m in pdata.get("models", []):
+            mid = m.get("id")
+            if not mid:
+                continue
+            pm = f"{pname}@{mid}"
+            pkey = f"{pname}/{mid}"
+            if cutoff:
+                ent = existing.get(pkey)
+                tat = ent.get("tested_at") if ent else None
+                if tat:
+                    try:
+                        if datetime.fromisoformat(tat.replace("Z", "+00:00")) >= cutoff:
+                            skipped += 1
+                            continue
+                    except Exception:  # noqa: BLE001
+                        pass
+            tgt = Target(
+                provider_model=pm,
+                api_key=ollama_key if pname == "ollama" else None,
+                base_url=ollama_url if pname == "ollama" else None,
+            )
+            try:
+                r = await probe_profile(tgt)  # metadata only — 0 tokens
+                save_probe_result(
+                    CapabilityReport(
+                        target=pm,
+                        profile=r.detail.get("profile", {}) or {},
+                        results=[r],
+                    )
+                )
+                probed += 1
+                if on_progress:
+                    on_progress(pm, r, "ok")
+            except Exception as e:  # noqa: BLE001
+                errors += 1
+                if on_progress:
+                    on_progress(pm, e, "error")
+    return {"probed": probed, "skipped": skipped, "errors": errors}
 
 
 async def run_capabilities(

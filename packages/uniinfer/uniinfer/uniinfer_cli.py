@@ -310,116 +310,50 @@ def _capabilities(args):
 def _softprobe(args):
     """Probe (metadata ONLY) every catalog model. **Zero inference tokens.**
 
-    Runs solely the ``probe`` step: a catalog read (local JSON) for most
-    providers, or Ollama ``/api/show`` (model metadata, no generation). It NEVER
-    calls chat / tools / image / thinking / perf — those spend tokens and are
-    reserved for explicit ``--capabilities`` / ``--perf``. Skips entries fresher
-    than ``--stale-days`` so reprobes stagger. Persists to ``_probe_results.json``
-    AND updates each model's ``probed`` field in ``models.json``.
+    Thin wrapper over ``capabilities.softprobe_catalog``; see that for details.
     """
     import asyncio
-    import json
-    from datetime import datetime, timezone, timedelta
-    from pathlib import Path
 
-    from uniinfer.proxy_services.models_registry import load_catalog
-    from uniinfer.capabilities import (
-        Target,
-        probe_profile,
-        save_probe_result,
-        CapabilityReport,
-    )
+    from uniinfer.capabilities import softprobe_catalog
 
-    probe_path = Path(__file__).parent / "models" / "_probe_results.json"
-    existing = {}
-    if probe_path.exists():
-        try:
-            existing = json.loads(probe_path.read_text())
-        except Exception:
-            existing = {}
-
-    cutoff = (
-        datetime.now(timezone.utc) - timedelta(days=args.stale_days)
-        if (args.stale_days and not args.force)
-        else None
+    # Ollama's /api/show needs a key+url (still 0 generation tokens).
+    ollama_key = ollama_url = None
+    try:
+        ollama_key = get_api_key(
+            service="ollama",
+            encryption_key=args.encryption_key,
+            bearer_token=args.bearer_token,
+        )
+    except Exception:
+        ollama_key = None
+    ollama_url = (
+        PROVIDER_CONFIGS.get("ollama", {}).get("extra_params", {}).get("base_url")
     )
     want = args.provider if (args.provider and args.provider != "stepfun") else None
-    catalog = load_catalog(want) if want else load_catalog()
-    provs = catalog.get("providers", {})
 
-    # Ollama is the only provider whose probe (/api/show) needs a key + url —
-    # and even that spends 0 generation tokens.
-    ollama_key = ollama_url = None
-    if "ollama" in provs:
-        try:
-            ollama_key = get_api_key(
-                service="ollama",
-                encryption_key=args.encryption_key,
-                bearer_token=args.bearer_token,
+    def progress(pm, r, kind):
+        if kind == "ok":
+            caps = (
+                ",".join((r.detail.get("profile", {}) or {}).get("capabilities", []))
+                or "?"
             )
-        except Exception:
-            ollama_key = None
-        ollama_url = (
-            PROVIDER_CONFIGS.get("ollama", {}).get("extra_params", {}).get("base_url")
+            print(f"  + {pm}  [{caps}]")
+        else:
+            print(f"  x {pm}  {type(r).__name__}")
+
+    summary = asyncio.run(
+        softprobe_catalog(
+            providers=want,
+            stale_days=args.stale_days,
+            force=args.force,
+            ollama_key=ollama_key,
+            ollama_url=ollama_url,
+            on_progress=progress,
         )
-
-    async def go():
-        probed = skipped = errors = 0
-        for pname, pdata in provs.items():
-            models = pdata.get("models", [])
-            print(f"\n{pname} ({len(models)})")
-            for m in models:
-                mid = m.get("id")
-                if not mid:
-                    continue
-                pm = f"{pname}@{mid}"
-                pkey = f"{pname}/{mid}"
-                if cutoff:
-                    ent = existing.get(pkey)
-                    tat = ent.get("tested_at") if ent else None
-                    if tat:
-                        try:
-                            if (
-                                datetime.fromisoformat(tat.replace("Z", "+00:00"))
-                                >= cutoff
-                            ):
-                                skipped += 1
-                                continue
-                        except Exception:
-                            pass
-                tgt = Target(
-                    provider_model=pm,
-                    api_key=ollama_key if pname == "ollama" else None,
-                    base_url=ollama_url if pname == "ollama" else None,
-                )
-                try:
-                    r = await probe_profile(tgt)  # metadata only — 0 tokens
-                    save_probe_result(
-                        CapabilityReport(
-                            target=pm,
-                            profile=r.detail.get("profile", {}) or {},
-                            results=[r],
-                        )
-                    )
-                    probed += 1
-                    caps = (
-                        ",".join(
-                            (r.detail.get("profile", {}) or {}).get("capabilities", [])
-                        )
-                        or "?"
-                    )
-                    print(f"  + {pm}  [{caps}]")
-                except Exception as e:
-                    errors += 1
-                    print(f"  x {pm}  {type(e).__name__}")
-            print(
-                f"  running: {probed} probed, {skipped} fresh-skipped, {errors} errors"
-            )
-        return probed, skipped, errors
-
-    probed, skipped, errors = asyncio.run(go())
+    )
     print(
-        f"\nSoftprobe complete: {probed} probed, {skipped} fresh-skipped, {errors} errors. (0 inference tokens spent)"
+        f"\nSoftprobe complete: {summary['probed']} probed, {summary['skipped']} fresh-skipped, "
+        f"{summary['errors']} errors. (0 inference tokens spent)"
     )
 
 
