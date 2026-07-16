@@ -168,7 +168,7 @@ class TestHttpThinkShim:
         from fastapi.testclient import TestClient
 
         import uniinfer.proxy_routers.chat as chat_mod
-        from uniinfer.uniioai_proxy import app
+        from uniinfer.proxy_app import app
 
         captured: dict = {}
 

@@ -3,7 +3,7 @@
 A ``Target`` binds a ``provider@model`` string to a ready provider instance and
 exposes the four completion paths (sync/async x stream/non-stream) behind one
 small interface. It owns parse -> instantiate -> request-build -> dispatch ->
-access-recording, collapsing the six duplicated copies that lived in uniioai.py
+access-recording, collapsing the six duplicated copies that lived in provider_access.py
 and capabilities. Embeddings stay separate (different factory + request type);
 only the parse is shared. See CONTEXT.md.
 """
@@ -26,7 +26,7 @@ def parse_provider_model(provider_model: str) -> tuple[str, str]:
     Raises:
         ValueError: if the string is not ``provider@model`` or either side is
             empty. The library-level parse; the HTTP seam translates this to
-            HTTPException (see uniioai_proxy.parse_provider_model).
+            HTTPException (see proxy_app.parse_provider_model).
     """
     if "@" not in provider_model:
         raise ValueError(

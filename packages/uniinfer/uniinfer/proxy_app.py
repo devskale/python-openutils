@@ -381,7 +381,7 @@ def main():
         f"Starting UniIOAI API server (reload={args.reload} at port {args.port})..."
     )
     uvicorn.run(
-        "uniinfer.uniioai_proxy:app",
+        "uniinfer.proxy_app:app",
         host="0.0.0.0",
         port=args.port,
         workers=1,

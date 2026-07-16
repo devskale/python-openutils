@@ -29,7 +29,7 @@ from uniinfer.proxy_services.streaming import (
 )
 from uniinfer.proxy_services.stats import get_stats
 from uniinfer.completion import Target
-from uniinfer.uniioai import get_embeddings
+from uniinfer.provider_access import get_embeddings
 
 logger = logging.getLogger("uniioai_proxy")
 

@@ -24,7 +24,7 @@ reviews. Keep this current when concepts are named or sharpened.
   metadata.
 - **parse_provider_model** — the one shared `provider@model` split
   (`uniinfer.completion.parse_provider_model`, raises `ValueError`). The HTTP
-  seam (`uniioai_proxy.parse_provider_model`) is a thin adapter translating
+  seam (`proxy_app.parse_provider_model`) is a thin adapter translating
   that to `HTTPException(400)` plus allowed-provider validation.
 - **Target** — the deep completion-dispatch module (`uniinfer.completion.Target`). Binds a
   `provider@model` to a ready provider instance and owns the full parse →
@@ -34,7 +34,7 @@ reviews. Keep this current when concepts are named or sharpened.
   sync/async dispatch differ) and yield raw `ChatCompletionResponse` (stream
   paths). `record_access` (default True) controls model-access tracking;
   diagnostic callers pass False. The single home for "reach a model and
-  complete" — formerly six duplicated copies across uniioai.py + capabilities.
+  complete" — formerly six duplicated copies across provider_access.py + capabilities.
 
 ## Contract
 
