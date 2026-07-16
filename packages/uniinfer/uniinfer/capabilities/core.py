@@ -328,7 +328,7 @@ async def probe_chat(t: Target) -> ProbeResult:
             ),
             t.timeout,
         )
-        content = (getattr(resp.message, "content", "") or "").strip()
+        content = _as_text(getattr(resp.message, "content", "")).strip()
         status = "pass" if content else "fail"
         return ProbeResult(
             "chat", status, evidence=_preview(content), latency_ms=_ms(started)
@@ -363,7 +363,7 @@ async def probe_tool_calling(t: Target) -> ProbeResult:
             t.timeout,
         )
         tool_calls = getattr(resp.message, "tool_calls", None) or []
-        content = getattr(resp.message, "content", "") or ""
+        content = _as_text(getattr(resp.message, "content", ""))
         finish = getattr(resp, "finish_reason", None)
         if tool_calls:
             names = ",".join(
@@ -433,7 +433,7 @@ async def probe_image(t: Target) -> ProbeResult:
             }
         ]
         resp = await asyncio.wait_for(_complete_quiet(t, messages), t.timeout)
-        content = (getattr(resp.message, "content", "") or "").strip()
+        content = _as_text(getattr(resp.message, "content", "")).strip()
         status = "pass" if content else "fail"
         return ProbeResult(
             "image", status, evidence=_preview(content), latency_ms=_ms(started)
@@ -467,6 +467,7 @@ async def _thinking(t: Target, on: bool) -> ProbeResult:
             _generate(t, "What is 7 times 6? Show your reasoning.", on, max_tokens=768),
             t.timeout,
         )
+        content, thinking = _as_text(content), _as_text(thinking)
         produced = bool(thinking) or "<think>" in content
         if on:
             if produced:
@@ -1062,6 +1063,20 @@ def format_report(report: CapabilityReport) -> str:
 # --------------------------------------------------------------------------- #
 # tiny helpers
 # --------------------------------------------------------------------------- #
+def _as_text(content: Any) -> str:
+    """Coerce model content (may be a list of parts, e.g. reasoning models) to a string."""
+    if content is None:
+        return ""
+    if isinstance(content, list):
+        return "".join(
+            p.get("text", "")
+            if isinstance(p, dict)
+            else (p if isinstance(p, str) else "")
+            for p in content
+        )
+    return content if isinstance(content, str) else str(content)
+
+
 def _short_error(e: BaseException) -> str:
     """Concise error string: pull the provider's human message out of an
     embedded JSON blob (rate-limit / billing errors), else type + str."""
