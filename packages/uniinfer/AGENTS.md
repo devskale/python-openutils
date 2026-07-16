@@ -111,6 +111,17 @@ Inherit `OpenAICompatibleChatProvider` → override only `list_models()` and hea
 
 Inherit `AnthropicCompatibleProvider` → override `list_models()` fallback if no Anthropic model-list endpoint.
 
+### Ollama provider — name & model id (common footgun)
+
+Setting up Ollama in uniinfer trips people up on **two things**: the provider
+name and how the model id is spelled.
+
+- **Provider name**: `ollama` (registered in `ProviderFactory`, `uniinfer/__init__.py`). Implementation: `uniinfer/providers/ollama.py` — a **custom** `ChatProvider` using Ollama's native `/api/chat` + `/api/tags`, *not* the OpenAI-compatible subclass.
+- **Model id = `ollama@<model>`**: everything after the `@` is the **literal Ollama model id** (version tag included), e.g. `ollama@gemma3:1b`, `ollama@qwen3.5:0.8b`. The proxy / `get_completion()` split on the **first** `@` to get `{provider, model}`.
+- **Won't route**: a bare id (`gemma3:1b`) or wrong separator (`ollama:gemma3:1b`) → `ValueError: Invalid provider_model_string format. Expected 'provider@modelname'`.
+- **`--no-think` is vLLM-only**: it sets `chat_template_kwargs.enable_thinking=false`. Ollama thinking uses the native `think` field (`message.thinking` → `response.thinking`); disable it via `provider_specific_kwargs={"think": False}`.
+- **Auth**: Ollama bypasses proxy auth locally (see Known Footguns).
+
 ## Boundaries
 
 - ✅ Always run tests + lint before committing
@@ -161,8 +172,9 @@ The config.json `tu_rate_limit_per_minute` still seeds the initial estimate.
 
 ## Known Footguns
 
+- **Thinking models need `max_tokens` ≫ 1–2k** — Qwen3.x / GLM-5.x / Claude extended-thinking consume the token budget on reasoning *before* the visible answer. A too-low cap yields empty / truncated output that looks like a model bug. Defaults in the smoke router (`4096`), the Anthropic provider (`8192`), and the CLI speedtest (`4096`) are set for this reason; the proxy chat path defaults to `32768`. Always pass a generous `max_tokens` when exercising thinking models.
 - `PROXY_KEY` format is `bearer@encryption` — the `@` is the delimiter, not part of either value
 - `ModelInfo` equality matches strings — `model_info == "gpt-4"` works but is easy to miss
-- Ollama bypasses proxy auth — don't assume all endpoints require auth in tests
+- Ollama models are addressed as `ollama@<model>` (split on first `@`); a bare id or `:` separator won't route — see "Ollama provider" above. Ollama also bypasses proxy auth — don't assume all endpoints require auth in tests
 - Provider metadata richness varies widely — see `docs/models.md` for the matrix
 - Reasoning models (TU/vLLM) may return `reasoning_content` in the assistant message

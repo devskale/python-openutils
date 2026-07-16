@@ -192,7 +192,11 @@ Serverless GPU on TEE/Bittensor decentralized infrastructure. · 🧠 ✅ · �
 Most popular local LLM runner. 1000+ models. · 🧠 ✅ · 👁️ ✅ · 🔧 ✅ · 📡 ✅
 
 - **Docs**: [ollama.com](https://ollama.com)
-- **Self-hosted**: completely free, unlimited. OpenAI-compatible at `http://localhost:11434/v1`. No API key.
+- **Provider id**: `ollama` — registered in `ProviderFactory`, implemented in `uniinfer/providers/ollama.py` as a **custom** `ChatProvider` (Ollama's native `/api/chat` + `/api/tags`, *not* the OpenAI-compatible subclass).
+- **Model id format**: `ollama@<ollama-model-name>` — the part after `@` is the **literal Ollama model id** (version tag included), exactly as `ollama list` / `/api/tags` reports it. Examples: `ollama@gemma3:1b`, `ollama@qwen3.5:0.8b`, `ollama@llama3.1:8b`.
+- **Routing**: the proxy / `get_completion()` split the string on the **first** `@` → `{provider, model}`. A bare id (`gemma3:1b`) or wrong separator (`ollama:gemma3:1b`) raises `ValueError` and **will not route** — it must be `provider@model`.
+- **Thinking**: Ollama returns reasoning in `message.thinking`; the provider exposes it as `response.thinking`. Toggle via the native `think` field, e.g. `provider_specific_kwargs={"think": False}`. ⚠️ The CLI `--no-think` flag targets **vLLM** (`chat_template_kwargs.enable_thinking`), *not* Ollama's `think`.
+- **Self-hosted**: completely free, unlimited. Native API at `http://localhost:11434` (`/api/chat`, `/api/tags`); an OpenAI-compatible shim also exists at `/v1`. No API key locally.
 - **Cloud** (optional): Free (light usage) / Pro $20/mo / Max $100/mo
 - **Implementation**: Custom `ChatProvider` (local HTTP API)
 
