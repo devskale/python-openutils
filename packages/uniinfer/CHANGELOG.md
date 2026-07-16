@@ -4,6 +4,52 @@ All notable changes to **uniinfer** are documented in this file.
 Versions follow [Semantic Versioning](https://semver.org/); this file
 adheres to [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.6.0] - 2026-07-16
+
+Two architectural deepenings. Each turns a concern smeared across many call
+sites into one deep module behind a small interface. Net −614 lines.
+
+### Changed
+- **Completion dispatch is now a deep `Target` module**
+  (`uniinfer/completion.py`). The six duplicated parse → instantiate →
+  request-build → dispatch → access-recording sequences that lived in
+  `uniioai.py` and `capabilities` collapse into one `Target` exposing
+  `complete / stream_complete / acomplete / astream_complete`. Callers (proxy
+  routers, CLI, capabilities, examples) migrate to it. Stream paths yield raw
+  `ChatCompletionResponse`; OpenAI/SSE shaping stays at the proxy seam
+  (`streaming.py`), fixing the prior sync/async yield-shape asymmetry.
+- **Thinking-control translation moved into providers.** A typed
+  `reasoning_effort: Literal["none","minimal","low","medium","high"]` is the
+  single primary intent on `ChatCompletionRequest`; each reasoning-capable
+  provider maps it to its own dialect (ollama `think`, vLLM
+  `chat_template_kwargs`, Z.AI `thinking`). Contract: `none`/`minimal`
+  disables reasoning everywhere; an explicit `chat_template_kwargs` escape
+  hatch wins. The old `if reasoning_effort == "minimal"` translation blocks in
+  the router, CLI, and capabilities are gone.
+- **`parse_provider_model` is now shared** (`uniinfer.completion`); the HTTP
+  adapter translates `ValueError → HTTPException(400)`.
+- **Capabilities' config dataclass renamed `Target → ProbeTarget`**
+  (`capabilities.Target` remains as a back-compat alias). Its three ollama
+  bypass sites collapse onto a non-recording `Target(record_access=False)`.
+- `--no-think` now sets `reasoning_effort="none"` (was
+  `chat_template_kwargs`). The deprecated HTTP `think` field is shimmed to
+  `reasoning_effort="none"` at the proxy boundary.
+
+### Added
+- `uniinfer.completion.Target`, `parse_provider_model`, `REASONING_OFF`.
+- `CONTEXT.md` domain glossary.
+- Tests: `test_completion_target.py` (20), `test_reasoning_effort_contract.py`
+  (28) — the thinking-control contract had zero coverage before.
+
+### Removed (breaking)
+- `ChatCompletionRequest.enable_thinking` and `.thinking_budget` (both dead —
+  no caller set them; vLLM silently ignores the top-level field).
+- `uniinfer.uniioai.get_completion / stream_completion / aget_completion /
+  astream_completion / format_chunk_to_openai` (moved into `Target` /
+  `streaming.py`).
+- Ollama's provider-specific `think=` kwarg (now read off the request as
+  `reasoning_effort`).
+
 ## [0.5.40] - 2026-07-15
 
 ### Added

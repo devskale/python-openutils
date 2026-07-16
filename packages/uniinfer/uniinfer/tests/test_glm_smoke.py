@@ -23,7 +23,9 @@ import json
 from typing import Any, AsyncIterator
 
 import pytest
+from unittest.mock import MagicMock
 
+from uniinfer.core import ChatCompletionResponse, ChatMessage
 from uniinfer.proxy_services.glm_leak_repair import GlmLeakInterceptor
 from uniinfer.proxy_services.streaming import astream_response_generator
 
@@ -207,6 +209,19 @@ def _dict_delta(content: str | None = None, finish: str | None = None) -> dict:
     return {"choices": [choice]}
 
 
+def _raw_chunk(content: str | None = None, finish: str | None = None, thinking: str | None = None):
+    """A raw ChatCompletionResponse chunk, as Target.astream_complete now yields."""
+    return ChatCompletionResponse(
+        message=ChatMessage(role="assistant", content=content),
+        provider="glm",
+        model="glm-5.2-744b-preview",
+        usage={},
+        raw_response={},
+        finish_reason=finish,
+        thinking=thinking,
+    )
+
+
 def _collect_stream(gen) -> tuple[str, str | None, list[dict]]:
     """Drive the SSE generator; return (content, finish_reason, tool_call_deltas)."""
     content_parts: list[str] = []
@@ -239,21 +254,22 @@ def _collect_stream(gen) -> tuple[str, str | None, list[dict]]:
 
 
 def _run_stream(content_chunks: list[str], tools=None) -> tuple[str, str | None, list[dict]]:
-    def fake_astream(messages, model, temp, max_tok, **kw):
+    def fake_astream_complete(messages, *, temperature, max_tokens, **kw):
         async def _g():
             for c in content_chunks:
-                yield _dict_delta(content=c)
-            yield _dict_delta(finish="stop")
+                yield _raw_chunk(content=c)
+            yield _raw_chunk(finish="stop")
         return _g()
 
+    fake_target = MagicMock()
+    fake_target.provider_model = "glm-5.2-744b-preview"
+    fake_target.astream_complete = fake_astream_complete
+
     gen = astream_response_generator(
-        astream_completion=fake_astream,
+        target=fake_target,
         messages=[{"role": "user", "content": "hi"}],
-        provider_model="glm-5.2-744b-preview",
         temp=0.7,
         max_tok=1024,
-        provider_api_key="k",
-        base_url=None,
         tools=tools,
     )
     return _collect_stream(gen)

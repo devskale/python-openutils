@@ -12,7 +12,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import JSONResponse
 
 from uniinfer.auth import get_optional_proxy_token, verify_provider_access
-from uniinfer.capabilities import Target, run_capabilities
+from uniinfer.capabilities import ProbeTarget, run_capabilities
 
 logger = logging.getLogger("uniioai_proxy")
 
@@ -50,7 +50,7 @@ def create_capabilities_router(*, parse_provider_model, provider_configs) -> API
             base_url = None
 
         probe_list = [p.strip() for p in probes.split(",") if p.strip()] if probes else None
-        target = Target(provider_model=model, api_key=provider_api_key, base_url=base_url)
+        target = ProbeTarget(provider_model=model, api_key=provider_api_key, base_url=base_url)
         try:
             report = await run_capabilities(target, probes=probe_list, perf=perf, save=save)
             return JSONResponse(content=report.as_dict())

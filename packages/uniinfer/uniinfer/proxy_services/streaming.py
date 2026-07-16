@@ -29,25 +29,51 @@ def normalize_nonstream_content(content: Any, tool_calls: Any) -> str | None:
     return content
 
 
+def format_chunk_to_openai(response, provider_model: str) -> dict[str, Any]:
+    """Format a raw ChatCompletionResponse chunk into an OpenAI-compatible dict.
+
+    The proxy SSE layer consumes OpenAI-shaped chunks; Target yields raw
+    ChatCompletionResponse, so this conversion sits at the proxy seam.
+    """
+    chunk_data = {
+        "id": f"chatcmpl-{uuid.uuid4()}",
+        "object": "chat.completion.chunk",
+        "created": int(time.time()),
+        "model": provider_model,
+        "choices": [],
+    }
+    delta: dict[str, Any] = {}
+    if response.message:
+        if response.message.content:
+            delta["content"] = response.message.content
+        if response.message.tool_calls:
+            delta["tool_calls"] = response.message.tool_calls
+        if response.message.role:
+            delta["role"] = response.message.role
+    if getattr(response, "thinking", None):
+        delta["thinking"] = response.thinking
+    choice_data: dict[str, Any] = {"index": 0, "delta": delta}
+    if getattr(response, "finish_reason", None):
+        choice_data["finish_reason"] = response.finish_reason
+    chunk_data["choices"] = [choice_data]
+    return chunk_data
+
+
 async def astream_response_generator(
     *,
-    astream_completion,
+    target,
     messages: list[dict],
-    provider_model: str,
     temp: float,
     max_tok: int,
-    provider_api_key: str | None,
-    base_url: str | None,
     tools: list[dict] | None = None,
     tool_choice: Any | None = None,
     request_id: str | None = None,
     reasoning_effort: str | None = None,
-    think: bool | str | None = None,
     chat_template_kwargs: dict | None = None,
 ) -> AsyncGenerator[str, None]:
     completion_id = f"chatcmpl-{uuid.uuid4()}"
     created_time = int(time.time())
-    model_name = provider_model
+    model_name = target.provider_model
 
     stream_label = f"[{request_id}] " if request_id else ""
     logger.info("%sAsync stream start for %s", stream_label, model_name)
@@ -87,28 +113,27 @@ async def astream_response_generator(
     reasoning_leak_repair = GlmLeakInterceptor(tools=tools, model=model_name)
 
     try:
-        async_iter = astream_completion(
+        async_iter = target.astream_complete(
             messages,
-            provider_model,
-            temp,
-            max_tok,
-            provider_api_key=provider_api_key,
-            base_url=base_url,
+            temperature=temp,
+            max_tokens=max_tok,
             tools=tools,
             tool_choice=tool_choice,
             reasoning_effort=reasoning_effort,
-            think=think,
             chat_template_kwargs=chat_template_kwargs,
         ).__aiter__()
         while True:
             try:
-                chunk = await asyncio.wait_for(
+                raw_chunk = await asyncio.wait_for(
                     async_iter.__anext__(), timeout=heartbeat_interval
                 )
                 # Capture usage if the backend emits it (often on the final chunk).
-                _raw = getattr(chunk, "raw_response", None)
+                _raw = getattr(raw_chunk, "raw_response", None)
                 if isinstance(_raw, dict) and isinstance(_raw.get("usage"), dict):
                     _stats_usage = _raw["usage"]
+                # Target yields raw ChatCompletionResponse; convert to the
+                # OpenAI-dict shape the chunk-shaping logic below consumes.
+                chunk = format_chunk_to_openai(raw_chunk, model_name)
             except asyncio.TimeoutError:
                 now = time.monotonic()
                 idle_for = now - last_yield_time

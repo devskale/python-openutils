@@ -10,7 +10,7 @@ from .core import (
     PROBES,
     CapabilityReport,
     ProbeResult,
-    Target,
+    ProbeTarget,
     format_report,
     load_tools,
     image_b64,
@@ -29,12 +29,16 @@ from .core import (
     softprobe_catalog,
 )
 
+# Back-compat alias for the renamed probe-config dataclass; prefer ProbeTarget.
+Target = ProbeTarget
+
 __all__ = [
     "DEFAULT_PROBES",
     "PERF_PROBES",
     "PROBES",
     "CapabilityReport",
     "ProbeResult",
+    "ProbeTarget",
     "Target",
     "format_report",
     "load_tools",

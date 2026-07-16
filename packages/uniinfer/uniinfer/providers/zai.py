@@ -6,7 +6,7 @@ import asyncio
 import logging
 from typing import Optional
 
-from ..core import ChatProvider, ChatCompletionRequest, ChatCompletionResponse, ChatMessage
+from ..core import ChatProvider, ChatCompletionRequest, ChatCompletionResponse, ChatMessage, REASONING_OFF
 from ..errors import map_provider_error, UniInferError
 
 logger = logging.getLogger(__name__)
@@ -46,15 +46,16 @@ def _next_or_end(iterator):
 
 
 def _map_reasoning_effort_to_thinking(reasoning_effort: Optional[str]) -> Optional[dict]:
-    """Map OpenAI-style reasoning_effort to Z.AI thinking config.
+    """Map reasoning_effort to Z.AI's `thinking` object (enabled/disabled).
 
-    Z.AI supports a `thinking` object (enabled/disabled), not `reasoning_effort`.
-    We map all active effort levels to enabled, and off/none/disabled to disabled.
+    Z.AI has no effort levels, only on/off. none/minimal (REASONING_OFF, the
+    cross-provider "disable" contract) and legacy off spellings -> disabled;
+    any other level -> enabled.
     """
     if not reasoning_effort:
         return None
     effort = str(reasoning_effort).strip().lower()
-    if effort in {"off", "none", "disabled", "false", "0"}:
+    if effort in REASONING_OFF or effort in {"off", "disabled", "false", "0"}:
         return {"type": "disabled"}
     return {"type": "enabled"}
 

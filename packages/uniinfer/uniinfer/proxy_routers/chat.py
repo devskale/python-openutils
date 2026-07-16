@@ -28,7 +28,8 @@ from uniinfer.proxy_services.streaming import (
     normalize_nonstream_content,
 )
 from uniinfer.proxy_services.stats import get_stats
-from uniinfer.uniioai import aget_completion, astream_completion, get_embeddings
+from uniinfer.completion import Target
+from uniinfer.uniioai import get_embeddings
 
 logger = logging.getLogger("uniioai_proxy")
 
@@ -66,34 +67,34 @@ def create_chat_router(
 
             provider_api_key = verify_provider_access(api_bearer_token, provider_name)
 
-            # OpenAI-standard reasoning_effort -> backend thinking control.
-            # "minimal" disables reasoning (vLLM chat_template_kwargs.enable_thinking
-            # / ollama think). Explicit think / chat_template_kwargs take precedence.
-            _effort = (request_input.reasoning_effort or "").lower()
-            _think = request_input.think
-            _ctk = request_input.chat_template_kwargs
-            if _effort == "minimal":
-                if provider_name == "ollama" and _think is None:
-                    _think = False
-                elif provider_name != "ollama" and not _ctk:
-                    _ctk = {"enable_thinking": False}
+            # Thinking control now lives in each provider (it reads
+            # reasoning_effort off the request). The router only forwards the
+            # standard intent + the chat_template_kwargs escape hatch.
+            #
+            # Deprecation shim: the legacy `think` field (ollama-flavored) is
+            # retired; translate its one documented intent (think:false = disable
+            # reasoning) to the standard vocab, but only if the caller did not
+            # already set reasoning_effort. See CONTEXT.md.
+            reasoning_effort = request_input.reasoning_effort
+            if reasoning_effort is None and request_input.think is not None:
+                logger.info("'think' field is deprecated; use reasoning_effort instead")
+                if not request_input.think:
+                    reasoning_effort = "none"
+
+            target = Target(provider_model, provider_api_key, base_url)
 
             if request_input.stream:
                 return StreamingResponse(
                     astream_response_generator(
-                        astream_completion=astream_completion,
+                        target=target,
                         messages=messages_dict,
-                        provider_model=provider_model,
                         temp=request_input.temperature,
                         max_tok=request_input.get_effective_max_tokens(),
-                        provider_api_key=provider_api_key,
-                        base_url=base_url,
                         tools=request_input.tools,
                         tool_choice=request_input.tool_choice,
                         request_id=getattr(request.state, "request_id", None),
-                        reasoning_effort=request_input.reasoning_effort,
-                        think=_think if provider_name == "ollama" else None,
-                        chat_template_kwargs=_ctk,
+                        reasoning_effort=reasoning_effort,
+                        chat_template_kwargs=request_input.chat_template_kwargs,
                     ),
                     media_type="text/event-stream",
                     headers={
@@ -103,18 +104,14 @@ def create_chat_router(
                     },
                 )
 
-            full_content = await aget_completion(
-                messages=messages_dict,
-                provider_model_string=provider_model,
+            full_content = await target.acomplete(
+                messages_dict,
                 temperature=request_input.temperature,
                 max_tokens=request_input.get_effective_max_tokens(),
-                provider_api_key=provider_api_key,
-                base_url=base_url,
                 tools=request_input.tools,
                 tool_choice=request_input.tool_choice,
-                reasoning_effort=request_input.reasoning_effort,
-                think=_think if provider_name == "ollama" else None,
-                chat_template_kwargs=_ctk,
+                reasoning_effort=reasoning_effort,
+                chat_template_kwargs=request_input.chat_template_kwargs,
             )
 
             raw_content = full_content.message.content

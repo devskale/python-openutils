@@ -196,21 +196,18 @@ security = HTTPBearer()
 # --- Model Parsing Helper ---
 
 def parse_provider_model(provider_model: str, allowed_providers: list[str] | None = None, task_name: str | None = None) -> tuple[str, str]:
-    """
-    Parses 'provider@model' string and optionally validates the provider.
-    Raises HTTPException (400) if format is invalid or provider is not allowed.
-    """
-    if '@' not in provider_model:
-        raise HTTPException(
-            status_code=400, detail="Invalid model format. Expected 'provider@modelname'.")
+    """Parse 'provider@model' and optionally validate the provider.
 
-    parts = provider_model.split('@', 1)
-    provider_name = parts[0]
-    model_name = parts[1]
+    HTTP-seam adapter over uniinfer.completion.parse_provider_model: translates
+    the library ValueError to HTTPException(400), then enforces the HTTP-layer
+    allowed-providers constraint.
+    """
+    from uniinfer.completion import parse_provider_model as _parse
 
-    if not provider_name or not model_name:
-        raise HTTPException(
-            status_code=400, detail="Invalid model format. Provider or model name is empty.")
+    try:
+        provider_name, model_name = _parse(provider_model)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
     if allowed_providers and provider_name not in allowed_providers:
         if len(allowed_providers) == 1:

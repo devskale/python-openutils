@@ -27,8 +27,7 @@ from typing import Any, Callable, Optional
 
 import httpx
 
-from uniinfer import ChatCompletionRequest, ChatMessage, ProviderFactory
-from uniinfer.uniioai import aget_completion
+from uniinfer.completion import Target
 
 FIXTURES = Path(__file__).parent / "fixtures"
 PROBE_RESULTS_PATH = Path(__file__).parent.parent / "models" / "_probe_results.json"
@@ -62,7 +61,7 @@ class ProbeResult:
 
 
 @dataclass
-class Target:
+class ProbeTarget:
     """A model to test and how to reach it."""
 
     provider_model: str
@@ -84,6 +83,14 @@ class Target:
             raise ValueError(
                 "provider_model: provider and model must both be non-empty"
             )
+
+
+def _completion_target(t: ProbeTarget) -> Target:
+    """Build a non-recording completion Target from a probe target.
+
+    Probes must not inflate model-access metadata, so record_access=False.
+    """
+    return Target(t.provider_model, t.api_key, t.base_url, record_access=False)
 
 
 @dataclass
@@ -137,7 +144,7 @@ _PROVIDERS_WITHOUT_IMAGE_FORWARD: set[str] = set()
 # --------------------------------------------------------------------------- #
 # Probe: capability profile (cheap — metadata only, no tokens)
 # --------------------------------------------------------------------------- #
-async def probe_profile(t: Target) -> ProbeResult:
+async def probe_profile(t: ProbeTarget) -> ProbeResult:
     """Discover what the model can do from backend metadata."""
     started = time.monotonic()
     try:
@@ -160,7 +167,7 @@ async def probe_profile(t: Target) -> ProbeResult:
         return ProbeResult("probe", "error", _short_error(e), latency_ms=_ms(started))
 
 
-async def _ollama_show_profile(t: Target) -> dict[str, Any]:
+async def _ollama_show_profile(t: ProbeTarget) -> dict[str, Any]:
     """Ollama ``/api/show`` → capabilities, context length, families."""
     base = (t.base_url or "").rstrip("/")
     headers = {"Authorization": f"Bearer {t.api_key}"} if t.api_key else {}
@@ -180,7 +187,7 @@ async def _ollama_show_profile(t: Target) -> dict[str, Any]:
     }
 
 
-async def _catalog_profile(t: Target) -> dict[str, Any]:
+async def _catalog_profile(t: ProbeTarget) -> dict[str, Any]:
     """Best-effort declared profile from the cached catalog (non-ollama).
 
     Normalises the catalog's capability dict + modalities into the same
@@ -255,7 +262,7 @@ def _quirk(provider_model: str, key: str, default: Any = None) -> Any:
 
 
 async def _generate(
-    t: Target, prompt: str, thinking_on: bool, *, max_tokens: Optional[int] = None
+    t: ProbeTarget, prompt: str, thinking_on: bool, *, max_tokens: Optional[int] = None
 ) -> tuple[str, str]:
     """Return (content, thinking). Thinking is toggled via the backend-native
     knob: Ollama ``think`` (provider-direct, since the uniioai wrappers do not
@@ -268,27 +275,14 @@ async def _generate(
     """
     mt = max_tokens or t.max_tokens
 
+    effort = "none" if not thinking_on else "high"
+
     async def call(temp: float):
-        if t.provider_name == "ollama":
-            provider = ProviderFactory.get_provider(
-                "ollama", api_key=t.api_key, base_url=t.base_url
-            )
-            req = ChatCompletionRequest(
-                messages=[ChatMessage(role="user", content=prompt)],
-                model=t.model_name,
-                temperature=temp,
-                max_tokens=mt,
-                streaming=False,
-            )
-            return await provider.acomplete(req, think=thinking_on)
-        return await aget_completion(
-            messages=[{"role": "user", "content": prompt}],
-            provider_model_string=t.provider_model,
+        return await _completion_target(t).acomplete(
+            [{"role": "user", "content": prompt}],
             temperature=temp,
             max_tokens=mt,
-            provider_api_key=t.api_key,
-            base_url=t.base_url,
-            chat_template_kwargs={"enable_thinking": thinking_on},
+            reasoning_effort=effort,
         )
 
     resp = await call(_quirk(t.provider_model, "temperature", 0.7))
@@ -301,7 +295,7 @@ async def _generate(
 # Quiet completion — thinking OFF so reasoning can't eat the token budget
 # --------------------------------------------------------------------------- #
 async def _complete_quiet(
-    t: Target,
+    t: ProbeTarget,
     messages: list[dict],
     *,
     tools: Optional[list[dict]] = None,
@@ -318,30 +312,13 @@ async def _complete_quiet(
     mt = max_tokens or t.max_tokens
 
     async def call(temp: float):
-        if t.provider_name == "ollama":
-            provider = ProviderFactory.get_provider(
-                "ollama", api_key=t.api_key, base_url=t.base_url
-            )
-            req = ChatCompletionRequest(
-                messages=[ChatMessage(**m) for m in messages],
-                model=t.model_name,
-                temperature=temp,
-                max_tokens=mt,
-                streaming=False,
-                tools=tools,
-                tool_choice=tool_choice,
-            )
-            return await provider.acomplete(req, think=False)
-        return await aget_completion(
-            messages=messages,
-            provider_model_string=t.provider_model,
+        return await _completion_target(t).acomplete(
+            messages,
             temperature=temp,
             max_tokens=mt,
-            provider_api_key=t.api_key,
-            base_url=t.base_url,
             tools=tools,
             tool_choice=tool_choice,
-            chat_template_kwargs={"enable_thinking": False},
+            reasoning_effort="none",
         )
 
     return await call(_quirk(t.provider_model, "temperature", 0.7))
@@ -350,7 +327,7 @@ async def _complete_quiet(
 # --------------------------------------------------------------------------- #
 # Probe: chat completion (thinking OFF so reasoning can't eat the token budget)
 # --------------------------------------------------------------------------- #
-async def probe_chat(t: Target) -> ProbeResult:
+async def probe_chat(t: ProbeTarget) -> ProbeResult:
     started = time.monotonic()
     try:
         resp = await asyncio.wait_for(
@@ -371,7 +348,7 @@ async def probe_chat(t: Target) -> ProbeResult:
 # --------------------------------------------------------------------------- #
 # Probe: tool calling
 # --------------------------------------------------------------------------- #
-async def probe_tool_calling(t: Target) -> ProbeResult:
+async def probe_tool_calling(t: ProbeTarget) -> ProbeResult:
     caps = getattr(t, "profile", {}).get("capabilities") or []
     if caps and "tools" not in caps:
         return ProbeResult(
@@ -437,7 +414,7 @@ async def probe_tool_calling(t: Target) -> ProbeResult:
 # --------------------------------------------------------------------------- #
 # Probe: image / vision
 # --------------------------------------------------------------------------- #
-async def probe_image(t: Target) -> ProbeResult:
+async def probe_image(t: ProbeTarget) -> ProbeResult:
     caps = getattr(t, "profile", {}).get("capabilities") or []
     if caps and "vision" not in caps:
         return ProbeResult(
@@ -476,15 +453,15 @@ async def probe_image(t: Target) -> ProbeResult:
 # --------------------------------------------------------------------------- #
 # Probe: thinking on / off
 # --------------------------------------------------------------------------- #
-async def probe_thinking_on(t: Target) -> ProbeResult:
+async def probe_thinking_on(t: ProbeTarget) -> ProbeResult:
     return await _thinking(t, on=True)
 
 
-async def probe_thinking_off(t: Target) -> ProbeResult:
+async def probe_thinking_off(t: ProbeTarget) -> ProbeResult:
     return await _thinking(t, on=False)
 
 
-async def _thinking(t: Target, on: bool) -> ProbeResult:
+async def _thinking(t: ProbeTarget, on: bool) -> ProbeResult:
     """Toggle thinking and report whether reasoning was produced."""
     started = time.monotonic()
     label = "thinking_on" if on else "thinking_off"
@@ -542,7 +519,7 @@ async def _thinking(t: Target, on: bool) -> ProbeResult:
 # --------------------------------------------------------------------------- #
 # Perf probes (opt-in)
 # --------------------------------------------------------------------------- #
-async def perf_maxspeed(t: Target) -> ProbeResult:
+async def perf_maxspeed(t: ProbeTarget) -> ProbeResult:
     """Throughput (tok/min) swept across varying context sizes.
 
     Token-frugal by design: tiny capped output, one run per size, thinking OFF —
@@ -603,7 +580,7 @@ async def perf_maxspeed(t: Target) -> ProbeResult:
     )
 
 
-async def perf_context(t: Target) -> ProbeResult:
+async def perf_context(t: ProbeTarget) -> ProbeResult:
     """Context ceiling: declared (from probe) vs empirical grow (capped)."""
     started = time.monotonic()
     try:
@@ -627,7 +604,7 @@ async def perf_context(t: Target) -> ProbeResult:
         )
 
 
-async def perf_ratelimit(t: Target) -> ProbeResult:
+async def perf_ratelimit(t: ProbeTarget) -> ProbeResult:
     """Rate-limit ceiling. Non-invasive: reads the proxy's learned limit if a
     proxy base is configured; otherwise skips (empirical burst-probe is TODO)."""
     proxy = getattr(t, "proxy_base_url", None)
@@ -674,7 +651,7 @@ async def perf_ratelimit(t: Target) -> ProbeResult:
         )
 
 
-async def _measure_throughput(t: Target, context_tokens: int) -> Optional[float]:
+async def _measure_throughput(t: ProbeTarget, context_tokens: int) -> Optional[float]:
     """Measure output tok/s for a generation prefilled with ~context_tokens.
 
     Thinking OFF, output capped at 32 tokens (a short count) — so the token
@@ -711,53 +688,27 @@ def _filler_messages(context_tokens: int, question: str) -> list[dict]:
     return [{"role": "user", "content": f"{filler}\n\n{question}"}]
 
 
-async def _stream_timed(t: Target, messages: list[dict], max_tokens: int) -> dict:
+async def _stream_timed(t: ProbeTarget, messages: list[dict], max_tokens: int) -> dict:
     """Stream a completion and time it: TTFT (first token) + decode window.
 
     Decode tok/s uses the decode window (end − first token), isolating
     generation speed from prefill/latency — avoids the short-output artifact.
     Output tokens are estimated from word count (rough proxy).
     """
-    from uniinfer.uniioai import astream_completion
-
     t0 = time.monotonic()
     first: float | None = None
     parts: list[str] = []
-    if t.provider_name == "ollama":
-        provider = ProviderFactory.get_provider(
-            "ollama", api_key=t.api_key, base_url=t.base_url
-        )
-        req = ChatCompletionRequest(
-            messages=[ChatMessage(**m) for m in messages],
-            model=t.model_name,
-            temperature=0.0,
-            max_tokens=max_tokens,
-            streaming=True,
-        )
-        async for chunk in provider.astream_complete(req, think=False):
-            c = getattr(chunk.message, "content", "") or ""
-            if c:
-                if first is None:
-                    first = time.monotonic()
-                parts.append(c)
-    else:
-        async for chunk in astream_completion(
-            messages=messages,
-            provider_model_string=t.provider_model,
-            temperature=0.0,
-            max_tokens=max_tokens,
-            provider_api_key=t.api_key,
-            base_url=t.base_url,
-            chat_template_kwargs={"enable_thinking": False},
-        ):
-            try:
-                c = chunk["choices"][0]["delta"].get("content") or ""
-            except Exception:  # noqa: BLE001
-                c = ""
-            if c:
-                if first is None:
-                    first = time.monotonic()
-                parts.append(c)
+    async for chunk in _completion_target(t).astream_complete(
+        messages,
+        temperature=0.0,
+        max_tokens=max_tokens,
+        reasoning_effort="none",
+    ):
+        c = getattr(chunk.message, "content", "") or ""
+        if c:
+            if first is None:
+                first = time.monotonic()
+            parts.append(c)
     end = time.monotonic()
     text = "".join(parts)
     ttft = (first - t0) if first is not None else None
@@ -772,7 +723,7 @@ async def _stream_timed(t: Target, messages: list[dict], max_tokens: int) -> dic
     }
 
 
-async def _cached_pair(t: Target, context_tokens: int) -> dict:
+async def _cached_pair(t: ProbeTarget, context_tokens: int) -> dict:
     """Send an identical large prompt twice: cold (prefill) vs warm (cached)."""
     msgs = _filler_messages(
         context_tokens, "In one short sentence, what is the above text about?"
@@ -789,7 +740,7 @@ async def _cached_pair(t: Target, context_tokens: int) -> dict:
     }
 
 
-async def perf_tokenspeed(t: Target) -> ProbeResult:
+async def perf_tokenspeed(t: ProbeTarget) -> ProbeResult:
     """Token speed across three regimes: normal, large-context sweep, cached.
 
     Streaming-based: TTFT (prefill+queue) and decode tok/s (generation, isolated
@@ -873,7 +824,7 @@ async def perf_tokenspeed(t: Target) -> ProbeResult:
 # --------------------------------------------------------------------------- #
 # Registry + runner
 # --------------------------------------------------------------------------- #
-PROBES: dict[str, Callable[[Target], "Any"]] = {
+PROBES: dict[str, Callable[[ProbeTarget], "Any"]] = {
     "probe": probe_profile,
     "chat": probe_chat,
     "tool_calling": probe_tool_calling,
@@ -882,7 +833,7 @@ PROBES: dict[str, Callable[[Target], "Any"]] = {
     "thinking_off": probe_thinking_off,
 }
 
-PERF_PROBES: dict[str, Callable[[Target], "Any"]] = {
+PERF_PROBES: dict[str, Callable[[ProbeTarget], "Any"]] = {
     "tokenspeed": perf_tokenspeed,
     "maxspeed": perf_maxspeed,
     "context": perf_context,
@@ -1007,7 +958,7 @@ async def softprobe_catalog(
                             continue
                     except Exception:  # noqa: BLE001
                         pass
-            tgt = Target(
+            tgt = ProbeTarget(
                 provider_model=pm,
                 api_key=ollama_key if pname == "ollama" else None,
                 base_url=ollama_url if pname == "ollama" else None,
@@ -1032,7 +983,7 @@ async def softprobe_catalog(
 
 
 async def run_capabilities(
-    target: Target,
+    target: ProbeTarget,
     probes: Optional[list[str]] = None,
     perf: bool = False,
     save: bool = False,
@@ -1088,7 +1039,7 @@ async def run_capabilities(
     return report
 
 
-async def _safe(fn: Callable[[Target], Any], t: Target) -> ProbeResult:
+async def _safe(fn: Callable[[ProbeTarget], Any], t: ProbeTarget) -> ProbeResult:
     try:
         return await fn(t)
     except Exception as e:  # noqa: BLE001

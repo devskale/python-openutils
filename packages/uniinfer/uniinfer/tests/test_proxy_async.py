@@ -7,18 +7,18 @@ from unittest.mock import patch, MagicMock
 
 # --- Import smoke tests ---
 
-def test_aget_completion_imports():
-    from uniinfer.uniioai import aget_completion
-    assert callable(aget_completion)
+def test_completion_target_imports():
+    from uniinfer.completion import Target
+    assert callable(Target)
 
 
-def test_astream_completion_imports():
-    from uniinfer.uniioai import astream_completion
-    assert callable(astream_completion)
+def test_parse_provider_model_imports():
+    from uniinfer.completion import parse_provider_model
+    assert callable(parse_provider_model)
 
 
 def test_format_chunk_to_openai_basic():
-    from uniinfer.uniioai import format_chunk_to_openai
+    from uniinfer.proxy_services.streaming import format_chunk_to_openai
     from uniinfer.core import ChatCompletionResponse, ChatMessage
 
     response = ChatCompletionResponse(
@@ -35,7 +35,7 @@ def test_format_chunk_to_openai_basic():
 
 
 def test_format_chunk_to_openai_with_finish_reason():
-    from uniinfer.uniioai import format_chunk_to_openai
+    from uniinfer.proxy_services.streaming import format_chunk_to_openai
     from uniinfer.core import ChatCompletionResponse, ChatMessage
 
     response = ChatCompletionResponse(
@@ -52,7 +52,7 @@ def test_format_chunk_to_openai_with_finish_reason():
 
 
 def test_format_chunk_to_openai_with_tool_calls():
-    from uniinfer.uniioai import format_chunk_to_openai
+    from uniinfer.proxy_services.streaming import format_chunk_to_openai
     from uniinfer.core import ChatCompletionResponse, ChatMessage
 
     tool_calls = [{"id": "call_1", "type": "function", "function": {"name": "test_func", "arguments": '{"arg": "value"}'}}]
