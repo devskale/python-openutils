@@ -66,6 +66,18 @@ def create_chat_router(
 
             provider_api_key = verify_provider_access(api_bearer_token, provider_name)
 
+            # OpenAI-standard reasoning_effort -> backend thinking control.
+            # "minimal" disables reasoning (vLLM chat_template_kwargs.enable_thinking
+            # / ollama think). Explicit think / chat_template_kwargs take precedence.
+            _effort = (request_input.reasoning_effort or "").lower()
+            _think = request_input.think
+            _ctk = request_input.chat_template_kwargs
+            if _effort == "minimal":
+                if provider_name == "ollama" and _think is None:
+                    _think = False
+                elif provider_name != "ollama" and not _ctk:
+                    _ctk = {"enable_thinking": False}
+
             if request_input.stream:
                 return StreamingResponse(
                     astream_response_generator(
@@ -80,10 +92,8 @@ def create_chat_router(
                         tool_choice=request_input.tool_choice,
                         request_id=getattr(request.state, "request_id", None),
                         reasoning_effort=request_input.reasoning_effort,
-                        think=request_input.think
-                        if provider_name == "ollama"
-                        else None,
-                        chat_template_kwargs=request_input.chat_template_kwargs,
+                        think=_think if provider_name == "ollama" else None,
+                        chat_template_kwargs=_ctk,
                     ),
                     media_type="text/event-stream",
                     headers={
@@ -103,8 +113,8 @@ def create_chat_router(
                 tools=request_input.tools,
                 tool_choice=request_input.tool_choice,
                 reasoning_effort=request_input.reasoning_effort,
-                think=request_input.think if provider_name == "ollama" else None,
-                chat_template_kwargs=request_input.chat_template_kwargs,
+                think=_think if provider_name == "ollama" else None,
+                chat_template_kwargs=_ctk,
             )
 
             raw_content = full_content.message.content
