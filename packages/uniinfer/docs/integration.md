@@ -168,7 +168,7 @@ OpenAI-compatible HTTP front. Same `provider@model` ids. Default dev port
 Bearer token = the proxy `PROXY_KEY` (credgoo combined `bearer@encryption`):
 
 ```bash
-export KEY=""          # your PROXY_KEY
+export KEY="$PROXY_KEY"          # credgoo combined token (bearer@encryption) — never commit the real value
 curl -s https://localhost:8123/v1/system/version -H "Authorization: Bearer $KEY"
 # {"version":"0.5.44"}
 ```
@@ -204,7 +204,7 @@ Returns `{profile, results[], summary}` — each probe `pass|fail|skip|error`.
 
 ```python
 from openai import OpenAI
-client = OpenAI(base_url="https://localhost:8123/v1", api_key="")
+client = OpenAI(base_url="https://localhost:8123/v1", api_key=os.environ["PROXY_KEY"])   # your PROXY_KEY (bearer@encryption)
 r = client.chat.completions.create(
     model="mistral@mistral-medium-latest",
     messages=[{"role": "user", "content": "Hello"}],
