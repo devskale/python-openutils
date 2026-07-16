@@ -241,8 +241,16 @@ def _model_quirks() -> dict:
 
 
 def _quirk(provider_model: str, key: str, default: Any = None) -> Any:
+    """Resolve a special param from the quirks index.
+
+    Lookup order: model-specific ('provider/model') → provider-wide
+    ('provider') → ``default``. Supports per-model or per-provider overrides
+    (e.g. temperature for models/providers that reject the default).
+    """
     provider, model = provider_model.split("@", 1)
-    return _model_quirks().get(f"{provider}/{model}", {}).get(key, default)
+    idx = _model_quirks()
+    entry = idx.get(f"{provider}/{model}") or idx.get(provider) or {}
+    return entry.get(key, default)
 
 
 async def _generate(
