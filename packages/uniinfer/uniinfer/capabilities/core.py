@@ -193,7 +193,18 @@ async def _catalog_profile(t: Target) -> dict[str, Any]:
         ):
             if m.get("id") == t.model_name:
                 caps = m.get("capabilities") or {}
-                inputs = (m.get("modalities") or {}).get("input") or []
+                mods = m.get("modalities") or {}
+                inputs = mods.get("input") or []
+                # Only assert capabilities when the catalog actually carries
+                # capability/modality metadata. Sparse entries (e.g. tu) have
+                # none — return [] so probes run empirically instead of
+                # false-skipping real capabilities.
+                if not (caps or mods):
+                    return {
+                        "capabilities": [],
+                        "context_length": m.get("context_window"),
+                        "note": "no capability metadata; probing empirically",
+                    }
                 declared = ["completion"]
                 if caps.get("tool_call") or caps.get("function_calling"):
                     declared.append("tools")
@@ -205,7 +216,7 @@ async def _catalog_profile(t: Target) -> dict[str, Any]:
                     "capabilities": declared,
                     "context_length": m.get("context_window"),
                     "max_output": m.get("max_output"),
-                    "modalities": m.get("modalities"),
+                    "modalities": mods,
                 }
     except Exception:  # noqa: BLE001
         pass
