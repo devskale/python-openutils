@@ -51,6 +51,7 @@
     .hm .hd, .hm .row { display: grid; grid-template-columns: minmax(190px, 1fr) repeat(4, 34px) minmax(120px, 1.4fr); align-items: center; }
     .hm .hd { position: sticky; top: 0; background: var(--surface); border-bottom: 1px solid var(--line); z-index: 1; }
     .hm .hd div { padding: 11px 0; font-size: 11px; font-weight: 500; letter-spacing: .04em; text-transform: uppercase; color: var(--faint); text-align: center; }
+    .hm .hd .cap-h { writing-mode: vertical-rl; transform: rotate(180deg); padding: 10px 0 12px; }
     .hm .hd div:first-child { text-align: left; padding-left: 16px; }
     .hm .hd div:last-child { text-align: left; padding-left: 12px; }
     .hm .row { border-top: 1px solid var(--line-2); transition: background .1s; }
@@ -120,7 +121,7 @@
       <div class="hm" id="hm">
         <div class="hd">
           <div>Model</div>
-          <div>Chat</div><div>Tools</div><div>Image</div><div>Think</div>
+          <div class="cap-h">Chat</div><div class="cap-h">Tools</div><div class="cap-h">Image</div><div class="cap-h">Think</div>
           <div>Throughput</div>
         </div>
         <div id="rows"></div>
