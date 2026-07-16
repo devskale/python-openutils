@@ -228,6 +228,23 @@ async def _catalog_profile(t: Target) -> dict[str, Any]:
 # --------------------------------------------------------------------------- #
 # Generation helper — unifies thinking control across backends
 # --------------------------------------------------------------------------- #
+def _model_quirks() -> dict:
+    """Per-model quirks index (fixtures/model_quirks.json), keyed 'provider/model'.
+
+    Scoped, data-driven overrides — e.g. models that only accept temperature=1
+    (moonshot kimi-code). Add an entry here rather than generalising code paths.
+    """
+    try:
+        return json.loads((FIXTURES / "model_quirks.json").read_text())
+    except Exception:  # noqa: BLE001
+        return {}
+
+
+def _quirk(provider_model: str, key: str, default: Any = None) -> Any:
+    provider, model = provider_model.split("@", 1)
+    return _model_quirks().get(f"{provider}/{model}", {}).get(key, default)
+
+
 async def _generate(
     t: Target, prompt: str, thinking_on: bool, *, max_tokens: Optional[int] = None
 ) -> tuple[str, str]:
@@ -241,33 +258,34 @@ async def _generate(
     probe timeout). Real callers should still use a generous ``t.max_tokens``.
     """
     mt = max_tokens or t.max_tokens
-    if t.provider_name == "ollama":
-        provider = ProviderFactory.get_provider(
-            "ollama", api_key=t.api_key, base_url=t.base_url
-        )
-        req = ChatCompletionRequest(
-            messages=[ChatMessage(role="user", content=prompt)],
-            model=t.model_name,
-            temperature=0.7,
+
+    async def call(temp: float):
+        if t.provider_name == "ollama":
+            provider = ProviderFactory.get_provider(
+                "ollama", api_key=t.api_key, base_url=t.base_url
+            )
+            req = ChatCompletionRequest(
+                messages=[ChatMessage(role="user", content=prompt)],
+                model=t.model_name,
+                temperature=temp,
+                max_tokens=mt,
+                streaming=False,
+            )
+            return await provider.acomplete(req, think=thinking_on)
+        return await aget_completion(
+            messages=[{"role": "user", "content": prompt}],
+            provider_model_string=t.provider_model,
+            temperature=temp,
             max_tokens=mt,
-            streaming=False,
+            provider_api_key=t.api_key,
+            base_url=t.base_url,
+            chat_template_kwargs={"enable_thinking": thinking_on},
         )
-        resp = await provider.acomplete(req, think=thinking_on)
-        return getattr(resp.message, "content", "") or "", getattr(
-            resp, "thinking", ""
-        ) or ""
-    resp = await aget_completion(
-        messages=[{"role": "user", "content": prompt}],
-        provider_model_string=t.provider_model,
-        temperature=0.7,
-        max_tokens=mt,
-        provider_api_key=t.api_key,
-        base_url=t.base_url,
-        chat_template_kwargs={"enable_thinking": thinking_on},
+
+    resp = await call(_quirk(t.provider_model, "temperature", 0.7))
+    return _as_text(getattr(resp.message, "content", "")), _as_text(
+        getattr(resp, "thinking", "")
     )
-    return getattr(resp.message, "content", "") or "", getattr(
-        resp, "thinking", ""
-    ) or ""
 
 
 # --------------------------------------------------------------------------- #
@@ -289,31 +307,35 @@ async def _complete_quiet(
     the perf probe to cap generation and stay token-frugal).
     """
     mt = max_tokens or t.max_tokens
-    if t.provider_name == "ollama":
-        provider = ProviderFactory.get_provider(
-            "ollama", api_key=t.api_key, base_url=t.base_url
-        )
-        req = ChatCompletionRequest(
-            messages=[ChatMessage(**m) for m in messages],
-            model=t.model_name,
-            temperature=0.7,
+
+    async def call(temp: float):
+        if t.provider_name == "ollama":
+            provider = ProviderFactory.get_provider(
+                "ollama", api_key=t.api_key, base_url=t.base_url
+            )
+            req = ChatCompletionRequest(
+                messages=[ChatMessage(**m) for m in messages],
+                model=t.model_name,
+                temperature=temp,
+                max_tokens=mt,
+                streaming=False,
+                tools=tools,
+                tool_choice=tool_choice,
+            )
+            return await provider.acomplete(req, think=False)
+        return await aget_completion(
+            messages=messages,
+            provider_model_string=t.provider_model,
+            temperature=temp,
             max_tokens=mt,
-            streaming=False,
+            provider_api_key=t.api_key,
+            base_url=t.base_url,
             tools=tools,
             tool_choice=tool_choice,
+            chat_template_kwargs={"enable_thinking": False},
         )
-        return await provider.acomplete(req, think=False)
-    return await aget_completion(
-        messages=messages,
-        provider_model_string=t.provider_model,
-        temperature=0.7,
-        max_tokens=mt,
-        provider_api_key=t.api_key,
-        base_url=t.base_url,
-        tools=tools,
-        tool_choice=tool_choice,
-        chat_template_kwargs={"enable_thinking": False},
-    )
+
+    return await call(_quirk(t.provider_model, "temperature", 0.7))
 
 
 # --------------------------------------------------------------------------- #

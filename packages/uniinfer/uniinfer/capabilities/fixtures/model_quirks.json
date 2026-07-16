@@ -1,0 +1,5 @@
+{
+  "_doc": "Per-model quirks index (keyed 'provider/model'). Scoped, data-driven overrides — add an entry here instead of generalising code. Consulted by the capability probes.",
+  "moonshot/kimi-k2.7-code": { "temperature": 1.0, "note": "only temperature=1 accepted" },
+  "moonshot/kimi-k2.7-code-highspeed": { "temperature": 1.0, "note": "only temperature=1 accepted" }
+}

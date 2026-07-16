@@ -4,6 +4,7 @@ import json
 import sys
 import enum
 import dataclasses
+import os
 from uniinfer.core import ModelInfo
 import logging
 from datetime import datetime, timezone
@@ -733,10 +734,11 @@ def main():
         except Exception:  # noqa: BLE001
             _ollama_key = None
         _ollama_url = _PC.get("ollama", {}).get("extra_params", {}).get("base_url")
-        log.info("Softprobing catalog (0 tokens)…")
+        _interval = int(os.environ.get("UNIINFER_SOFTPROBE_INTERVAL_DAYS", "7"))
+        log.info("Softprobing catalog (0 tokens; reprobe interval %dd)…", _interval)
         _summ = asyncio.run(
             softprobe_catalog(
-                stale_days=1, ollama_key=_ollama_key, ollama_url=_ollama_url
+                stale_days=_interval, ollama_key=_ollama_key, ollama_url=_ollama_url
             )
         )
         log.info("Softprobe: %s", _summ)
