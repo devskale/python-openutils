@@ -223,29 +223,44 @@ def _capabilities(args):
     import asyncio
     from uniinfer.capabilities import Target, run_capabilities, format_report
 
-    provider = args.provider
-    model = args.model or PROVIDER_CONFIGS.get(provider, {}).get("default_model")
-    if not model:
-        print(f"Error: no model specified and no default for provider '{provider}'")
-        return
-    credgoo_service = _resolve_credgoo_service(provider)
-    try:
-        api_key = get_api_key(
-            service=credgoo_service,
-            encryption_key=args.encryption_key,
-            bearer_token=args.bearer_token)
-    except Exception as e:
-        print(f"Error: no API key for '{provider}': {e}")
-        return
-    extra_params = PROVIDER_CONFIGS.get(provider, {}).get("extra_params", {})
-    base_url = extra_params.get("base_url")
-    target = Target(provider_model=f"{provider}@{model}", api_key=api_key, base_url=base_url)
     probes = [p.strip() for p in args.probes.split(",")] if args.probes else None
+    save = not args.no_save
     tag = " +perf" if args.perf else ""
-    print(f"Capability matrix: {provider}@{model}{tag}")
-    report = asyncio.run(run_capabilities(target, probes=probes, perf=args.perf, save=not args.no_save))
-    print()
-    print(format_report(report))
+
+    # Targets: either explicit 'provider@model' strings (--models) or a single -p/-m.
+    if args.models:
+        targets = args.models
+    else:
+        provider = args.provider
+        model = args.model or PROVIDER_CONFIGS.get(provider, {}).get("default_model")
+        if not model:
+            print(f"Error: no model specified and no default for provider '{provider}'")
+            return
+        targets = [f"{provider}@{model}"]
+
+    async def run_one(pm):
+        provider = pm.split("@", 1)[0]
+        credgoo_service = _resolve_credgoo_service(provider)
+        try:
+            api_key = get_api_key(
+                service=credgoo_service,
+                encryption_key=args.encryption_key,
+                bearer_token=args.bearer_token)
+        except Exception as e:
+            print(f"\nError: no API key for '{provider}': {e}")
+            return
+        base_url = PROVIDER_CONFIGS.get(provider, {}).get("extra_params", {}).get("base_url")
+        target = Target(provider_model=pm, api_key=api_key, base_url=base_url)
+        print(f"\nCapability matrix: {pm}{tag}")
+        report = await run_capabilities(target, probes=probes, perf=args.perf, save=save)
+        print()
+        print(format_report(report))
+
+    async def run_all():
+        for pm in targets:
+            await run_one(pm)
+
+    asyncio.run(run_all())
 
 
 def main():
@@ -326,7 +341,7 @@ def main():
     parser.add_argument('--speedtest', action='store_true',
                         help='Run smoke speed test on model(s)')
     parser.add_argument('--models', type=str, nargs='+',
-                        help='Multiple models to test (use with --speedtest)')
+                        help='Multiple provider@model targets to test (use with --speedtest or --capabilities, e.g. --capabilities --models groq@a tu@b ollama@c)')
     parser.add_argument('--runs', type=int, default=1,
                         help='Number of runs per model for speed test (default: 1)')
     parser.add_argument('--capabilities', action='store_true',
