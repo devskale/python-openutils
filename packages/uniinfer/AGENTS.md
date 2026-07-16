@@ -66,6 +66,7 @@ Proxy requires a **credgoo combined token** (`bearer@encryption`) as Bearer auth
 | `AGENTS.md` | This file — contributor rules |
 | `docs/models.md` | Model catalog, types, metadata richness |
 | `docs/providers.md` | Full provider index with base URLs, defaults |
+| `docs/integration.md` | How to integrate: Python module + uniioai proxy API |
 
 ## Code Style
 

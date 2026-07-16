@@ -245,6 +245,7 @@ async def get_web_demo():
 # Serves the perf dashboard HTML and reads/writes the same _speed_results.json
 # that `uniinfer --speedtest` produces, so CLI and dashboard share one history.
 SPEED_RESULTS_PATH = os.path.join(script_dir, "models", "_speed_results.json")
+PROBE_RESULTS_PATH = os.path.join(script_dir, "models", "_probe_results.json")
 
 
 @app.get("/perf", include_in_schema=False)
@@ -296,6 +297,46 @@ async def save_perf_result(request: Request):
     with open(SPEED_RESULTS_PATH, "w", encoding="utf-8") as f:
         json.dump(existing, f, indent=2, ensure_ascii=False)
     return {"ok": True, "saved": key}
+
+
+# --- Capability-probe dashboard + integration guide ---
+@app.get("/capabilities", include_in_schema=False)
+async def get_capabilities_dashboard():
+    """Serves the capability-probe dashboard HTML."""
+    html_file_path = os.path.join(script_dir, "examples", "webdemo", "capabilities.html")
+    if not os.path.exists(html_file_path):
+        raise HTTPException(status_code=404, detail="capabilities.html not found")
+    return FileResponse(html_file_path)
+
+
+@app.get("/capabilities/results", include_in_schema=False)
+async def get_capabilities_results():
+    """Returns the saved capability-probe history (provider/model -> matrix)."""
+    if not os.path.exists(PROBE_RESULTS_PATH):
+        return {}
+    try:
+        with open(PROBE_RESULTS_PATH, "r", encoding="utf-8") as f:
+            return json.load(f)
+    except (json.JSONDecodeError, OSError):
+        return {}
+
+
+@app.get("/guide", include_in_schema=False)
+async def get_integration_guide():
+    """Serves the integration-guide page (renders docs/integration.md)."""
+    html_file_path = os.path.join(script_dir, "examples", "webdemo", "guide.html")
+    if not os.path.exists(html_file_path):
+        raise HTTPException(status_code=404, detail="guide.html not found")
+    return FileResponse(html_file_path)
+
+
+@app.get("/guide.md", include_in_schema=False)
+async def get_integration_guide_md():
+    """Serves the canonical integration guide markdown (single source of truth)."""
+    md_file_path = os.path.join(script_dir, "..", "docs", "integration.md")
+    if not os.path.exists(md_file_path):
+        raise HTTPException(status_code=404, detail="integration.md not found")
+    return FileResponse(md_file_path, media_type="text/markdown")
 
 
 app.include_router(create_tools_router())
