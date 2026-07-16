@@ -130,6 +130,21 @@ report = asyncio.run(run_capabilities(
 print(format_report(report))
 ```
 
+### Capability probe (CLI)
+
+```bash
+# single model (saves by default; --perf adds throughput/context/rate probes)
+uv run uniinfer --capabilities -p ollama -m qwen3.5:0.8b --perf
+
+# many models across providers — credgoo keys resolved per-provider internally
+uv run uniinfer --capabilities \
+  --models ollama@qwen3.5:0.8b groq@llama-3.3-70b-versatile gemini@models/gemini-2.5-flash
+# options: --perf · --probes chat,tool_calling,image,thinking_on,thinking_off · --no-save
+```
+
+The dashboard at `/capabilities` renders whatever `--capabilities` (or
+`/v1/system/capabilities?…&save=true`) writes.
+
 ---
 
 ## 2. uniioai API (the proxy)
