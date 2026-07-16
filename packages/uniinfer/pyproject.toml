@@ -68,7 +68,7 @@ Homepage = "https://github.com/devskale/python-openutils"
 
 [project.scripts]
 uniinfer = "uniinfer.uniinfer_cli:main"
-uniioai-proxy = "uniinfer.uniioai_proxy:main"
+uniioai-proxy = "uniinfer.proxy_app:main"
 
 [tool.uv.sources]
 credgoo = { path = "../credgoo", editable = true }

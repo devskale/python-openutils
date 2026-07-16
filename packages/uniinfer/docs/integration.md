@@ -34,12 +34,11 @@ api_key = get_api_key(service="groq")        # credgoo service == provider name
 ### One-shot completion (sync + async)
 
 ```python
-from uniinfer.uniioai import get_completion, aget_completion
+from uniinfer.completion import Target
 
 # sync
-resp = get_completion(
-    messages=[{"role": "user", "content": "Say hello in one word."}],
-    provider_model_string="groq@openai/gpt-oss-20b",
+resp = Target("groq@openai/gpt-oss-20b", api_key).complete(
+    [{"role": "user", "content": "Say hello in one word."}],
     temperature=0.7,
     max_tokens=4096,            # thinking models need >> 1–2k
 )
@@ -47,26 +46,24 @@ print(resp.message.content)
 
 # async
 import asyncio
-resp = asyncio.run(aget_completion(
-    messages=[{"role": "user", "content": "Hello"}],
-    provider_model_string="mistral@mistral-medium-latest",
+resp = asyncio.run(Target("mistral@mistral-medium-latest", api_key).acomplete(
+    [{"role": "user", "content": "Hello"}],
 ))
 ```
 
 ### Streaming
 
 ```python
-from uniinfer.uniioai import astream_completion
+from uniinfer.completion import Target
 import asyncio
 
 async def main():
-    async for chunk in astream_completion(
-        messages=[{"role": "user", "content": "Count to five."}],
-        provider_model_string="tu@qwen-3.6-35b",
+    async for chunk in Target("tu@qwen-3.6-35b", api_key).astream_complete(
+        [{"role": "user", "content": "Count to five."}],
     ):
-        delta = chunk.get("choices", [{}])[0].get("delta", {})
-        if delta.get("content"):
-            print(delta["content"], end="", flush=True)
+        # Target yields raw ChatCompletionResponse chunks
+        if chunk.message.content:
+            print(chunk.message.content, end="", flush=True)
 
 asyncio.run(main())
 ```
@@ -84,9 +81,8 @@ tools = [{
                        "required": ["location"]},
     },
 }]
-resp = aget_completion_sync_like = get_completion(
-    messages=[{"role": "user", "content": "Weather in Paris?"}],
-    provider_model_string="groq@openai/gpt-oss-20b",
+resp = Target("groq@openai/gpt-oss-20b", api_key).complete(
+    [{"role": "user", "content": "Weather in Paris?"}],
     tools=tools, tool_choice="auto",
 )
 print(resp.message.tool_calls)   # [{ "function": { "name": "get_weather", ... } }]
@@ -108,16 +104,17 @@ curl -s $PROXY/chat/completions -H "Authorization: Bearer $KEY" \
 # "low" | "medium" | "high" keep reasoning on (with varying effort)
 ```
 ```python
-get_completion(..., reasoning_effort="minimal")   # or "low"/"medium"/"high"
+Target(...).complete(..., reasoning_effort="none")   # "none"/"minimal" disable; or "low"/"medium"/"high"
 ```
 
 **Backend-specific knobs** (the proxy maps `reasoning_effort` to these; use them
 directly only if you need to bypass the mapping):
 
 ```bash
-# Ollama: native `think` field (false disables reasoning)
+# Ollama: reasoning_effort="none" disables reasoning (the legacy `think:false`
+# field still works via a deprecation shim -> reasoning_effort="none")
 curl -s $PROXY/chat/completions -H "Authorization: Bearer $KEY" \
-  -d '{"model":"ollama@qwen3.5:0.8b","think":false,
+  -d '{"model":"ollama@qwen3.5:0.8b","reasoning_effort":"none",
         "messages":[{"role":"user","content":"What is 7*6?"}]}'
 # vLLM (tu): chat_template_kwargs
 curl -s $PROXY/chat/completions -H "Authorization: Bearer $KEY" \
@@ -126,15 +123,16 @@ curl -s $PROXY/chat/completions -H "Authorization: Bearer $KEY" \
         "chat_template_kwargs":{"enable_thinking":false}}'
 ```
 
-**CLI — `--no-think`** (sets `chat_template_kwargs.enable_thinking=false`; vLLM only):
+**CLI — `--no-think`** (sets `reasoning_effort="none"`; works across backends):
 
 ```bash
 uv run uniinfer -p tu -m qwen-3.6-35b --no-think -q "Summarise in one sentence: ..."
 ```
 
 > Reasoning (when present) is returned as `message.reasoning_content` (non-stream)
-> or `delta.reasoning_content` (stream). `--no-think` is vLLM-only; Ollama uses
-> `think` / `reasoning_effort:"minimal"`.
+> or `delta.reasoning_content` (stream). `--no-think` / `reasoning_effort:"none"`
+> work across backends; the legacy `think` field is deprecated (shimmed to
+> `reasoning_effort="none"`).
 
 ### List models + embeddings
 
@@ -142,18 +140,18 @@ uv run uniinfer -p tu -m qwen-3.6-35b --no-think -q "Summarise in one sentence: 
 from uniinfer import ProviderFactory
 models = ProviderFactory.get_provider_class("ollama").list_models(base_url=OLLAMA_URL)
 
-from uniinfer.uniioai import get_embeddings
+from uniinfer.provider_access import get_embeddings
 vec = get_embeddings(input_texts=["hello"], provider_model_string="ollama@nomic-embed-text")
 ```
 
 ### Capability probe (programmatic)
 
 ```python
-from uniinfer.capabilities import Target, run_capabilities, format_report
+from uniinfer.capabilities import ProbeTarget, run_capabilities, format_report
 import asyncio
 
 report = asyncio.run(run_capabilities(
-    Target(provider_model="ollama@qwen3.5:0.8b", api_key=key, base_url=url),
+    ProbeTarget(provider_model="ollama@qwen3.5:0.8b", api_key=key, base_url=url),
     perf=True, save=True,        # save -> _probe_results.json + models.json `probed`
 ))
 print(format_report(report))

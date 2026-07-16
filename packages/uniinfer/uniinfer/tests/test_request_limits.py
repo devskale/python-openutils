@@ -17,7 +17,7 @@ def _mock_completion():
 
 @pytest.fixture
 def client():
-    from uniinfer.uniioai_proxy import app
+    from uniinfer.proxy_app import app
     return TestClient(app, raise_server_exceptions=False)
 
 

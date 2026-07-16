@@ -15,13 +15,13 @@ os.environ.setdefault("UNIINFER_RATE_LIMIT_EMBEDDINGS", "100/minute")
 
 @pytest.fixture
 def client():
-    from uniinfer.uniioai_proxy import app
+    from uniinfer.proxy_app import app
     return TestClient(app, raise_server_exceptions=False)
 
 
 def test_chat_rate_limit_returns_429_after_quota(client):
     """Hitting chat endpoint past limit returns 429."""
-    with patch("uniinfer.uniioai_proxy.get_remote_address", return_value="rl-test-chat-unique"):
+    with patch("uniinfer.proxy_app.get_remote_address", return_value="rl-test-chat-unique"):
         resp1 = client.post("/v1/chat/completions", json={
             "model": "ollama@llama3", "messages": [{"role": "user", "content": "hi"}]
         })
@@ -30,7 +30,7 @@ def test_chat_rate_limit_returns_429_after_quota(client):
 
 def test_embeddings_rate_limit_returns_429_after_quota(client):
     """Hitting embeddings endpoint past limit returns 429."""
-    with patch("uniinfer.uniioai_proxy.get_remote_address", return_value="rl-test-emb-unique"):
+    with patch("uniinfer.proxy_app.get_remote_address", return_value="rl-test-emb-unique"):
         resp1 = client.post("/v1/embeddings", json={
             "model": "ollama@nomic-embed-text", "input": ["test"]
         })
@@ -39,7 +39,7 @@ def test_embeddings_rate_limit_returns_429_after_quota(client):
 
 def test_rate_limit_headers_present(client):
     """Successful rate-limited responses include standard headers."""
-    with patch("uniinfer.uniioai_proxy.get_remote_address", return_value="rl-test-headers-unique"):
+    with patch("uniinfer.proxy_app.get_remote_address", return_value="rl-test-headers-unique"):
         response = client.post("/v1/chat/completions", json={
             "model": "ollama@llama3", "messages": [{"role": "user", "content": "hi"}]
         })
@@ -50,7 +50,7 @@ def test_rate_limit_headers_present(client):
 
 def test_limiter_is_initialized():
     """The global limiter object exists and is configured."""
-    from uniinfer.uniioai_proxy import limiter
+    from uniinfer.proxy_app import limiter
     assert limiter is not None
 
 

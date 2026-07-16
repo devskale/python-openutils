@@ -25,7 +25,7 @@ class TestTTSEndpoint:
     @pytest.fixture
     def client(self):
         from fastapi.testclient import TestClient
-        from uniinfer.uniioai_proxy import app
+        from uniinfer.proxy_app import app
         return TestClient(app, raise_server_exceptions=False)
 
     def test_tts_no_auth_returns_401(self, client):
@@ -66,7 +66,7 @@ class TestSTTEndpoint:
     @pytest.fixture
     def client(self):
         from fastapi.testclient import TestClient
-        from uniinfer.uniioai_proxy import app
+        from uniinfer.proxy_app import app
         return TestClient(app, raise_server_exceptions=False)
 
     def test_stt_no_auth_returns_401(self, client):
@@ -111,13 +111,13 @@ class TestSTTEndpoint:
 class TestModelParsing:
 
     def test_tts_model_parsing(self):
-        from uniinfer.uniioai_proxy import parse_provider_model
+        from uniinfer.proxy_app import parse_provider_model
         provider, model = parse_provider_model("tu@kokoro")
         assert provider == "tu"
         assert model == "kokoro"
 
     def test_stt_model_parsing(self):
-        from uniinfer.uniioai_proxy import parse_provider_model
+        from uniinfer.proxy_app import parse_provider_model
         provider, model = parse_provider_model("tu@whisper-large")
         assert provider == "tu"
         assert model == "whisper-large"

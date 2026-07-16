@@ -4,7 +4,7 @@ Test script for tool calling functionality across different providers.
 """
 import os
 from uniinfer.completion import Target
-from uniinfer.uniioai import get_provider_api_key
+from uniinfer.provider_access import get_provider_api_key
 from credgoo import get_api_key
 
 # Define a simple weather tool

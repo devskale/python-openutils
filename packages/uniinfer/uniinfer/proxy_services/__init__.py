@@ -1,1 +1,1 @@
-"""Service helpers for uniioai_proxy."""
+"""Service helpers for the proxy app."""

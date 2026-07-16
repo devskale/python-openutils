@@ -264,9 +264,10 @@ def _quirk(provider_model: str, key: str, default: Any = None) -> Any:
 async def _generate(
     t: ProbeTarget, prompt: str, thinking_on: bool, *, max_tokens: Optional[int] = None
 ) -> tuple[str, str]:
-    """Return (content, thinking). Thinking is toggled via the backend-native
-    knob: Ollama ``think`` (provider-direct, since the uniioai wrappers do not
-    forward it for non-stream) or vLLM ``chat_template_kwargs.enable_thinking``.
+    """Return (content, thinking). Thinking is toggled via ``reasoning_effort``
+    (none/high), which each provider maps to its native knob (ollama ``think``,
+    vLLM ``chat_template_kwargs.enable_thinking``). Dispatched through a
+    non-recording completion Target.
 
     ``max_tokens`` overrides ``t.max_tokens``. The thinking probes pass a
     *moderate* cap — capability detection only needs to observe that reasoning
@@ -302,12 +303,11 @@ async def _complete_quiet(
     tool_choice: Optional[Any] = None,
     max_tokens: Optional[int] = None,
 ) -> Any:
-    """Non-streaming completion with thinking OFF.
-
-    Ollama is called provider-direct so the native ``think`` field is honoured
-    (the uniioai wrappers do not forward it for non-stream) and ``tools``/
-    images reach the backend. ``max_tokens`` overrides ``t.max_tokens`` (used by
-    the perf probe to cap generation and stay token-frugal).
+    """Non-streaming completion with reasoning OFF (``reasoning_effort="none"``)
+    so reasoning can't eat the token budget. Dispatched through a non-recording
+    completion Target; ``tools``/images reach the backend. ``max_tokens``
+    overrides ``t.max_tokens`` (used by the perf probe to cap generation and
+    stay token-frugal).
     """
     mt = max_tokens or t.max_tokens
 

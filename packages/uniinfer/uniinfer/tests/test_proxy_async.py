@@ -74,18 +74,18 @@ def test_streaming_generator_imports():
 
 
 def test_proxy_app_imports():
-    from uniinfer.uniioai_proxy import app
+    from uniinfer.proxy_app import app
     assert app is not None
 
 
 def test_rate_limit_helper():
-    from uniinfer.uniioai_proxy import get_chat_rate_limit
+    from uniinfer.proxy_app import get_chat_rate_limit
     limit = get_chat_rate_limit()
     assert isinstance(limit, str)
 
 
 def test_models_helper():
-    from uniinfer.uniioai import list_models_for_provider
+    from uniinfer.provider_access import list_models_for_provider
     assert callable(list_models_for_provider)
 
 
@@ -125,15 +125,15 @@ def test_chat_completion_request_input_validation():
 class TestProxyMiddleware:
 
     def test_request_size_middleware_exists(self):
-        from uniinfer.uniioai_proxy import limit_request_size
+        from uniinfer.proxy_app import limit_request_size
         assert callable(limit_request_size)
 
     def test_log_requests_middleware_exists(self):
-        from uniinfer.uniioai_proxy import log_requests
+        from uniinfer.proxy_app import log_requests
         assert callable(log_requests)
 
     def test_cors_middleware_configured(self):
-        from uniinfer.uniioai_proxy import app
+        from uniinfer.proxy_app import app
         has_cors = any(
             middleware.cls.__name__ == "CORSMiddleware"
             for middleware in app.user_middleware
@@ -148,7 +148,7 @@ class TestProxyEndpoints:
     @pytest.fixture
     def client(self):
         from fastapi.testclient import TestClient
-        from uniinfer.uniioai_proxy import app
+        from uniinfer.proxy_app import app
         return TestClient(app, raise_server_exceptions=False)
 
     def test_chat_completions_endpoint_exists(self, client):
@@ -167,5 +167,5 @@ class TestProxyEndpoints:
         assert response.status_code == 200
 
     def test_webdemo_endpoint_exists(self, client):
-        from uniinfer.uniioai_proxy import get_web_demo
+        from uniinfer.proxy_app import get_web_demo
         assert hasattr(get_web_demo, "__call__")

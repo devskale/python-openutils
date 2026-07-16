@@ -17,7 +17,7 @@ def wait_for_server(url, timeout=10):
 
 def run_verification():
     # 1. Start the server
-    print("Starting uniioai_proxy server...")
+    print("Starting proxy_app server...")
     
     # We use sys.executable to ensure we use the same python environment
     # We assume 'uv' is in path or we just run module directly if installed
@@ -29,7 +29,7 @@ def run_verification():
     env["UNIINFER_RATE_LIMIT_EMBEDDINGS"] = "5/minute"
     
     process = subprocess.Popen(
-        [sys.executable, "-m", "uvicorn", "uniinfer.uniioai_proxy:app", "--port", "8010", "--host", "127.0.0.1"],
+        [sys.executable, "-m", "uvicorn", "uniinfer.proxy_app:app", "--port", "8010", "--host", "127.0.0.1"],
         env=env,
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE

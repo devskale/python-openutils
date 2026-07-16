@@ -1,10 +1,10 @@
 # UniInfer Proxy Architecture (Brief)
 
-This document describes the current `uniioai_proxy` layout and where to add changes.
+This document describes the current `proxy_app` layout and where to add changes.
 
 ## Entry Point
 
-- `uniinfer/uniioai_proxy.py`
+- `uniinfer/proxy_app.py`
   - FastAPI app bootstrap
   - middleware (logging, request size, CORS, rate limiter wiring)
   - shared helpers (e.g. `parse_provider_model`)
@@ -49,13 +49,13 @@ Keep this file thin. Prefer adding endpoint logic in routers/services.
 
 ## Change Guidelines
 
-1. **Add new endpoint** in a router module, not `uniioai_proxy.py`.
+1. **Add new endpoint** in a router module, not `proxy_app.py`.
 2. **Move reusable logic** into `proxy_services/*`.
 3. **Put request/response models** into `proxy_schemas/*`.
-4. Keep `uniioai_proxy.py` focused on app wiring.
+4. Keep `proxy_app.py` focused on app wiring.
 5. Run before commit:
    - `uv run ruff check .`
-   - `uv run python -m py_compile uniinfer/uniioai_proxy.py`
+   - `uv run python -m py_compile uniinfer/proxy_app.py`
    - smoke test changed endpoints via curl/webdemo.
 
 ## Compatibility Notes

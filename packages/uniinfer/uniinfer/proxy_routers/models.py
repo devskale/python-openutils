@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import Response
 
 from uniinfer.auth import get_optional_proxy_token, validate_proxy_token
-from uniinfer.uniioai import (
+from uniinfer.provider_access import (
     list_embedding_models_for_provider,
     list_embedding_providers,
     list_models_for_provider,

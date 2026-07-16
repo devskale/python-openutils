@@ -9,7 +9,7 @@ from fastapi.testclient import TestClient
 
 @pytest.fixture
 def client():
-    from uniinfer.uniioai_proxy import app
+    from uniinfer.proxy_app import app
     return TestClient(app, raise_server_exceptions=False)
 
 
@@ -44,7 +44,7 @@ def test_chat_completions_success(client):
 
 
 def test_rate_limiter_exists():
-    from uniinfer.uniioai_proxy import limiter
+    from uniinfer.proxy_app import limiter
     assert limiter is not None
 
 
