@@ -72,6 +72,7 @@ class Target:
     # visible answer. Keep this ≫ 1–2k. Short-answer probes stop early anyway.
     max_tokens: int = 4096
     timeout: float = 90.0
+    heavy_perf: bool = False
 
     def __post_init__(self) -> None:
         if "@" not in self.provider_model:
@@ -797,6 +798,7 @@ async def perf_tokenspeed(t: Target) -> ProbeResult:
     started = time.monotonic()
     try:
         declared = (getattr(t, "profile", {}).get("context_length") or 0) or None
+        heavy = getattr(t, "heavy_perf", False)  # opt-in: large-context sweep + cached
         normal = await asyncio.wait_for(
             _stream_timed(
                 t,
@@ -810,51 +812,57 @@ async def perf_tokenspeed(t: Target) -> ProbeResult:
             ),
             t.timeout,
         )
-        sizes = [s for s in (1024, 8192) if not (declared and s > declared)]
         sweep: list[dict] = []
-        for s in sizes:
-            try:
-                sweep.append(
-                    {
-                        "ctx": s,
-                        **await asyncio.wait_for(
-                            _stream_timed(
-                                t,
-                                _filler_messages(
-                                    s, "In one sentence, summarize the text above."
+        cached: dict | None = None
+        if heavy:
+            for s in (sz for sz in (1024, 8192) if not (declared and sz > declared)):
+                try:
+                    sweep.append(
+                        {
+                            "ctx": s,
+                            **await asyncio.wait_for(
+                                _stream_timed(
+                                    t,
+                                    _filler_messages(
+                                        s, "In one sentence, summarize the text above."
+                                    ),
+                                    64,
                                 ),
-                                64,
+                                t.timeout,
                             ),
-                            t.timeout,
-                        ),
-                    }
-                )
+                        }
+                    )
+                except Exception as e:  # noqa: BLE001
+                    sweep.append({"ctx": s, "error": type(e).__name__})
+            cache_ctx = (
+                4096 if (not declared or 4096 <= declared) else max(512, declared // 2)
+            )
+            try:
+                cached = await asyncio.wait_for(_cached_pair(t, cache_ctx), t.timeout)
             except Exception as e:  # noqa: BLE001
-                sweep.append({"ctx": s, "error": type(e).__name__})
-        cache_ctx = (
-            4096 if (not declared or 4096 <= declared) else max(512, declared // 2)
-        )
-        try:
-            cached = await asyncio.wait_for(_cached_pair(t, cache_ctx), t.timeout)
-        except Exception as e:  # noqa: BLE001
-            cached = {"error": type(e).__name__}
+                cached = {"error": type(e).__name__}
         parts = [f"normal TTFT {normal['ttft_s']}s · {normal['decode_tok_s']} tok/s"]
         if sweep:
             parts.append(
                 "large "
                 + ", ".join(f"{x['ctx']}t:{x.get('ttft_s', '?')}s" for x in sweep)
             )
-        sp = cached.get("speedup")
-        parts.append(
-            f"cached {cached.get('cold_ttft_s', '?')}→{cached.get('warm_ttft_s', '?')}s"
-            + (f" ({sp}×)" if sp else "")
-        )
+        if cached:
+            sp = cached.get("speedup")
+            parts.append(
+                f"cached {cached.get('cold_ttft_s', '?')}→{cached.get('warm_ttft_s', '?')}s"
+                + (f" ({sp}×)" if sp else "")
+            )
+        detail: dict = {"normal": normal}
+        if heavy:
+            detail["large_context"] = sweep
+            detail["cached"] = cached
         return ProbeResult(
             "perf_tokenspeed",
             "pass",
             evidence=" | ".join(parts),
             latency_ms=_ms(started),
-            detail={"normal": normal, "large_context": sweep, "cached": cached},
+            detail=detail,
         )
     except Exception as e:  # noqa: BLE001
         return ProbeResult(
@@ -1037,6 +1045,22 @@ async def run_capabilities(
     selected = DEFAULT_PROBES if probes is None else probes
     results: list[ProbeResult] = []
     profile: dict[str, Any] = {}
+
+    # Probe policy (model_quirks.json _probe_policy): some providers are excluded
+    # from empirical probing (e.g. paid/not-installed) — short-circuit to a skip.
+    _policy = _model_quirks().get("_probe_policy", {}) or {}
+    if target.provider_name in (_policy.get("no_empirical") or []):
+        return CapabilityReport(
+            target=target.provider_model,
+            profile={},
+            results=[
+                ProbeResult(
+                    "probe",
+                    "skip",
+                    evidence=f"{target.provider_name} excluded from empirical probing (policy)",
+                )
+            ],
+        )
 
     for name in selected:
         fn = PROBES.get(name)
