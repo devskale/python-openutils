@@ -6,7 +6,6 @@ Public API for probing what a model can do and exercising each feature
 """
 from .core import (
     DEFAULT_PROBES,
-    PERF_PROBES,
     PROBES,
     CapabilityReport,
     ProbeResult,
@@ -15,9 +14,6 @@ from .core import (
     load_tools,
     image_b64,
     image_data_url,
-    perf_context,
-    perf_maxspeed,
-    perf_ratelimit,
     probe_chat,
     probe_image,
     probe_profile,
@@ -28,6 +24,7 @@ from .core import (
     save_probe_result,
     softprobe_catalog,
 )
+from .perf import PERF_PROBES, perf_context, perf_maxspeed, perf_ratelimit
 
 # Back-compat alias for the renamed probe-config dataclass; prefer ProbeTarget.
 Target = ProbeTarget
