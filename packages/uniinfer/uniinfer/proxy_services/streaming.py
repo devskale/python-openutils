@@ -58,8 +58,12 @@ async def astream_response_generator(
     heartbeat_count = 0
     last_yield_time = time.monotonic()
     idle_warning_threshold = 10.0
-    heartbeat_interval = float(os.getenv("UNIINFER_STREAM_HEARTBEAT", "120"))  # Increased for reasoning models
-    idle_timeout = float(os.getenv("UNIINFER_STREAM_IDLE_TIMEOUT", "300"))  # Increased for reasoning models
+    heartbeat_interval = float(
+        os.getenv("UNIINFER_STREAM_HEARTBEAT", "120")
+    )  # Increased for reasoning models
+    idle_timeout = float(
+        os.getenv("UNIINFER_STREAM_IDLE_TIMEOUT", "300")
+    )  # Increased for reasoning models
 
     first_chunk_data = StreamingChatCompletionChunk(
         id=completion_id,
@@ -93,11 +97,14 @@ async def astream_response_generator(
             tools=tools,
             tool_choice=tool_choice,
             reasoning_effort=reasoning_effort,
+            think=think,
             chat_template_kwargs=chat_template_kwargs,
         ).__aiter__()
         while True:
             try:
-                chunk = await asyncio.wait_for(async_iter.__anext__(), timeout=heartbeat_interval)
+                chunk = await asyncio.wait_for(
+                    async_iter.__anext__(), timeout=heartbeat_interval
+                )
                 # Capture usage if the backend emits it (often on the final chunk).
                 _raw = getattr(chunk, "raw_response", None)
                 if isinstance(_raw, dict) and isinstance(_raw.get("usage"), dict):
@@ -125,7 +132,11 @@ async def astream_response_generator(
 
             if isinstance(chunk, dict):
                 choice = chunk.get("choices", [{}])[0]
-                delta = choice.get("delta", {}) if isinstance(choice.get("delta", {}), dict) else {}
+                delta = (
+                    choice.get("delta", {})
+                    if isinstance(choice.get("delta", {}), dict)
+                    else {}
+                )
 
                 # Apply GLM leak repair to streamed content (only when tools offered).
                 raw_content = delta.get("content") if delta else None
@@ -191,7 +202,9 @@ async def astream_response_generator(
                             "object": "chat.completion.chunk",
                             "created": chunk.get("created", created_time),
                             "model": model_name,
-                            "choices": [{"index": 0, "delta": {"reasoning_content": rtail}}],
+                            "choices": [
+                                {"index": 0, "delta": {"reasoning_content": rtail}}
+                            ],
                         }
                         yield f"data: {json.dumps(rtail_chunk)}\n\n"
                         chunk_count += 1
@@ -219,11 +232,16 @@ async def astream_response_generator(
                     seen_tool_calls = True
             else:
                 chunk_finish_reason = getattr(chunk, "finish_reason", None)
-                
+
                 # Handle error finish_reason from provider (e.g., preemption detection)
                 if chunk_finish_reason == "error":
                     import sys
-                    print(f"[DEBUG] STREAMING: Got error finish_reason, raw_response={chunk.raw_response}", file=sys.stderr, flush=True)
+
+                    print(
+                        f"[DEBUG] STREAMING: Got error finish_reason, raw_response={chunk.raw_response}",
+                        file=sys.stderr,
+                        flush=True,
+                    )
                     error_msg = "Stream error"
                     if chunk.raw_response and isinstance(chunk.raw_response, dict):
                         error_msg = chunk.raw_response.get("error", error_msg)
@@ -237,7 +255,7 @@ async def astream_response_generator(
                     yield f"data: {json.dumps(error_chunk)}\n\n"
                     sent_finish_reason = True
                     continue
-                
+
                 if chunk.message:
                     choice_kwargs = {}
                     if chunk.message.tool_calls:
@@ -260,7 +278,11 @@ async def astream_response_generator(
                                     id=completion_id,
                                     created=created_time,
                                     model=model_name,
-                                    choices=[StreamingChoice(delta=ChoiceDelta(tool_calls=tcs))],
+                                    choices=[
+                                        StreamingChoice(
+                                            delta=ChoiceDelta(tool_calls=tcs)
+                                        )
+                                    ],
                                 )
                                 yield f"data: {tc_chunk_data.model_dump_json(exclude_none=True)}\n\n"
                                 chunk_count += 1
@@ -277,7 +299,9 @@ async def astream_response_generator(
                             choice_kwargs["reasoning_content"] = rsafe
 
                     choice_kwargs_with_delta = {
-                        "delta": ChoiceDelta(**choice_kwargs) if choice_kwargs else ChoiceDelta()
+                        "delta": ChoiceDelta(**choice_kwargs)
+                        if choice_kwargs
+                        else ChoiceDelta()
                     }
                     if chunk_finish_reason:
                         # Flush any content still held in the leak-repair rolling
@@ -288,7 +312,9 @@ async def astream_response_generator(
                                 id=completion_id,
                                 created=created_time,
                                 model=model_name,
-                                choices=[StreamingChoice(delta=ChoiceDelta(content=tail))],
+                                choices=[
+                                    StreamingChoice(delta=ChoiceDelta(content=tail))
+                                ],
                             )
                             yield f"data: {tail_chunk_data.model_dump_json(exclude_none=True)}\n\n"
                             chunk_count += 1
@@ -299,7 +325,11 @@ async def astream_response_generator(
                                 id=completion_id,
                                 created=created_time,
                                 model=model_name,
-                                choices=[StreamingChoice(delta=ChoiceDelta(reasoning_content=rtail))],
+                                choices=[
+                                    StreamingChoice(
+                                        delta=ChoiceDelta(reasoning_content=rtail)
+                                    )
+                                ],
                             )
                             yield f"data: {rtail_chunk_data.model_dump_json(exclude_none=True)}\n\n"
                             chunk_count += 1
@@ -337,16 +367,22 @@ async def astream_response_generator(
                     id=completion_id,
                     created=created_time,
                     model=model_name,
-                    choices=[StreamingChoice(delta=ChoiceDelta(reasoning_content=rtail))],
+                    choices=[
+                        StreamingChoice(delta=ChoiceDelta(reasoning_content=rtail))
+                    ],
                 )
                 yield f"data: {rtail_chunk_data.model_dump_json(exclude_none=True)}\n\n"
                 chunk_count += 1
-            finish_reason = "tool_calls" if (seen_tool_calls or leak_repair.has_leak()) else "stop"
+            finish_reason = (
+                "tool_calls" if (seen_tool_calls or leak_repair.has_leak()) else "stop"
+            )
             final_chunk_data = StreamingChatCompletionChunk(
                 id=completion_id,
                 created=created_time,
                 model=model_name,
-                choices=[StreamingChoice(delta=ChoiceDelta(), finish_reason=finish_reason)],
+                choices=[
+                    StreamingChoice(delta=ChoiceDelta(), finish_reason=finish_reason)
+                ],
             )
             yield f"data: {final_chunk_data.model_dump_json(exclude_none=True)}\n\n"
 
@@ -355,7 +391,13 @@ async def astream_response_generator(
         message = str(e)
         if isinstance(e, ProviderError) and e.response_body:
             message = f"{message} | Provider Response: {e.response_body}"
-        error_chunk = {"error": {"message": message, "type": type(e).__name__, "code": getattr(e, 'status_code', None)}}
+        error_chunk = {
+            "error": {
+                "message": message,
+                "type": type(e).__name__,
+                "code": getattr(e, "status_code", None),
+            }
+        }
         yield f"data: {json.dumps(error_chunk)}\n\n"
     except Exception as e:
         _stats_status = 500
@@ -371,9 +413,21 @@ async def astream_response_generator(
         # Always record — runs on success, error, and early client disconnect.
         try:
             from uniinfer.proxy_services.stats import get_stats
-            get_stats().record(model_name, status=_stats_status, latency_ms=(time.monotonic() - _stats_t0) * 1000, usage=_stats_usage or None)
+
+            get_stats().record(
+                model_name,
+                status=_stats_status,
+                latency_ms=(time.monotonic() - _stats_t0) * 1000,
+                usage=_stats_usage or None,
+            )
         except Exception:
             pass
 
-    logger.info("%sAsync stream end for %s (chunks=%s, heartbeats=%s)", stream_label, model_name, chunk_count, heartbeat_count)
+    logger.info(
+        "%sAsync stream end for %s (chunks=%s, heartbeats=%s)",
+        stream_label,
+        model_name,
+        chunk_count,
+        heartbeat_count,
+    )
     yield "data: [DONE]\n\n"

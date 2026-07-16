@@ -9,22 +9,27 @@ from typing import Any, AsyncGenerator, Dict, List, Optional
 from collections.abc import Iterator
 import random  # Import random
 
-from uniinfer import ProviderFactory, ChatMessage, ChatCompletionRequest, ChatCompletionResponse
+from uniinfer import (
+    ProviderFactory,
+    ChatMessage,
+    ChatCompletionRequest,
+    ChatCompletionResponse,
+)
 from uniinfer import EmbeddingProviderFactory, EmbeddingRequest, EmbeddingResponse
 from uniinfer.errors import UniInferError, AuthenticationError
 from dotenv import load_dotenv
 from credgoo import get_api_key
 from uniinfer.config.providers import PROVIDER_CONFIGS  # added
+
 # Import helper functions
 from uniinfer.json_utils import update_models, update_model_accessed
 
 logger = logging.getLogger(__name__)
 
 # Load environment variables from .env file
-dotenv_path = os.path.join(os.getcwd(), '.env')  # Explicitly check current dir
+dotenv_path = os.path.join(os.getcwd(), ".env")  # Explicitly check current dir
 # Add verbose=True and override=True
-found_dotenv = load_dotenv(dotenv_path=dotenv_path,
-                           verbose=True, override=True)
+found_dotenv = load_dotenv(dotenv_path=dotenv_path, verbose=True, override=True)
 
 logger.debug(f"Attempted to load .env from: {dotenv_path}")
 logger.debug(f".env file found and loaded: {found_dotenv}")
@@ -35,6 +40,7 @@ def _resolve_credgoo_service(provider_name: str) -> str:
 
 
 # --- Helper Function for API Key Retrieval ---
+
 
 # Rename to make it public
 def get_provider_api_key(api_bearer_token: str, provider_name: str) -> str | None:
@@ -58,57 +64,64 @@ def get_provider_api_key(api_bearer_token: str, provider_name: str) -> str | Non
 
     # Fallback to env vars if token is missing
     if not api_bearer_token:
-        files_token = os.getenv('CREDGOO_BEARER_TOKEN')
-        files_enc = os.getenv('CREDGOO_ENCRYPTION_KEY')
+        files_token = os.getenv("CREDGOO_BEARER_TOKEN")
+        files_enc = os.getenv("CREDGOO_ENCRYPTION_KEY")
         if files_token and files_enc:
             # print(f"DEBUG: Using CREDGOO env vars for {provider_name}")
             api_bearer_token = f"{files_token}@{files_enc}"
 
-    if api_bearer_token and '@' in api_bearer_token:
+    if api_bearer_token and "@" in api_bearer_token:
         # Treat as credgoo combined token: bearer@encryption
         try:
-            credgoo_bearer, credgoo_encryption = api_bearer_token.split('@', 1)
+            credgoo_bearer, credgoo_encryption = api_bearer_token.split("@", 1)
             if not credgoo_bearer or not credgoo_encryption:
                 raise ValueError(
-                    "Invalid combined credgoo token format. Both parts are required.")
+                    "Invalid combined credgoo token format. Both parts are required."
+                )
             credgoo_service = _resolve_credgoo_service(provider_name)
             provider_api_key = get_api_key(
                 service=credgoo_service,
                 encryption_key=credgoo_encryption,
                 bearer_token=credgoo_bearer,
             )
-            if not provider_api_key and provider_name not in ['ollama']:
+            if not provider_api_key and provider_name not in ["ollama"]:
                 raise AuthenticationError(
-                    f"Failed to retrieve API key for '{provider_name}' using the provided credgoo token.")
-#            print(
-#                f"DEBUG: Successfully retrieved key for {provider_name}@{provider_api_key} via credgoo.")
+                    f"Failed to retrieve API key for '{provider_name}' using the provided credgoo token."
+                )
+        #            print(
+        #                f"DEBUG: Successfully retrieved key for {provider_name}@{provider_api_key} via credgoo.")
         except ValueError as e:
             raise ValueError(
-                f"Invalid combined credgoo token format ('bearer@encryption'): {e}")
+                f"Invalid combined credgoo token format ('bearer@encryption'): {e}"
+            )
         except Exception as e:
             raise AuthenticationError(
-                f"Error retrieving key from credgoo for '{provider_name}': {e}")
+                f"Error retrieving key from credgoo for '{provider_name}': {e}"
+            )
     else:
         if api_bearer_token:
             # print(
             #    f"DEBUG: Using provided token directly as API key for {provider_name}.")
             provider_api_key = api_bearer_token
-        elif provider_name != 'ollama':
+        elif provider_name != "ollama":
             # Instead of raising immediately, we let it be None and fail downstream
             # or raise here. Original code raised exception.
             # But maybe we want to allow empty for some custom providers?
             # Sticking to original strictness:
             raise ValueError(
-                "API Bearer Token is required (provider key or credgoo combo).")
+                "API Bearer Token is required (provider key or credgoo combo)."
+            )
 
-    if not provider_api_key and provider_name not in ['ollama']:
+    if not provider_api_key and provider_name not in ["ollama"]:
         logger.warning(
-            f"API key for {provider_name} is missing or empty after processing.")
+            f"API key for {provider_name} is missing or empty after processing."
+        )
 
     return provider_api_key
 
 
 # --- Main Completion Functions ---
+
 
 # Update signature: remove api_bearer_token, add provider_api_key
 def stream_completion(
@@ -146,28 +159,26 @@ def stream_completion(
     """
     try:
         # Parse provider and model from the combined string
-        if '@' not in provider_model_string:
+        if "@" not in provider_model_string:
             raise ValueError(
-                "Invalid provider_model_string format. Expected 'provider@modelname'.")
-        provider_name, model_name = provider_model_string.split('@', 1)
+                "Invalid provider_model_string format. Expected 'provider@modelname'."
+            )
+        provider_name, model_name = provider_model_string.split("@", 1)
 
         if not provider_name or not model_name:
             raise ValueError(
-                "Invalid provider_model_string format. Provider or model name is empty.")
+                "Invalid provider_model_string format. Provider or model name is empty."
+            )
 
         # Get the specified provider, passing base_url if provided
-        provider_kwargs = {'api_key': provider_api_key}  # Use passed key
+        provider_kwargs = {"api_key": provider_api_key}  # Use passed key
         if base_url:
-            provider_kwargs['base_url'] = base_url
-        if provider_name in ['cloudflare']:
-            extra = PROVIDER_CONFIGS.get(
-                provider_name, {}).get('extra_params', {})
+            provider_kwargs["base_url"] = base_url
+        if provider_name in ["cloudflare"]:
+            extra = PROVIDER_CONFIGS.get(provider_name, {}).get("extra_params", {})
             provider_kwargs.update(extra)
 
-        provider = ProviderFactory.get_provider(
-            provider_name,
-            **provider_kwargs
-        )
+        provider = ProviderFactory.get_provider(provider_name, **provider_kwargs)
 
         # Prepare uniinfer messages
         uniinfer_messages = [ChatMessage(**msg) for msg in messages]
@@ -197,8 +208,7 @@ def stream_completion(
         raise
     except Exception as e:
         logger.exception(f"An unexpected error occurred: {e}")
-        raise UniInferError(
-            f"An unexpected error occurred in stream_completion: {e}")
+        raise UniInferError(f"An unexpected error occurred in stream_completion: {e}")
 
 
 # Update signature: remove api_bearer_token, add provider_api_key
@@ -235,28 +245,26 @@ def get_completion(
     """
     try:
         # Parse provider and model from the combined string
-        if '@' not in provider_model_string:
+        if "@" not in provider_model_string:
             raise ValueError(
-                "Invalid provider_model_string format. Expected 'provider@modelname'.")
-        provider_name, model_name = provider_model_string.split('@', 1)
+                "Invalid provider_model_string format. Expected 'provider@modelname'."
+            )
+        provider_name, model_name = provider_model_string.split("@", 1)
 
         if not provider_name or not model_name:
             raise ValueError(
-                "Invalid provider_model_string format. Provider or model name is empty.")
+                "Invalid provider_model_string format. Provider or model name is empty."
+            )
 
         # Get the specified provider, passing base_url if provided
-        provider_kwargs = {'api_key': provider_api_key}  # Use passed key
+        provider_kwargs = {"api_key": provider_api_key}  # Use passed key
         if base_url:
-            provider_kwargs['base_url'] = base_url
-        if provider_name in ['cloudflare']:
-            extra = PROVIDER_CONFIGS.get(
-                provider_name, {}).get('extra_params', {})
+            provider_kwargs["base_url"] = base_url
+        if provider_name in ["cloudflare"]:
+            extra = PROVIDER_CONFIGS.get(provider_name, {}).get("extra_params", {})
             provider_kwargs.update(extra)
 
-        provider = ProviderFactory.get_provider(
-            provider_name,
-            **provider_kwargs
-        )
+        provider = ProviderFactory.get_provider(provider_name, **provider_kwargs)
 
         # Prepare uniinfer messages
         uniinfer_messages = [ChatMessage(**msg) for msg in messages]
@@ -276,7 +284,8 @@ def get_completion(
 
         # Get the response
         logger.info(
-            f"Requesting non-streaming response from {provider_name} ({model_name})")
+            f"Requesting non-streaming response from {provider_name} ({model_name})"
+        )
         response: ChatCompletionResponse = provider.complete(request)
         logger.info("Response received")
 
@@ -293,12 +302,13 @@ def get_completion(
         raise
     except Exception as e:
         logger.exception(
-            f"An unexpected error occurred during non-streaming completion: {e}")
-        raise UniInferError(
-            f"An unexpected error occurred in get_completion: {e}")
+            f"An unexpected error occurred during non-streaming completion: {e}"
+        )
+        raise UniInferError(f"An unexpected error occurred in get_completion: {e}")
 
 
 # --- Embedding Functions ---
+
 
 def get_embeddings(
     input_texts: list[str],
@@ -324,52 +334,45 @@ def get_embeddings(
     """
     try:
         # Parse provider and model from the combined string
-        if '@' not in provider_model_string:
+        if "@" not in provider_model_string:
             raise ValueError(
-                "Invalid provider_model_string format. Expected 'provider@modelname'.")
-        provider_name, model_name = provider_model_string.split('@', 1)
+                "Invalid provider_model_string format. Expected 'provider@modelname'."
+            )
+        provider_name, model_name = provider_model_string.split("@", 1)
 
         if not provider_name or not model_name:
             raise ValueError(
-                "Invalid provider_model_string format. Provider or model name is empty.")
+                "Invalid provider_model_string format. Provider or model name is empty."
+            )
 
         # Get the specified embedding provider, passing base_url if provided
-        provider_kwargs = {'api_key': provider_api_key}  # Use passed key
+        provider_kwargs = {"api_key": provider_api_key}  # Use passed key
         if base_url:
-            provider_kwargs['base_url'] = base_url
+            provider_kwargs["base_url"] = base_url
 
         provider = EmbeddingProviderFactory.get_provider(
-            provider_name,
-            **provider_kwargs
+            provider_name, **provider_kwargs
         )
 
         # Create the embedding request
-        request = EmbeddingRequest(
-            input=input_texts,
-            model=model_name
-        )
+        request = EmbeddingRequest(input=input_texts, model=model_name)
 
         # Get the response
-        logger.info(
-            f"Requesting embeddings from {provider_name} ({model_name})")
+        logger.info(f"Requesting embeddings from {provider_name} ({model_name})")
         response: EmbeddingResponse = provider.embed(request)
         logger.info("Embeddings received")
 
         # Extract the embedding vectors and usage from the response
-        embeddings = [embedding_data["embedding"]
-                      for embedding_data in response.data]
-        usage = getattr(response, 'usage', {
-                        'prompt_tokens': 0, 'total_tokens': 0})
-        return {'embeddings': embeddings, 'usage': usage}
+        embeddings = [embedding_data["embedding"] for embedding_data in response.data]
+        usage = getattr(response, "usage", {"prompt_tokens": 0, "total_tokens": 0})
+        return {"embeddings": embeddings, "usage": usage}
 
     except (UniInferError, ValueError) as e:
         logger.error(f"An error occurred during embedding request: {e}")
         raise
     except Exception as e:
-        logger.exception(
-            f"An unexpected error occurred during embedding request: {e}")
-        raise UniInferError(
-            f"An unexpected error occurred in get_embeddings: {e}")
+        logger.exception(f"An unexpected error occurred during embedding request: {e}")
+        raise UniInferError(f"An unexpected error occurred in get_embeddings: {e}")
 
 
 # --- New Helper to List Embedding Providers ---
@@ -389,19 +392,20 @@ def list_embedding_models_for_provider(
     For Ollama, api_bearer_token can be empty or None.
     """
     # retrieve actual api key
-    if provider_name == 'ollama':
+    if provider_name == "ollama":
         api_key = None
     else:
         api_key = get_provider_api_key(api_bearer_token, provider_name)
     # determine extra params if needed
     extra = {}
-    if provider_name in ['cloudflare', 'ollama']:
-        extra = PROVIDER_CONFIGS.get(provider_name, {}).get('extra_params', {})
+    if provider_name in ["cloudflare", "ollama"]:
+        extra = PROVIDER_CONFIGS.get(provider_name, {}).get("extra_params", {})
     # get the provider class and list models
     provider_cls = EmbeddingProviderFactory.get_provider_class(provider_name)
     modellist = provider_cls.list_models(api_key=api_key, **extra)
     # update models.json cache
     from uniinfer.proxy_services.models_registry import update_provider_in_cache
+
     update_provider_in_cache(provider_name, modellist)
     return modellist
 
@@ -424,45 +428,87 @@ def list_models_for_provider(provider_name: str, api_bearer_token: str) -> list[
     api_key = get_provider_api_key(api_bearer_token, provider_name)
     # determine extra params if needed
     extra = {}
-    if provider_name in ['cloudflare', 'ollama']:
-        extra = PROVIDER_CONFIGS.get(provider_name, {}).get('extra_params', {})
+    if provider_name in ["cloudflare", "ollama"]:
+        extra = PROVIDER_CONFIGS.get(provider_name, {}).get("extra_params", {})
     # get the provider class and list models
     provider_cls = ProviderFactory.get_provider_class(provider_name)
     modellist = provider_cls.list_models(api_key=api_key, **extra)
     update_models(modellist, provider_name)
     # update models.json cache so /v1/models reflects fresh data
     from uniinfer.proxy_services.models_registry import update_provider_in_cache
+
     update_provider_in_cache(provider_name, modellist)
     return modellist
 
 
-def list_model_names_for_provider(provider_name: str, api_bearer_token: str) -> list[str]:
+def list_model_names_for_provider(
+    provider_name: str, api_bearer_token: str
+) -> list[str]:
     """Return model ID strings for the given provider.
 
     Convenience wrapper around list_models_for_provider that always returns
     plain strings regardless of whether the provider returns ModelInfo objects.
     """
     modellist = list_models_for_provider(provider_name, api_bearer_token)
-    return [m.id if hasattr(m, 'id') else str(m) for m in modellist]
+    return [m.id if hasattr(m, "id") else str(m) for m in modellist]
 
 
 # Example Usage
 if __name__ == "__main__":
-    test_credgootoken = f"{os.getenv('CREDGOO_BEARER_TOKEN')}@{os.getenv('CREDGOO_ENCRYPTION_KEY')}"
-#    test_provider_model = os.getenv("TEST_PROVIDER_MODEL", "ollama@gemma3:4b")
-    test_provider_model = os.getenv(
-        "TEST_PROVIDER_MODEL", "mistral@mistral-small")
-    test_base_url = "http://amp1.mooo.com:11444" if "ollama" in test_provider_model else None
+    test_credgootoken = (
+        f"{os.getenv('CREDGOO_BEARER_TOKEN')}@{os.getenv('CREDGOO_ENCRYPTION_KEY')}"
+    )
+    #    test_provider_model = os.getenv("TEST_PROVIDER_MODEL", "ollama@gemma3:4b")
+    test_provider_model = os.getenv("TEST_PROVIDER_MODEL", "mistral@mistral-small")
+    test_base_url = (
+        "http://amp1.mooo.com:11444" if "ollama" in test_provider_model else None
+    )
 
     # List of cities
     cities = [
-        "Tokyo", "Delhi", "Shanghai", "Sao Paulo", "Mumbai", "Mexico City",
-        "Beijing", "Osaka", "Cairo", "New York", "Dhaka", "Karachi",
-        "Buenos Aires", "Kolkata", "Istanbul", "Chongqing", "Lagos",
-        "Rio de Janeiro", "Tianjin", "Kinshasa", "Guangzhou", "Los Angeles",
-        "Moscow", "Shenzhen", "Lahore", "Bangalore", "Paris", "Bogota",
-        "Jakarta", "Chennai", "Lima", "Bangkok", "Seoul", "Nagoya", "Hyderabad", "Vienna",
-        "London", "Chennai", "Hangzhou", "Wuhan", "Ahmedabad", "Hong Kong", "Berlin"
+        "Tokyo",
+        "Delhi",
+        "Shanghai",
+        "Sao Paulo",
+        "Mumbai",
+        "Mexico City",
+        "Beijing",
+        "Osaka",
+        "Cairo",
+        "New York",
+        "Dhaka",
+        "Karachi",
+        "Buenos Aires",
+        "Kolkata",
+        "Istanbul",
+        "Chongqing",
+        "Lagos",
+        "Rio de Janeiro",
+        "Tianjin",
+        "Kinshasa",
+        "Guangzhou",
+        "Los Angeles",
+        "Moscow",
+        "Shenzhen",
+        "Lahore",
+        "Bangalore",
+        "Paris",
+        "Bogota",
+        "Jakarta",
+        "Chennai",
+        "Lima",
+        "Bangkok",
+        "Seoul",
+        "Nagoya",
+        "Hyderabad",
+        "Vienna",
+        "London",
+        "Chennai",
+        "Hangzhou",
+        "Wuhan",
+        "Ahmedabad",
+        "Hong Kong",
+        "Berlin",
     ]
 
     # Select 3 unique random cities
@@ -473,7 +519,7 @@ if __name__ == "__main__":
         city_a, city_b, city_c = "CityA", "CityB", "CityC"
 
     # Construct the dynamic prompt
-    user_prompt = f"{city_a}, {city_b} or {city_c}. choose one. explain by just using one word in the style: CITY: Because: \"EXPLANATIONWORD\""
+    user_prompt = f'{city_a}, {city_b} or {city_c}. choose one. explain by just using one word in the style: CITY: Because: "EXPLANATIONWORD"'
 
     example_messages = [
         # {"role": "system", "content": "You follow instructions precisely and provide concise answers in the requested format."},
@@ -482,37 +528,44 @@ if __name__ == "__main__":
     print(f"Using prompt: {user_prompt}")
 
     provider_model = test_provider_model
-    provider_name_example = provider_model.split('@')[0]
+    provider_name_example = provider_model.split("@")[0]
 
     try:
-        bearer = os.getenv('CREDGOO_BEARER_TOKEN')
-        encryption = os.getenv('CREDGOO_ENCRYPTION_KEY')
+        bearer = os.getenv("CREDGOO_BEARER_TOKEN")
+        encryption = os.getenv("CREDGOO_ENCRYPTION_KEY")
 
         if bearer and encryption:
             test_credgootoken = f"{bearer}@{encryption}"
             print(
-                f"Retrieving API key for '{provider_name_example}' using token {test_credgootoken}")
+                f"Retrieving API key for '{provider_name_example}' using token {test_credgootoken}"
+            )
             test_provider_api_key = get_provider_api_key(
-                test_credgootoken, provider_name_example)
+                test_credgootoken, provider_name_example
+            )
         else:
             print(
-                f"Retrieving API key for '{provider_name_example}' using credgoo cache (no env vars)")
+                f"Retrieving API key for '{provider_name_example}' using credgoo cache (no env vars)"
+            )
             test_provider_api_key = get_api_key(service=provider_name_example)
         # print("API Key retrieval successful (or not needed).")
 
         # --- Streaming Example ---
         print("\n--- Running Streaming Example ---")
-#        if test_base_url:
-#            print(f"Using TEST_BASE_URL: {test_base_url}")
+        #        if test_base_url:
+        #            print(f"Using TEST_BASE_URL: {test_base_url}")
         try:
             full_streamed_response = ""
             for chunk in stream_completion(
                 example_messages,
                 provider_model_string=provider_model,
                 provider_api_key=test_provider_api_key,
-                base_url=test_base_url
+                base_url=test_base_url,
             ):
-                content = chunk.message.content if chunk.message and chunk.message.content else ""
+                content = (
+                    chunk.message.content
+                    if chunk.message and chunk.message.content
+                    else ""
+                )
                 print(content, end="", flush=True)
                 full_streamed_response += content
             print("\n")
@@ -523,14 +576,14 @@ if __name__ == "__main__":
 
         # --- Non-Streaming Example ---
         print("\n--- Running Non-Streaming Example ---")
-#        if test_base_url:
-#            print(f"Using TEST_BASE_URL: {test_base_url}")
+        #        if test_base_url:
+        #            print(f"Using TEST_BASE_URL: {test_base_url}")
         try:
             full_response = get_completion(
                 example_messages,
                 provider_model_string=provider_model,
                 provider_api_key=test_provider_api_key,
-                base_url=test_base_url
+                base_url=test_base_url,
             )
             print("\nFull Response:")
             print(full_response)
@@ -547,7 +600,20 @@ if __name__ == "__main__":
 
 # --- Async Helper Functions ---
 
-async def aget_completion(messages, provider_model_string, temperature=0.7, max_tokens=None, provider_api_key: Optional[str] = None, base_url: Optional[str] = None, tools: Optional[List[Dict]] = None, tool_choice: Optional[Any] = None, reasoning_effort: Optional[str] = None, chat_template_kwargs: Optional[Dict] = None) -> Any:
+
+async def aget_completion(
+    messages,
+    provider_model_string,
+    temperature=0.7,
+    max_tokens=None,
+    provider_api_key: Optional[str] = None,
+    base_url: Optional[str] = None,
+    tools: Optional[List[Dict]] = None,
+    tool_choice: Optional[Any] = None,
+    reasoning_effort: Optional[str] = None,
+    chat_template_kwargs: Optional[Dict] = None,
+    think: Optional[Any] = None,
+) -> Any:
     """
     Async version of get_completion.
 
@@ -571,27 +637,25 @@ async def aget_completion(messages, provider_model_string, temperature=0.7, max_
         UniInferError: If there's an issue with the provider or request.
     """
     try:
-        if '@' not in provider_model_string:
+        if "@" not in provider_model_string:
             raise ValueError(
-                "Invalid provider_model_string format. Expected 'provider@modelname'.")
-        provider_name, model_name = provider_model_string.split('@', 1)
+                "Invalid provider_model_string format. Expected 'provider@modelname'."
+            )
+        provider_name, model_name = provider_model_string.split("@", 1)
 
         if not provider_name or not model_name:
             raise ValueError(
-                "Invalid provider_model_string format. Provider or model name is empty.")
+                "Invalid provider_model_string format. Provider or model name is empty."
+            )
 
-        provider_kwargs = {'api_key': provider_api_key}
+        provider_kwargs = {"api_key": provider_api_key}
         if base_url:
-            provider_kwargs['base_url'] = base_url
-        if provider_name in ['cloudflare']:
-            extra = PROVIDER_CONFIGS.get(
-                provider_name, {}).get('extra_params', {})
+            provider_kwargs["base_url"] = base_url
+        if provider_name in ["cloudflare"]:
+            extra = PROVIDER_CONFIGS.get(provider_name, {}).get("extra_params", {})
             provider_kwargs.update(extra)
 
-        provider = ProviderFactory.get_provider(
-            provider_name,
-            **provider_kwargs
-        )
+        provider = ProviderFactory.get_provider(provider_name, **provider_kwargs)
 
         uniinfer_messages = [ChatMessage(**msg) for msg in messages]
 
@@ -608,8 +672,16 @@ async def aget_completion(messages, provider_model_string, temperature=0.7, max_
         )
 
         logger.info(
-            f"Requesting async non-streaming response from {provider_name} ({model_name})")
-        response: ChatCompletionResponse = await provider.acomplete(request)
+            f"Requesting async non-streaming response from {provider_name} ({model_name})"
+        )
+        response: ChatCompletionResponse = await provider.acomplete(
+            request,
+            **(
+                {"think": think}
+                if provider_name == "ollama" and think is not None
+                else {}
+            ),
+        )
         logger.info("Async response received")
 
         if response.message:
@@ -627,7 +699,19 @@ async def aget_completion(messages, provider_model_string, temperature=0.7, max_
         raise UniInferError(f"Unexpected error: {e}")
 
 
-async def astream_completion(messages, provider_model_string, temperature=0.7, max_tokens=None, provider_api_key: Optional[str] = None, base_url: Optional[str] = None, tools: Optional[List[Dict]] = None, tool_choice: Optional[Any] = None, reasoning_effort: Optional[str] = None, chat_template_kwargs: Optional[Dict] = None) -> AsyncGenerator[Dict[str, Any], None]:
+async def astream_completion(
+    messages,
+    provider_model_string,
+    temperature=0.7,
+    max_tokens=None,
+    provider_api_key: Optional[str] = None,
+    base_url: Optional[str] = None,
+    tools: Optional[List[Dict]] = None,
+    tool_choice: Optional[Any] = None,
+    reasoning_effort: Optional[str] = None,
+    chat_template_kwargs: Optional[Dict] = None,
+    think: Optional[Any] = None,
+) -> AsyncGenerator[Dict[str, Any], None]:
     """
     Async version of stream_completion.
 
@@ -651,27 +735,25 @@ async def astream_completion(messages, provider_model_string, temperature=0.7, m
         UniInferError: If there's an issue with the provider or request.
     """
     try:
-        if '@' not in provider_model_string:
+        if "@" not in provider_model_string:
             raise ValueError(
-                "Invalid provider_model_string format. Expected 'provider@modelname'.")
-        provider_name, model_name = provider_model_string.split('@', 1)
+                "Invalid provider_model_string format. Expected 'provider@modelname'."
+            )
+        provider_name, model_name = provider_model_string.split("@", 1)
 
         if not provider_name or not model_name:
             raise ValueError(
-                "Invalid provider_model_string format. Provider or model name is empty.")
+                "Invalid provider_model_string format. Provider or model name is empty."
+            )
 
-        provider_kwargs = {'api_key': provider_api_key}
+        provider_kwargs = {"api_key": provider_api_key}
         if base_url:
-            provider_kwargs['base_url'] = base_url
-        if provider_name in ['cloudflare']:
-            extra = PROVIDER_CONFIGS.get(
-                provider_name, {}).get('extra_params', {})
+            provider_kwargs["base_url"] = base_url
+        if provider_name in ["cloudflare"]:
+            extra = PROVIDER_CONFIGS.get(provider_name, {}).get("extra_params", {})
             provider_kwargs.update(extra)
 
-        provider = ProviderFactory.get_provider(
-            provider_name,
-            **provider_kwargs
-        )
+        provider = ProviderFactory.get_provider(provider_name, **provider_kwargs)
 
         uniinfer_messages = [ChatMessage(**msg) for msg in messages]
 
@@ -688,10 +770,18 @@ async def astream_completion(messages, provider_model_string, temperature=0.7, m
         )
 
         logger.info(
-            f"Requesting async streaming response from {provider_name} ({model_name})")
+            f"Requesting async streaming response from {provider_name} ({model_name})"
+        )
 
         first_chunk = True
-        async for response in provider.astream_complete(request):
+        async for response in provider.astream_complete(
+            request,
+            **(
+                {"think": think}
+                if provider_name == "ollama" and think is not None
+                else {}
+            ),
+        ):
             if first_chunk:
                 update_model_accessed(model_name, provider_name)
                 first_chunk = False
@@ -706,7 +796,9 @@ async def astream_completion(messages, provider_model_string, temperature=0.7, m
         raise UniInferError(f"Unexpected error: {e}")
 
 
-def format_chunk_to_openai(response: ChatCompletionResponse, provider_model_string: str) -> Dict[str, Any]:
+def format_chunk_to_openai(
+    response: ChatCompletionResponse, provider_model_string: str
+) -> Dict[str, Any]:
     """
     Format a uniinfer ChatCompletionResponse chunk into OpenAI-compatible format.
 
@@ -722,7 +814,7 @@ def format_chunk_to_openai(response: ChatCompletionResponse, provider_model_stri
         "object": "chat.completion.chunk",
         "created": int(time.time()),
         "model": provider_model_string,
-        "choices": []
+        "choices": [],
     }
 
     delta = {}
@@ -733,13 +825,13 @@ def format_chunk_to_openai(response: ChatCompletionResponse, provider_model_stri
             delta["tool_calls"] = response.message.tool_calls
         if response.message.role:
             delta["role"] = response.message.role
-    
+
     # Add thinking content if present (for thinking models)
-    if hasattr(response, 'thinking') and response.thinking:
+    if hasattr(response, "thinking") and response.thinking:
         delta["thinking"] = response.thinking
 
     choice_data = {"index": 0, "delta": delta}
-    if hasattr(response, 'finish_reason') and response.finish_reason:
+    if hasattr(response, "finish_reason") and response.finish_reason:
         choice_data["finish_reason"] = response.finish_reason
 
     chunk_data["choices"] = [choice_data]
