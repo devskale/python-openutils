@@ -25,6 +25,7 @@ from .core import (
     probe_thinking_on,
     probe_tool_calling,
     run_capabilities,
+    save_probe_result,
 )
 
 __all__ = [
@@ -48,4 +49,5 @@ __all__ = [
     "probe_thinking_on",
     "probe_tool_calling",
     "run_capabilities",
+    "save_probe_result",
 ]
