@@ -18,7 +18,9 @@ class AnthropicCompatibleProvider(ChatProvider):
     PROVIDER_ID = ""
     ERROR_PROVIDER_NAME = ""
     DEFAULT_MODEL: str | None = None
-    DEFAULT_MAX_TOKENS = 1024
+    # Anthropic REQUIRES max_tokens. Extended-thinking models need ≫ 1–2k
+    # (reasoning consumes the budget before the answer); 8192 is a safe floor.
+    DEFAULT_MAX_TOKENS = 8192
     CREDGOO_SERVICE: str | None = None
 
     def __init__(self, api_key: Optional[str] = None, base_url: Optional[str] = None, **kwargs):
