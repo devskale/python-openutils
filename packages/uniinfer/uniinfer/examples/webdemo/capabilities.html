@@ -91,6 +91,7 @@
     <div class="controls">
       <input id="filter" type="text" placeholder="Search models…" autocomplete="off" />
       <select id="sort">
+        <option value="status" selected>sort: available first</option>
         <option value="provider">sort: provider</option>
         <option value="name">sort: name</option>
         <option value="speed">sort: throughput ↓</option>
@@ -128,7 +129,7 @@
 
   <script>
     const COLS = ["chat", "tool_calling", "image", "thinking_on"];
-    let RAW = {}, state = { provider: null, caps: new Set(), testedOnly: false, sort: "provider", q: "" };
+    let RAW = {}, state = { provider: null, caps: new Set(), testedOnly: false, sort: "status", q: "" };
 
     const st = (e, n) => (e.results || []).find(r => r.name === n);
     const caps = e => (e.profile || {}).capabilities || [];
@@ -168,7 +169,15 @@
         return true;
       });
       const sf = state.sort;
+      const rank = e => {
+        const emp = (e.results || []).filter(r => r.name !== "probe");
+        if (!emp.length) return 3;                              // unprobed (softprobe-only)
+        const errs = emp.filter(r => r.status === "error").length;
+        if (errs === emp.length) return 3;                     // unavailable (all-error / billing)
+        return errs ? 2 : 1;                                   // partial | working
+      };
       rows.sort((a,b) => {
+        if (sf === "status") { const d = rank(a[1]) - rank(b[1]); return d !== 0 ? d : a[0].localeCompare(b[0]); }
         if (sf === "name") return model(a[0]).localeCompare(model(b[0]));
         if (sf === "speed") return (perf(b[1])||0) - (perf(a[1])||0);
         if (sf === "tested") return (b[1].tested_at||"").localeCompare(a[1].tested_at||"");
