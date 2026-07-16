@@ -2,7 +2,7 @@
 Tests for proxy security: auth, rate limiting, embeddings.
 """
 import pytest
-from unittest.mock import patch, MagicMock
+from unittest.mock import AsyncMock, patch, MagicMock
 
 from fastapi.testclient import TestClient
 
@@ -23,14 +23,14 @@ def test_chat_completions_requires_auth(client):
 
 def test_chat_completions_success(client):
     with patch("uniinfer.proxy_routers.chat.verify_provider_access", return_value="fake-key"), \
-         patch("uniinfer.proxy_routers.chat.aget_completion") as mock_aget:
+         patch("uniinfer.proxy_routers.chat.Target") as mock_target_cls:
         mock_response = MagicMock()
         mock_response.message.content = "Hello!"
         mock_response.message.tool_calls = None
         mock_response.thinking = None
         mock_response.finish_reason = "stop"
         mock_response.usage = {"prompt_tokens": 5, "completion_tokens": 2, "total_tokens": 7}
-        mock_aget.return_value = mock_response
+        mock_target_cls.return_value.acomplete = AsyncMock(return_value=mock_response)
 
         response = client.post("/v1/chat/completions", json={
             "model": "openai@gpt-3.5-turbo",

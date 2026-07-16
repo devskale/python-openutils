@@ -255,7 +255,7 @@ def _resolve_credgoo_service(provider: str) -> str:
 
 def _capabilities(args):
     import asyncio
-    from uniinfer.capabilities import Target, run_capabilities, format_report
+    from uniinfer.capabilities import ProbeTarget, run_capabilities, format_report
 
     perf_only = args.perf and not args.capabilities
     probes = (
@@ -292,7 +292,7 @@ def _capabilities(args):
         base_url = (
             PROVIDER_CONFIGS.get(provider, {}).get("extra_params", {}).get("base_url")
         )
-        target = Target(provider_model=pm, api_key=api_key, base_url=base_url)
+        target = ProbeTarget(provider_model=pm, api_key=api_key, base_url=base_url)
         print(f"\nCapability matrix: {pm}{tag}")
         report = await run_capabilities(
             target, probes=probes, perf=args.perf, save=save
@@ -465,9 +465,9 @@ def main():
     parser.add_argument(
         "--no-think",
         action="store_true",
-        help="Disable reasoning/thinking for Qwen3.x / GLM-5.x style models on vLLM "
-        "(sets chat_template_kwargs.enable_thinking=false). Useful for A/B comparing "
-        "thinking vs non-thinking output.",
+        help="Disable reasoning/thinking (sets reasoning_effort=none — the "
+        "cross-provider 'off' intent). Useful for A/B comparing thinking vs "
+        "non-thinking output.",
     )
     parser.add_argument(
         "--chat-template-kwargs",
@@ -1185,8 +1185,12 @@ def main():
         except json.JSONDecodeError as e:
             print(f"Error: invalid JSON for --chat-template-kwargs: {e}")
             return
-    elif args.no_think:
-        chat_template_kwargs = {"enable_thinking": False}
+
+    # --no-think disables reasoning via the standard reasoning_effort intent.
+    # An explicit --chat-template-kwargs (the escape hatch) takes precedence.
+    reasoning_effort = None
+    if args.no_think and not chat_template_kwargs:
+        reasoning_effort = "none"
 
     request = ChatCompletionRequest(
         messages=messages,
@@ -1195,6 +1199,7 @@ def main():
         max_tokens=args.max_tokens,
         tools=tools,
         tool_choice=tool_choice,
+        reasoning_effort=reasoning_effort,
         chat_template_kwargs=chat_template_kwargs,
     )
     # Make the request with timing statistics

@@ -25,3 +25,4 @@ uniinfer/models/models.json
 uniinfer/models/_stale_models.json
 uniinfer/models/_model_history.json
 _rate_limits.json
+uniinfer/models/_probe_results.json

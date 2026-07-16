@@ -6,7 +6,7 @@ import json
 import requests
 from typing import Optional, AsyncIterator
 
-from ..core import ChatProvider, ChatCompletionRequest, ChatCompletionResponse, ChatMessage
+from ..core import ChatProvider, ChatCompletionRequest, ChatCompletionResponse, ChatMessage, REASONING_OFF
 from ..errors import map_provider_error, UniInferError
 
 
@@ -163,12 +163,16 @@ class OllamaProvider(ChatProvider):
         if request.max_tokens is not None:
             payload["options"]["num_predict"] = request.max_tokens
 
+        # Reasoning control: ollama's dialect of reasoning_effort is the native
+        # `think` flag. none/minimal -> off, any other level -> on. Read off the
+        # request so callers never pass a provider-specific `think` kwarg.
+        if request.reasoning_effort is not None:
+            payload["think"] = request.reasoning_effort not in REASONING_OFF
+
         if provider_specific_kwargs:
             for key, value in provider_specific_kwargs.items():
                 if key == "options" and isinstance(value, dict):
                     payload["options"].update(value)
-                elif key == "think":
-                    payload["think"] = value
                 else:
                     payload[key] = value
 
@@ -258,6 +262,12 @@ class OllamaProvider(ChatProvider):
 
         if request.max_tokens is not None:
             payload["options"]["num_predict"] = request.max_tokens
+
+        # Reasoning control: ollama's dialect of reasoning_effort is the native
+        # `think` flag. none/minimal -> off, any other level -> on. Read off the
+        # request so callers never pass a provider-specific `think` kwarg.
+        if request.reasoning_effort is not None:
+            payload["think"] = request.reasoning_effort not in REASONING_OFF
 
         if provider_specific_kwargs:
             for key, value in provider_specific_kwargs.items():

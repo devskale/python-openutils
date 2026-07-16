@@ -10,7 +10,7 @@ import logging
 import os
 from datetime import datetime
 
-from ..core import ChatProvider, ChatCompletionRequest, ChatCompletionResponse, ChatMessage
+from ..core import ChatProvider, ChatCompletionRequest, ChatCompletionResponse, ChatMessage, REASONING_OFF
 
 from ..errors import map_provider_error, UniInferError
 from ..logging_utils import log_raw_response
@@ -317,19 +317,17 @@ class TUProvider(ChatProvider):
         if request.reasoning_effort and self.supports_reasoning_effort:
             payload["reasoning_effort"] = request.reasoning_effort
 
-        # Qwen3 thinking control (TU API supports these params)
-        if hasattr(request, 'enable_thinking') and request.enable_thinking is not None:
-            payload["enable_thinking"] = request.enable_thinking
-        if hasattr(request, 'thinking_budget') and request.thinking_budget is not None:
-            payload["thinking_budget"] = request.thinking_budget
-
-        # chat_template_kwargs — the RELIABLE way to control thinking for
-        # Qwen3.x / GLM-5.x on vLLM. The top-level `enable_thinking` above is
-        # silently ignored by these backends (vLLM #35574); this field is
-        # actually honored. e.g. {"enable_thinking": False} fully disables
-        # reasoning (0 reasoning_content tokens, ~35x faster for Qwen3.6-35b).
-        if hasattr(request, 'chat_template_kwargs') and request.chat_template_kwargs:
-            payload["chat_template_kwargs"] = request.chat_template_kwargs
+        # chat_template_kwargs — generic vLLM passthrough and the RELIABLE
+        # thinking knob (top-level enable_thinking is silently ignored by
+        # Qwen3.x / GLM-5.x; vLLM #35574). Forwarded verbatim: the escape hatch.
+        ctk = dict(request.chat_template_kwargs or {})
+        # reasoning_effort none/minimal disables reasoning (the cross-provider
+        # contract). Inject the default unless the caller already expressed
+        # intent via the escape hatch (explicit chat_template_kwargs wins).
+        if request.reasoning_effort in REASONING_OFF and "enable_thinking" not in ctk:
+            ctk["enable_thinking"] = False
+        if ctk:
+            payload["chat_template_kwargs"] = ctk
 
         return payload
 
