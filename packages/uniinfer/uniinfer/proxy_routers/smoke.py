@@ -24,7 +24,10 @@ logger = logging.getLogger("uniioai_proxy")
 DEFAULT_PROVIDERS = "tu"
 # Reasonable budget for reasoning models — thinking can consume many tokens
 # before the visible answer, so don't starve it.
-DEFAULT_MAX_TOKENS = 512
+# Thinking models (Qwen3.x / GLM-5.x / Claude extended thinking) need
+# max_tokens ≫ 1–2k: reasoning consumes the budget before the visible answer.
+# A too-low cap makes them look broken (empty / truncated output).
+DEFAULT_MAX_TOKENS = 4096
 DEFAULT_PER_PROVIDER = 3
 DEFAULT_PROMPT = "Say hello."
 # Per-model smoke timeout (seconds). Reasoning models can take a while.
@@ -50,7 +53,7 @@ def create_smoke_router() -> APIRouter:
             DEFAULT_MAX_TOKENS,
             ge=16,
             le=8192,
-            description="max_tokens for each smoke. Keep generous for thinking models.",
+            description="max_tokens for each smoke. Must be ≫1–2k for thinking models.",
         ),
         prompt: str = Query(DEFAULT_PROMPT, description="Prompt to send."),
         api_bearer_token: str | None = Depends(get_optional_proxy_token),
