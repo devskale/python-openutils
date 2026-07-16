@@ -141,9 +141,11 @@
     const ev = (e, name) => { const r = st(e, name); return r ? `${r.status} — ${r.evidence || ""}` : "not run"; };
     const perf = e => {
       const r = (e.results || []).find(x => x.name === "perf_maxspeed");
-      const sweep = r && r.detail && r.detail.sweep;
-      if (!sweep) return null;
-      return Math.max(...sweep.map(s => s.tok_min).filter(v => v != null), 0);
+      if (!r) return null;
+      const sweep = r.detail && r.detail.sweep;
+      if (sweep) return Math.max(...sweep.map(s => s.tok_min).filter(v => v != null), 0);
+      const m = (r.evidence || "").match(/max≈(\d+)/);
+      return m ? +m[1] : null;
     };
     const esc = s => (s||"").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;"}[c]));
     const cell = (e, name) => {
