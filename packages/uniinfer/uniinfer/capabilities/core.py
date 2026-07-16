@@ -18,6 +18,7 @@ from __future__ import annotations
 import asyncio
 import base64
 import json
+import re
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -152,9 +153,7 @@ async def probe_profile(t: Target) -> ProbeResult:
             detail={"profile": profile},
         )
     except Exception as e:  # noqa: BLE001
-        return ProbeResult(
-            "probe", "error", f"{type(e).__name__}: {e}"[:200], latency_ms=_ms(started)
-        )
+        return ProbeResult("probe", "error", _short_error(e), latency_ms=_ms(started))
 
 
 async def _ollama_show_profile(t: Target) -> dict[str, Any]:
@@ -332,9 +331,7 @@ async def probe_chat(t: Target) -> ProbeResult:
             "chat", status, evidence=_preview(content), latency_ms=_ms(started)
         )
     except Exception as e:  # noqa: BLE001
-        return ProbeResult(
-            "chat", "error", f"{type(e).__name__}: {e}"[:200], latency_ms=_ms(started)
-        )
+        return ProbeResult("chat", "error", _short_error(e), latency_ms=_ms(started))
 
 
 # --------------------------------------------------------------------------- #
@@ -398,7 +395,7 @@ async def probe_tool_calling(t: Target) -> ProbeResult:
         return ProbeResult(
             "tool_calling",
             "error",
-            f"{type(e).__name__}: {msg}"[:200],
+            _short_error(e),
             latency_ms=_ms(started),
         )
 
@@ -439,9 +436,7 @@ async def probe_image(t: Target) -> ProbeResult:
             "image", status, evidence=_preview(content), latency_ms=_ms(started)
         )
     except Exception as e:  # noqa: BLE001
-        return ProbeResult(
-            "image", "error", f"{type(e).__name__}: {e}"[:200], latency_ms=_ms(started)
-        )
+        return ProbeResult("image", "error", _short_error(e), latency_ms=_ms(started))
 
 
 # --------------------------------------------------------------------------- #
@@ -506,9 +501,7 @@ async def _thinking(t: Target, on: bool) -> ProbeResult:
                 evidence="model does not support thinking (400)",
                 latency_ms=_ms(started),
             )
-        return ProbeResult(
-            label, "error", f"{type(e).__name__}: {msg}"[:200], latency_ms=_ms(started)
-        )
+        return ProbeResult(label, "error", _short_error(e), latency_ms=_ms(started))
 
 
 # --------------------------------------------------------------------------- #
@@ -594,7 +587,7 @@ async def perf_context(t: Target) -> ProbeResult:
         return ProbeResult(
             "perf_context",
             "error",
-            f"{type(e).__name__}: {e}"[:200],
+            _short_error(e),
             latency_ms=_ms(started),
         )
 
@@ -641,7 +634,7 @@ async def perf_ratelimit(t: Target) -> ProbeResult:
         return ProbeResult(
             "perf_ratelimit",
             "error",
-            f"{type(e).__name__}: {e}"[:200],
+            _short_error(e),
             latency_ms=_ms(started),
         )
 
@@ -734,9 +727,7 @@ async def _safe(fn: Callable[[Target], Any], t: Target) -> ProbeResult:
     try:
         return await fn(t)
     except Exception as e:  # noqa: BLE001
-        return ProbeResult(
-            getattr(fn, "__name__", "probe"), "error", f"{type(e).__name__}: {e}"[:200]
-        )
+        return ProbeResult(getattr(fn, "__name__", "probe"), "error", _short_error(e))
 
 
 # --------------------------------------------------------------------------- #
@@ -761,6 +752,16 @@ def format_report(report: CapabilityReport) -> str:
 # --------------------------------------------------------------------------- #
 # tiny helpers
 # --------------------------------------------------------------------------- #
+def _short_error(e: BaseException) -> str:
+    """Concise error string: pull the provider's human message out of an
+    embedded JSON blob (rate-limit / billing errors), else type + str."""
+    msg = str(e)
+    m = re.search(r"['\"]?message['\"]?\s*:\s*['\"]([^'\"]+)['\"]", msg)
+    if m:
+        return f"{type(e).__name__}: {m.group(1)[:160]}"
+    return f"{type(e).__name__}: {msg[:160]}"
+
+
 def _ms(started: float) -> float:
     return round((time.monotonic() - started) * 1000)
 
