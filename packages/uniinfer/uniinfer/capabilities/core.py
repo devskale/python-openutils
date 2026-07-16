@@ -178,20 +178,34 @@ async def _ollama_show_profile(t: Target) -> dict[str, Any]:
 
 
 async def _catalog_profile(t: Target) -> dict[str, Any]:
-    """Best-effort declared profile from the cached catalog (non-ollama)."""
+    """Best-effort declared profile from the cached catalog (non-ollama).
+
+    Normalises the catalog's capability dict + modalities into the same
+    vocabulary Ollama's ``/api/show`` uses (``completion|tools|thinking|vision``)
+    so downstream skip-logic is uniform across providers.
+    """
     try:
         from uniinfer.proxy_services.models_registry import load_catalog
 
-        catalog = load_catalog([t.provider_name])
+        catalog = load_catalog(t.provider_name)  # NOTE: takes a string, not a list
         for m in (
             catalog.get("providers", {}).get(t.provider_name, {}).get("models", [])
         ):
             if m.get("id") == t.model_name:
+                caps = m.get("capabilities") or {}
+                inputs = (m.get("modalities") or {}).get("input") or []
+                declared = ["completion"]
+                if caps.get("tool_call") or caps.get("function_calling"):
+                    declared.append("tools")
+                if caps.get("reasoning"):
+                    declared.append("thinking")
+                if "image" in inputs:
+                    declared.append("vision")
                 return {
-                    "capabilities": [],
-                    "input": m.get("input"),
-                    "reasoning": m.get("reasoning"),
+                    "capabilities": declared,
                     "context_length": m.get("context_window"),
+                    "max_output": m.get("max_output"),
+                    "modalities": m.get("modalities"),
                 }
     except Exception:  # noqa: BLE001
         pass
@@ -446,8 +460,18 @@ async def _thinking(t: Target, on: bool) -> ProbeResult:
         )
         produced = bool(thinking) or "<think>" in content
         if on:
-            status = "pass" if produced else "fail"
-            evidence = f"reasoning_chars={len(thinking)}"
+            if produced:
+                status = "pass"
+                evidence = f"reasoning_chars={len(thinking)}"
+            elif caps:
+                # No separate reasoning channel captured, but the model declares
+                # reasoning — many OpenAI-compatible backends (groq/mistral/
+                # openrouter) reason in-content with no reasoning_content field.
+                status = "pass"
+                evidence = "declared reasoning; no separate channel (in-content)"
+            else:
+                status = "fail"
+                evidence = "no reasoning produced"
         else:
             # off: pass if the call succeeded; report whether any leaked through
             status = "pass"
