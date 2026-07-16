@@ -669,6 +669,169 @@ async def _measure_throughput(t: Target, context_tokens: int) -> Optional[float]
 
 
 # --------------------------------------------------------------------------- #
+# Probe: token speed — normal / large-context sweep / cached (cold vs warm)
+# --------------------------------------------------------------------------- #
+def _filler_messages(context_tokens: int, question: str) -> list[dict]:
+    """A prompt of ~context_tokens of filler followed by a short question."""
+    unit = "lorem ipsum dolor sit amet consectetur adipiscing elit sed do eiusmod "
+    filler = unit * max(1, context_tokens // 10)
+    filler = filler[: context_tokens * 5]
+    return [{"role": "user", "content": f"{filler}\n\n{question}"}]
+
+
+async def _stream_timed(t: Target, messages: list[dict], max_tokens: int) -> dict:
+    """Stream a completion and time it: TTFT (first token) + decode window.
+
+    Decode tok/s uses the decode window (end − first token), isolating
+    generation speed from prefill/latency — avoids the short-output artifact.
+    Output tokens are estimated from word count (rough proxy).
+    """
+    from uniinfer.uniioai import astream_completion
+
+    t0 = time.monotonic()
+    first: float | None = None
+    parts: list[str] = []
+    if t.provider_name == "ollama":
+        provider = ProviderFactory.get_provider(
+            "ollama", api_key=t.api_key, base_url=t.base_url
+        )
+        req = ChatCompletionRequest(
+            messages=[ChatMessage(**m) for m in messages],
+            model=t.model_name,
+            temperature=0.0,
+            max_tokens=max_tokens,
+            streaming=True,
+        )
+        async for chunk in provider.astream_complete(req, think=False):
+            c = getattr(chunk.message, "content", "") or ""
+            if c:
+                if first is None:
+                    first = time.monotonic()
+                parts.append(c)
+    else:
+        async for chunk in astream_completion(
+            messages=messages,
+            provider_model_string=t.provider_model,
+            temperature=0.0,
+            max_tokens=max_tokens,
+            provider_api_key=t.api_key,
+            base_url=t.base_url,
+            chat_template_kwargs={"enable_thinking": False},
+        ):
+            try:
+                c = chunk["choices"][0]["delta"].get("content") or ""
+            except Exception:  # noqa: BLE001
+                c = ""
+            if c:
+                if first is None:
+                    first = time.monotonic()
+                parts.append(c)
+    end = time.monotonic()
+    text = "".join(parts)
+    ttft = (first - t0) if first is not None else None
+    window = (end - first) if first is not None else (end - t0)
+    out_est = max(1, len(text.split()))
+    decode = (out_est / window) if window > 0 else None
+    return {
+        "ttft_s": round(ttft, 3) if ttft is not None else None,
+        "decode_tok_s": round(decode, 1) if decode else None,
+        "out_tokens_est": out_est,
+        "wall_s": round(end - t0, 3),
+    }
+
+
+async def _cached_pair(t: Target, context_tokens: int) -> dict:
+    """Send an identical large prompt twice: cold (prefill) vs warm (cached)."""
+    msgs = _filler_messages(
+        context_tokens, "In one short sentence, what is the above text about?"
+    )
+    cold = await _stream_timed(t, msgs, 48)
+    warm = await _stream_timed(t, msgs, 48)  # byte-identical -> prefix-cache eligible
+    ct, wt = cold.get("ttft_s"), warm.get("ttft_s")
+    speedup = round(ct / wt, 2) if (ct and wt and wt > 0) else None
+    return {
+        "cold_ttft_s": ct,
+        "warm_ttft_s": wt,
+        "speedup": speedup,
+        "caching": "active" if (speedup and speedup >= 1.5) else "none/low",
+    }
+
+
+async def perf_tokenspeed(t: Target) -> ProbeResult:
+    """Token speed across three regimes: normal, large-context sweep, cached.
+
+    Streaming-based: TTFT (prefill+queue) and decode tok/s (generation, isolated
+    from latency). Cached = identical large prompt twice -> cold vs warm TTFT.
+    """
+    started = time.monotonic()
+    try:
+        declared = (getattr(t, "profile", {}).get("context_length") or 0) or None
+        normal = await asyncio.wait_for(
+            _stream_timed(
+                t,
+                [
+                    {
+                        "role": "user",
+                        "content": "List 40 creative uses for a brick, one per line.",
+                    }
+                ],
+                120,
+            ),
+            t.timeout,
+        )
+        sizes = [s for s in (1024, 8192) if not (declared and s > declared)]
+        sweep: list[dict] = []
+        for s in sizes:
+            try:
+                sweep.append(
+                    {
+                        "ctx": s,
+                        **await asyncio.wait_for(
+                            _stream_timed(
+                                t,
+                                _filler_messages(
+                                    s, "In one sentence, summarize the text above."
+                                ),
+                                64,
+                            ),
+                            t.timeout,
+                        ),
+                    }
+                )
+            except Exception as e:  # noqa: BLE001
+                sweep.append({"ctx": s, "error": type(e).__name__})
+        cache_ctx = (
+            4096 if (not declared or 4096 <= declared) else max(512, declared // 2)
+        )
+        try:
+            cached = await asyncio.wait_for(_cached_pair(t, cache_ctx), t.timeout)
+        except Exception as e:  # noqa: BLE001
+            cached = {"error": type(e).__name__}
+        parts = [f"normal TTFT {normal['ttft_s']}s · {normal['decode_tok_s']} tok/s"]
+        if sweep:
+            parts.append(
+                "large "
+                + ", ".join(f"{x['ctx']}t:{x.get('ttft_s', '?')}s" for x in sweep)
+            )
+        sp = cached.get("speedup")
+        parts.append(
+            f"cached {cached.get('cold_ttft_s', '?')}→{cached.get('warm_ttft_s', '?')}s"
+            + (f" ({sp}×)" if sp else "")
+        )
+        return ProbeResult(
+            "perf_tokenspeed",
+            "pass",
+            evidence=" | ".join(parts),
+            latency_ms=_ms(started),
+            detail={"normal": normal, "large_context": sweep, "cached": cached},
+        )
+    except Exception as e:  # noqa: BLE001
+        return ProbeResult(
+            "perf_tokenspeed", "error", _short_error(e), latency_ms=_ms(started)
+        )
+
+
+# --------------------------------------------------------------------------- #
 # Registry + runner
 # --------------------------------------------------------------------------- #
 PROBES: dict[str, Callable[[Target], "Any"]] = {
@@ -681,6 +844,7 @@ PROBES: dict[str, Callable[[Target], "Any"]] = {
 }
 
 PERF_PROBES: dict[str, Callable[[Target], "Any"]] = {
+    "tokenspeed": perf_tokenspeed,
     "maxspeed": perf_maxspeed,
     "context": perf_context,
     "ratelimit": perf_ratelimit,
@@ -705,7 +869,12 @@ def save_probe_result(report: CapabilityReport) -> None:
     entry = {
         "profile": report.profile,
         "results": [
-            {"name": r.name, "status": r.status, "evidence": r.evidence, "detail": r.detail}
+            {
+                "name": r.name,
+                "status": r.status,
+                "evidence": r.evidence,
+                "detail": r.detail,
+            }
             for r in report.results
         ],
         "summary": report.summary,
@@ -759,7 +928,7 @@ async def run_capabilities(
     If ``save``, persist the result to ``_probe_results.json`` and the matching
     models.json ``probed`` field.
     """
-    selected = probes or DEFAULT_PROBES
+    selected = DEFAULT_PROBES if probes is None else probes
     results: list[ProbeResult] = []
     profile: dict[str, Any] = {}
 

@@ -6,7 +6,7 @@ from uniinfer import (
     ChatCompletionRequest,
     ProviderFactory,
     EmbeddingRequest,
-    EmbeddingProviderFactory
+    EmbeddingProviderFactory,
 )
 from credgoo import get_api_key
 import argparse
@@ -16,15 +16,16 @@ import time
 import base64
 import requests
 from pathlib import Path
+
 # Cloudflare API Details
 from dotenv import load_dotenv
 import os
+
 # load_dotenv(verbose=True, override=True)
 # Load environment variables from .env file
-dotenv_path = os.path.join(os.getcwd(), '.env')  # Explicitly check current dir
+dotenv_path = os.path.join(os.getcwd(), ".env")  # Explicitly check current dir
 # Add verbose=True and override=True
-found_dotenv = load_dotenv(dotenv_path=dotenv_path,
-                           verbose=True, override=True)
+found_dotenv = load_dotenv(dotenv_path=dotenv_path, verbose=True, override=True)
 
 # print(f"DEBUG: Attempted to load .env from: {dotenv_path}")  # Debug print
 # print(f"DEBUG: .env file found and loaded: {found_dotenv}")  # Debug print
@@ -46,7 +47,9 @@ SPEED_QUESTIONS = [
 SPEED_RESULTS_PATH = Path(__file__).parent / "models" / "_speed_results.json"
 
 
-def _run_speedtest(provider_name, model, prompt, api_key, extra_params, max_tokens=4096):
+def _run_speedtest(
+    provider_name, model, prompt, api_key, extra_params, max_tokens=4096
+):
     from uniinfer import ChatMessage, ChatCompletionRequest
 
     kwargs = {k: v for k, v in extra_params.items() if k in ("base_url", "account_id")}
@@ -62,7 +65,9 @@ def _run_speedtest(provider_name, model, prompt, api_key, extra_params, max_toke
         return {"error": f"provider init: {e}"}
 
     messages = [ChatMessage(role="user", content=prompt)]
-    request = ChatCompletionRequest(messages=messages, model=model, streaming=True, max_tokens=max_tokens)
+    request = ChatCompletionRequest(
+        messages=messages, model=model, streaming=True, max_tokens=max_tokens
+    )
 
     start = time.time()
     first_token_time = None
@@ -94,10 +99,15 @@ def _run_speedtest(provider_name, model, prompt, api_key, extra_params, max_toke
     tft = (first_token_time - start) if first_token_time else 0.0
     tft_think = (first_thinking_time - start) if first_thinking_time else None
 
-    has_usage = last_usage and (last_usage.get("total_tokens") or last_usage.get("completion_tokens"))
+    has_usage = last_usage and (
+        last_usage.get("total_tokens") or last_usage.get("completion_tokens")
+    )
     if has_usage:
         total_tokens = last_usage.get("total_tokens", 0) or 0
-        thinking_tokens = last_usage.get("completion_tokens_details", {}).get("reasoning_tokens", 0) or 0
+        thinking_tokens = (
+            last_usage.get("completion_tokens_details", {}).get("reasoning_tokens", 0)
+            or 0
+        )
         text_tokens = (last_usage.get("completion_tokens", 0) or 0) - thinking_tokens
         if total_tokens == 0:
             total_tokens = thinking_tokens + text_tokens
@@ -135,7 +145,8 @@ def _speedtest(args):
         api_key = get_api_key(
             service=credgoo_service,
             encryption_key=args.encryption_key,
-            bearer_token=args.bearer_token)
+            bearer_token=args.bearer_token,
+        )
     except Exception as e:
         print(f"Error: no API key for '{provider}': {e}")
         return
@@ -151,7 +162,14 @@ def _speedtest(args):
         run_results = []
         for run in range(1, runs + 1):
             prompt = random.choice(SPEED_QUESTIONS)
-            r = _run_speedtest(provider, model, prompt, api_key, extra_params, max_tokens=args.max_tokens)
+            r = _run_speedtest(
+                provider,
+                model,
+                prompt,
+                api_key,
+                extra_params,
+                max_tokens=args.max_tokens,
+            )
             if "error" in r:
                 print(f"  run {run}: ERROR - {r['error']}")
                 run_results.append(None)
@@ -173,13 +191,27 @@ def _speedtest(args):
         ok = [r for r in run_results if r]
         if ok:
             avg = {}
-            for key in ("tft", "tok_per_sec", "thinking_tokens", "text_tokens", "total_tokens", "wall_time"):
+            for key in (
+                "tft",
+                "tok_per_sec",
+                "thinking_tokens",
+                "text_tokens",
+                "total_tokens",
+                "wall_time",
+            ):
                 vals = [r[key] for r in ok if r.get(key) is not None]
                 if vals:
-                    avg[key] = round(sum(vals) / len(vals), 3 if key == "tft" else 1 if key == "tok_per_sec" else 0)
-            tft_think_vals = [r["tft_thinking"] for r in ok if r.get("tft_thinking") is not None]
+                    avg[key] = round(
+                        sum(vals) / len(vals),
+                        3 if key == "tft" else 1 if key == "tok_per_sec" else 0,
+                    )
+            tft_think_vals = [
+                r["tft_thinking"] for r in ok if r.get("tft_thinking") is not None
+            ]
             if tft_think_vals:
-                avg["tft_thinking"] = round(sum(tft_think_vals) / len(tft_think_vals), 3)
+                avg["tft_thinking"] = round(
+                    sum(tft_think_vals) / len(tft_think_vals), 3
+                )
             avg["runs"] = len(ok)
             avg["finish_reason"] = ok[-1]["finish_reason"]
             avg["tested_at"] = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
@@ -212,7 +244,9 @@ def _speedtest(args):
         SPEED_RESULTS_PATH.parent.mkdir(parents=True, exist_ok=True)
         with open(SPEED_RESULTS_PATH, "w") as f:
             json.dump(existing, f, indent=2, ensure_ascii=False)
-        print(f"Saved speed results for {len(all_results)} model(s) to {SPEED_RESULTS_PATH}")
+        print(
+            f"Saved speed results for {len(all_results)} model(s) to {SPEED_RESULTS_PATH}"
+        )
 
 
 def _resolve_credgoo_service(provider: str) -> str:
@@ -223,9 +257,14 @@ def _capabilities(args):
     import asyncio
     from uniinfer.capabilities import Target, run_capabilities, format_report
 
-    probes = [p.strip() for p in args.probes.split(",")] if args.probes else None
+    perf_only = args.perf and not args.capabilities
+    probes = (
+        []
+        if perf_only
+        else ([p.strip() for p in args.probes.split(",")] if args.probes else None)
+    )
     save = not args.no_save
-    tag = " +perf" if args.perf else ""
+    tag = " (perf only)" if perf_only else (" +perf" if args.perf else "")
 
     # Targets: either explicit 'provider@model' strings (--models) or a single -p/-m.
     if args.models:
@@ -245,14 +284,19 @@ def _capabilities(args):
             api_key = get_api_key(
                 service=credgoo_service,
                 encryption_key=args.encryption_key,
-                bearer_token=args.bearer_token)
+                bearer_token=args.bearer_token,
+            )
         except Exception as e:
             print(f"\nError: no API key for '{provider}': {e}")
             return
-        base_url = PROVIDER_CONFIGS.get(provider, {}).get("extra_params", {}).get("base_url")
+        base_url = (
+            PROVIDER_CONFIGS.get(provider, {}).get("extra_params", {}).get("base_url")
+        )
         target = Target(provider_model=pm, api_key=api_key, base_url=base_url)
         print(f"\nCapability matrix: {pm}{tag}")
-        report = await run_capabilities(target, probes=probes, perf=args.perf, save=save)
+        report = await run_capabilities(
+            target, probes=probes, perf=args.perf, save=save
+        )
         print()
         print(format_report(report))
 
@@ -263,110 +307,343 @@ def _capabilities(args):
     asyncio.run(run_all())
 
 
+def _softprobe(args):
+    """Probe (metadata ONLY) every catalog model. **Zero inference tokens.**
+
+    Runs solely the ``probe`` step: a catalog read (local JSON) for most
+    providers, or Ollama ``/api/show`` (model metadata, no generation). It NEVER
+    calls chat / tools / image / thinking / perf — those spend tokens and are
+    reserved for explicit ``--capabilities`` / ``--perf``. Skips entries fresher
+    than ``--stale-days`` so reprobes stagger. Persists to ``_probe_results.json``
+    AND updates each model's ``probed`` field in ``models.json``.
+    """
+    import asyncio
+    import json
+    from datetime import datetime, timezone, timedelta
+    from pathlib import Path
+
+    from uniinfer.proxy_services.models_registry import load_catalog
+    from uniinfer.capabilities import (
+        Target,
+        probe_profile,
+        save_probe_result,
+        CapabilityReport,
+    )
+
+    probe_path = Path(__file__).parent / "models" / "_probe_results.json"
+    existing = {}
+    if probe_path.exists():
+        try:
+            existing = json.loads(probe_path.read_text())
+        except Exception:
+            existing = {}
+
+    cutoff = (
+        datetime.now(timezone.utc) - timedelta(days=args.stale_days)
+        if (args.stale_days and not args.force)
+        else None
+    )
+    want = args.provider if (args.provider and args.provider != "stepfun") else None
+    catalog = load_catalog(want) if want else load_catalog()
+    provs = catalog.get("providers", {})
+
+    # Ollama is the only provider whose probe (/api/show) needs a key + url —
+    # and even that spends 0 generation tokens.
+    ollama_key = ollama_url = None
+    if "ollama" in provs:
+        try:
+            ollama_key = get_api_key(
+                service="ollama",
+                encryption_key=args.encryption_key,
+                bearer_token=args.bearer_token,
+            )
+        except Exception:
+            ollama_key = None
+        ollama_url = (
+            PROVIDER_CONFIGS.get("ollama", {}).get("extra_params", {}).get("base_url")
+        )
+
+    async def go():
+        probed = skipped = errors = 0
+        for pname, pdata in provs.items():
+            models = pdata.get("models", [])
+            print(f"\n{pname} ({len(models)})")
+            for m in models:
+                mid = m.get("id")
+                if not mid:
+                    continue
+                pm = f"{pname}@{mid}"
+                pkey = f"{pname}/{mid}"
+                if cutoff:
+                    ent = existing.get(pkey)
+                    tat = ent.get("tested_at") if ent else None
+                    if tat:
+                        try:
+                            if (
+                                datetime.fromisoformat(tat.replace("Z", "+00:00"))
+                                >= cutoff
+                            ):
+                                skipped += 1
+                                continue
+                        except Exception:
+                            pass
+                tgt = Target(
+                    provider_model=pm,
+                    api_key=ollama_key if pname == "ollama" else None,
+                    base_url=ollama_url if pname == "ollama" else None,
+                )
+                try:
+                    r = await probe_profile(tgt)  # metadata only — 0 tokens
+                    save_probe_result(
+                        CapabilityReport(
+                            target=pm,
+                            profile=r.detail.get("profile", {}) or {},
+                            results=[r],
+                        )
+                    )
+                    probed += 1
+                    caps = (
+                        ",".join(
+                            (r.detail.get("profile", {}) or {}).get("capabilities", [])
+                        )
+                        or "?"
+                    )
+                    print(f"  + {pm}  [{caps}]")
+                except Exception as e:
+                    errors += 1
+                    print(f"  x {pm}  {type(e).__name__}")
+            print(
+                f"  running: {probed} probed, {skipped} fresh-skipped, {errors} errors"
+            )
+        return probed, skipped, errors
+
+    probed, skipped, errors = asyncio.run(go())
+    print(
+        f"\nSoftprobe complete: {probed} probed, {skipped} fresh-skipped, {errors} errors. (0 inference tokens spent)"
+    )
+
+
 def main():
     # Initialize argument parser
-    parser = argparse.ArgumentParser(description='UniInfer example script')
-    parser.add_argument('-l', '--list-providers', '--list', '--list-provides', action='store_true',
-                        help='List available providers')
-    parser.add_argument('--list-models', action='store_true',
-                        help='List available models for the specified provider or all providers when combined with --list-providers')
-    parser.add_argument('--embed', action='store_true',
-                        help='Use embedding instead of chat completion')
-    parser.add_argument('--embed-text', type=str, action='append',
-                        help='Text to embed (can be used multiple times)')
-    parser.add_argument('--embed-file', type=str,
-                        help='File containing text to embed (one text per line)')
-    parser.add_argument('--generate-image', action='store_true',
-                        help='Generate an image instead of chat completion')
-    parser.add_argument('--prompt', type=str,
-                        help='Prompt for image generation')
-    parser.add_argument('--size', type=str, default='512x512',
-                        help='Image size (e.g., 512x512, 1024x1024)')
-    parser.add_argument('--output', type=str,
-                        help='Output file path for generated image/audio')
-    parser.add_argument('--seed', type=int,
-                        help='Random seed for image generation')
-    parser.add_argument('--tts', action='store_true',
-                        help='Generate speech from text (text-to-speech)')
-    parser.add_argument('--tts-text', type=str,
-                        help='Text to convert to speech')
-    parser.add_argument('--voice', type=str,
-                        help='Voice to use for TTS (e.g., af_alloy)')
-    parser.add_argument('--speed', type=float, default=1.0,
-                        help='Speed of generated speech (0.25 to 4.0, default: 1.0)')
-    parser.add_argument('--instructions', type=str,
-                        help='Additional instructions for TTS model')
-    parser.add_argument('--stt', action='store_true',
-                        help='Transcribe audio to text (speech-to-text)')
-    parser.add_argument('--audio-file', type=str,
-                        help='Audio file to transcribe')
-    parser.add_argument('--language', type=str,
-                        help='Language of the audio (ISO-639-1 format, e.g., en, de)')
-    parser.add_argument('-p', '--provider', type=str, default='stepfun',
-                        help='Specify which provider to use')
-    parser.add_argument('-q', '--query', type=str,
-                        help='Specify the query to send to the provider')
-    parser.add_argument('-m', '--model', type=str,
-                        help='Specify which model to use')
-    parser.add_argument('-f', '--file', type=str,
-                        help='Specify a file to use as context')
-    parser.add_argument('-t', '--tokens', type=int, default=4000,
-                        help='Specify token limit for file context (default: 4000)')
-    parser.add_argument('--max-tokens', type=int,
-                        help='Maximum number of tokens to generate')
-    parser.add_argument('--tools-file', type=str,
-                        help='Path to a JSON file containing tool definitions (object or array)')
-    parser.add_argument('--tool-choice', type=str,
-                        help='Tool choice preference (e.g., "auto", "none", or JSON object)')
-    parser.add_argument('--no-think', action='store_true',
-                        help='Disable reasoning/thinking for Qwen3.x / GLM-5.x style models on vLLM '
-                             '(sets chat_template_kwargs.enable_thinking=false). Useful for A/B comparing '
-                             'thinking vs non-thinking output.')
-    parser.add_argument('--chat-template-kwargs', type=str, metavar='JSON',
-                        help='JSON object forwarded to the serving backend chat template, e.g. '
-                             '\'"{\\"enable_thinking\\": false}"\'. Overrides --no-think.')
-    parser.add_argument('--encryption-key', type=str,
-                        help='Specify the CREDGOO encryption key')
-    parser.add_argument('--bearer-token', type=str,
-                        help='Specify the CREDGOO bearer token')
-    parser.add_argument('--image', type=str,
-                        help='Image file path or URL for multimodal models')
-    parser.add_argument('--version', action='version',
-                        version='%(prog)s ' + version('uniinfer'),
-                        help="Show program's version number and exit")
-    parser.add_argument('--new-models', type=int, nargs='?', const=7, metavar='DAYS',
-                        help='List models first seen in the last N days (default: 7)')
-    parser.add_argument('--deprecated-models', action='store_true',
-                        help='List deprecated models and their deprecation info')
-    parser.add_argument('--speedtest', action='store_true',
-                        help='Run smoke speed test on model(s)')
-    parser.add_argument('--models', type=str, nargs='+',
-                        help='Multiple provider@model targets to test (use with --speedtest or --capabilities, e.g. --capabilities --models groq@a tu@b ollama@c)')
-    parser.add_argument('--runs', type=int, default=1,
-                        help='Number of runs per model for speed test (default: 1)')
-    parser.add_argument('--capabilities', action='store_true',
-                        help='Run the capability matrix (probe/chat/tool-calling/image/thinking on+off) against provider@model.')
-    parser.add_argument('--perf', action='store_true',
-                        help='With --capabilities: also run perf probes (maxspeed across contexts, context ceiling, rate-limit).')
-    parser.add_argument('--probes', type=str, metavar='CSV',
-                        help='With --capabilities: comma-separated subset, e.g. probe,chat,tool_calling,image,thinking_on,thinking_off.')
-    parser.add_argument('--no-save', action='store_true',
-                        help='With --capabilities: do not persist the result to _probe_results.json / models.json (saved by default).')
+    parser = argparse.ArgumentParser(description="UniInfer example script")
+    parser.add_argument(
+        "-l",
+        "--list-providers",
+        "--list",
+        "--list-provides",
+        action="store_true",
+        help="List available providers",
+    )
+    parser.add_argument(
+        "--list-models",
+        action="store_true",
+        help="List available models for the specified provider or all providers when combined with --list-providers",
+    )
+    parser.add_argument(
+        "--embed", action="store_true", help="Use embedding instead of chat completion"
+    )
+    parser.add_argument(
+        "--embed-text",
+        type=str,
+        action="append",
+        help="Text to embed (can be used multiple times)",
+    )
+    parser.add_argument(
+        "--embed-file",
+        type=str,
+        help="File containing text to embed (one text per line)",
+    )
+    parser.add_argument(
+        "--generate-image",
+        action="store_true",
+        help="Generate an image instead of chat completion",
+    )
+    parser.add_argument("--prompt", type=str, help="Prompt for image generation")
+    parser.add_argument(
+        "--size",
+        type=str,
+        default="512x512",
+        help="Image size (e.g., 512x512, 1024x1024)",
+    )
+    parser.add_argument(
+        "--output", type=str, help="Output file path for generated image/audio"
+    )
+    parser.add_argument("--seed", type=int, help="Random seed for image generation")
+    parser.add_argument(
+        "--tts", action="store_true", help="Generate speech from text (text-to-speech)"
+    )
+    parser.add_argument("--tts-text", type=str, help="Text to convert to speech")
+    parser.add_argument(
+        "--voice", type=str, help="Voice to use for TTS (e.g., af_alloy)"
+    )
+    parser.add_argument(
+        "--speed",
+        type=float,
+        default=1.0,
+        help="Speed of generated speech (0.25 to 4.0, default: 1.0)",
+    )
+    parser.add_argument(
+        "--instructions", type=str, help="Additional instructions for TTS model"
+    )
+    parser.add_argument(
+        "--stt", action="store_true", help="Transcribe audio to text (speech-to-text)"
+    )
+    parser.add_argument("--audio-file", type=str, help="Audio file to transcribe")
+    parser.add_argument(
+        "--language",
+        type=str,
+        help="Language of the audio (ISO-639-1 format, e.g., en, de)",
+    )
+    parser.add_argument(
+        "-p",
+        "--provider",
+        type=str,
+        default="stepfun",
+        help="Specify which provider to use",
+    )
+    parser.add_argument(
+        "-q", "--query", type=str, help="Specify the query to send to the provider"
+    )
+    parser.add_argument("-m", "--model", type=str, help="Specify which model to use")
+    parser.add_argument(
+        "-f", "--file", type=str, help="Specify a file to use as context"
+    )
+    parser.add_argument(
+        "-t",
+        "--tokens",
+        type=int,
+        default=4000,
+        help="Specify token limit for file context (default: 4000)",
+    )
+    parser.add_argument(
+        "--max-tokens", type=int, help="Maximum number of tokens to generate"
+    )
+    parser.add_argument(
+        "--tools-file",
+        type=str,
+        help="Path to a JSON file containing tool definitions (object or array)",
+    )
+    parser.add_argument(
+        "--tool-choice",
+        type=str,
+        help='Tool choice preference (e.g., "auto", "none", or JSON object)',
+    )
+    parser.add_argument(
+        "--no-think",
+        action="store_true",
+        help="Disable reasoning/thinking for Qwen3.x / GLM-5.x style models on vLLM "
+        "(sets chat_template_kwargs.enable_thinking=false). Useful for A/B comparing "
+        "thinking vs non-thinking output.",
+    )
+    parser.add_argument(
+        "--chat-template-kwargs",
+        type=str,
+        metavar="JSON",
+        help="JSON object forwarded to the serving backend chat template, e.g. "
+        '\'"{\\"enable_thinking\\": false}"\'. Overrides --no-think.',
+    )
+    parser.add_argument(
+        "--encryption-key", type=str, help="Specify the CREDGOO encryption key"
+    )
+    parser.add_argument(
+        "--bearer-token", type=str, help="Specify the CREDGOO bearer token"
+    )
+    parser.add_argument(
+        "--image", type=str, help="Image file path or URL for multimodal models"
+    )
+    parser.add_argument(
+        "--version",
+        action="version",
+        version="%(prog)s " + version("uniinfer"),
+        help="Show program's version number and exit",
+    )
+    parser.add_argument(
+        "--new-models",
+        type=int,
+        nargs="?",
+        const=7,
+        metavar="DAYS",
+        help="List models first seen in the last N days (default: 7)",
+    )
+    parser.add_argument(
+        "--deprecated-models",
+        action="store_true",
+        help="List deprecated models and their deprecation info",
+    )
+    parser.add_argument(
+        "--speedtest", action="store_true", help="Run smoke speed test on model(s)"
+    )
+    parser.add_argument(
+        "--models",
+        type=str,
+        nargs="+",
+        help="Multiple provider@model targets to test (use with --speedtest or --capabilities, e.g. --capabilities --models groq@a tu@b ollama@c)",
+    )
+    parser.add_argument(
+        "--runs",
+        type=int,
+        default=1,
+        help="Number of runs per model for speed test (default: 1)",
+    )
+    parser.add_argument(
+        "--capabilities",
+        action="store_true",
+        help="Run the capability matrix (probe/chat/tool-calling/image/thinking on+off) against provider@model.",
+    )
+    parser.add_argument(
+        "--perf",
+        action="store_true",
+        help="Run perf probes. Standalone (--perf -p X -m Y) = token-speed only (normal/large-context/cached + maxspeed); or with --capabilities to add to the matrix.",
+    )
+    parser.add_argument(
+        "--probes",
+        type=str,
+        metavar="CSV",
+        help="With --capabilities: comma-separated subset, e.g. probe,chat,tool_calling,image,thinking_on,thinking_off.",
+    )
+    parser.add_argument(
+        "--no-save",
+        action="store_true",
+        help="With --capabilities: do not persist the result to _probe_results.json / models.json (saved by default).",
+    )
+    parser.add_argument(
+        "--softprobe",
+        action="store_true",
+        help="Probe (metadata ONLY, 0 tokens) every catalog model and save to the dashboard + models.json. Perf is never run.",
+    )
+    parser.add_argument(
+        "--stale-days",
+        type=int,
+        default=None,
+        metavar="DAYS",
+        help="With --softprobe: only reprobe entries older than N days (stagger reprobes).",
+    )
+    parser.add_argument(
+        "--force",
+        action="store_true",
+        help="With --softprobe: reprobe even fresh entries.",
+    )
 
     args = parser.parse_args()
 
     if args.speedtest:
         from pathlib import Path as _Path
+
         _speedtest(args)
         return
 
-    if args.capabilities:
+    if args.softprobe:
+        _softprobe(args)
+        return
+
+    if args.capabilities or args.perf:
         _capabilities(args)
         return
 
     if args.new_models:
         from datetime import datetime, timezone, timedelta
         from pathlib import Path
+
         models_json = Path(__file__).parent / "models" / "models.json"
         if not models_json.exists():
             print("models.json not found. Run scripts/generate_models.py first.")
@@ -374,7 +651,9 @@ def main():
         with open(models_json) as f:
             data = json.load(f)
         days = args.new_models
-        cutoff = (datetime.now(timezone.utc) - timedelta(days=days)).strftime("%Y-%m-%d")
+        cutoff = (datetime.now(timezone.utc) - timedelta(days=days)).strftime(
+            "%Y-%m-%d"
+        )
         new = []
         for pid, pdata in data["providers"].items():
             for m in pdata["models"]:
@@ -397,6 +676,7 @@ def main():
 
     if args.deprecated_models:
         from pathlib import Path
+
         models_json = Path(__file__).parent / "models" / "models.json"
         if not models_json.exists():
             print("models.json not found. Run scripts/generate_models.py first.")
@@ -425,20 +705,26 @@ def main():
 
     # Retrieve credentials: prioritize CLI args, then environment variables
     credgoo_encryption_token = args.encryption_key or os.getenv(
-        'CREDGOO_ENCRYPTION_KEY')
-    credgoo_api_token = args.bearer_token or os.getenv('CREDGOO_BEARER_TOKEN')
-    _bearer_token = f"{credgoo_api_token}@{credgoo_encryption_token}" if credgoo_api_token and credgoo_encryption_token else None
+        "CREDGOO_ENCRYPTION_KEY"
+    )
+    credgoo_api_token = args.bearer_token or os.getenv("CREDGOO_BEARER_TOKEN")
+    _bearer_token = (
+        f"{credgoo_api_token}@{credgoo_encryption_token}"
+        if credgoo_api_token and credgoo_encryption_token
+        else None
+    )
 
-#    if not credgoo_api_token or not credgoo_encryption_token:
-#        print("Error: CREDGOO_ENCRYPTION_KEY or CREDGOO_BEARER_TOKEN not found.")
-#        print("Please provide them either via command-line arguments (--encryption-key, --bearer-token) or environment variables.")
-#        return
+    #    if not credgoo_api_token or not credgoo_encryption_token:
+    #        print("Error: CREDGOO_ENCRYPTION_KEY or CREDGOO_BEARER_TOKEN not found.")
+    #        print("Please provide them either via command-line arguments (--encryption-key, --bearer-token) or environment variables.")
+    #        return
     provider = args.provider
     credgoo_service = _resolve_credgoo_service(provider)
     retrieved_api_key = get_api_key(
         service=credgoo_service,
         encryption_key=credgoo_encryption_token,
-        bearer_token=credgoo_api_token,)
+        bearer_token=credgoo_api_token,
+    )
 
     if args.list_providers and args.list_models:
         providers = ProviderFactory.list_providers()
@@ -450,7 +736,8 @@ def main():
                 retrieved_api_key = get_api_key(
                     service=credgoo_service,
                     encryption_key=credgoo_encryption_token,
-                    bearer_token=credgoo_api_token,)
+                    bearer_token=credgoo_api_token,
+                )
                 # models = ProviderFactory.list_models(
                 #    provider=provider,
                 #    api_key=retrieved_api_key,
@@ -458,7 +745,11 @@ def main():
                 # )
                 models = provider_class.list_models(
                     api_key=retrieved_api_key,
-                    **({} if provider not in ['cloudflare', 'ollama'] else PROVIDER_CONFIGS[provider].get('extra_params', {}))
+                    **(
+                        {}
+                        if provider not in ["cloudflare", "ollama"]
+                        else PROVIDER_CONFIGS[provider].get("extra_params", {})
+                    ),
                 )
                 header = f"\nAvailable models for {provider}:"
                 print(header)
@@ -485,7 +776,11 @@ def main():
             provider_class = ProviderFactory.get_provider_class(args.provider)
             models = provider_class.list_models(
                 api_key=retrieved_api_key,
-                **({} if args.provider not in ['cloudflare', 'ollama'] else PROVIDER_CONFIGS[args.provider].get('extra_params', {}))
+                **(
+                    {}
+                    if args.provider not in ["cloudflare", "ollama"]
+                    else PROVIDER_CONFIGS[args.provider].get("extra_params", {})
+                ),
             )
 
             output_lines = [f"Available models for {args.provider}:"]
@@ -506,12 +801,13 @@ def main():
             return
 
         # Only TU provider supports image generation currently
-        if provider != 'tu':
+        if provider != "tu":
             print(
-                f"Error: Image generation is currently only supported for 'tu' provider, not '{provider}'")
+                f"Error: Image generation is currently only supported for 'tu' provider, not '{provider}'"
+            )
             return
 
-        model = args.model if args.model else 'flux-schnell'
+        model = args.model if args.model else "flux-schnell"
         prompt = args.prompt
         size = args.size
         seed = args.seed if args.seed else random.randint(1, 1000000)
@@ -526,7 +822,7 @@ def main():
             api_key = get_api_key(
                 service=credgoo_service,
                 encryption_key=credgoo_encryption_token,
-                bearer_token=credgoo_api_token
+                bearer_token=credgoo_api_token,
             )
 
             if not api_key:
@@ -534,22 +830,20 @@ def main():
                 return
 
             # Call TU provider's image generation endpoint directly
-            tu_endpoint = "https://aqueduct.ai.datalab.tuwien.ac.at/v1/images/generations"
+            tu_endpoint = (
+                "https://aqueduct.ai.datalab.tuwien.ac.at/v1/images/generations"
+            )
 
             headers = {
                 "Content-Type": "application/json",
-                "Authorization": f"Bearer {api_key}"
+                "Authorization": f"Bearer {api_key}",
             }
 
-            payload = {
-                "model": model,
-                "prompt": prompt,
-                "n": 1,
-                "size": size
-            }
+            payload = {"model": model, "prompt": prompt, "n": 1, "size": size}
 
             response = requests.post(
-                tu_endpoint, headers=headers, json=payload, timeout=120)
+                tu_endpoint, headers=headers, json=payload, timeout=120
+            )
             response.raise_for_status()
             data = response.json()
 
@@ -578,13 +872,18 @@ def main():
                         os.makedirs(output_dir, exist_ok=True)
                 else:
                     # Generate filename from prompt
-                    safe_prompt = "".join(c if c.isalnum() or c in (
-                        ' ', '-', '_') else '_' for c in prompt)[:50]
-                    output_path = f"{provider}_{model}_{safe_prompt}_{size}_{seed}.png".replace(
-                        ' ', '_')
+                    safe_prompt = "".join(
+                        c if c.isalnum() or c in (" ", "-", "_") else "_"
+                        for c in prompt
+                    )[:50]
+                    output_path = (
+                        f"{provider}_{model}_{safe_prompt}_{size}_{seed}.png".replace(
+                            " ", "_"
+                        )
+                    )
 
                 # Save the image
-                with open(output_path, 'wb') as f:
+                with open(output_path, "wb") as f:
                     f.write(image_data)
 
                 print(f"\n✓ Image saved to: {output_path}")
@@ -595,8 +894,9 @@ def main():
 
         except requests.exceptions.HTTPError as e:
             print(
-                f"Error generating image: HTTP {e.response.status_code if e.response else 'error'}")
-            if hasattr(e, 'response') and e.response is not None:
+                f"Error generating image: HTTP {e.response.status_code if e.response else 'error'}"
+            )
+            if hasattr(e, "response") and e.response is not None:
                 print(f"Response: {e.response.text}")
         except requests.exceptions.RequestException as e:
             print(f"Error generating image: {e}")
@@ -611,12 +911,13 @@ def main():
             return
 
         # Only TU provider supports TTS currently
-        if provider != 'tu':
+        if provider != "tu":
             print(
-                f"Error: TTS is currently only supported for 'tu' provider, not '{provider}'")
+                f"Error: TTS is currently only supported for 'tu' provider, not '{provider}'"
+            )
             return
 
-        model = args.model if args.model else 'kokoro'
+        model = args.model if args.model else "kokoro"
         tts_text = args.tts_text
         voice = args.voice
         speed = args.speed
@@ -636,7 +937,7 @@ def main():
             api_key = get_api_key(
                 service=credgoo_service,
                 encryption_key=credgoo_encryption_token,
-                bearer_token=credgoo_api_token
+                bearer_token=credgoo_api_token,
             )
 
             if not api_key:
@@ -652,7 +953,7 @@ def main():
                 model=model,
                 voice=voice,
                 speed=speed,
-                instructions=instructions
+                instructions=instructions,
             )
 
             # Generate speech
@@ -667,12 +968,13 @@ def main():
                     os.makedirs(output_dir, exist_ok=True)
             else:
                 # Generate filename from text
-                _safe_text = "".join(c if c.isalnum() or c in (
-                    ' ', '-', '_') else '_' for c in tts_text)[:50]
+                _safe_text = "".join(
+                    c if c.isalnum() or c in (" ", "-", "_") else "_" for c in tts_text
+                )[:50]
                 output_path = "cli_test.mp3"
 
             # Save the audio
-            with open(output_path, 'wb') as f:
+            with open(output_path, "wb") as f:
                 f.write(response.audio_content)
 
             print(f"\n✓ Audio saved to: {output_path}")
@@ -683,6 +985,7 @@ def main():
         except Exception as e:
             print(f"Error generating speech: {e}")
             import traceback
+
             traceback.print_exc()
         return
 
@@ -697,12 +1000,13 @@ def main():
             return
 
         # Only TU provider supports STT currently
-        if provider != 'tu':
+        if provider != "tu":
             print(
-                f"Error: STT is currently only supported for 'tu' provider, not '{provider}'")
+                f"Error: STT is currently only supported for 'tu' provider, not '{provider}'"
+            )
             return
 
-        model = args.model if args.model else 'whisper-large'
+        model = args.model if args.model else "whisper-large"
         audio_file = args.audio_file
         language = args.language
 
@@ -719,7 +1023,7 @@ def main():
             api_key = get_api_key(
                 service=credgoo_service,
                 encryption_key=credgoo_encryption_token,
-                bearer_token=credgoo_api_token
+                bearer_token=credgoo_api_token,
             )
 
             if not api_key:
@@ -734,7 +1038,7 @@ def main():
                 file=audio_file,
                 model=model,
                 language=language,
-                response_format="verbose_json"
+                response_format="verbose_json",
             )
 
             # Transcribe audio
@@ -753,18 +1057,19 @@ def main():
                 # Show first 5 segments
                 for i, segment in enumerate(response.segments[:5]):
                     print(f"\nSegment {i+1}:")
-                    if 'start' in segment and 'end' in segment:
+                    if "start" in segment and "end" in segment:
                         print(
-                            f"  Time: {segment['start']:.2f}s - {segment['end']:.2f}s")
-                    if 'text' in segment:
+                            f"  Time: {segment['start']:.2f}s - {segment['end']:.2f}s"
+                        )
+                    if "text" in segment:
                         print(f"  Text: {segment['text']}")
                 if len(response.segments) > 5:
-                    print(
-                        f"\n... and {len(response.segments) - 5} more segments")
+                    print(f"\n... and {len(response.segments) - 5} more segments")
 
         except Exception as e:
             print(f"Error transcribing audio: {e}")
             import traceback
+
             traceback.print_exc()
         return
 
@@ -774,7 +1079,11 @@ def main():
         uni = ProviderFactory().get_provider(
             name=provider,
             api_key=retrieved_api_key,
-            **({} if provider not in ['cloudflare', 'ollama'] else PROVIDER_CONFIGS[provider].get('extra_params', {}))
+            **(
+                {}
+                if provider not in ["cloudflare", "ollama"]
+                else PROVIDER_CONFIGS[provider].get("extra_params", {})
+            ),
         )
     except Exception as e:
         print(f"Error initializing provider {provider}: {e}")
@@ -791,7 +1100,7 @@ def main():
         # Add texts from --embed-file
         if args.embed_file:
             try:
-                with open(args.embed_file, 'r', encoding='utf-8') as f:
+                with open(args.embed_file, "r", encoding="utf-8") as f:
                     file_texts = [line.strip() for line in f if line.strip()]
                     texts_to_embed.extend(file_texts)
             except Exception as e:
@@ -806,18 +1115,22 @@ def main():
             embedding_provider = EmbeddingProviderFactory().get_provider(
                 name=provider,
                 api_key=retrieved_api_key,
-                **({} if provider not in ['cloudflare', 'ollama'] else PROVIDER_CONFIGS[provider].get('extra_params', {}))
+                **(
+                    {}
+                    if provider not in ["cloudflare", "ollama"]
+                    else PROVIDER_CONFIGS[provider].get("extra_params", {})
+                ),
             )
 
-            model = args.model if args.model else PROVIDER_CONFIGS[provider]['default_model']
-            print(
-                f"Embedding {len(texts_to_embed)} text(s) using {provider}@{model}")
+            model = (
+                args.model
+                if args.model
+                else PROVIDER_CONFIGS[provider]["default_model"]
+            )
+            print(f"Embedding {len(texts_to_embed)} text(s) using {provider}@{model}")
 
             # Create embedding request
-            request = EmbeddingRequest(
-                input=texts_to_embed,
-                model=model
-            )
+            request = EmbeddingRequest(input=texts_to_embed, model=model)
 
             # Make the request
             response = embedding_provider.embed(request)
@@ -830,10 +1143,9 @@ def main():
 
             for i, embedding_data in enumerate(response.data):
                 print(f"\nText {i+1}: '{texts_to_embed[i]}'")
-                print(
-                    f"Embedding dimensions: {len(embedding_data['embedding'])}")
+                print(f"Embedding dimensions: {len(embedding_data['embedding'])}")
                 print(f"First 5 values: {embedding_data['embedding'][:5]}")
-                if len(embedding_data['embedding']) > 5:
+                if len(embedding_data["embedding"]) > 5:
                     print(f"Last 5 values: {embedding_data['embedding'][-5:]}")
 
         except Exception as e:
@@ -861,14 +1173,18 @@ def main():
         "Empfehlungssysteme",
         "Clustering-Algorithmen",
         "Deep Reinforcement Learning",
-        "Federated Learning"
+        "Federated Learning",
     ]
 
-    prompt = args.query if args.query else f"Erkläre mir bitte {random.choice(ml_topics)} in einfachen Worten und auf deutsch."
+    prompt = (
+        args.query
+        if args.query
+        else f"Erkläre mir bitte {random.choice(ml_topics)} in einfachen Worten und auf deutsch."
+    )
 
     if args.file:
         try:
-            with open(args.file, 'r') as f:
+            with open(args.file, "r") as f:
                 file_content = f.read()
                 # Simple token estimation (4 chars ~ 1 token)
                 max_chars = args.tokens * 4
@@ -878,9 +1194,8 @@ def main():
         except Exception as e:
             print(f"Error reading file: {e}")
 
-    model = args.model if args.model else PROVIDER_CONFIGS[provider]['default_model']
-    print(
-        f"Prompt: {prompt} ( {provider}@{model} )")
+    model = args.model if args.model else PROVIDER_CONFIGS[provider]["default_model"]
+    print(f"Prompt: {prompt} ( {provider}@{model} )")
     # Create chat messages
     content = prompt
     if args.image:
@@ -889,6 +1204,7 @@ def main():
 
         if is_file:
             import mimetypes
+
             mime_type, _ = mimetypes.guess_type(image_input)
             if not mime_type:
                 mime_type = "image/jpeg"
@@ -901,19 +1217,17 @@ def main():
 
         content = [
             {"type": "text", "text": prompt},
-            {"type": "image_url", "image_url": {"url": image_url_content}}
+            {"type": "image_url", "image_url": {"url": image_url_content}},
         ]
         print(f"Adding image input: {image_input}")
 
-    messages = [
-        ChatMessage(role="user", content=content)
-    ]
+    messages = [ChatMessage(role="user", content=content)]
     tools = None
     tool_choice = None
     if args.tools_file:
         try:
             # json already imported at top level
-            with open(args.tools_file, 'r', encoding='utf-8') as f:
+            with open(args.tools_file, "r", encoding="utf-8") as f:
                 tools_data = json.load(f)
             if isinstance(tools_data, dict):
                 tools = [tools_data]
@@ -965,7 +1279,7 @@ def main():
                 token_count += len(content) / 4
                 print(content, end="", flush=True)
                 response_text += content
-            if hasattr(chunk.message, 'tool_calls') and chunk.message.tool_calls:
+            if hasattr(chunk.message, "tool_calls") and chunk.message.tool_calls:
                 print(f"\nTool call: {chunk.message.tool_calls}", flush=True)
     except Exception as e:
         if response_text:
@@ -979,12 +1293,14 @@ def main():
     time_to_first_token = first_token_time - start_time if first_token_time else 0
     # Calculate tokens per second from first token to end (excluding initial latency)
     token_generation_time = end_time - first_token_time if first_token_time else 0
-    tokens_per_second = token_count / \
-        token_generation_time if token_generation_time > 0 else 0
+    tokens_per_second = (
+        token_count / token_generation_time if token_generation_time > 0 else 0
+    )
 
     # Print statistics
     print(
-        f"\n\ntok/s: {tokens_per_second:.2f}          tft: {time_to_first_token:.2f} s")
+        f"\n\ntok/s: {tokens_per_second:.2f}          tft: {time_to_first_token:.2f} s"
+    )
 
 
 if __name__ == "__main__":
