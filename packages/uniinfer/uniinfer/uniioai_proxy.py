@@ -24,6 +24,7 @@ from uniinfer.proxy_routers.media import create_media_router
 from uniinfer.proxy_routers.chat import create_chat_router
 from uniinfer.proxy_routers.tools import create_tools_router
 from uniinfer.proxy_routers.smoke import create_smoke_router
+from uniinfer.proxy_routers.capabilities import create_capabilities_router
 from uniinfer.proxy_routers.stats import create_stats_router
 
 # Load environment variables from .env file
@@ -300,6 +301,7 @@ async def save_perf_result(request: Request):
 app.include_router(create_tools_router())
 app.include_router(create_models_router(UNIINFER_VERSION))
 app.include_router(create_smoke_router())
+app.include_router(create_capabilities_router(parse_provider_model=parse_provider_model, provider_configs=PROVIDER_CONFIGS))
 app.include_router(create_stats_router())
 app.include_router(create_media_router(parse_provider_model, limiter, get_media_rate_limit))
 

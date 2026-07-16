@@ -46,7 +46,7 @@ SPEED_QUESTIONS = [
 SPEED_RESULTS_PATH = Path(__file__).parent / "models" / "_speed_results.json"
 
 
-def _run_speedtest(provider_name, model, prompt, api_key, extra_params, max_tokens=1000):
+def _run_speedtest(provider_name, model, prompt, api_key, extra_params, max_tokens=4096):
     from uniinfer import ChatMessage, ChatCompletionRequest
 
     kwargs = {k: v for k, v in extra_params.items() if k in ("base_url", "account_id")}
@@ -219,6 +219,34 @@ def _resolve_credgoo_service(provider: str) -> str:
     return provider
 
 
+def _capabilities(args):
+    import asyncio
+    from uniinfer.capabilities import Target, run_capabilities, format_report
+
+    provider = args.provider
+    model = args.model or PROVIDER_CONFIGS.get(provider, {}).get("default_model")
+    if not model:
+        print(f"Error: no model specified and no default for provider '{provider}'")
+        return
+    credgoo_service = _resolve_credgoo_service(provider)
+    try:
+        api_key = get_api_key(
+            service=credgoo_service,
+            encryption_key=args.encryption_key,
+            bearer_token=args.bearer_token)
+    except Exception as e:
+        print(f"Error: no API key for '{provider}': {e}")
+        return
+    extra_params = PROVIDER_CONFIGS.get(provider, {}).get("extra_params", {})
+    base_url = extra_params.get("base_url")
+    target = Target(provider_model=f"{provider}@{model}", api_key=api_key, base_url=base_url)
+    probes = [p.strip() for p in args.probes.split(",")] if args.probes else None
+    tag = " +perf" if args.perf else ""
+    print(f"Capability matrix: {provider}@{model}{tag}")
+    report = asyncio.run(run_capabilities(target, probes=probes, perf=args.perf))
+    print()
+    print(format_report(report))
+
 
 def main():
     # Initialize argument parser
@@ -301,12 +329,22 @@ def main():
                         help='Multiple models to test (use with --speedtest)')
     parser.add_argument('--runs', type=int, default=1,
                         help='Number of runs per model for speed test (default: 1)')
+    parser.add_argument('--capabilities', action='store_true',
+                        help='Run the capability matrix (probe/chat/tool-calling/image/thinking on+off) against provider@model.')
+    parser.add_argument('--perf', action='store_true',
+                        help='With --capabilities: also run perf probes (maxspeed across contexts, context ceiling, rate-limit).')
+    parser.add_argument('--probes', type=str, metavar='CSV',
+                        help='With --capabilities: comma-separated subset, e.g. probe,chat,tool_calling,image,thinking_on,thinking_off.')
 
     args = parser.parse_args()
 
     if args.speedtest:
         from pathlib import Path as _Path
         _speedtest(args)
+        return
+
+    if args.capabilities:
+        _capabilities(args)
         return
 
     if args.new_models:
