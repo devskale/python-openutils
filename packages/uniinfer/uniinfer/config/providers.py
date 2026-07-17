@@ -122,6 +122,11 @@ PROVIDER_CONFIGS = {
         'default_model': 'deepseek-ai/DeepSeek-V3-0324',
         'needs_api_key': True,
     },
+    'opencode': {
+        'name': 'OpenCode (Zen)',
+        'default_model': 'deepseek-v4-flash-free',
+        'needs_api_key': True,
+    },
     'zai': {
         'name': 'Z.ai',
         'default_model': 'glm-4.5-flash',

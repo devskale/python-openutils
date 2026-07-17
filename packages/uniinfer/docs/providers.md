@@ -26,6 +26,7 @@
 | `chutes` | ❌ No free tier; pay-per-token only | Varies by model | [chutes.ai/pricing](https://chutes.ai/pricing) |
 | `openai` | $5 credits (3mo); GPT-5 needs paid tier | Free: 3 RPM / 200 RPD | [platform.openai.com/api/docs/pricing](https://platform.openai.com/api/docs/pricing) |
 | `anthropic` | ~$5 credits (signup); no recurring free | Tier 1: 50 RPM / varies by model | [docs.anthropic.com/en/api/rate-limits](https://docs.anthropic.com/en/api/rate-limits) |
+| `opencode` | Free models: `deepseek-v4-flash-free`, `big-pickle`, `mimo-v2.5-free`, `hy3-free`, `nemotron-3-ultra-free`, `north-mini-code-free` | Router (aggregates many models); many free models reason | [opencode.ai/zen](https://opencode.ai/zen) |
 
 ## Embedding Providers
 

@@ -159,5 +159,10 @@
   "zai-code": {
     "notes": "Coding endpoint from Zhipu AI; inherits Z.AI fair-use. See zai.",
     "source": "https://docs.z.ai"
+  },
+
+  "opencode": {
+    "notes": "OpenCode/Zen model router (OpenAI-compatible at opencode.ai/zen/v1). Free models: deepseek-v4-flash-free, big-pickle, mimo-v2.5-free, hy3-free, nemotron-3-ultra-free, north-mini-code-free. Many are reasoning models — use a generous max_tokens or reasoning_effort='none'. Claude models use the Anthropic-messages API (not this OpenAI provider).",
+    "source": "https://opencode.ai/zen"
   }
 }

@@ -3,13 +3,13 @@
 [![Version](https://img.shields.io/badge/version-0.6.3-38bdf8)](#)
 [![Python](https://img.shields.io/badge/python-3.9+-blue)](#)
 [![License](https://img.shields.io/badge/license-MIT-blue)](#)
-[![Providers](https://img.shields.io/badge/providers-24-success)](#)
+[![Providers](https://img.shields.io/badge/providers-25-success)](#)
 
 > **One interface for 20+ LLM providers** — chat, embeddings, TTS, STT, streaming,
 > tool-calling, and cross-provider reasoning control, behind a single API and an
 > OpenAI-compatible proxy. Free-tier-friendly.
 
-- 🌐 **24 providers, 900+ models** — OpenAI, Anthropic, Gemini, Mistral, Groq, Ollama, vLLM (TU), OpenRouter, and more
+- 🌐 **25 providers, 900+ models** — OpenAI, Anthropic, Gemini, Mistral, Groq, Ollama, vLLM (TU), OpenRouter, OpenCode/Zen, and more
 - 🧠 **Unified thinking control** — `reasoning_effort` flips reasoning on/off across every provider's native dialect
 - 🔌 **OpenAI-compatible proxy** — drop-in for any OpenAI client; model id is `provider@model`
 - 🖥️ **Web app** — Chat / Dashboard / Settings served at `/`
@@ -124,6 +124,7 @@ free tiers, and rate limits (baked into `config/provider_limits.json`).
 | HuggingFace | ✅ | — | — | — | — | — |
 | InternLM | ✅ | — | — | — | — | — |
 | MiniMax | ✅ | — | — | — | — | — |
+| OpenCode (Zen) | ✅ | — | — | — | ✅ | — |
 
 Model counts from `models.json` (regenerated daily 04:00 UTC). Free = provider offers free-tier models.
 
