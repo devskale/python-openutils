@@ -4,6 +4,18 @@ All notable changes to **uniinfer** are documented in this file.
 Versions follow [Semantic Versioning](https://semver.org/); this file
 adheres to [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.6.4] - 2026-07-17
+
+### Fixed
+- **`role: "developer"` no longer 422s.** OpenAI's newer `developer` role
+  (system instructions for reasoning models; emitted by the official SDKs and
+  `@ai-sdk/openai`) was forwarded verbatim and rejected by backends that don't
+  accept it (Mistral 422, etc.). The proxy now accepts the full OpenAI role set
+  and collapses `developer` → `system` for backends without it (functionally
+  equivalent, universally accepted), while preserving it for providers whose API
+  accepts it natively (`openai`, `openrouter`). Regression tests cover both
+  paths; live details check validates against Mistral.
+
 ## [0.6.3] - 2026-07-17
 
 ### Fixed

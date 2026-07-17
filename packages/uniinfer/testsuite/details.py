@@ -280,6 +280,20 @@ if AUTH_REQUIRED_MODEL:
 else:
     skip("missing auth -> 401 (set AUTH_REQUIRED_MODEL)")
 
+# D-developer — OpenAI 'developer' role must be accepted. For backends without
+# it (most: Mistral, Gemini, …) the proxy normalizes it to 'system'.
+try:
+    r = _chat(messages=[
+        {"role": "developer", "content": "You are terse."},
+        {"role": "user", "content": "Say OK"},
+    ])
+    if r.status_code == 200:
+        ok("developer role -> 200 (normalized where the backend needs it)")
+    else:
+        bad("developer role", f"status={r.status_code} {str(r.text)[:80]}")
+except Exception as e:  # noqa: BLE001
+    bad("developer role", str(e))
+
 # D6 — embeddings return a non-zero vector
 try:
     r = httpx.post(
