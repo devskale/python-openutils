@@ -208,3 +208,40 @@ def get_provider_config(provider_id):
 def get_all_providers():
     """Get all available provider configurations."""
     return PROVIDER_CONFIGS
+
+
+# --------------------------------------------------------------------------- #
+# Documented free-tier rate limits (provider_limits.json)
+# --------------------------------------------------------------------------- #
+import json as _json
+from pathlib import Path as _Path
+
+_LIMITS_FILE = _Path(__file__).parent / "provider_limits.json"
+
+
+def _load_provider_limits() -> dict:
+    """Load provider_limits.json, skipping non-provider keys (``_doc``)."""
+    try:
+        data = _json.loads(_LIMITS_FILE.read_text())
+        return {k: v for k, v in data.items() if not k.startswith("_")}
+    except (OSError, _json.JSONDecodeError):
+        return {}
+
+
+_PROVIDER_LIMITS = _load_provider_limits()
+
+# Bake documented free-tier limits into each provider config so
+# ``get_provider_config('groq')['free_tier_limits']`` works.
+for _pid, _cfg in PROVIDER_CONFIGS.items():
+    if _pid in _PROVIDER_LIMITS:
+        _cfg["free_tier_limits"] = _PROVIDER_LIMITS[_pid]
+
+
+def get_provider_limits(provider_id: str) -> dict:
+    """Documented free-tier rate limits for a provider (from provider_limits.json)."""
+    return _PROVIDER_LIMITS.get(provider_id, {})
+
+
+def get_all_provider_limits() -> dict:
+    """All documented free-tier rate limits, keyed by provider id."""
+    return _PROVIDER_LIMITS

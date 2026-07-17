@@ -1,0 +1,9 @@
+{
+  "_doc": "Special-params index. Keys: 'provider/model' (model-specific) or 'provider' (provider-wide fallback). A model entry overrides a provider entry. Consulted by the capability probes (add an entry instead of generalising code). _probe_policy scopes empirical probing.",
+  "_probe_policy": {
+    "no_empirical": ["openai", "anthropic"],
+    "note": "openai/anthropic stay softprobe-only (paid / not installed). openrouter + pollinations: probe only a few."
+  },
+  "moonshot/kimi-k2.7-code": { "temperature": 1.0, "note": "only temperature=1 accepted" },
+  "moonshot/kimi-k2.7-code-highspeed": { "temperature": 1.0, "note": "only temperature=1 accepted" }
+}

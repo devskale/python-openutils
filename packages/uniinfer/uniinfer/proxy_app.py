@@ -1,4 +1,5 @@
 from logging.handlers import RotatingFileHandler
+import json
 import logging
 from importlib.metadata import PackageNotFoundError, version
 import uuid
@@ -23,6 +24,7 @@ from uniinfer.proxy_routers.media import create_media_router
 from uniinfer.proxy_routers.chat import create_chat_router
 from uniinfer.proxy_routers.tools import create_tools_router
 from uniinfer.proxy_routers.smoke import create_smoke_router
+from uniinfer.proxy_routers.capabilities import create_capabilities_router
 from uniinfer.proxy_routers.stats import create_stats_router
 
 # Load environment variables from .env file
@@ -194,21 +196,18 @@ security = HTTPBearer()
 # --- Model Parsing Helper ---
 
 def parse_provider_model(provider_model: str, allowed_providers: list[str] | None = None, task_name: str | None = None) -> tuple[str, str]:
-    """
-    Parses 'provider@model' string and optionally validates the provider.
-    Raises HTTPException (400) if format is invalid or provider is not allowed.
-    """
-    if '@' not in provider_model:
-        raise HTTPException(
-            status_code=400, detail="Invalid model format. Expected 'provider@modelname'.")
+    """Parse 'provider@model' and optionally validate the provider.
 
-    parts = provider_model.split('@', 1)
-    provider_name = parts[0]
-    model_name = parts[1]
+    HTTP-seam adapter over uniinfer.completion.parse_provider_model: translates
+    the library ValueError to HTTPException(400), then enforces the HTTP-layer
+    allowed-providers constraint.
+    """
+    from uniinfer.completion import parse_provider_model as _parse
 
-    if not provider_name or not model_name:
-        raise HTTPException(
-            status_code=400, detail="Invalid model format. Provider or model name is empty.")
+    try:
+        provider_name, model_name = _parse(provider_model)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
     if allowed_providers and provider_name not in allowed_providers:
         if len(allowed_providers) == 1:
@@ -239,9 +238,108 @@ async def get_web_demo():
     return FileResponse(html_file_path)
 
 
+# --- Performance Dashboard (TTFT / tok/s / caching) ---
+# Serves the perf dashboard HTML and reads/writes the same _speed_results.json
+# that `uniinfer --speedtest` produces, so CLI and dashboard share one history.
+SPEED_RESULTS_PATH = os.path.join(script_dir, "models", "_speed_results.json")
+PROBE_RESULTS_PATH = os.path.join(script_dir, "models", "_probe_results.json")
+
+
+@app.get("/perf", include_in_schema=False)
+async def get_perf_dashboard():
+    """Serves the LLM performance dashboard (TTFT / tok/s / caching)."""
+    html_file_path = os.path.join(script_dir, "examples", "webdemo", "perf.html")
+    if not os.path.exists(html_file_path):
+        raise HTTPException(status_code=404, detail="perf.html not found")
+    return FileResponse(html_file_path)
+
+
+@app.get("/perf/results", include_in_schema=False)
+async def get_perf_results():
+    """Returns the saved speed-test history (provider/model -> aggregated metrics)."""
+    if not os.path.exists(SPEED_RESULTS_PATH):
+        return {}
+    try:
+        with open(SPEED_RESULTS_PATH, "r", encoding="utf-8") as f:
+            return json.load(f)
+    except (json.JSONDecodeError, OSError):
+        return {}
+
+
+@app.post("/perf/results", include_in_schema=False)
+async def save_perf_result(request: Request):
+    """Saves a live-measured run into the shared history.
+
+    Body: {"key": "tu/qwen-3.6-35b", "result": {...metrics...}}
+    Merges into _speed_results.json (same file the CLI writes).
+    """
+    try:
+        body = await request.json()
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid JSON body")
+    key = body.get("key")
+    result = body.get("result")
+    if not key or not isinstance(result, dict):
+        raise HTTPException(status_code=400, detail="Body must contain 'key' and 'result'")
+
+    existing = {}
+    if os.path.exists(SPEED_RESULTS_PATH):
+        try:
+            with open(SPEED_RESULTS_PATH, "r", encoding="utf-8") as f:
+                existing = json.load(f)
+        except (json.JSONDecodeError, OSError):
+            existing = {}
+    existing[key] = result
+    os.makedirs(os.path.dirname(SPEED_RESULTS_PATH), exist_ok=True)
+    with open(SPEED_RESULTS_PATH, "w", encoding="utf-8") as f:
+        json.dump(existing, f, indent=2, ensure_ascii=False)
+    return {"ok": True, "saved": key}
+
+
+# --- Capability-probe dashboard + integration guide ---
+@app.get("/capabilities", include_in_schema=False)
+async def get_capabilities_dashboard():
+    """Serves the capability-probe dashboard HTML."""
+    html_file_path = os.path.join(script_dir, "examples", "webdemo", "capabilities.html")
+    if not os.path.exists(html_file_path):
+        raise HTTPException(status_code=404, detail="capabilities.html not found")
+    return FileResponse(html_file_path)
+
+
+@app.get("/capabilities/results", include_in_schema=False)
+async def get_capabilities_results():
+    """Returns the saved capability-probe history (provider/model -> matrix)."""
+    if not os.path.exists(PROBE_RESULTS_PATH):
+        return {}
+    try:
+        with open(PROBE_RESULTS_PATH, "r", encoding="utf-8") as f:
+            return json.load(f)
+    except (json.JSONDecodeError, OSError):
+        return {}
+
+
+@app.get("/guide", include_in_schema=False)
+async def get_integration_guide():
+    """Serves the integration-guide page (renders docs/integration.md)."""
+    html_file_path = os.path.join(script_dir, "examples", "webdemo", "guide.html")
+    if not os.path.exists(html_file_path):
+        raise HTTPException(status_code=404, detail="guide.html not found")
+    return FileResponse(html_file_path)
+
+
+@app.get("/guide.md", include_in_schema=False)
+async def get_integration_guide_md():
+    """Serves the canonical integration guide markdown (single source of truth)."""
+    md_file_path = os.path.join(script_dir, "..", "docs", "integration.md")
+    if not os.path.exists(md_file_path):
+        raise HTTPException(status_code=404, detail="integration.md not found")
+    return FileResponse(md_file_path, media_type="text/markdown")
+
+
 app.include_router(create_tools_router())
 app.include_router(create_models_router(UNIINFER_VERSION))
 app.include_router(create_smoke_router())
+app.include_router(create_capabilities_router(parse_provider_model=parse_provider_model, provider_configs=PROVIDER_CONFIGS))
 app.include_router(create_stats_router())
 app.include_router(create_media_router(parse_provider_model, limiter, get_media_rate_limit))
 
@@ -257,9 +355,13 @@ app.include_router(
 )
 
 
-@app.get("/")
+@app.get("/", include_in_schema=False)
 async def root():
-    return {"message": "UniIOAI API is running. Visit /webdemo or /webdemo/webdemo.html for the interactive demo, or use POST /v1/chat/completions, POST /v1/embeddings, or GET /v1/models"}
+    """Serve the unified app (Chat / Dashboard / Settings)."""
+    html = os.path.join(script_dir, "examples", "webdemo", "index.html")
+    if not os.path.exists(html):
+        raise HTTPException(status_code=404, detail="index.html not found")
+    return FileResponse(html)
 
 
 # --- Run the API (for local development) ---
@@ -283,7 +385,7 @@ def main():
         f"Starting UniIOAI API server (reload={args.reload} at port {args.port})..."
     )
     uvicorn.run(
-        "uniinfer.uniioai_proxy:app",
+        "uniinfer.proxy_app:app",
         host="0.0.0.0",
         port=args.port,
         workers=1,

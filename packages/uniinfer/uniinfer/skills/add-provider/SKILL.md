@@ -11,7 +11,7 @@ metadata:
 
 ## What I do
 - **Code Blueprinting**: I generate the boilerplate code needed for a new `ChatProvider` subclass.
-- **Error Standardizing**: I guide you in implementing `map_provider_error` with status code and body extraction to ensure the `uniioai_proxy` relays detailed upstream errors.
+- **Error Standardizing**: I guide you in implementing `map_provider_error` with status code and body extraction to ensure the proxy app relays detailed upstream errors.
 - **Lifecycle Integration**: I provide the necessary registration steps for `ProviderFactory` and the package index.
 
 ## Instructions

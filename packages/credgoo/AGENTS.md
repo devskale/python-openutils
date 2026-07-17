@@ -29,10 +29,23 @@ from credgoo import get_api_key
 
 ## Architecture
 
-All logic lives in `credgoo.py` (fetch, encrypt, decrypt, cache, CLI,
-interactive setup) — `__init__.py` re-exports, `__main__.py` is the CLI entry.
+Two layers:
 
-Flow: cache check → fetch from Apps Script → decrypt (XOR + Base64) → cache encrypted locally.
+- **`credgoo/store.py`** — `CredentialStore`, the deep module. Owns the
+  credential file (format + v1/v2→v3 migration), backend resolution,
+  encryption-key derivation, and the local cache. Data-only interface (no
+  printing); testable by injecting a backend.
+- **`credgoo/credgoo.py`** — the public adapter `get_api_key()` plus the CLI
+  (argparse `main()`) and thin CLI adapters that add prompts/prints and
+  delegate to `CredentialStore`.
+
+Backends live in `credgoo/backends/` (`base.py` ABC, `gdrive.py`, `airtable.py`).
+`__init__.py` re-exports the public surface, `__main__.py` is the CLI entry.
+
+Flow: `get_api_key()` → `CredentialStore.get()` → cache check → backend
+`fetch_key()` → decrypt (XOR + Base64) → cache encrypted locally.
+
+See [CONTEXT.md](CONTEXT.md) for the domain glossary.
 
 ## Critical Rules
 

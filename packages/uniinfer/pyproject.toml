@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "uniinfer"
-version = "0.5.38"
+version = "0.6.2"
 description = "Unified Inference API for LLM chat completions across 15+ providers with streaming, fallback strategies, and secure API key management"
 readme = "README.md"
 requires-python = ">=3.9"
@@ -68,7 +68,7 @@ Homepage = "https://github.com/devskale/python-openutils"
 
 [project.scripts]
 uniinfer = "uniinfer.uniinfer_cli:main"
-uniioai-proxy = "uniinfer.uniioai_proxy:main"
+uniioai-proxy = "uniinfer.proxy_app:main"
 
 [tool.uv.sources]
 credgoo = { path = "../credgoo", editable = true }

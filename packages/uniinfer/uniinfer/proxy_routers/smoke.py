@@ -16,7 +16,7 @@ from fastapi.responses import JSONResponse
 from uniinfer.auth import get_optional_proxy_token, verify_provider_access
 from uniinfer.errors import UniInferError
 from uniinfer.proxy_services.models_registry import ensure_fresh_models_file, load_catalog
-from uniinfer.uniioai import aget_completion
+from uniinfer.completion import Target
 
 logger = logging.getLogger("uniioai_proxy")
 
@@ -24,7 +24,10 @@ logger = logging.getLogger("uniioai_proxy")
 DEFAULT_PROVIDERS = "tu"
 # Reasonable budget for reasoning models — thinking can consume many tokens
 # before the visible answer, so don't starve it.
-DEFAULT_MAX_TOKENS = 512
+# Thinking models (Qwen3.x / GLM-5.x / Claude extended thinking) need
+# max_tokens ≫ 1–2k: reasoning consumes the budget before the visible answer.
+# A too-low cap makes them look broken (empty / truncated output).
+DEFAULT_MAX_TOKENS = 4096
 DEFAULT_PER_PROVIDER = 3
 DEFAULT_PROMPT = "Say hello."
 # Per-model smoke timeout (seconds). Reasoning models can take a while.
@@ -50,7 +53,7 @@ def create_smoke_router() -> APIRouter:
             DEFAULT_MAX_TOKENS,
             ge=16,
             le=8192,
-            description="max_tokens for each smoke. Keep generous for thinking models.",
+            description="max_tokens for each smoke. Must be ≫1–2k for thinking models.",
         ),
         prompt: str = Query(DEFAULT_PROMPT, description="Prompt to send."),
         api_bearer_token: str | None = Depends(get_optional_proxy_token),
@@ -128,21 +131,15 @@ async def _smoke_one(
     started = time.monotonic()
     try:
         provider_api_key = verify_provider_access(api_bearer_token, provider_name)
-        # Disable thinking where supported (tu/vLLM) for a fast, deterministic
-        # smoke. Other backends ignore chat_template_kwargs.
-        chat_template_kwargs = {"enable_thinking": False} if provider_name == "tu" else None
+        # Disable reasoning for a fast, deterministic smoke. reasoning_effort="none"
+        # is the cross-provider "off" intent (no-op on non-reasoning backends).
+        target = Target(provider_model, provider_api_key)
         completion = await asyncio.wait_for(
-            aget_completion(
-                messages=[{"role": "user", "content": prompt}],
-                provider_model_string=provider_model,
+            target.acomplete(
+                [{"role": "user", "content": prompt}],
                 temperature=0.7,
                 max_tokens=max_tokens,
-                provider_api_key=provider_api_key,
-                base_url=None,
-                tools=None,
-                tool_choice=None,
-                reasoning_effort=None,
-                chat_template_kwargs=chat_template_kwargs,
+                reasoning_effort="none",
             ),
             timeout=PER_MODEL_TIMEOUT,
         )

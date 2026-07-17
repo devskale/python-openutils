@@ -7,7 +7,12 @@ from fastapi.responses import JSONResponse, StreamingResponse
 from starlette.concurrency import run_in_threadpool
 
 from uniinfer.auth import get_optional_proxy_token, verify_provider_access
-from uniinfer.errors import AuthenticationError, ProviderError, RateLimitError, UniInferError
+from uniinfer.errors import (
+    AuthenticationError,
+    ProviderError,
+    RateLimitError,
+    UniInferError,
+)
 from uniinfer.proxy_schemas.chat import (
     ChatCompletionRequestInput,
     ChatMessageOutput,
@@ -17,9 +22,14 @@ from uniinfer.proxy_schemas.chat import (
     NonStreamingChatCompletion,
     NonStreamingChoice,
 )
-from uniinfer.proxy_services.streaming import astream_response_generator, is_openai_strict_mode, normalize_nonstream_content
+from uniinfer.proxy_services.streaming import (
+    astream_response_generator,
+    is_openai_strict_mode,
+    normalize_nonstream_content,
+)
 from uniinfer.proxy_services.stats import get_stats
-from uniinfer.uniioai import aget_completion, astream_completion, get_embeddings
+from uniinfer.completion import Target
+from uniinfer.provider_access import get_embeddings
 
 logger = logging.getLogger("uniioai_proxy")
 
@@ -49,25 +59,41 @@ def create_chat_router(
         try:
             provider_name, _ = parse_provider_model(provider_model)
             if provider_name == "ollama" and base_url is None:
-                base_url = provider_configs.get("ollama", {}).get("extra_params", {}).get("base_url")
+                base_url = (
+                    provider_configs.get("ollama", {})
+                    .get("extra_params", {})
+                    .get("base_url")
+                )
 
             provider_api_key = verify_provider_access(api_bearer_token, provider_name)
+
+            # Thinking control now lives in each provider (it reads
+            # reasoning_effort off the request). The router only forwards the
+            # standard intent + the chat_template_kwargs escape hatch.
+            #
+            # Deprecation shim: the legacy `think` field (ollama-flavored) is
+            # retired; translate its one documented intent (think:false = disable
+            # reasoning) to the standard vocab, but only if the caller did not
+            # already set reasoning_effort. See CONTEXT.md.
+            reasoning_effort = request_input.reasoning_effort
+            if reasoning_effort is None and request_input.think is not None:
+                logger.info("'think' field is deprecated; use reasoning_effort instead")
+                if not request_input.think:
+                    reasoning_effort = "none"
+
+            target = Target(provider_model, provider_api_key, base_url)
 
             if request_input.stream:
                 return StreamingResponse(
                     astream_response_generator(
-                        astream_completion=astream_completion,
+                        target=target,
                         messages=messages_dict,
-                        provider_model=provider_model,
                         temp=request_input.temperature,
                         max_tok=request_input.get_effective_max_tokens(),
-                        provider_api_key=provider_api_key,
-                        base_url=base_url,
                         tools=request_input.tools,
                         tool_choice=request_input.tool_choice,
                         request_id=getattr(request.state, "request_id", None),
-                        reasoning_effort=request_input.reasoning_effort,
-                        think=request_input.think if provider_name == "ollama" else None,
+                        reasoning_effort=reasoning_effort,
                         chat_template_kwargs=request_input.chat_template_kwargs,
                     ),
                     media_type="text/event-stream",
@@ -78,16 +104,13 @@ def create_chat_router(
                     },
                 )
 
-            full_content = await aget_completion(
-                messages=messages_dict,
-                provider_model_string=provider_model,
+            full_content = await target.acomplete(
+                messages_dict,
                 temperature=request_input.temperature,
                 max_tokens=request_input.get_effective_max_tokens(),
-                provider_api_key=provider_api_key,
-                base_url=base_url,
                 tools=request_input.tools,
                 tool_choice=request_input.tool_choice,
-                reasoning_effort=request_input.reasoning_effort,
+                reasoning_effort=reasoning_effort,
                 chat_template_kwargs=request_input.chat_template_kwargs,
             )
 
@@ -95,9 +118,13 @@ def create_chat_router(
             tool_calls = full_content.message.tool_calls
             thinking = getattr(full_content, "thinking", None)
             content = normalize_nonstream_content(raw_content, tool_calls)
-            finish_reason = getattr(full_content, "finish_reason", None) or ("tool_calls" if tool_calls else "stop")
+            finish_reason = getattr(full_content, "finish_reason", None) or (
+                "tool_calls" if tool_calls else "stop"
+            )
 
-            message_obj = ChatMessageOutput(role="assistant", content=content, tool_calls=tool_calls)
+            message_obj = ChatMessageOutput(
+                role="assistant", content=content, tool_calls=tool_calls
+            )
             if thinking and not is_openai_strict_mode():
                 message_obj.reasoning_content = thinking
 
@@ -108,29 +135,46 @@ def create_chat_router(
             elif raw_usage:
                 usage = {
                     "prompt_tokens": getattr(raw_usage, "prompt_tokens", 0) or 0,
-                    "completion_tokens": getattr(raw_usage, "completion_tokens", 0) or 0,
+                    "completion_tokens": getattr(raw_usage, "completion_tokens", 0)
+                    or 0,
                     "total_tokens": getattr(raw_usage, "total_tokens", 0) or 0,
                 }
 
             response_data = NonStreamingChatCompletion(
                 model=provider_model,
-                choices=[NonStreamingChoice(message=message_obj, finish_reason=finish_reason)],
+                choices=[
+                    NonStreamingChoice(message=message_obj, finish_reason=finish_reason)
+                ],
                 usage=usage,
             )
             if is_openai_strict_mode():
-                get_stats().record(provider_model, status=200, latency_ms=(time.monotonic()-_req_t0)*1000, usage=usage)
+                get_stats().record(
+                    provider_model,
+                    status=200,
+                    latency_ms=(time.monotonic() - _req_t0) * 1000,
+                    usage=usage,
+                )
                 return JSONResponse(content=response_data.model_dump(exclude_none=True))
-            get_stats().record(provider_model, status=200, latency_ms=(time.monotonic()-_req_t0)*1000, usage=usage)
+            get_stats().record(
+                provider_model,
+                status=200,
+                latency_ms=(time.monotonic() - _req_t0) * 1000,
+                usage=usage,
+            )
             return JSONResponse(content=response_data.model_dump())
 
         except ValueError as e:
             raise HTTPException(status_code=400, detail=str(e))
         except AuthenticationError as e:
             detail = f"{e} | Response: {e.response_body}" if e.response_body else str(e)
-            raise HTTPException(status_code=getattr(e, "status_code", 401) or 401, detail=detail)
+            raise HTTPException(
+                status_code=getattr(e, "status_code", 401) or 401, detail=detail
+            )
         except RateLimitError as e:
             detail = f"{e} | Response: {e.response_body}" if e.response_body else str(e)
-            raise HTTPException(status_code=getattr(e, "status_code", 429) or 429, detail=detail)
+            raise HTTPException(
+                status_code=getattr(e, "status_code", 429) or 429, detail=detail
+            )
         except HTTPException:
             raise
         except ProviderError as e:
@@ -138,14 +182,28 @@ def create_chat_router(
             if e.response_body:
                 detail = f"{detail} | Response: {e.response_body}"
             sc = getattr(e, "status_code", 500) or 500
-            get_stats().record(provider_model, status=sc, latency_ms=(time.monotonic()-_req_t0)*1000, usage=None)
+            get_stats().record(
+                provider_model,
+                status=sc,
+                latency_ms=(time.monotonic() - _req_t0) * 1000,
+                usage=None,
+            )
             raise HTTPException(status_code=sc, detail=detail)
         except UniInferError as e:
             raise HTTPException(status_code=500, detail=f"UniInfer Error: {e}")
         except Exception as e:
-            logger.exception("Unexpected error in /v1/chat/completions: %s: %s", type(e).__name__, e)
-            get_stats().record(provider_model, status=500, latency_ms=(time.monotonic()-_req_t0)*1000, usage=None)
-            raise HTTPException(status_code=500, detail=f"Internal Server Error: {type(e).__name__}")
+            logger.exception(
+                "Unexpected error in /v1/chat/completions: %s: %s", type(e).__name__, e
+            )
+            get_stats().record(
+                provider_model,
+                status=500,
+                latency_ms=(time.monotonic() - _req_t0) * 1000,
+                usage=None,
+            )
+            raise HTTPException(
+                status_code=500, detail=f"Internal Server Error: {type(e).__name__}"
+            )
 
     @router.post("/v1/embeddings", response_model=EmbeddingResponse)
     @limiter.limit(get_embeddings_rate_limit)
@@ -161,11 +219,16 @@ def create_chat_router(
             provider_name, _ = parse_provider_model(provider_model)
             if provider_name == "ollama":
                 from credgoo import get_api_key as _get_credgoo_key
-                ollama_extra = provider_configs.get("ollama", {}).get("extra_params", {})
+
+                ollama_extra = provider_configs.get("ollama", {}).get(
+                    "extra_params", {}
+                )
                 provider_api_key = _get_credgoo_key("ollama")
                 base_url = ollama_extra.get("base_url")
             else:
-                provider_api_key = verify_provider_access(api_bearer_token, provider_name)
+                provider_api_key = verify_provider_access(
+                    api_bearer_token, provider_name
+                )
                 base_url = None
 
             embeddings_result = await run_in_threadpool(
@@ -176,29 +239,46 @@ def create_chat_router(
                 base_url=base_url,
             )
 
-            embedding_data = [EmbeddingData(embedding=embedding, index=i) for i, embedding in enumerate(embeddings_result["embeddings"])]
-            response_data = EmbeddingResponse(data=embedding_data, model=provider_model, usage=embeddings_result["usage"])
+            embedding_data = [
+                EmbeddingData(embedding=embedding, index=i)
+                for i, embedding in enumerate(embeddings_result["embeddings"])
+            ]
+            response_data = EmbeddingResponse(
+                data=embedding_data,
+                model=provider_model,
+                usage=embeddings_result["usage"],
+            )
             return JSONResponse(content=response_data.model_dump())
 
         except ValueError as e:
             raise HTTPException(status_code=400, detail=str(e))
         except AuthenticationError as e:
             detail = f"{e} | Response: {e.response_body}" if e.response_body else str(e)
-            raise HTTPException(status_code=getattr(e, "status_code", 401) or 401, detail=detail)
+            raise HTTPException(
+                status_code=getattr(e, "status_code", 401) or 401, detail=detail
+            )
         except RateLimitError as e:
             detail = f"{e} | Response: {e.response_body}" if e.response_body else str(e)
-            raise HTTPException(status_code=getattr(e, "status_code", 429) or 429, detail=detail)
+            raise HTTPException(
+                status_code=getattr(e, "status_code", 429) or 429, detail=detail
+            )
         except ProviderError as e:
             detail = f"Provider Error ({provider_name}): {e}"
             if e.response_body:
                 detail = f"{detail} | Response: {e.response_body}"
-            raise HTTPException(status_code=getattr(e, "status_code", 500) or 500, detail=detail)
+            raise HTTPException(
+                status_code=getattr(e, "status_code", 500) or 500, detail=detail
+            )
         except UniInferError as e:
             raise HTTPException(status_code=500, detail=f"UniInfer Error: {e}")
         except HTTPException:
             raise
         except Exception as e:
-            logger.exception("Unexpected error in /v1/embeddings: %s: %s", type(e).__name__, e)
-            raise HTTPException(status_code=500, detail=f"Internal Server Error: {type(e).__name__}")
+            logger.exception(
+                "Unexpected error in /v1/embeddings: %s: %s", type(e).__name__, e
+            )
+            raise HTTPException(
+                status_code=500, detail=f"Internal Server Error: {type(e).__name__}"
+            )
 
     return router

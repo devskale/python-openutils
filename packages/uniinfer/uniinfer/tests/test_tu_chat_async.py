@@ -122,20 +122,14 @@ class TestTUProviderAsync:
 
     @pytest.mark.asyncio
     async def test_throttle(self, provider):
-        """Test async throttling."""
-        from datetime import datetime, timedelta
-        
-        # Set last request time to now
-        provider._last_request_time = datetime.now()
-        provider._min_request_interval = timedelta(milliseconds=500)
-        
-        start_time = datetime.now()
-        await provider._throttle()
-        end_time = datetime.now()
-        
-        # Should have slept for at least ~0.5s
-        duration = (end_time - start_time).total_seconds()
-        assert duration >= 0.4 # Allow some margin
+        """_throttle now delegates to the shared adaptive per-model limiter."""
+        from uniinfer.providers.tu import _TU_LIMITER
+        _TU_LIMITER.reset("test-model")
+        info = await provider._throttle("test-model")
+        assert isinstance(info, dict)
+        assert "rpm" in info
+        assert "waited" in info
+        assert info["rpm"] >= 0.5
 
     def test_flatten_messages(self, provider):
         """Test message flattening logic (deprecated in TUProvider, but checking core compatibility)."""

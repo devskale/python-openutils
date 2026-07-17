@@ -66,6 +66,7 @@ Proxy requires a **credgoo combined token** (`bearer@encryption`) as Bearer auth
 | `AGENTS.md` | This file — contributor rules |
 | `docs/models.md` | Model catalog, types, metadata richness |
 | `docs/providers.md` | Full provider index with base URLs, defaults |
+| `docs/integration.md` | How to integrate: Python module + uniioai proxy API |
 
 ## Code Style
 
@@ -111,6 +112,17 @@ Inherit `OpenAICompatibleChatProvider` → override only `list_models()` and hea
 
 Inherit `AnthropicCompatibleProvider` → override `list_models()` fallback if no Anthropic model-list endpoint.
 
+### Ollama provider — name & model id (common footgun)
+
+Setting up Ollama in uniinfer trips people up on **two things**: the provider
+name and how the model id is spelled.
+
+- **Provider name**: `ollama` (registered in `ProviderFactory`, `uniinfer/__init__.py`). Implementation: `uniinfer/providers/ollama.py` — a **custom** `ChatProvider` using Ollama's native `/api/chat` + `/api/tags`, *not* the OpenAI-compatible subclass.
+- **Model id = `ollama@<model>`**: everything after the `@` is the **literal Ollama model id** (version tag included), e.g. `ollama@gemma3:1b`, `ollama@qwen3.5:0.8b`. The proxy / `get_completion()` split on the **first** `@` to get `{provider, model}`.
+- **Won't route**: a bare id (`gemma3:1b`) or wrong separator (`ollama:gemma3:1b`) → `ValueError: Invalid provider_model_string format. Expected 'provider@modelname'`.
+- **`--no-think` is vLLM-only**: it sets `chat_template_kwargs.enable_thinking=false`. Ollama thinking uses the native `think` field (`message.thinking` → `response.thinking`); disable it via `provider_specific_kwargs={"think": False}`.
+- **Auth**: Ollama bypasses proxy auth locally (see Known Footguns).
+
 ## Boundaries
 
 - ✅ Always run tests + lint before committing
@@ -127,10 +139,43 @@ Inherit `AnthropicCompatibleProvider` → override `list_models()` fallback if n
 - **Minor** (default): increment patch (`0.3.5` → `0.3.6`)
 - **Major**: increment minor, reset patch (`0.3.5` → `0.4.0`)
 
+## Adaptive Rate Limiting
+
+TU enforces a **self-tuning AIMD** rate limit (`uniinfer/ratelimit.py`),
+keyed per `(provider, model). It does **not** trust the provider's advertised
+limit (TU says "25/min" but the real ceiling is far lower, especially for
+heavy models like `glm-5.2-744b-preview`).
+
+- On a 429 it halves the estimate, applies an exponential cooldown, and
+  **retries** the call (so clients rarely see a 429).
+- On success (after a stable period) it nudges the estimate up.
+- **Daily re-challenge**: restores the ceiling and probes higher, so a silent
+  25 → 100 → 1000/min upgrade is discovered automatically.
+- Learned limits persist to `_rate_limits.json` (gitignored) across restarts.
+- Production TU (`tu`) and TU Staging (`tu-staging`) have **separate**
+  limiters (distinct backends).
+- **Observability**: `GET /v1/system/rate-limits` returns the live per-(provider,
+  model) state — learned rpm, ceiling, active cooldown, 429 streak, last
+  re-challenge. Public/read-only.
+
+Env vars (all optional):
+
+| Var | Default | Meaning |
+|-----|---------|---------|
+| `UNIINFER_RATE_LIMIT_DEFAULT` | 25 | initial rpm estimate |
+| `UNIINFER_RATE_LIMIT_MIN` | 0.5 | floor (never fully stalls) |
+| `UNIINFER_RATE_LIMIT_CEILING` | 1000 | hard cap additive-increase won't pass |
+| `UNIINFER_RATE_LIMIT_WINDOW` | 60 | sliding-window size (seconds) |
+| `UNIINFER_RATE_LIMIT_RECHALLENGE_HOURS` | 24 | re-challenge interval |
+| `UNIINFER_RATE_LIMIT_PERSIST` | `_rate_limits.json` | state file (empty = disable) |
+
+The config.json `tu_rate_limit_per_minute` still seeds the initial estimate.
+
 ## Known Footguns
 
+- **Thinking models need `max_tokens` ≫ 1–2k** — Qwen3.x / GLM-5.x / Claude extended-thinking consume the token budget on reasoning *before* the visible answer. A too-low cap yields empty / truncated output that looks like a model bug. Defaults in the smoke router (`4096`), the Anthropic provider (`8192`), and the CLI speedtest (`4096`) are set for this reason; the proxy chat path defaults to `32768`. Always pass a generous `max_tokens` when exercising thinking models.
 - `PROXY_KEY` format is `bearer@encryption` — the `@` is the delimiter, not part of either value
 - `ModelInfo` equality matches strings — `model_info == "gpt-4"` works but is easy to miss
-- Ollama bypasses proxy auth — don't assume all endpoints require auth in tests
+- Ollama models are addressed as `ollama@<model>` (split on first `@`); a bare id or `:` separator won't route — see "Ollama provider" above. Ollama also bypasses proxy auth — don't assume all endpoints require auth in tests
 - Provider metadata richness varies widely — see `docs/models.md` for the matrix
 - Reasoning models (TU/vLLM) may return `reasoning_content` in the assistant message
