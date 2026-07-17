@@ -1,108 +1,94 @@
 # UniInfer
 
-[![License](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
-[![Python Versions](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/downloads/)
+[![Version](https://img.shields.io/badge/version-0.6.3-38bdf8)](#)
+[![Python](https://img.shields.io/badge/python-3.9+-blue)](#)
+[![License](https://img.shields.io/badge/license-MIT-blue)](#)
+[![Providers](https://img.shields.io/badge/providers-24-success)](#)
 
-Unified Python interface for **LLM chat completions, embeddings, TTS, and STT** across 20+ providers with automatic API key management and an OpenAI-compatible proxy server.
+> **One interface for 20+ LLM providers** — chat, embeddings, TTS, STT, streaming,
+> tool-calling, and cross-provider reasoning control, behind a single API and an
+> OpenAI-compatible proxy. Free-tier-friendly.
 
-## Quick Start
+- 🌐 **24 providers, 900+ models** — OpenAI, Anthropic, Gemini, Mistral, Groq, Ollama, vLLM (TU), OpenRouter, and more
+- 🧠 **Unified thinking control** — `reasoning_effort` flips reasoning on/off across every provider's native dialect
+- 🔌 **OpenAI-compatible proxy** — drop-in for any OpenAI client; model id is `provider@model`
+- 🖥️ **Web app** — Chat / Dashboard / Settings served at `/`
+- 🔐 **Key management via [credgoo](https://github.com/devskale/python-openutils/tree/main/packages/credgoo)** — one token unlocks every provider
+- ⚡ **Streaming, tools, embeddings, TTS, STT, fallback strategies**
+
+---
+
+## Quick start
 
 ```bash
-# Into a venv (fastest)
+# Into a project
 uv pip install -r https://skale.dev/uniinfer
-
-# Standalone CLI (no venv needed)
-uv tool install "uniinfer @ git+https://github.com/devskale/python-openutils.git#subdirectory=packages/uniinfer"
-```
-
-```python
-from uniinfer import ProviderFactory, ChatMessage, ChatCompletionRequest
-
-provider = ProviderFactory.get_provider("openai")
-response = provider.complete(ChatCompletionRequest(
-    messages=[ChatMessage(role="user", content="Hello!")],
-    model="gpt-4",
-))
-print(response.message.content)
-```
-
-## Features
-
-- Single API for 20+ LLM providers
-- Secure API key management via credgoo
-- Streaming, embeddings, TTS, STT
-- Automatic fallback strategies
-- OpenAI-compatible FastAPI proxy server
-- CLI tool for quick interactions
-
-## Installation
-
-**As a dependency** in `pyproject.toml`:
-```toml
-[project]
-dependencies = ["uniinfer"]
-
-[tool.uv.sources]
-uniinfer = { git = "https://github.com/devskale/python-openutils.git", subdirectory = "packages/uniinfer" }
-```
-
-**From source**:
-```bash
+# …or from source
 git clone https://github.com/devskale/python-openutils.git
 cd python-openutils/packages/uniinfer && uv sync
 ```
 
-Requires Python 3.9+. Provider-specific packages: `uv sync --extra anthropic`.
-
-## Usage
-
-### Streaming
-
 ```python
-provider = ProviderFactory.get_provider("anthropic")
-for chunk in provider.stream_complete(ChatCompletionRequest(
-    messages=[ChatMessage(role="user", content="Tell me a story")],
-    model="claude-3-sonnet-20240229",
-    streaming=True,
-)):
-    print(chunk.message.content, end="", flush=True)
+from uniinfer.completion import Target
+
+# api_key auto-resolves via credgoo if you pass None and a key is configured
+resp = Target("mistral@mistral-small-latest", api_key=None).complete(
+    [{"role": "user", "content": "Reply with exactly: OK"}],
+    max_tokens=40,
+)
+print(resp.message.content)   # → OK
 ```
 
-### Embeddings
-
-```python
-from uniinfer import EmbeddingProviderFactory, EmbeddingRequest
-
-provider = EmbeddingProviderFactory.get_provider("ollama")
-response = provider.embed(EmbeddingRequest(
-    input=["Hello world", "Machine learning"],
-    model="nomic-embed-text:latest",
-))
-```
-
-### Fallback Strategies
-
-```python
-from uniinfer import FallbackStrategy
-
-strategy = FallbackStrategy(provider_names=["openai", "anthropic", "ollama"])
-response, provider_name = strategy.complete(request)
-```
-
-## CLI
+### Or, the OpenAI-compatible proxy
 
 ```bash
-uniinfer -p openai -q "Hello" -m gpt-4           # chat
-uniinfer -p anthropic -m claude-3-opus-20240229   # interactive
-uniinfer -p openai --list-models                   # list models
-uniinfer --new-models 7                            # models added in last 7 days
-uniinfer --deprecated-models                       # deprecated models
-uniinfer -p openrouter --speedtest -m google/gemma-4-26b-a4b-it:free  # benchmark
+uv run uvicorn uniinfer.proxy_app:app --host 0.0.0.0 --port 8123
 ```
 
-## Supported Providers
+```python
+from openai import OpenAI
+client = OpenAI(base_url="http://localhost:8123/v1",
+                api_key="CREDGOO_BEARER@ENCRYPTION")   # credgoo combo
+print(client.chat.completions.create(
+    model="tu@qwen-3.6-35b",                            # provider@model
+    messages=[{"role": "user", "content": "Hello!"}],
+).choices[0].message.content)
+```
 
-**20 providers, 979 models.** See [docs/providers.md](docs/providers.md) for full details.
+Then open **`http://localhost:8123/`** for the web app (Chat / Dashboard / Settings).
+
+---
+
+## Thinking control (reasoning)
+
+Thinking models (Qwen3.x, GLM, o1-style) reason *before* the visible answer.
+UniInfer unifies this behind one intent — **`reasoning_effort`** — so you set it
+once and every provider maps it to its own dialect (ollama `think`, vLLM
+`chat_template_kwargs`, Z.AI `thinking`, …):
+
+```python
+Target("ollama@qwen3.5:0.8b").complete(
+    [{"role": "user", "content": "What is 7×6?"}],
+    max_tokens=2048, reasoning_effort="high",   # "none"/"minimal" disable reasoning
+)
+```
+
+| `reasoning_effort` | meaning |
+|---|---|
+| `none`, `minimal` | reasoning **off** (fast, deterministic) — the cross-provider contract |
+| `low`, `medium`, `high` | reasoning on, increasing effort |
+
+> **Footgun:** thinking models spend the token budget on reasoning *before* the
+> answer — a tiny `max_tokens` yields empty output. Keep it ≫ 1–2k, or disable
+> reasoning with `reasoning_effort="none"`. The proxy chat path defaults to
+> `32768`; the unified `--no-think` CLI flag sets `reasoning_effort="none"`.
+
+---
+
+## Supported providers
+
+See [docs/providers.md](docs/providers.md) for the full index with base URLs,
+free tiers, and rate limits (baked into `config/provider_limits.json`).
 
 | Provider | Chat | Embed | TTS | STT | Free | Models |
 |----------|:----:|:-----:|:---:|:---:|:----:|-------:|
@@ -117,7 +103,7 @@ uniinfer -p openrouter --speedtest -m google/gemma-4-26b-a4b-it:free  # benchmar
 | StepFun | ✅ | — | — | — | — | 35 |
 | Groq | ✅ | — | — | — | — | 16 |
 | Chutes | ✅ | — | — | — | — | 13 |
-| TU Wien | ✅ | ✅ | ✅ | ✅ | — | 9 |
+| TU Wien (vLLM) | ✅ | ✅ | ✅ | ✅ | — | 9 |
 | Moonshot | ✅ | — | — | — | — | 9 |
 | Upstage | ✅ | — | — | — | — | 8 |
 | Z.AI | ✅ | — | — | — | ✅ | 7 |
@@ -132,92 +118,174 @@ uniinfer -p openrouter --speedtest -m google/gemma-4-26b-a4b-it:free  # benchmar
 | InternLM | ✅ | — | — | — | — | — |
 | MiniMax | ✅ | — | — | — | — | — |
 
-Model counts from `models.json` — regenerated daily at 04:00 UTC. Free = provider offers free-tier models.
+Model counts from `models.json` (regenerated daily 04:00 UTC). Free = provider offers free-tier models.
 
-## API Server
+---
 
-OpenAI-compatible FastAPI proxy:
+## Library usage
 
-```bash
-uv run uvicorn uniinfer.proxy_app:app --host 0.0.0.0 --port 8123
+### Streaming
+
+```python
+target = Target("anthropic@claude-3-5-sonnet-20241022")
+for chunk in target.stream_complete([{"role": "user", "content": "Tell me a story"}]):
+    print(chunk.message.content, end="", flush=True)
 ```
 
-### Authentication
+### Tool calling
 
-Bearer token in `Authorization` header. Two formats:
+```python
+tools = [{"type": "function", "function": {
+    "name": "get_weather", "parameters": {"type": "object",
+        "properties": {"location": {"type": "string"}}, "required": ["location"]}}}]
+resp = Target("mistral@mistral-small-latest").complete(
+    [{"role": "user", "content": "Weather in Paris?"}],
+    tools=tools, tool_choice="auto", max_tokens=256,
+)
+print(resp.message.tool_calls)   # → [{ "function": { "name": "get_weather", ... }}]
+```
 
-1. **Direct API key**: `Bearer YOUR_PROVIDER_API_KEY`
-2. **Credgoo token** (multi-provider): `Bearer CREDGOO_BEARER@ENCRYPTION_KEY`
+### Embeddings, TTS, STT, fallback
 
-Falls back to `CREDGOO_BEARER_TOKEN` and `CREDGOO_ENCRYPTION_KEY` env vars if no header.
+```python
+from uniinfer import EmbeddingProviderFactory, EmbeddingRequest
+from uniinfer import FallbackStrategy
+
+# embeddings (separate factory — different request type)
+vec = EmbeddingProviderFactory.get_provider("ollama").embed(
+    EmbeddingRequest(input=["hello"], model="nomic-embed-text-v2-moe"))
+
+# try multiple providers until one succeeds
+strategy = FallbackStrategy(provider_names=["openai", "anthropic", "ollama"])
+resp, used = strategy.complete(request)
+```
+
+### Low-level: talk to a provider directly
+
+`Target` is the dispatch handle; `ProviderFactory` is the lower-level seam when
+you need a raw provider instance:
+
+```python
+from uniinfer import ProviderFactory, ChatCompletionRequest, ChatMessage
+provider = ProviderFactory.get_provider("groq")
+resp = provider.complete(ChatCompletionRequest(
+    model="llama-3.1-8b-instant",
+    messages=[ChatMessage(role="user", content="Hi")],
+))
+```
+
+---
+
+## The proxy
+
+An OpenAI-compatible FastAPI server. Model ids are **`provider@model`**
+(e.g. `tu@qwen-3.6-35b`, `ollama@qwen3.5:0.8b`).
 
 ### Endpoints
 
 | Endpoint | Method | Description |
 |----------|--------|-------------|
-| `/v1/chat/completions` | POST | Chat completions |
+| **`/`** | GET | **Web app** — Chat / Dashboard / Settings |
+| `/v1/chat/completions` | POST | Chat (stream + non-stream) |
 | `/v1/embeddings` | POST | Embeddings |
-| `/v1/models` | GET | All models (cached) |
-| `/v1/catalog` | GET | Raw nested catalog (`?providers=openai,gemini`, `&download=1`) — public, no auth |
+| `/v1/models` · `/v1/catalog` | GET | Cached models · raw catalog (`?providers=`, `&download=1`) |
 | `/v1/models/{provider}` | GET | Live provider models |
-| `/v1/models/new?days=7` | GET | Recently added models |
-| `/v1/models/deprecated` | GET | Deprecated models |
-| `/v1/images/generations` | POST | Image generation |
-| `/v1/audio/speech` | POST | TTS |
-| `/v1/audio/transcriptions` | POST | STT |
-| `/v1/system/version` | GET | Package version |
+| `/v1/models/new` · `/deprecated` · `/stale` | GET | Catalog diffs |
+| `/v1/images/generations` · `/v1/audio/speech` · `/v1/audio/transcriptions` | POST | Image / TTS / STT |
+| `/v1/system/stats` | GET | Usage stats (24h/7d, per-model) |
+| `/v1/system/provider-limits` | GET | **Free-tier limits joined with live usage + utilization %** |
+| `/v1/system/rate-limits` | GET | Adaptive AIMD limiter state (TU) |
+| `/v1/system/version` | GET | Version |
 
-### Security
+Dashboards: `/v1/system/stats.html`, `/v1/system/provider-limits.html`, `/capabilities`, `/perf`, `/guide`.
 
-- Rate limiting: chat 100/min, embeddings 200/min, media 50/min (configurable via env)
-- Auth enforced on `/v1/chat/completions`, `/v1/embeddings`, `/v1/images/*`, `/v1/audio/*`
-- Ollama bypasses auth for local dev
-- Configure: `UNIINFER_RATE_LIMIT_CHAT`, `UNIINFER_RATE_LIMIT_EMBEDDINGS`, `UNIINFER_RATE_LIMIT_MEDIA`
+### Authentication
 
-### Example Client
+Bearer token, two forms:
+1. **Direct provider key** — `Bearer <PROVIDER_API_KEY>`
+2. **Credgoo combo** (multi-provider) — `Bearer <CREDGOO_BEARER>@<CREDGOO_ENCRYPTION>`
 
-```python
-from openai import OpenAI
+Falls back to `CREDGOO_BEARER_TOKEN` / `CREDGOO_ENCRYPTION_KEY` env vars. **Ollama bypasses auth** for local dev. Rate limits: chat 100/min, embeddings 200/min, media 50/min (`UNIINFER_RATE_LIMIT_CHAT`, …).
 
-client = OpenAI(
-    base_url="http://localhost:8123/v1",
-    api_key="YOUR_CREDGOO_BEARER@ENCRYPTION",
-)
+---
 
-response = client.chat.completions.create(
-    model="tu@glm-4.7-355b",
-    messages=[{"role": "user", "content": "Hello!"}],
-)
+## CLI
+
+```bash
+uniinfer -p mistral -m mistral-small-latest -q "Hello"   # chat
+uniinfer -p groq --speedtest -m llama-3.1-8b-instant       # benchmark
+uniinfer --no-think -p tu -m qwen-3.6-35b -q "Summarise…"  # reasoning off
+uniinfer --capabilities -p ollama -m qwen3.5:0.8b          # capability probe
+uniinfer --list-providers                                   # providers
+uniinfer --new-models 7                                     # new this week
 ```
 
-> Model IDs are `provider@model` format for the proxy (e.g. `tu@glm-4.7-355b`).
+---
 
 ## Configuration
 
-API keys are managed by credgoo:
+API keys live in **credgoo**:
 
 ```bash
-credgoo set openai YOUR_API_KEY
-credgoo list
+credgoo set openai sk-…        # store a key
+credgoo list                   # what's configured
 ```
 
-Override with env vars for testing: `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`.
+Or per-provider env vars for testing: `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, …
+
+---
 
 ## Development
 
 ```bash
-uv sync                              # install deps
-uv run pytest                        # run tests
-uv run pytest -k "test_name"         # single test
-uv run black . && uv run isort . && uv run ruff check . --fix  # format + lint
+uv sync --extra all                       # install all provider deps
+uv run pytest                             # unit/integration tests (uniinfer/tests/)
+uv run black . && uv run isort . && uv run ruff check . --fix   # format + lint
 ```
 
-See [AGENTS.md](AGENTS.md) for contributor rules, [ARCHITECTURE.md](ARCHITECTURE.md) for proxy layout, and [docs/models.md](docs/models.md) for the model catalog.
+### Live testsuite (smoke → details → perf)
+
+The curated tiered suite that talks to a **real proxy + provider**:
+
+```bash
+PROXY_URL=http://localhost:8123 PROXY_AUTH=… MODEL=tu@qwen-3.6-35b ./testsuite/run.sh all
+./testsuite/run.sh smoke   # alive?  (CLI + proxy)
+./testsuite/run.sh details # correct? (reasoning, tools, streaming, turn-based)
+./testsuite/run.sh perf    # fast?    (throughput incl. thinking, TTFT, latency)
+```
+
+See [testsuite/README.md](testsuite/README.md). Token counting:
+`usage.completion_tokens` **includes thinking** (per OpenAI spec); throughput
+isolates generation from prefill.
+
+---
+
+## Architecture
+
+Deep modules, small interfaces:
+
+- **`uniinfer.completion.Target`** — the dispatch handle: parse → instantiate →
+  request → dispatch → access-recording behind `complete/stream_complete/acomplete/astream_complete`.
+- **`uniinfer.core`** — data classes: `ChatCompletionRequest` (with typed
+  `reasoning_effort`), `ChatProvider`, `ModelInfo`.
+- **`uniinfer.providers/`** — provider adapters; each owns its reasoning dialect.
+- **`uniinfer.proxy_app`** + `proxy_routers/` + `proxy_services/` + `proxy_schemas/` — the OpenAI-compatible proxy.
+
+Full layout + the **Naming** table (`uniioai_proxy.py` → `proxy_app.py`):
+[ARCHITECTURE.md](ARCHITECTURE.md).
+
+## Docs
+
+- [ARCHITECTURE.md](ARCHITECTURE.md) — proxy layout + naming
+- [AGENTS.md](AGENTS.md) — contributor rules, provider patterns
+- [docs/providers.md](docs/providers.md) — provider index (URLs, free tiers, limits)
+- [docs/models.md](docs/models.md) — model catalog
+- [docs/integration.md](docs/integration.md) — integration guide (Python + proxy)
+- [CHANGELOG.md](CHANGELOG.md)
 
 ## Contributing
 
-1. Fork → feature branch → tests → all tests pass → format → commit → PR
-2. See [AGENTS.md](AGENTS.md) for provider implementation patterns
+Fork → branch → tests pass → `black` + `isort` + `ruff` → PR. See [AGENTS.md](AGENTS.md) for provider-implementation patterns and the boundaries (ask before changing `core.py`'s public API).
 
 ## License
 

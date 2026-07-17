@@ -95,6 +95,16 @@ Proxy requires a **credgoo combined token** (`bearer@encryption`) as Bearer auth
 
 ## Provider Implementation
 
+### Key modules (where things live)
+
+- `uniinfer/completion.py` — **`Target`**: the deep completion-dispatch module. Owns parse → instantiate → request-build → dispatch → access-recording behind `complete / stream_complete / acomplete / astream_complete`. This is the one home for "reach a model and complete"; the old `get/stream/aget/astream_completion` helpers were removed.
+- `uniinfer/provider_access.py` — proxy helpers: credgoo key resolution (`get_provider_api_key`), embeddings (`get_embeddings`), model listing.
+- `uniinfer/proxy_app.py` — the FastAPI app + `main()` entry point (renamed from `uniioai_proxy.py`).
+- `uniinfer/core.py` — data classes: `ChatCompletionRequest` (with typed `reasoning_effort: Literal["none","minimal","low","medium","high"]`), `ChatProvider`, `ModelInfo`.
+- `uniinfer/ratelimit.py` — adaptive per-(provider,model) AIMD limiter (TU).
+- Provider limits: `uniinfer/config/provider_limits.json` → baked into `PROVIDER_CONFIGS[*].free_tier_limits`, served at `/v1/system/provider-limits`.
+- Live testsuite: `testsuite/run.sh` (smoke/details/perf) + `scripts/test_cli.sh`, `scripts/test_proxy.sh`.
+
 ### Adding a New Provider
 
 1. Create `uniinfer/providers/<name>.py`
@@ -120,9 +130,9 @@ Setting up Ollama in uniinfer trips people up on **two things**: the provider
 name and how the model id is spelled.
 
 - **Provider name**: `ollama` (registered in `ProviderFactory`, `uniinfer/__init__.py`). Implementation: `uniinfer/providers/ollama.py` — a **custom** `ChatProvider` using Ollama's native `/api/chat` + `/api/tags`, *not* the OpenAI-compatible subclass.
-- **Model id = `ollama@<model>`**: everything after the `@` is the **literal Ollama model id** (version tag included), e.g. `ollama@gemma3:1b`, `ollama@qwen3.5:0.8b`. The proxy / `get_completion()` split on the **first** `@` to get `{provider, model}`.
-- **Won't route**: a bare id (`gemma3:1b`) or wrong separator (`ollama:gemma3:1b`) → `ValueError: Invalid provider_model_string format. Expected 'provider@modelname'`.
-- **`--no-think` is vLLM-only**: it sets `chat_template_kwargs.enable_thinking=false`. Ollama thinking uses the native `think` field (`message.thinking` → `response.thinking`); disable it via `provider_specific_kwargs={"think": False}`.
+- **Model id = `ollama@<model>`**: everything after the `@` is the **literal Ollama model id** (version tag included), e.g. `ollama@gemma3:1b`, `ollama@qwen3.5:0.8b`. The proxy / `Target` / `parse_provider_model` split on the **first** `@` to get `{provider, model}`.
+- **Won't route**: a bare id (`gemma3:1b`) or wrong separator (`ollama:gemma3:1b`) → `ValueError: Invalid provider_model format. Expected 'provider@modelname'`.
+- **Thinking**: reasoning is controlled by `reasoning_effort` on the request (`none`/`minimal` disable it). Ollama maps that to its native `think` field internally; callers no longer pass a `think=` kwarg. The CLI `--no-think` sets `reasoning_effort="none"` (works across backends, not just vLLM).
 - **Auth**: Ollama bypasses proxy auth locally (see Known Footguns).
 
 ## Boundaries
