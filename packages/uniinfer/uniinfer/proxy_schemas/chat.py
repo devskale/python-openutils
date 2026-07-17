@@ -89,13 +89,33 @@ class NonStreamingChoice(BaseModel):
     finish_reason: str = "stop"
 
 
+class PromptTokensDetails(BaseModel):
+    cached_tokens: int | None = None
+
+
+class CompletionTokensDetails(BaseModel):
+    reasoning_tokens: int | None = None
+
+
+class CompletionUsage(BaseModel):
+    """OpenAI-spec usage. Fields the proxy doesn't get default to 0/None; unknown
+    provider fields are ignored. Models the nested *_details objects that some
+    providers (e.g. Mistral, OpenAI reasoning models) return — a flat
+    ``dict[str, int]`` rejected those and 400'd non-streaming responses."""
+    prompt_tokens: int = 0
+    completion_tokens: int = 0
+    total_tokens: int = 0
+    prompt_tokens_details: PromptTokensDetails | None = None
+    completion_tokens_details: CompletionTokensDetails | None = None
+
+
 class NonStreamingChatCompletion(BaseModel):
     id: str = Field(default_factory=lambda: f"chatcmpl-{uuid.uuid4()}")
     object: str = "chat.completion"
     created: int = Field(default_factory=lambda: int(time.time()))
     model: str
     choices: list[NonStreamingChoice]
-    usage: dict[str, int] | None = None
+    usage: CompletionUsage | None = None
 
 
 class EmbeddingRequest(BaseModel):
@@ -114,4 +134,4 @@ class EmbeddingResponse(BaseModel):
     object: str = "list"
     data: list[EmbeddingData]
     model: str
-    usage: dict[str, int] | None = None
+    usage: CompletionUsage | None = None

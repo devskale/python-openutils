@@ -4,6 +4,24 @@ All notable changes to **uniinfer** are documented in this file.
 Versions follow [Semantic Versioning](https://semver.org/); this file
 adheres to [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.6.3] - 2026-07-17
+
+### Fixed
+- **Non-streaming `/v1/chat/completions` no longer 400s on nested usage.**
+  Providers like Mistral (and OpenAI reasoning models) return
+  `prompt_tokens_details` / `completion_tokens_details` as objects; the schemas
+  typed `usage: dict[str, int]`, which rejected those objects and made the proxy
+  400 its own successful upstream result on non-streaming calls (streaming was
+  unaffected). Modeled `CompletionUsage` (+ `PromptTokensDetails` /
+  `CompletionTokensDetails`) per the OpenAI spec. Regression tests added.
+
+### Changed
+- `uv lock -U`: openai 2.46, anthropic 0.117, fastapi 0.139.2, mistralai 2.7,
+  google-genai 2.12.1, huggingface-hub 1.24, others.
+- Docs: `ARCHITECTURE.md` gains a crystal-clear **Naming** table
+  (`uniioai_proxy.py` → `proxy_app.py`; the `uniioai-proxy` command + logger
+  name are intentionally kept); rename notes in `AGENTS.md` and `docs/issues.md`.
+
 ## [0.6.2] - 2026-07-17
 
 ### Added

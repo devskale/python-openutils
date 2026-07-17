@@ -2,6 +2,24 @@
 
 This document describes the current `proxy_app` layout and where to add changes.
 
+## Naming (read this first — `uniioai_proxy` ≠ the module anymore)
+
+`uniioai` is the **product**; `proxy_app` is the **module**. The app module was
+renamed (`uniioai_proxy.py` → `proxy_app.py`); the user-facing command and log
+channel deliberately keep the product name.
+
+| What | Name | Notes |
+|------|------|-------|
+| Product / service | **UniIOAI proxy** | the OpenAI-compatible proxy product |
+| App module | `uniinfer/proxy_app.py` | FastAPI app + `main()` entry point. **Renamed from `uniioai_proxy.py`** (commit `344b68f`). |
+| Console command | `uniioai-proxy` | `[project.scripts]` binary → `uniinfer.proxy_app:main` (name unchanged) |
+| uvicorn target | `uniinfer.proxy_app:app` | for `uvicorn` / `--reload` |
+| Logger channel | `"uniioai_proxy"` | stable log channel (intentionally kept) |
+| Log file | `logs/uniioai_proxy.log` | stable log file name (intentionally kept) |
+
+`uniioai_proxy.py` / `uniinfer.uniioai_proxy` **no longer exist** — don't import
+or reference them. Tests import `from uniinfer.proxy_app import app`.
+
 ## Entry Point
 
 - `uniinfer/proxy_app.py`

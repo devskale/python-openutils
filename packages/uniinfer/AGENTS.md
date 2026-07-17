@@ -49,6 +49,8 @@ After pushing to `main`: `cd /home/ubuntu/code/python-openutils && git pull && c
 | Config | `.env` (`PROXY_KEY`, `PROXYHOST`, `PROXY_PORT`) — gitignored |
 | Models refresh | `uniioai-models-refresh.timer` daily at 04:00 UTC |
 
+> **Naming:** the `uniioai-proxy` **command/service** runs the `uniinfer.proxy_app:main` **module** (renamed from `uniioai_proxy.py`; the command + logger name `uniioai_proxy` are intentionally kept). See [ARCHITECTURE.md](ARCHITECTURE.md#naming).
+
 ## Proxy Auth Token
 
 Proxy requires a **credgoo combined token** (`bearer@encryption`) as Bearer auth, stored in `.env` as `PROXY_KEY`.
