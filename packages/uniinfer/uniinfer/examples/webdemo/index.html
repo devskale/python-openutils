@@ -1,0 +1,463 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>UniInfer</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/dompurify@3.2.6/dist/purify.min.js"></script>
+    <style>
+      :root {
+        --bg: #0b1220; --panel: #111c2e; --panel-2: #0f1729; --card: #1e293b;
+        --ink: #e5edf7; --dim: #93a4bd; --faint: #64748b;
+        --line: #243049; --accent: #38bdf8; --accent-2: #818cf8;
+        --ok: #22c55e; --warn: #f59e0b; --bad: #ef4444;
+        --user: #1d4ed8; --asst: #1e293b;
+        --radius: 12px;
+      }
+      *, *::before, *::after { box-sizing: border-box; }
+      html, body { height: 100%; }
+      body {
+        margin: 0; background: var(--bg); color: var(--ink);
+        font: 14px/1.55 "Inter", system-ui, -apple-system, sans-serif;
+        display: flex; flex-direction: column;
+      }
+      a { color: var(--accent); }
+      button { font: inherit; cursor: pointer; }
+      input, textarea, select { font: inherit; color: var(--ink); }
+      ::-webkit-scrollbar { width: 10px; height: 10px; }
+      ::-webkit-scrollbar-thumb { background: #2a3a55; border-radius: 8px; }
+      ::-webkit-scrollbar-track { background: transparent; }
+
+      /* ---- header / nav ---- */
+      header.top {
+        display: flex; align-items: center; gap: 16px; padding: 0 18px;
+        height: 54px; background: var(--panel); border-bottom: 1px solid var(--line);
+        position: sticky; top: 0; z-index: 20;
+      }
+      .brand { display: flex; align-items: baseline; gap: 8px; font-weight: 700; letter-spacing: -0.01em; }
+      .brand .dot { color: var(--accent); }
+      .ver { color: var(--faint); font-size: 11px; font-weight: 500; }
+      nav.tabs { display: flex; gap: 2px; margin-left: 8px; }
+      nav.tabs button {
+        background: none; border: none; color: var(--dim); padding: 8px 14px;
+        border-radius: 8px; font-weight: 500;
+      }
+      nav.tabs button:hover { color: var(--ink); background: rgba(255,255,255,0.04); }
+      nav.tabs button.active { color: var(--ink); background: var(--card); }
+      .spacer { flex: 1; }
+      .keystate { font-size: 12px; color: var(--faint); }
+      .keystate.ok { color: var(--ok); }
+
+      /* ---- views ---- */
+      main { flex: 1; min-height: 0; position: relative; }
+      .view { display: none; height: 100%; }
+      .view.active { display: flex; flex-direction: column; }
+
+      /* ---- chat ---- */
+      .chat-shell { display: flex; flex-direction: column; height: 100%; max-width: 920px; margin: 0 auto; width: 100%; }
+      .chat-bar { display: flex; gap: 8px; padding: 10px 16px; border-bottom: 1px solid var(--line); flex-wrap: wrap; align-items: center; }
+      .chat-bar select { background: var(--panel-2); border: 1px solid var(--line); border-radius: 8px; padding: 6px 8px; }
+      .chat-bar .grow { flex: 1; }
+      .chip { font-size: 11px; color: var(--dim); background: var(--panel-2); border: 1px solid var(--line); padding: 2px 8px; border-radius: 999px; }
+      #messages { flex: 1; overflow-y: auto; padding: 18px 16px 8px; }
+      .msg { display: flex; margin-bottom: 14px; gap: 10px; }
+      .msg .avatar { width: 26px; height: 26px; border-radius: 7px; flex-shrink: 0; display: grid; place-items: center; font-size: 13px; font-weight: 700; }
+      .msg.user .avatar { background: var(--user); }
+      .msg.asst .avatar { background: var(--accent); color: #06223a; }
+      .msg .body { flex: 1; min-width: 0; }
+      .msg .role { font-size: 11px; color: var(--faint); margin-bottom: 2px; }
+      .msg .content { word-wrap: break-word; overflow-wrap: anywhere; }
+      .msg .content p { margin: 0 0 8px; } .msg .content p:last-child { margin-bottom: 0; }
+      .msg .content pre { background: #0a1120; border: 1px solid var(--line); border-radius: 8px; padding: 10px; overflow-x: auto; font-size: 12px; }
+      .msg .content code { font-family: ui-monospace, monospace; font-size: 12px; }
+      .msg .content :not(pre) > code { background: #0a1120; padding: 1px 5px; border-radius: 4px; }
+      .msg .thinking { color: var(--faint); font-size: 12px; border-left: 2px solid var(--line); padding-left: 8px; margin-bottom: 6px; white-space: pre-wrap; }
+      .empty { color: var(--faint); text-align: center; margin-top: 12vh; }
+      .composer { border-top: 1px solid var(--line); padding: 12px 16px 16px; }
+      .composer .row { display: flex; gap: 8px; align-items: flex-end; background: var(--panel-2); border: 1px solid var(--line); border-radius: var(--radius); padding: 8px; }
+      .composer textarea { flex: 1; background: none; border: none; resize: none; outline: none; padding: 6px; max-height: 160px; }
+      .composer button.send { background: var(--accent); color: #06223a; border: none; border-radius: 8px; padding: 8px 14px; font-weight: 600; }
+      .composer button.send:disabled { background: var(--card); color: var(--faint); cursor: not-allowed; }
+      .composer button.stop { background: var(--bad); color: #fff; border: none; border-radius: 8px; padding: 8px 14px; }
+      .composer .hint { color: var(--faint); font-size: 11px; margin-top: 6px; display: flex; gap: 12px; }
+
+      /* ---- dashboard ---- */
+      .dash { overflow-y: auto; padding: 20px; max-width: 1180px; margin: 0 auto; width: 100%; }
+      .subtabs { display: flex; gap: 6px; margin-bottom: 16px; }
+      .subtabs button { background: var(--panel-2); border: 1px solid var(--line); color: var(--dim); border-radius: 8px; padding: 6px 12px; }
+      .subtabs button.active { color: var(--ink); border-color: var(--accent); }
+      .grid { display: grid; gap: 14px; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); }
+      .card { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 14px 16px; }
+      .card h3 { margin: 0 0 8px; font-size: 14px; }
+      .muted { color: var(--dim); font-size: 12px; }
+      table { width: 100%; border-collapse: collapse; font-size: 12px; }
+      th, td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--line); }
+      th { color: var(--faint); font-weight: 500; font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em; }
+      td.num { text-align: right; font-variant-numeric: tabular-nums; }
+      .bar { height: 8px; background: #0a1120; border-radius: 999px; overflow: hidden; margin-top: 4px; }
+      .bar > span { display: block; height: 100%; border-radius: 999px; }
+      .pillrow { display: flex; justify-content: space-between; font-size: 12px; }
+      .links { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 8px; }
+      .links a { background: var(--panel-2); border: 1px solid var(--line); border-radius: 8px; padding: 6px 10px; text-decoration: none; font-size: 12px; }
+
+      /* ---- settings ---- */
+      .settings { overflow-y: auto; padding: 20px; max-width: 640px; margin: 0 auto; width: 100%; }
+      .field { margin-bottom: 16px; }
+      .field label { display: block; font-weight: 500; margin-bottom: 5px; }
+      .field .help { color: var(--faint); font-size: 12px; margin-top: 4px; }
+      .field input, .field select, .field textarea { width: 100%; background: var(--panel-2); border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; outline: none; }
+      .field input:focus, .field select:focus { border-color: var(--accent); }
+      .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+      .actions { display: flex; gap: 10px; align-items: center; margin-top: 8px; }
+      .btn { background: var(--accent); color: #06223a; border: none; border-radius: 8px; padding: 9px 16px; font-weight: 600; }
+      .btn.ghost { background: var(--panel-2); color: var(--ink); border: 1px solid var(--line); }
+      .toast { position: fixed; bottom: 18px; left: 50%; transform: translateX(-50%); background: var(--card); border: 1px solid var(--line); padding: 9px 16px; border-radius: 8px; font-size: 13px; opacity: 0; transition: opacity .2s; pointer-events: none; }
+      .toast.show { opacity: 1; }
+      .err { color: var(--bad); }
+      @media (max-width: 640px) { .row2 { grid-template-columns: 1fr; } nav.tabs button { padding: 8px 10px; } }
+    </style>
+  </head>
+  <body>
+    <header class="top">
+      <div class="brand"><span>Uni<span class="dot">·</span>Infer</span><span class="ver" id="ver">v…</span></div>
+      <nav class="tabs">
+        <button data-view="chat" class="active">Chat</button>
+        <button data-view="dash">Dashboard</button>
+        <button data-view="settings">Settings</button>
+      </nav>
+      <div class="spacer"></div>
+      <div class="keystate" id="keystate">no key — set in Settings</div>
+    </header>
+
+    <main>
+      <!-- ===================== CHAT ===================== -->
+      <section id="view-chat" class="view active">
+        <div class="chat-shell">
+          <div class="chat-bar">
+            <select id="provider" title="Provider"></select>
+            <select id="model" title="Model" class="grow"></select>
+            <span class="chip" id="paramchip" title="Generation params">temp 0.7 · 4000 tok</span>
+            <button class="btn ghost" id="clear-chat" style="padding:6px 10px">Clear</button>
+          </div>
+          <div id="messages"><div class="empty">Select a provider and model, then say hello.</div></div>
+          <div class="composer">
+            <div class="row">
+              <textarea id="input" rows="1" placeholder="Message…  (Enter to send, Shift+Enter for newline)"></textarea>
+              <button class="send" id="send">Send</button>
+              <button class="stop" id="stop" style="display:none">Stop</button>
+            </div>
+            <div class="hint"><span id="paramhint">—</span><span>params from Settings</span></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ===================== DASHBOARD ===================== -->
+      <section id="view-dash" class="view">
+        <div class="dash">
+          <div class="subtabs">
+            <button data-sub="usage" class="active">Usage</button>
+            <button data-sub="limits">Provider limits</button>
+            <button data-sub="more">More</button>
+          </div>
+
+          <div id="sub-usage">
+            <div class="card" style="margin-bottom:14px"><h3>Last 24h — per model</h3><div id="usage-tbl" class="muted">loading…</div></div>
+            <div class="card"><h3>Status codes (24h)</h3><div id="usage-status" class="muted">loading…</div></div>
+          </div>
+
+          <div id="sub-limits" style="display:none">
+            <div class="grid" id="limits-grid" class="muted">loading…</div>
+          </div>
+
+          <div id="sub-more" style="display:none">
+            <div class="card">
+              <h3>Dashboards &amp; data</h3>
+              <div class="muted" style="margin-bottom:8px">Dedicated, full-screen views:</div>
+              <div class="links">
+                <a href="/v1/system/stats.html" target="_blank">Usage dashboard</a>
+                <a href="/v1/system/provider-limits.html" target="_blank">Provider limits dashboard</a>
+                <a href="/capabilities" target="_blank">Capability matrix</a>
+                <a href="/perf" target="_blank">Performance dashboard</a>
+                <a href="/guide" target="_blank">Integration guide</a>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ===================== SETTINGS ===================== -->
+      <section id="view-settings" class="view">
+        <div class="settings">
+          <h2 style="margin:4px 0 16px">Settings</h2>
+
+          <div class="field">
+            <label>Proxy base URL</label>
+            <input id="s-baseurl" placeholder="(leave empty = same origin)" />
+            <div class="help">Where requests go. Empty means this proxy.</div>
+          </div>
+          <div class="field">
+            <label>API key (Bearer)</label>
+            <input id="s-key" type="password" placeholder="bearer token (e.g. credgoo combo)" />
+            <div class="help">Sent as <code>Authorization: Bearer …</code>. Stored only in this browser if you tick “remember”.</div>
+          </div>
+          <div class="field">
+            <label><input type="checkbox" id="s-remember" style="width:auto;margin-right:6px" />Remember key on this device</label>
+          </div>
+          <div class="row2">
+            <div class="field"><label>Default temperature</label><input id="s-temp" type="number" step="0.1" min="0" max="2" value="0.7" /></div>
+            <div class="field"><label>Max tokens</label><input id="s-maxtok" type="number" step="1" min="1" value="4000" /></div>
+          </div>
+          <div class="field">
+            <label>Reasoning effort (thinking models)</label>
+            <select id="s-effort">
+              <option value="">(model default)</option>
+              <option value="none">none — off</option>
+              <option value="minimal">minimal</option>
+              <option value="low">low</option>
+              <option value="medium">medium</option>
+              <option value="high">high</option>
+            </select>
+            <div class="help">“none”/“minimal” disable reasoning; the proxy maps this to each provider’s dialect.</div>
+          </div>
+          <div class="field">
+            <label>System prompt</label>
+            <textarea id="s-system" rows="2" placeholder="(optional)"></textarea>
+          </div>
+
+          <div class="actions">
+            <button class="btn" id="save">Save</button>
+            <button class="btn ghost" id="refresh-models">⟳ Refresh models</button>
+            <span id="save-msg" class="muted"></span>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <div class="toast" id="toast"></div>
+
+    <script>
+      "use strict";
+      const $ = (id) => document.getElementById(id);
+      const LS_KEY = "uniinfer.app.v1";
+
+      // ---------- settings ----------
+      const defaultSettings = { baseurl: "", key: "", remember: false, temp: 0.7, maxtok: 4000, effort: "", system: "" };
+      let S = { ...defaultSettings, ...JSON.parse(localStorage.getItem(LS_KEY) || "{}") };
+
+      function saveSettings() {
+        S.baseurl = $("s-baseurl").value.trim();
+        S.temp = parseFloat($("s-temp").value) || 0.7;
+        S.maxtok = parseInt($("s-maxtok").value) || 4000;
+        S.effort = $("s-effort").value;
+        S.system = $("s-system").value;
+        S.remember = $("s-remember").checked;
+        const key = $("s-key").value;
+        S.key = S.remember ? key : key; // key held in memory; persisted only if remember
+        const toStore = { ...S };
+        if (!S.remember) delete toStore.key;
+        localStorage.setItem(LS_KEY, JSON.stringify(toStore));
+        if (!S.remember) S.key = key; // keep in memory for this session even if not stored
+        renderKeyState();
+        updateParamChip();
+        toast("Settings saved");
+      }
+      function loadSettingsForm() {
+        $("s-baseurl").value = S.baseurl;
+        $("s-key").value = S.key || "";
+        $("s-remember").checked = S.remember;
+        $("s-temp").value = S.temp;
+        $("s-maxtok").value = S.maxtok;
+        $("s-effort").value = S.effort;
+        $("s-system").value = S.system;
+        renderKeyState();
+        updateParamChip();
+      }
+      function renderKeyState() {
+        const e = $("keystate");
+        if (S.key) { e.textContent = "key set"; e.classList.add("ok"); }
+        else { e.textContent = "no key — set in Settings"; e.classList.remove("ok"); }
+      }
+      function updateParamChip() {
+        $("paramchip").textContent = `temp ${S.temp} · ${S.maxtok} tok${S.effort ? " · " + S.effort : ""}`;
+        $("paramhint").textContent = `temp ${S.temp} · max ${S.maxtok} tok · effort ${S.effort || "default"}`;
+      }
+      function base() { return S.baseurl ? S.baseurl.replace(/\/$/, "") : ""; }
+      function authHeaders(extra) { const h = { "Content-Type": "application/json", ...extra }; if (S.key) h["Authorization"] = "Bearer " + S.key; return h; }
+
+      // ---------- nav ----------
+      document.querySelectorAll("nav.tabs button").forEach(b =>
+        b.addEventListener("click", () => switchView(b.dataset.view)));
+      function switchView(v) {
+        document.querySelectorAll("nav.tabs button").forEach(b => b.classList.toggle("active", b.dataset.view === v));
+        document.querySelectorAll(".view").forEach(s => s.classList.toggle("active", s.id === "view-" + v));
+        if (v === "dash") loadDashboard();
+      }
+
+      // ---------- chat ----------
+      const messages = [];
+      let providers = [], models = [];
+      async function loadProviders() {
+        try {
+          const r = await fetch(base() + "/v1/providers", { headers: authHeaders() });
+          const d = await r.json();
+          providers = d.data || [];
+          const sel = $("provider"); sel.innerHTML = "";
+          providers.forEach(p => { const o = document.createElement("option"); o.value = o.textContent = p; sel.appendChild(o); });
+          if (providers.length) loadModels(providers[0]);
+        } catch (e) { $("provider").innerHTML = "<option>(failed to load providers — set key)</option>"; }
+      }
+      async function loadModels(provider) {
+        try {
+          const r = await fetch(base() + `/v1/models/${encodeURIComponent(provider)}`, { headers: authHeaders() });
+          const d = await r.json();
+          models = (d.data || []).map(m => (typeof m === "string" ? m : m.id));
+          const sel = $("model"); sel.innerHTML = "";
+          models.forEach(m => { const o = document.createElement("option"); o.value = m; o.textContent = m; sel.appendChild(o); });
+        } catch (e) { $("model").innerHTML = "<option>(failed)</option>"; }
+      }
+      $("provider").addEventListener("change", () => loadModels($("provider").value));
+
+      function renderMessages() {
+        const box = $("messages");
+        if (!messages.length) { box.innerHTML = '<div class="empty">Select a provider and model, then say hello.</div>'; return; }
+        box.innerHTML = "";
+        messages.forEach(m => {
+          const el = document.createElement("div");
+          el.className = "msg " + m.role;
+          const av = m.role === "user" ? "U" : "✦";
+          const thinking = m.thinking ? `<div class="thinking">${escapeHtml(m.thinking)}</div>` : "";
+          const content = m.content ? DOMPurify.sanitize(marked.parse(m.content)) : '<span class="muted">…</span>';
+          el.innerHTML = `<div class="avatar">${av}</div><div class="body"><div class="role">${m.role}</div>${thinking}<div class="content">${content}</div></div>`;
+          box.appendChild(el);
+        });
+        box.scrollTop = box.scrollHeight;
+      }
+      function escapeHtml(s) { return (s || "").replace(/[&<>]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c])); }
+
+      let aborter = null;
+      async function send() {
+        const text = $("input").value.trim();
+        if (!text || aborter) return;
+        if (!S.key && !$("provider").value.includes("ollama")) { toast("Set an API key in Settings first"); switchView("settings"); return; }
+        const provider = $("provider").value, model = $("model").value;
+        const modelStr = `${provider}@${model}`;
+        const history = messages.map(m => ({ role: m.role, content: m.content }));
+        const outgoing = S.system ? [{ role: "system", content: S.system }, ...history] : history;
+        outgoing.push({ role: "user", content: text });
+        messages.push({ role: "user", content: text });
+        const asst = { role: "assistant", content: "", thinking: "" };
+        messages.push(asst);
+        $("input").value = ""; autoGrow();
+        renderMessages();
+        setSending(true);
+
+        aborter = new AbortController();
+        try {
+          const r = await fetch(base() + "/v1/chat/completions", {
+            method: "POST", headers: authHeaders(), signal: aborter.signal,
+            body: JSON.stringify({ model: modelStr, messages: outgoing, stream: true,
+              temperature: S.temp, max_tokens: S.maxtok, ...(S.effort ? { reasoning_effort: S.effort } : {}) }),
+          });
+          if (!r.ok) { const t = await r.text(); throw new Error(`HTTP ${r.status}: ${t.slice(0, 200)}`); }
+          const reader = r.body.getReader(); const dec = new TextDecoder(); let buf = "";
+          while (true) {
+            const { value, done } = await reader.read();
+            if (done) break;
+            buf += dec.decode(value, { stream: true });
+            const lines = buf.split("\n"); buf = lines.pop();
+            for (const line of lines) {
+              const l = line.trim();
+              if (!l.startsWith("data: ")) continue;
+              if (l === "data: [DONE]") continue;
+              try {
+                const delta = JSON.parse(l.slice(6)).choices?.[0]?.delta || {};
+                if (delta.reasoning_content) asst.thinking += delta.reasoning_content;
+                if (delta.content) asst.content += delta.content;
+                renderMessages();
+              } catch (e) {}
+            }
+          }
+          if (!asst.content && !asst.thinking) asst.content = "_(empty response — try raising max_tokens or disabling reasoning)_";
+        } catch (e) {
+          asst.content = `⚠️ **Error:** ${e.message}`;
+          if (e.name === "AbortError") asst.content = "_(stopped)_";
+        } finally { renderMessages(); setSending(false); aborter = null; }
+      }
+      function setSending(on) { $("send").style.display = on ? "none" : ""; $("stop").style.display = on ? "" : "none"; }
+      $("send").addEventListener("click", send);
+      $("stop").addEventListener("click", () => aborter && aborter.abort());
+      $("clear-chat").addEventListener("click", () => { messages.length = 0; renderMessages(); });
+      const ta = $("input");
+      ta.addEventListener("input", autoGrow);
+      ta.addEventListener("keydown", (e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); } });
+      function autoGrow() { ta.style.height = "auto"; ta.style.height = Math.min(ta.scrollHeight, 160) + "px"; }
+
+      // ---------- dashboard ----------
+      let dashLoaded = false;
+      document.querySelectorAll(".subtabs button").forEach(b =>
+        b.addEventListener("click", () => switchSub(b.dataset.sub)));
+      function switchSub(s) {
+        document.querySelectorAll(".subtabs button").forEach(b => b.classList.toggle("active", b.dataset.sub === s));
+        ["usage", "limits", "more"].forEach(x => $("sub-" + x).style.display = x === s ? "" : "none");
+      }
+      async function loadDashboard() {
+        await loadUsage();
+        await loadLimits();
+      }
+      function fmt(n) { n = Number(n) || 0; return n >= 1000 ? (n / 1000).toFixed(n >= 1e5 ? 0 : 1) + "k" : String(n); }
+      async function loadUsage() {
+        try {
+          const r = await fetch(base() + "/v1/system/stats"); const d = await r.json();
+          const rows = (d.last_24h?.per_model || []).slice(0, 12);
+          $("usage-tbl").innerHTML = rows.length ? `<table><thead><tr><th>model</th><th class="num">req</th><th class="num">err</th><th class="num">tokens</th></tr></thead><tbody>
+            ${rows.map(r => `<tr><td>${r.model}</td><td class="num">${r.requests}</td><td class="num">${r.errors}</td><td class="num">${fmt(r.total_tokens)}</td></tr>`).join("")}</tbody></table>`
+            : '<div class="muted">No requests in the last 24h.</div>';
+          const sc = d.last_24h?.status_codes || {};
+          $("usage-status").innerHTML = Object.keys(sc).length
+            ? Object.entries(sc).map(([k, v]) => `<span class="chip">${k}: ${v}</span>`).join(" ")
+            : '<div class="muted">—</div>';
+        } catch (e) { $("usage-tbl").innerHTML = '<div class="err">failed to load stats</div>'; }
+      }
+      async function loadLimits() {
+        try {
+          const r = await fetch(base() + "/v1/system/provider-limits"); const d = await r.json();
+          const provs = d.providers || {}; const ids = Object.keys(provs).sort();
+          const LABEL = { requests_per_minute: "req/min", requests_per_day: "req/day", tokens_per_minute: "tok/min", tokens_per_day: "tok/day", requests_per_month: "req/mo", tokens_per_month: "tok/mo" };
+          $("limits-grid").innerHTML = ids.map(pid => {
+            const p = provs[pid], lim = p.limits || {}, util = p.utilization || [];
+            const bars = util.map(u => {
+              const pct = Math.min(u.pct, 100), col = pct >= 90 ? "var(--bad)" : pct >= 70 ? "var(--warn)" : "var(--ok)";
+              return `<div style="margin:6px 0"><div class="pillrow"><span>${LABEL[u.metric]||u.metric}</span><span class="muted">${fmt(u.used)} / ${fmt(u.limit)} · ${u.pct}%</span></div><div class="bar"><span style="width:${pct}%;background:${col}"></span></div></div>`;
+            }).join("");
+            const badge = lim.unlimited ? '<span class="chip" style="color:var(--accent)">unlimited</span>' : "";
+            return `<div class="card"><h3>${pid} ${badge}</h3><div class="muted" style="margin-bottom:6px">${lim.notes||""}</div>${bars || '<div class="muted">no usage-mapped limits</div>'}</div>`;
+          }).join("");
+        } catch (e) { $("limits-grid").innerHTML = '<div class="err">failed to load limits</div>'; }
+      }
+
+      // ---------- settings actions ----------
+      $("save").addEventListener("click", saveSettings);
+      $("refresh-models").addEventListener("click", async () => {
+        $("save-msg").textContent = "refreshing…";
+        try { await fetch(base() + "/v1/system/update-models", { method: "POST", headers: authHeaders() }); $("save-msg").textContent = "done"; await loadProviders(); }
+        catch (e) { $("save-msg").textContent = "failed"; }
+      });
+
+      // ---------- misc ----------
+      let toastT = null;
+      function toast(msg) { const t = $("toast"); t.textContent = msg; t.classList.add("show"); clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove("show"), 1800); }
+
+      // ---------- init ----------
+      (async function init() {
+        loadSettingsForm();
+        try { const v = await fetch(base() + "/v1/system/version"); if (v.ok) $("ver").textContent = "v" + (await v.json()).version; } catch (e) {}
+        await loadProviders();
+        renderMessages();
+        autoGrow();
+      })();
+    </script>
+  </body>
+</html>

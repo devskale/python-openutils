@@ -355,9 +355,13 @@ app.include_router(
 )
 
 
-@app.get("/")
+@app.get("/", include_in_schema=False)
 async def root():
-    return {"message": "UniIOAI API is running. Visit /webdemo or /webdemo/webdemo.html for the interactive demo, /perf for the performance dashboard, or use POST /v1/chat/completions, POST /v1/embeddings, or GET /v1/models"}
+    """Serve the unified app (Chat / Dashboard / Settings)."""
+    html = os.path.join(script_dir, "examples", "webdemo", "index.html")
+    if not os.path.exists(html):
+        raise HTTPException(status_code=404, detail="index.html not found")
+    return FileResponse(html)
 
 
 # --- Run the API (for local development) ---
