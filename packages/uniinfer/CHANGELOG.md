@@ -4,6 +4,26 @@ All notable changes to **uniinfer** are documented in this file.
 Versions follow [Semantic Versioning](https://semver.org/); this file
 adheres to [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.6.1] - 2026-07-17
+
+### Added
+- **Provider free-tier limits** are now data-driven and queryable:
+  `uniinfer/config/provider_limits.json` (24 providers; rpm/rpd/tpm/tpd/monthly/
+  concurrent; per-model overrides like gemini-3.5-flash=20 RPD) is loaded into
+  `PROVIDER_CONFIGS[*].free_tier_limits`. New `GET /v1/system/provider-limits`
+  joins documented limits with live usage (24h/7d) + utilization %;
+  `GET /v1/system/provider-limits.html` serves a vanilla-JS dashboard.
+- **Live testsuite** (`testsuite/`): tiered smoke → details → perf runner
+  (`run.sh`), covering streaming, thinking (on/off), tools, 3-turn (turn-based)
+  context carry, error handling, and honest throughput (completion_tokens incl.
+  thinking, isolated from prefill). `scripts/test_cli.sh` + `test_proxy.sh` for
+  smoke.
+
+### Fixed
+- Rate-limit tests no longer hit a live amp ollama behind nginx auth with a
+  nonexistent model — they mock the completion path and use fake model sentinels
+  (no real model encoded; models are ephemeral).
+
 ## [0.6.0] - 2026-07-16
 
 Two architectural deepenings. Each turns a concern smeared across many call
