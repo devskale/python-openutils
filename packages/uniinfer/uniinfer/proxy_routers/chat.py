@@ -33,6 +33,12 @@ from uniinfer.provider_access import get_embeddings
 
 logger = logging.getLogger("uniioai_proxy")
 
+# Providers whose native API accepts the OpenAI 'developer' message role as-is.
+# Everyone else gets 'developer' collapsed to 'system' (functionally equivalent;
+# universally accepted) so they don't 422. Add a provider here only once its API
+# is confirmed to accept 'developer'.
+_DEVELOPER_ROLE_PROVIDERS = frozenset({"openai", "openrouter"})
+
 
 def create_chat_router(
     *,
@@ -53,11 +59,20 @@ def create_chat_router(
     ):
         base_url = request_input.base_url
         provider_model = request_input.model
-        messages_dict = [msg.model_dump() for msg in request_input.messages]
         _req_t0 = time.monotonic()
 
         try:
             provider_name, _ = parse_provider_model(provider_model)
+            messages_dict = [msg.model_dump() for msg in request_input.messages]
+            # OpenAI-compat: 'developer' is OpenAI's newer system-instructions role
+            # (reasoning models; emitted by the official SDKs). Most backends
+            # (Mistral, Gemini, Ollama, TU/vLLM, Anthropic, …) reject it with 422,
+            # so collapse to 'system' (functionally equivalent, universally
+            # accepted) unless the provider natively accepts 'developer'.
+            if provider_name not in _DEVELOPER_ROLE_PROVIDERS:
+                for _m in messages_dict:
+                    if _m.get("role") == "developer":
+                        _m["role"] = "system"
             if provider_name == "ollama" and base_url is None:
                 base_url = (
                     provider_configs.get("ollama", {})
