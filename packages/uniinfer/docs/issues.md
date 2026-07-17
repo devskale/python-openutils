@@ -3,6 +3,12 @@
 Tracking the known problems with `glm-5.2-744b-preview` (served by TU Aqueduct on
 vLLM-Ascend, model `asc_amd/zai-org/GLM-5.2-FP8`) and their partial fixes.
 
+> **Module renames since these notes were written:** `uniioai.py` →
+> `provider_access.py` (key/embeddings/listing helpers) and `uniioai_proxy.py`
+> → `proxy_app.py` (the FastAPI app). The completion functions
+> (`get/stream/aget/astream_completion`) moved to `uniinfer.completion.Target`.
+> See [ARCHITECTURE.md](../ARCHITECTURE.md#naming).
+
 Status legend: ✅ done · 🟡 partial / work-in-progress · ⬜ open
 
 ---
