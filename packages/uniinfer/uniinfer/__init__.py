@@ -18,7 +18,7 @@ from .providers import (
     MistralProvider, AnthropicProvider, MiniMaxProvider, OpenAIProvider, OpenAITTSProvider,
     OllamaProvider, OllamaEmbeddingProvider, OpenRouterProvider, ArliAIProvider,
     InternLMProvider, StepFunProvider, SambanovaProvider,
-    UpstageProvider, NGCProvider, CloudflareProvider, ChutesProvider,
+    UpstageProvider, NGCProvider, CloudflareProvider, ChutesProvider, OpenCodeProvider,
     PollinationsProvider, ZAIProvider, ZAICodeProvider, TUProvider, TUStagingProvider, TuAIEmbeddingProvider,
     TuAITTSProvider, TuAISTTProvider
 )
@@ -80,6 +80,7 @@ ProviderFactory.register_provider("upstage", UpstageProvider)
 ProviderFactory.register_provider("ngc", NGCProvider)
 ProviderFactory.register_provider("cloudflare", CloudflareProvider)
 ProviderFactory.register_provider("chutes", ChutesProvider)
+ProviderFactory.register_provider("opencode", OpenCodeProvider)
 ProviderFactory.register_provider("pollinations", PollinationsProvider)
 ProviderFactory.register_provider("zai", ZAIProvider)
 ProviderFactory.register_provider("zai-code", ZAICodeProvider)
@@ -144,6 +145,7 @@ __all__ = [
     'OpenAIProvider',
     'OpenAITTSProvider',
     'ChutesProvider',
+    'OpenCodeProvider',
     'PollinationsProvider',
     'ZAIProvider',
     'ZAICodeProvider',

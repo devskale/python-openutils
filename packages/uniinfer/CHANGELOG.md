@@ -4,6 +4,20 @@ All notable changes to **uniinfer** are documented in this file.
 Versions follow [Semantic Versioning](https://semver.org/); this file
 adheres to [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.6.7] - 2026-07-17
+
+### Added
+- **OpenCode/Zen provider** (`opencode`) — the OpenCode model router
+  (OpenAI-compatible at `opencode.ai/zen/v1`) aggregates DeepSeek, GPT, Gemini,
+  Qwen, GLM, MiniMax, Kimi, and more. Free models surfaced automatically:
+  `deepseek-v4-flash-free`, `big-pickle`, `mimo-v2.5-free`, `hy3-free`,
+  `nemotron-3-ultra-free`, `north-mini-code-free` (marked cost 0 in the catalog).
+  Use as `opencode@<model>`; pass the Zen key as the Bearer token (or store it
+  via `credgoo --add opencode <key>` on the airtable backend for seamless
+  resolution). Note: many free models reason — use a generous `max_tokens`.
+  Claude models on OpenCode use the Anthropic-messages API (not this OpenAI
+  provider). Tests + docs/providers.md + provider_limits entry.
+
 ## [0.6.6] - 2026-07-17
 
 ### Added

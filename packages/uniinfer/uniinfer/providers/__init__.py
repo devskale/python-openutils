@@ -17,6 +17,7 @@ from .upstage import UpstageProvider
 from .ngc import NGCProvider
 from .cloudflare import CloudflareProvider
 from .chutes import ChutesProvider
+from .opencode import OpenCodeProvider
 from .pollinations import PollinationsProvider
 from .zai import ZAIProvider, ZAICodeProvider
 
