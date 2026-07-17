@@ -192,7 +192,11 @@ Serverless GPU on TEE/Bittensor decentralized infrastructure. · 🧠 ✅ · �
 Most popular local LLM runner. 1000+ models. · 🧠 ✅ · 👁️ ✅ · 🔧 ✅ · 📡 ✅
 
 - **Docs**: [ollama.com](https://ollama.com)
-- **Self-hosted**: completely free, unlimited. OpenAI-compatible at `http://localhost:11434/v1`. No API key.
+- **Provider id**: `ollama` — registered in `ProviderFactory`, implemented in `uniinfer/providers/ollama.py` as a **custom** `ChatProvider` (Ollama's native `/api/chat` + `/api/tags`, *not* the OpenAI-compatible subclass).
+- **Model id format**: `ollama@<ollama-model-name>` — the part after `@` is the **literal Ollama model id** (version tag included), exactly as `ollama list` / `/api/tags` reports it. Examples: `ollama@gemma3:1b`, `ollama@qwen3.5:0.8b`, `ollama@llama3.1:8b`.
+- **Routing**: the proxy / `get_completion()` split the string on the **first** `@` → `{provider, model}`. A bare id (`gemma3:1b`) or wrong separator (`ollama:gemma3:1b`) raises `ValueError` and **will not route** — it must be `provider@model`.
+- **Thinking**: Ollama returns reasoning in `message.thinking`; the provider exposes it as `response.thinking`. Toggle via the native `think` field, e.g. `provider_specific_kwargs={"think": False}`. ⚠️ The CLI `--no-think` flag targets **vLLM** (`chat_template_kwargs.enable_thinking`), *not* Ollama's `think`.
+- **Self-hosted**: completely free, unlimited. Native API at `http://localhost:11434` (`/api/chat`, `/api/tags`); an OpenAI-compatible shim also exists at `/v1`. No API key locally.
 - **Cloud** (optional): Free (light usage) / Pro $20/mo / Max $100/mo
 - **Implementation**: Custom `ChatProvider` (local HTTP API)
 
@@ -241,6 +245,34 @@ Israeli lab. SSM + Transformer hybrid (Jamba). Enterprise-focused. · 🧠 ✅ �
 Austrian academic provider. Chat + Embed + TTS + STT. · 🧠 ✅ · 👁️ ❌ · 🔧 ❌ · 📡 ❌
 
 - **Implementation**: Custom `ChatProvider`
+- **Base URL**: `https://aqueduct.ai.datalab.tuwien.ac.at/v1` (prod), `…/aqueduct-staging…/v1` (staging)
+- **Gateway**: TU runs [Aqueduct](https://tu-wien-datalab.github.io/aqueduct/) — a self-hosted OpenAI-compatible relay, not a model host. Requests are proxied to vLLM backends.
+
+#### Model aliases vs. underlying model ids
+
+`/v1/models` returns **aliases** only (`owned_by: aqueduct`), e.g. `qwen-3.6-35b`, `glm-5.2-744b-preview`, `gemma-4-e2b-it`. The alias→upstream mapping is configured in the Aqueduct admin UI and is **not exposed by the public API**. Per the [Aqueduct models docs](https://tu-wien-datalab.github.io/aqueduct/user-guide/models/), "the underlying model of an alias can change" — aliases are intentionally stable names, not repo identifiers.
+
+To recover the actual underlying model id (e.g. to find the Hugging Face repo), issue a chat completion and read the `model` field in the response — vLLM echoes back the real served model path:
+
+```bash
+KEY=$(uv run credgoo tu)
+curl -s "https://aqueduct.ai.datalab.tuwien.ac.at/v1/chat/completions" \
+  -H "Authorization: Bearer $KEY" -H "Content-Type: application/json" \
+  -d '{"model":"qwen-3.6-35b","messages":[{"role":"user","content":"hi"}],"max_tokens":5,"chat_template_kwargs":{"enable_thinking":false}}'
+# → response.model = "llm-d-qwen36/QuantTrio/Qwen3.6-35B-A3B-AWQ"
+#   system_fingerprint = "vllm-0.21.0-..."
+```
+
+Decoding the returned id:
+
+| Part | Meaning |
+|------|---------|
+| `llm-d-qwen36` | vLLM deployment/served-name prefix (internal to the Aqueduct host) |
+| `QuantTrio/Qwen3.6-35B-A3B-AWQ` | the **Hugging Face repo path** → https://huggingface.co/QuantTrio/Qwen3.6-35B-A3B-AWQ |
+
+Suffixes seen on TU-served models: `A3B` = 3B activated params (MoE, 35B total), `AWQ` = 4-bit quantized.
+
+> ⚠️ The `model` echo is vLLM behaviour, not an Aqueduct API guarantee. If a backend is ever swapped to a non-vLLM host, this trick stops working — fall back to asking the model to self-identify, or contact the TU admin.
 
 ### zai-code — Z.AI Code
 

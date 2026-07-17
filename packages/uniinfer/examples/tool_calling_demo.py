@@ -3,7 +3,8 @@
 Test script for tool calling functionality across different providers.
 """
 import os
-from uniinfer.uniioai import get_completion, get_provider_api_key
+from uniinfer.completion import Target
+from uniinfer.provider_access import get_provider_api_key
 from credgoo import get_api_key
 
 # Define a simple weather tool
@@ -63,12 +64,12 @@ def test_provider_tool_calling(provider_name, model_name):
     try:
         # Make request with tools
         print("Making request with tool definitions...")
-        response = get_completion(
-            messages=messages,
-            provider_model_string=f"{provider_name}@{model_name}",
-            provider_api_key=api_key,
+        response = Target(
+            f"{provider_name}@{model_name}", api_key
+        ).complete(
+            messages,
             tools=[WEATHER_TOOL],
-            tool_choice="auto"
+            tool_choice="auto",
         )
         
         # Check response type

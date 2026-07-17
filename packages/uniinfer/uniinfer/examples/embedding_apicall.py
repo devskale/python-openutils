@@ -128,7 +128,7 @@ def main():
 
     print(f"\n{'='*50}")
     print("Testing complete!")
-    print("Note: Make sure the proxy server is running with: python -m uniinfer.uniioai_proxy")
+    print("Note: Make sure the proxy server is running with: python -m uniinfer.proxy_app")
 
 
 if __name__ == "__main__":

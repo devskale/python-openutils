@@ -1,0 +1,239 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>UniInfer · Capabilities</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg: #fbfbfc; --surface: #ffffff;
+      --ink: #0b0d12; --muted: #6b7280; --faint: #9aa1ac;
+      --line: #eceef2; --line-2: #f3f4f7; --hover: #f7f8fa;
+      --pass-bg: #dcfce7; --fail-bg: #fee2e2; --skip-bg: #eef0f3; --err-bg: #fed7aa;
+      --pass: #16a34a; --fail: #dc2626; --skip: #9aa1ac; --err: #d97706;
+      --bar: #6366f1; --bar-bg: #eef0f6; --accent: #4f46e5;
+      --mono: "JetBrains Mono", ui-monospace, Menlo, monospace;
+      --sans: "Inter", -apple-system, system-ui, sans-serif;
+    }
+    html, body { height: auto !important; overflow: auto !important; }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: var(--bg); color: var(--ink); font-family: var(--sans); -webkit-font-smoothing: antialiased; font-size: 14px; }
+    a { color: inherit; text-decoration: none; }
+    .wrap { max-width: 1180px; margin: 0 auto; padding: 44px 28px 96px; }
+    .top { display: flex; align-items: baseline; justify-content: space-between; gap: 16px; margin-bottom: 4px; }
+    .top h1 { font-size: 19px; font-weight: 600; letter-spacing: -0.01em; margin: 0; }
+    .top h1 .dim { color: var(--faint); font-weight: 400; }
+    nav { display: flex; gap: 22px; font-size: 13px; color: var(--muted); white-space: nowrap; }
+    nav a:hover { color: var(--ink); }
+    .sub { color: var(--muted); font-size: 13px; margin: 6px 0 20px; max-width: 70ch; line-height: 1.55; }
+    .sub code { font-family: var(--mono); font-size: 11.5px; background: var(--line-2); padding: 1px 5px; border-radius: 4px; }
+    /* controls */
+    .controls { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; flex-wrap: wrap; }
+    .controls input[type=text] { flex: 1; min-width: 200px; border: 1px solid var(--line); background: var(--surface); border-radius: 8px; padding: 8px 12px; font: inherit; outline: none; }
+    .controls input:focus { border-color: #c9ccd4; }
+    select { border: 1px solid var(--line); background: var(--surface); border-radius: 8px; padding: 8px 10px; font: inherit; color: var(--ink); cursor: pointer; }
+    .count { font-size: 12.5px; color: var(--faint); white-space: nowrap; font-variant-numeric: tabular-nums; }
+    .refresh { background: none; border: none; color: var(--muted); cursor: pointer; font-size: 15px; padding: 0 2px; }
+    .refresh:hover { color: var(--ink); }
+    /* provider chips */
+    .chips { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 10px; }
+    .chip { font-size: 12px; padding: 4px 10px; border-radius: 99px; border: 1px solid var(--line); background: var(--surface); color: var(--muted); cursor: pointer; user-select: none; white-space: nowrap; }
+    .chip:hover { border-color: #c9ccd4; color: var(--ink); }
+    .chip.on { background: var(--ink); color: #fff; border-color: var(--ink); }
+    .chip .n { opacity: .6; margin-left: 4px; font-variant-numeric: tabular-nums; }
+    .chip.on .n { opacity: .7; }
+    /* capability toggles */
+    .togs { display: flex; gap: 14px; align-items: center; margin-bottom: 14px; font-size: 12px; color: var(--muted); flex-wrap: wrap; }
+    .tog { display: inline-flex; align-items: center; gap: 5px; cursor: pointer; user-select: none; }
+    .tog input { accent-color: var(--accent); }
+    .legend { display: flex; gap: 12px; margin-left: auto; color: var(--faint); font-size: 11.5px; }
+    .legend i { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 4px; vertical-align: middle; }
+    /* table */
+    .card { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
+    .hm .hd, .hm .row { display: grid; grid-template-columns: minmax(200px, 1fr) repeat(4, 34px) minmax(110px, 1.2fr); align-items: center; }
+    .hm .hd { position: sticky; top: 0; background: var(--surface); border-bottom: 1px solid var(--line); z-index: 1; }
+    .hm .hd div { padding: 10px 0; font-size: 10.5px; font-weight: 500; letter-spacing: .04em; text-transform: uppercase; color: var(--faint); text-align: center; }
+    .hm .hd div:first-child { text-align: left; padding-left: 16px; }
+    .hm .hd div:last-child { text-align: left; padding-left: 12px; }
+    .hm .hd .cap-h { writing-mode: vertical-rl; transform: rotate(180deg); padding: 8px 0 10px; }
+    .hm .row { border-top: 1px solid var(--line-2); transition: background .1s; }
+    .hm .row:hover { background: var(--hover); }
+    .hm .name { font-family: var(--mono); font-size: 11.5px; font-weight: 500; padding: 7px 16px; overflow-wrap: anywhere; line-height: 1.3; display: flex; align-items: center; gap: 8px; }
+    .hm .prov { font-size: 10px; color: var(--faint); background: var(--line-2); padding: 1px 6px; border-radius: 4px; white-space: nowrap; flex: none; }
+    .hm .cell { display: flex; justify-content: center; }
+    .sq { width: 16px; height: 16px; border-radius: 4px; cursor: help; }
+    .s-pass { background: var(--pass-bg); } .s-fail { background: var(--fail-bg); }
+    .s-skip { background: var(--skip-bg); } .s-error { background: var(--err-bg); } .s-norun { background: #f6f7f9; border: 1px dashed var(--line); }
+    .perf { display: flex; align-items: center; gap: 7px; padding-right: 16px; }
+    .perf .trk { flex: 1; height: 6px; background: var(--bar-bg); border-radius: 99px; overflow: hidden; min-width: 30px; }
+    .perf .fl { height: 100%; background: var(--bar); border-radius: 99px; }
+    .perf .n { font-size: 10.5px; color: var(--faint); font-variant-numeric: tabular-nums; white-space: nowrap; min-width: 34px; text-align: right; }
+    .perf .n .u { font-size: 9px; color: var(--line); }
+    .perf .none { font-size: 11px; color: var(--line); }
+    .empty { text-align: center; color: var(--faint); padding: 60px 20px; font-size: 13px; }
+    .empty a { color: var(--ink); border-bottom: 1px solid var(--line); }
+    @media (max-width: 680px) { .hm .hd, .hm .row { grid-template-columns: minmax(150px,1fr) repeat(4, 26px); } .perf { display: none; } .hm .hd div:last-child { display: none; } .legend { display: none; } }
+  </style>
+</head>
+
+<body>
+  <div class="wrap">
+    <div class="top">
+      <h1>Capabilities <span class="dim">· model catalog</span></h1>
+      <nav><a href="/webdemo">Chat</a><a href="/perf">Perf</a><a href="/guide">Guide</a></nav>
+    </div>
+    <p class="sub">Every catalog model, probed for what it can do (chat · tools · image · thinking) plus throughput. Softprobed entries show declared caps; <code>&amp;save=true</code> / <code>--capabilities</code> adds empirical results. <strong>0 tokens</strong> to browse.</p>
+
+    <div class="controls">
+      <input id="filter" type="text" placeholder="Search models…" autocomplete="off" />
+      <select id="sort">
+        <option value="status" selected>sort: available first</option>
+        <option value="provider">sort: provider</option>
+        <option value="name">sort: name</option>
+        <option value="speed">sort: throughput ↓</option>
+        <option value="tested">sort: recently tested</option>
+      </select>
+      <span id="count" class="count"></span>
+      <button class="refresh" id="refresh" title="Reload">↻</button>
+    </div>
+
+    <div class="chips" id="provs"></div>
+
+    <div class="togs">
+      <label class="tog"><input type="checkbox" data-cap="tools"> tools</label>
+      <label class="tog"><input type="checkbox" data-cap="vision"> vision</label>
+      <label class="tog"><input type="checkbox" data-cap="thinking"> thinking</label>
+      <label class="tog"><input type="checkbox" id="tested-only"> tested only</label>
+      <span class="legend">
+        <span><i style="background:var(--pass-bg)"></i>pass</span>
+        <span><i style="background:var(--fail-bg)"></i>fail</span>
+        <span><i style="background:var(--skip-bg)"></i>skip</span>
+        <span><i style="background:#f6f7f9;border:1px dashed var(--line)"></i>not run</span>
+      </span>
+    </div>
+
+    <div class="card"><div class="hm" id="hm">
+      <div class="hd">
+        <div>Model</div>
+        <div class="cap-h">Chat</div><div class="cap-h">Tools</div><div class="cap-h">Image</div><div class="cap-h">Think</div>
+        <div>tok/s</div>
+      </div>
+      <div id="rows"></div>
+    </div></div>
+    <div id="empty" class="empty" hidden>No models — run <a href="/guide"><code>--softprobe</code></a> / <code>--capabilities</code>.</div>
+  </div>
+
+  <script>
+    const COLS = ["chat", "tool_calling", "image", "thinking_on"];
+    let RAW = {}, state = { provider: null, caps: new Set(), testedOnly: false, sort: "status", q: "" };
+
+    const st = (e, n) => (e.results || []).find(r => r.name === n);
+    const caps = e => (e.profile || {}).capabilities || [];
+    const tested = e => (e.results || []).some(r => r.name !== "probe");
+    const perf = e => {
+      const ts = (e.results || []).find(x => x.name === "perf_tokenspeed");
+      const norm = ts && ts.detail && ts.detail.normal;
+      if (norm && norm.decode_tok_s) return norm.decode_tok_s;
+      const r = (e.results || []).find(x => x.name === "perf_maxspeed");
+      if (r) { const sw = r.detail && r.detail.sweep;
+        if (sw) return Math.max(...sw.map(s => s.tok_min).filter(v=>v!=null),0)/60;
+        const m = (r.evidence||"").match(/max≈(\d+)/); if (m) return Math.round(+m[1]/60); }
+      return null;
+    };
+    const esc = s => (s||"").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;"}[c]));
+    const cell = (e, name) => {
+      const r = st(e, name); const s = r ? r.status : "norun";
+      return `<div class="cell"><div class="sq s-${s}" title="${esc(name)}: ${s}${r ? ' — '+(r.evidence||'') : ''}"></div></div>`;
+    };
+    const provider = k => k.split("/", 1)[0];
+    const model = k => k.slice(k.indexOf("/")+1);
+
+    function providers() {
+      const m = {};
+      for (const k of Object.keys(RAW)) { const p = provider(k); m[p] = (m[p]||0)+1; }
+      return Object.entries(m).sort((a,b) => b[1]-a[1]);
+    }
+
+    function view() {
+      const q = state.q.toLowerCase();
+      let rows = Object.entries(RAW).filter(([k,e]) => {
+        if (state.provider && provider(k) !== state.provider) return false;
+        if (state.testedOnly && !tested(e)) return false;
+        const c = caps(e);
+        for (const want of state.caps) if (!c.includes(want)) return false;
+        if (q && !(k + " " + JSON.stringify(e.profile||{}) + " " + (e.results||[]).map(r=>r.status).join(" ")).toLowerCase().includes(q)) return false;
+        return true;
+      });
+      const sf = state.sort;
+      const rank = e => {
+        const emp = (e.results || []).filter(r => r.name !== "probe");
+        if (!emp.length) return 3;                              // unprobed (softprobe-only)
+        const errs = emp.filter(r => r.status === "error").length;
+        if (errs === emp.length) return 3;                     // unavailable (all-error / billing)
+        return errs ? 2 : 1;                                   // partial | working
+      };
+      rows.sort((a,b) => {
+        if (sf === "status") { const d = rank(a[1]) - rank(b[1]); return d !== 0 ? d : a[0].localeCompare(b[0]); }
+        if (sf === "name") return model(a[0]).localeCompare(model(b[0]));
+        if (sf === "speed") return (perf(b[1])||0) - (perf(a[1])||0);
+        if (sf === "tested") return (b[1].tested_at||"").localeCompare(a[1].tested_at||"");
+        return a[0].localeCompare(b[0]); // provider
+      });
+      return rows;
+    }
+
+    function renderProviders() {
+      const el = document.getElementById("provs");
+      const total = Object.keys(RAW).length;
+      const all = `<div class="chip ${state.provider===null?'on':''}" data-prov="">all<span class="n">${total}</span></div>`;
+      el.innerHTML = all + providers().map(([p,n]) =>
+        `<div class="chip ${state.provider===p?'on':''}" data-prov="${esc(p)}">${esc(p)}<span class="n">${n}</span></div>`).join("");
+    }
+
+    function render() {
+      const rows = view();
+      document.getElementById("count").textContent = `${rows.length} / ${Object.keys(RAW).length}`;
+      const tb = document.getElementById("rows"), empty = document.getElementById("empty");
+      if (!rows.length) { tb.innerHTML = ""; empty.hidden = false; return; }
+      empty.hidden = true;
+      const maxPerf = Math.max(1, ...rows.map(([,e]) => perf(e) || 0));
+      tb.innerHTML = rows.map(([k,e]) => {
+        const p = perf(e);
+        const bar = p != null
+          ? `<div class="perf"><div class="trk"><div class="fl" style="width:${Math.max(4,p/maxPerf*100)}%"></div></div><span class="n">${Math.round(p)}<span class="u">/s</span></span></div>`
+          : `<div class="perf"><span class="none">·</span></div>`;
+        return `<div class="row"><div class="name"><span class="prov">${esc(provider(k))}</span>${esc(model(k))}</div>${COLS.map(c=>cell(e,c)).join("")}${bar}</div>`;
+      }).join("");
+    }
+
+    function refresh() { renderProviders(); render(); }
+
+    // events
+    document.getElementById("filter").addEventListener("input", e => { state.q = e.target.value; render(); });
+    document.getElementById("sort").addEventListener("change", e => { state.sort = e.target.value; render(); });
+    document.getElementById("refresh").addEventListener("click", load);
+    document.getElementById("provs").addEventListener("click", e => {
+      const c = e.target.closest(".chip"); if (!c) return;
+      state.provider = c.dataset.prov || null; refresh();
+    });
+    document.querySelectorAll('.tog input[data-cap]').forEach(cb =>
+      cb.addEventListener("change", () => {
+        state.caps = new Set([...document.querySelectorAll('.tog input[data-cap]:checked')].map(x => x.dataset.cap));
+        render();
+      }));
+    document.getElementById("tested-only").addEventListener("change", e => { state.testedOnly = e.target.checked; render(); });
+
+    async function load() {
+      try { const r = await fetch("/capabilities/results", {cache:"no-store"}); RAW = r.ok ? await r.json() : {}; }
+      catch { RAW = {}; }
+      refresh();
+    }
+    load(); setInterval(load, 15000);
+  </script>
+</body>
+
+</html>

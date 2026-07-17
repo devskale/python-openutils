@@ -115,9 +115,9 @@ def test_localhost_provider():
     print("="*60)
     
     try:
-        # uniioai-proxy runs on localhost:8123/v1 with bearer 
+        # uniioai-proxy runs on localhost:8123/v1 with bearer $PROXY_KEY (from env)
         base_url = "http://localhost:8123/v1"
-        api_key = ""
+        api_key = os.getenv("PROXY_KEY")
         
         provider = OpenAICompatibleChatProvider(base_url=base_url, api_key=api_key)
         
@@ -165,7 +165,7 @@ def test_localhost_provider_streaming():
     
     try:
         base_url = "http://localhost:8123/v1"
-        api_key = ""
+        api_key = os.getenv("PROXY_KEY")
         
         provider = OpenAICompatibleChatProvider(base_url=base_url, api_key=api_key)
         

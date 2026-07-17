@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>UniInfer | Integration Guide</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/webdemo/style.css" />
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/dompurify@3.2.6/dist/purify.min.js"></script>
+  <style>
+    html, body { height: auto !important; overflow: auto !important; }
+    body { background: var(--input-bg); }
+    .guide-wrap { max-width: 880px; margin: 0 auto; padding: 28px 22px 80px; }
+    .guide-header { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-bottom: 18px; flex-wrap: wrap; }
+    .guide-header h1 { font-size: 26px; font-weight: 800; margin: 0; }
+    .header-right { display: flex; gap: 8px; }
+    .prose { background: #fff; border: 1px solid var(--border-color); border-radius: var(--radius-lg); padding: 30px 36px; box-shadow: 0 1px 2px rgba(15,23,42,.04); line-height: 1.65; color: var(--text-color); }
+    .prose h1 { font-size: 24px; margin: 0 0 4px; }
+    .prose h2 { font-size: 19px; margin: 30px 0 10px; padding-bottom: 6px; border-bottom: 1px solid var(--border-color); }
+    .prose h3 { font-size: 16px; margin: 22px 0 8px; }
+    .prose p { margin: 10px 0; }
+    .prose ul, .prose ol { margin: 10px 0; padding-left: 22px; }
+    .prose li { margin: 4px 0; }
+    .prose code { font-family: var(--font-mono); font-size: 12.5px; background: #eef2f7; padding: 1px 6px; border-radius: 4px; }
+    .prose pre { background: #0f172a; color: #e2e8f0; padding: 16px 18px; border-radius: var(--radius-md); overflow-x: auto; margin: 14px 0; font-size: 12.5px; line-height: 1.55; }
+    .prose pre code { background: none; padding: 0; color: inherit; font-size: inherit; }
+    .prose table { border-collapse: collapse; width: 100%; margin: 14px 0; font-size: 13px; }
+    .prose th, .prose td { border: 1px solid var(--border-color); padding: 7px 10px; text-align: left; }
+    .prose th { background: var(--input-bg); font-weight: 700; }
+    .prose blockquote { border-left: 3px solid var(--accent-color); margin: 14px 0; padding: 4px 16px; color: var(--text-muted); background: #f8fafc; border-radius: 0 var(--radius-md) var(--radius-md) 0; }
+    .prose blockquote code { background: #e2e8f0; }
+    .prose a { color: var(--accent-color); }
+    .load-msg { text-align: center; color: var(--text-muted); padding: 60px; }
+    .raw-link { display: inline-block; margin-top: 14px; font-size: 12px; color: var(--text-muted); }
+  </style>
+</head>
+
+<body>
+  <div class="guide-wrap">
+    <header class="guide-header">
+      <h1>📖 Integration Guide</h1>
+      <div class="header-right">
+        <a href="/webdemo" class="btn-link">← Webdemo</a>
+        <a href="/capabilities" class="btn-link">🧪 Capabilities</a>
+        <a href="/guide.md" class="btn-link" title="Raw markdown">⤓ .md</a>
+      </div>
+    </header>
+    <div id="prose" class="prose">
+      <div class="load-msg">Loading guide…</div>
+    </div>
+    <a class="raw-link" href="/guide.md">View raw markdown (docs/integration.md) →</a>
+  </div>
+
+  <script>
+    async function load() {
+      const el = document.getElementById("prose");
+      try {
+        const r = await fetch("/guide.md", {cache: "no-store"});
+        if (!r.ok) throw new Error("HTTP " + r.status);
+        const md = await r.text();
+        el.innerHTML = DOMPurify.sanitize(marked.parse(md));
+      } catch (e) {
+        el.innerHTML = '<div class="load-msg">Could not load guide: ' + e.message + '<br><a href="/guide.md">Open raw markdown</a></div>';
+      }
+    }
+    load();
+  </script>
+</body>
+
+</html>

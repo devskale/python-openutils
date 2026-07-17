@@ -7,18 +7,18 @@ from unittest.mock import patch, MagicMock
 
 # --- Import smoke tests ---
 
-def test_aget_completion_imports():
-    from uniinfer.uniioai import aget_completion
-    assert callable(aget_completion)
+def test_completion_target_imports():
+    from uniinfer.completion import Target
+    assert callable(Target)
 
 
-def test_astream_completion_imports():
-    from uniinfer.uniioai import astream_completion
-    assert callable(astream_completion)
+def test_parse_provider_model_imports():
+    from uniinfer.completion import parse_provider_model
+    assert callable(parse_provider_model)
 
 
 def test_format_chunk_to_openai_basic():
-    from uniinfer.uniioai import format_chunk_to_openai
+    from uniinfer.proxy_services.streaming import format_chunk_to_openai
     from uniinfer.core import ChatCompletionResponse, ChatMessage
 
     response = ChatCompletionResponse(
@@ -35,7 +35,7 @@ def test_format_chunk_to_openai_basic():
 
 
 def test_format_chunk_to_openai_with_finish_reason():
-    from uniinfer.uniioai import format_chunk_to_openai
+    from uniinfer.proxy_services.streaming import format_chunk_to_openai
     from uniinfer.core import ChatCompletionResponse, ChatMessage
 
     response = ChatCompletionResponse(
@@ -52,7 +52,7 @@ def test_format_chunk_to_openai_with_finish_reason():
 
 
 def test_format_chunk_to_openai_with_tool_calls():
-    from uniinfer.uniioai import format_chunk_to_openai
+    from uniinfer.proxy_services.streaming import format_chunk_to_openai
     from uniinfer.core import ChatCompletionResponse, ChatMessage
 
     tool_calls = [{"id": "call_1", "type": "function", "function": {"name": "test_func", "arguments": '{"arg": "value"}'}}]
@@ -74,18 +74,18 @@ def test_streaming_generator_imports():
 
 
 def test_proxy_app_imports():
-    from uniinfer.uniioai_proxy import app
+    from uniinfer.proxy_app import app
     assert app is not None
 
 
 def test_rate_limit_helper():
-    from uniinfer.uniioai_proxy import get_chat_rate_limit
+    from uniinfer.proxy_app import get_chat_rate_limit
     limit = get_chat_rate_limit()
     assert isinstance(limit, str)
 
 
 def test_models_helper():
-    from uniinfer.uniioai import list_models_for_provider
+    from uniinfer.provider_access import list_models_for_provider
     assert callable(list_models_for_provider)
 
 
@@ -125,15 +125,15 @@ def test_chat_completion_request_input_validation():
 class TestProxyMiddleware:
 
     def test_request_size_middleware_exists(self):
-        from uniinfer.uniioai_proxy import limit_request_size
+        from uniinfer.proxy_app import limit_request_size
         assert callable(limit_request_size)
 
     def test_log_requests_middleware_exists(self):
-        from uniinfer.uniioai_proxy import log_requests
+        from uniinfer.proxy_app import log_requests
         assert callable(log_requests)
 
     def test_cors_middleware_configured(self):
-        from uniinfer.uniioai_proxy import app
+        from uniinfer.proxy_app import app
         has_cors = any(
             middleware.cls.__name__ == "CORSMiddleware"
             for middleware in app.user_middleware
@@ -148,7 +148,7 @@ class TestProxyEndpoints:
     @pytest.fixture
     def client(self):
         from fastapi.testclient import TestClient
-        from uniinfer.uniioai_proxy import app
+        from uniinfer.proxy_app import app
         return TestClient(app, raise_server_exceptions=False)
 
     def test_chat_completions_endpoint_exists(self, client):
@@ -167,5 +167,5 @@ class TestProxyEndpoints:
         assert response.status_code == 200
 
     def test_webdemo_endpoint_exists(self, client):
-        from uniinfer.uniioai_proxy import get_web_demo
+        from uniinfer.proxy_app import get_web_demo
         assert hasattr(get_web_demo, "__call__")

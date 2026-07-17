@@ -139,7 +139,7 @@ Model counts from `models.json` — regenerated daily at 04:00 UTC. Free = provi
 OpenAI-compatible FastAPI proxy:
 
 ```bash
-uv run uvicorn uniinfer.uniioai_proxy:app --host 0.0.0.0 --port 8123
+uv run uvicorn uniinfer.proxy_app:app --host 0.0.0.0 --port 8123
 ```
 
 ### Authentication

@@ -4,8 +4,16 @@ Core classes for the UniInfer package.
 import asyncio
 import httpx
 from dataclasses import dataclass, field
-from typing import Any, AsyncIterator, Optional
+from typing import Any, AsyncIterator, Literal, Optional
 from collections.abc import Iterator
+
+# Cross-provider reasoning-intent vocabulary (see CONTEXT.md — "none / minimal
+# disables reasoning"). Carried on ChatCompletionRequest.reasoning_effort.
+# Each reasoning-capable provider maps these to its own dialect internally;
+# callers never translate.
+ReasoningEffort = Literal["none", "minimal", "low", "medium", "high"]
+# Effort levels that mean "reasoning OFF" in every provider's dialect.
+REASONING_OFF: frozenset[str] = frozenset({"none", "minimal"})
 
 
 @dataclass
@@ -146,9 +154,7 @@ class ChatCompletionRequest:
         streaming: bool = False,
         tools: list[dict] | None = None,
         tool_choice: Any | None = None,
-        reasoning_effort: str | None = None,
-        enable_thinking: bool | None = None,
-        thinking_budget: int | None = None,
+        reasoning_effort: ReasoningEffort | None = None,
         chat_template_kwargs: dict | None = None,
     ):
         """Initialize a chat completion request.
@@ -161,18 +167,17 @@ class ChatCompletionRequest:
             streaming: Whether to stream the response.
             tools: List of tools available to the model.
             tool_choice: Tool choice preference.
-            reasoning_effort: Reasoning effort hint (provider-specific; many
-                backends reject this).
-            enable_thinking: Top-level enable_thinking flag. NOTE: many vLLM
-                backends (incl. Qwen3.x, GLM-5.x via TU Aqueduct) silently
-                IGNORE this top-level field; prefer ``chat_template_kwargs``
-                for reliable thinking control. See vLLM #35574.
-            thinking_budget: Max tokens to spend on thinking.
-            chat_template_kwargs: Values forwarded to the serving backend's
-                chat template (e.g. vLLM/HuggingFace). This is the reliable
-                way to control thinking for Qwen3.x / GLM-5.x models:
-                ``{"enable_thinking": False}`` disables reasoning; the model
-                emits no ``reasoning_content`` and responds much faster.
+            reasoning_effort: Cross-provider reasoning intent
+                (``"none"|"minimal"|"low"|"medium"|"high"``). ``none`` and
+                ``minimal`` disable reasoning in every reasoning-capable
+                provider's own dialect; the rest request reasoning at
+                increasing effort. See ``REASONING_OFF`` and CONTEXT.md.
+            chat_template_kwargs: Generic passthrough of values to the serving
+                backend's chat template (vLLM/HuggingFace). NOT a thinking
+                concept (thinking is just the common use). The escape hatch:
+                ``{"enable_thinking": False}`` is the reliable way to disable
+                reasoning on Qwen3.x / GLM-5.x, and it OVERRIDES any
+                reasoning_effort-derived default. See vLLM #35574.
         """
         self.messages = messages
         self.model = model
@@ -182,8 +187,6 @@ class ChatCompletionRequest:
         self.tools = tools
         self.tool_choice = tool_choice
         self.reasoning_effort = reasoning_effort
-        self.enable_thinking = enable_thinking
-        self.thinking_budget = thinking_budget
         self.chat_template_kwargs = chat_template_kwargs
 
 

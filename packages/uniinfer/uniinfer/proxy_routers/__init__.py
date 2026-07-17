@@ -1,1 +1,1 @@
-"""FastAPI routers for uniioai_proxy."""
+"""FastAPI routers for the proxy app."""

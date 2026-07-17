@@ -11,7 +11,7 @@ from fastapi.responses import JSONResponse, Response
 from pydantic import BaseModel, Field
 
 from uniinfer.auth import get_optional_proxy_token, verify_provider_access
-from uniinfer.uniioai import get_provider_api_key, list_model_names_for_provider
+from uniinfer.provider_access import get_provider_api_key, list_model_names_for_provider
 
 
 logger = logging.getLogger("uniioai_proxy")

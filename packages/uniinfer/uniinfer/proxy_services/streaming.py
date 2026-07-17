@@ -29,34 +29,67 @@ def normalize_nonstream_content(content: Any, tool_calls: Any) -> str | None:
     return content
 
 
+def format_chunk_to_openai(response, provider_model: str) -> dict[str, Any]:
+    """Format a raw ChatCompletionResponse chunk into an OpenAI-compatible dict.
+
+    The proxy SSE layer consumes OpenAI-shaped chunks; Target yields raw
+    ChatCompletionResponse, so this conversion sits at the proxy seam.
+    """
+    chunk_data = {
+        "id": f"chatcmpl-{uuid.uuid4()}",
+        "object": "chat.completion.chunk",
+        "created": int(time.time()),
+        "model": provider_model,
+        "choices": [],
+    }
+    delta: dict[str, Any] = {}
+    if response.message:
+        if response.message.content:
+            delta["content"] = response.message.content
+        if response.message.tool_calls:
+            delta["tool_calls"] = response.message.tool_calls
+        if response.message.role:
+            delta["role"] = response.message.role
+    if getattr(response, "thinking", None):
+        delta["thinking"] = response.thinking
+    choice_data: dict[str, Any] = {"index": 0, "delta": delta}
+    if getattr(response, "finish_reason", None):
+        choice_data["finish_reason"] = response.finish_reason
+    chunk_data["choices"] = [choice_data]
+    return chunk_data
+
+
 async def astream_response_generator(
     *,
-    astream_completion,
+    target,
     messages: list[dict],
-    provider_model: str,
     temp: float,
     max_tok: int,
-    provider_api_key: str | None,
-    base_url: str | None,
     tools: list[dict] | None = None,
     tool_choice: Any | None = None,
     request_id: str | None = None,
     reasoning_effort: str | None = None,
-    think: bool | str | None = None,
     chat_template_kwargs: dict | None = None,
 ) -> AsyncGenerator[str, None]:
     completion_id = f"chatcmpl-{uuid.uuid4()}"
     created_time = int(time.time())
-    model_name = provider_model
+    model_name = target.provider_model
 
     stream_label = f"[{request_id}] " if request_id else ""
     logger.info("%sAsync stream start for %s", stream_label, model_name)
+    _stats_t0 = time.monotonic()
+    _stats_usage: dict = {}
+    _stats_status = 200
     chunk_count = 0
     heartbeat_count = 0
     last_yield_time = time.monotonic()
     idle_warning_threshold = 10.0
-    heartbeat_interval = float(os.getenv("UNIINFER_STREAM_HEARTBEAT", "120"))  # Increased for reasoning models
-    idle_timeout = float(os.getenv("UNIINFER_STREAM_IDLE_TIMEOUT", "300"))  # Increased for reasoning models
+    heartbeat_interval = float(
+        os.getenv("UNIINFER_STREAM_HEARTBEAT", "120")
+    )  # Increased for reasoning models
+    idle_timeout = float(
+        os.getenv("UNIINFER_STREAM_IDLE_TIMEOUT", "300")
+    )  # Increased for reasoning models
 
     first_chunk_data = StreamingChatCompletionChunk(
         id=completion_id,
@@ -80,13 +113,10 @@ async def astream_response_generator(
     reasoning_leak_repair = GlmLeakInterceptor(tools=tools, model=model_name)
 
     try:
-        async_iter = astream_completion(
+        async_iter = target.astream_complete(
             messages,
-            provider_model,
-            temp,
-            max_tok,
-            provider_api_key=provider_api_key,
-            base_url=base_url,
+            temperature=temp,
+            max_tokens=max_tok,
             tools=tools,
             tool_choice=tool_choice,
             reasoning_effort=reasoning_effort,
@@ -94,7 +124,16 @@ async def astream_response_generator(
         ).__aiter__()
         while True:
             try:
-                chunk = await asyncio.wait_for(async_iter.__anext__(), timeout=heartbeat_interval)
+                raw_chunk = await asyncio.wait_for(
+                    async_iter.__anext__(), timeout=heartbeat_interval
+                )
+                # Capture usage if the backend emits it (often on the final chunk).
+                _raw = getattr(raw_chunk, "raw_response", None)
+                if isinstance(_raw, dict) and isinstance(_raw.get("usage"), dict):
+                    _stats_usage = _raw["usage"]
+                # Target yields raw ChatCompletionResponse; convert to the
+                # OpenAI-dict shape the chunk-shaping logic below consumes.
+                chunk = format_chunk_to_openai(raw_chunk, model_name)
             except asyncio.TimeoutError:
                 now = time.monotonic()
                 idle_for = now - last_yield_time
@@ -118,7 +157,11 @@ async def astream_response_generator(
 
             if isinstance(chunk, dict):
                 choice = chunk.get("choices", [{}])[0]
-                delta = choice.get("delta", {}) if isinstance(choice.get("delta", {}), dict) else {}
+                delta = (
+                    choice.get("delta", {})
+                    if isinstance(choice.get("delta", {}), dict)
+                    else {}
+                )
 
                 # Apply GLM leak repair to streamed content (only when tools offered).
                 raw_content = delta.get("content") if delta else None
@@ -184,7 +227,9 @@ async def astream_response_generator(
                             "object": "chat.completion.chunk",
                             "created": chunk.get("created", created_time),
                             "model": model_name,
-                            "choices": [{"index": 0, "delta": {"reasoning_content": rtail}}],
+                            "choices": [
+                                {"index": 0, "delta": {"reasoning_content": rtail}}
+                            ],
                         }
                         yield f"data: {json.dumps(rtail_chunk)}\n\n"
                         chunk_count += 1
@@ -212,11 +257,16 @@ async def astream_response_generator(
                     seen_tool_calls = True
             else:
                 chunk_finish_reason = getattr(chunk, "finish_reason", None)
-                
+
                 # Handle error finish_reason from provider (e.g., preemption detection)
                 if chunk_finish_reason == "error":
                     import sys
-                    print(f"[DEBUG] STREAMING: Got error finish_reason, raw_response={chunk.raw_response}", file=sys.stderr, flush=True)
+
+                    print(
+                        f"[DEBUG] STREAMING: Got error finish_reason, raw_response={chunk.raw_response}",
+                        file=sys.stderr,
+                        flush=True,
+                    )
                     error_msg = "Stream error"
                     if chunk.raw_response and isinstance(chunk.raw_response, dict):
                         error_msg = chunk.raw_response.get("error", error_msg)
@@ -230,7 +280,7 @@ async def astream_response_generator(
                     yield f"data: {json.dumps(error_chunk)}\n\n"
                     sent_finish_reason = True
                     continue
-                
+
                 if chunk.message:
                     choice_kwargs = {}
                     if chunk.message.tool_calls:
@@ -253,7 +303,11 @@ async def astream_response_generator(
                                     id=completion_id,
                                     created=created_time,
                                     model=model_name,
-                                    choices=[StreamingChoice(delta=ChoiceDelta(tool_calls=tcs))],
+                                    choices=[
+                                        StreamingChoice(
+                                            delta=ChoiceDelta(tool_calls=tcs)
+                                        )
+                                    ],
                                 )
                                 yield f"data: {tc_chunk_data.model_dump_json(exclude_none=True)}\n\n"
                                 chunk_count += 1
@@ -270,7 +324,9 @@ async def astream_response_generator(
                             choice_kwargs["reasoning_content"] = rsafe
 
                     choice_kwargs_with_delta = {
-                        "delta": ChoiceDelta(**choice_kwargs) if choice_kwargs else ChoiceDelta()
+                        "delta": ChoiceDelta(**choice_kwargs)
+                        if choice_kwargs
+                        else ChoiceDelta()
                     }
                     if chunk_finish_reason:
                         # Flush any content still held in the leak-repair rolling
@@ -281,7 +337,9 @@ async def astream_response_generator(
                                 id=completion_id,
                                 created=created_time,
                                 model=model_name,
-                                choices=[StreamingChoice(delta=ChoiceDelta(content=tail))],
+                                choices=[
+                                    StreamingChoice(delta=ChoiceDelta(content=tail))
+                                ],
                             )
                             yield f"data: {tail_chunk_data.model_dump_json(exclude_none=True)}\n\n"
                             chunk_count += 1
@@ -292,7 +350,11 @@ async def astream_response_generator(
                                 id=completion_id,
                                 created=created_time,
                                 model=model_name,
-                                choices=[StreamingChoice(delta=ChoiceDelta(reasoning_content=rtail))],
+                                choices=[
+                                    StreamingChoice(
+                                        delta=ChoiceDelta(reasoning_content=rtail)
+                                    )
+                                ],
                             )
                             yield f"data: {rtail_chunk_data.model_dump_json(exclude_none=True)}\n\n"
                             chunk_count += 1
@@ -330,26 +392,40 @@ async def astream_response_generator(
                     id=completion_id,
                     created=created_time,
                     model=model_name,
-                    choices=[StreamingChoice(delta=ChoiceDelta(reasoning_content=rtail))],
+                    choices=[
+                        StreamingChoice(delta=ChoiceDelta(reasoning_content=rtail))
+                    ],
                 )
                 yield f"data: {rtail_chunk_data.model_dump_json(exclude_none=True)}\n\n"
                 chunk_count += 1
-            finish_reason = "tool_calls" if (seen_tool_calls or leak_repair.has_leak()) else "stop"
+            finish_reason = (
+                "tool_calls" if (seen_tool_calls or leak_repair.has_leak()) else "stop"
+            )
             final_chunk_data = StreamingChatCompletionChunk(
                 id=completion_id,
                 created=created_time,
                 model=model_name,
-                choices=[StreamingChoice(delta=ChoiceDelta(), finish_reason=finish_reason)],
+                choices=[
+                    StreamingChoice(delta=ChoiceDelta(), finish_reason=finish_reason)
+                ],
             )
             yield f"data: {final_chunk_data.model_dump_json(exclude_none=True)}\n\n"
 
     except (UniInferError, ValueError) as e:
+        _stats_status = int(getattr(e, "status_code", 500) or 500)
         message = str(e)
         if isinstance(e, ProviderError) and e.response_body:
             message = f"{message} | Provider Response: {e.response_body}"
-        error_chunk = {"error": {"message": message, "type": type(e).__name__, "code": getattr(e, 'status_code', None)}}
+        error_chunk = {
+            "error": {
+                "message": message,
+                "type": type(e).__name__,
+                "code": getattr(e, "status_code", None),
+            }
+        }
         yield f"data: {json.dumps(error_chunk)}\n\n"
     except Exception as e:
+        _stats_status = 500
         error_chunk = {
             "error": {
                 "message": f"Unexpected server error: {type(e).__name__}",
@@ -358,6 +434,25 @@ async def astream_response_generator(
             }
         }
         yield f"data: {json.dumps(error_chunk)}\n\n"
+    finally:
+        # Always record — runs on success, error, and early client disconnect.
+        try:
+            from uniinfer.proxy_services.stats import get_stats
 
-    logger.info("%sAsync stream end for %s (chunks=%s, heartbeats=%s)", stream_label, model_name, chunk_count, heartbeat_count)
+            get_stats().record(
+                model_name,
+                status=_stats_status,
+                latency_ms=(time.monotonic() - _stats_t0) * 1000,
+                usage=_stats_usage or None,
+            )
+        except Exception:
+            pass
+
+    logger.info(
+        "%sAsync stream end for %s (chunks=%s, heartbeats=%s)",
+        stream_label,
+        model_name,
+        chunk_count,
+        heartbeat_count,
+    )
     yield "data: [DONE]\n\n"

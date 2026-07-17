@@ -2,7 +2,7 @@ import logging
 from typing import Optional
 from fastapi import HTTPException, Depends
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from .uniioai import get_provider_api_key
+from .provider_access import get_provider_api_key
 from .errors import AuthenticationError
 
 logger = logging.getLogger(__name__)

@@ -6,7 +6,7 @@ import json
 import requests
 from typing import Optional, AsyncIterator
 
-from ..core import ChatProvider, ChatCompletionRequest, ChatCompletionResponse, ChatMessage
+from ..core import ChatProvider, ChatCompletionRequest, ChatCompletionResponse, ChatMessage, REASONING_OFF
 from ..errors import map_provider_error, UniInferError
 
 
@@ -27,6 +27,15 @@ def _normalize_base_url(base_url: str) -> str:
     if base_url.startswith("http://") and not base_url.startswith(("http://localhost", "http://127.0.0.1")):
         base_url = "https://" + base_url[len("http://"):]
     return base_url
+
+
+def _strip_data_url(url: str) -> str:
+    """Return raw base64 from a ``data:image/...;base64,...`` URL (passthrough otherwise)."""
+    if not isinstance(url, str):
+        return ""
+    if url.startswith("data:") and "base64," in url:
+        return url.split("base64,", 1)[1]
+    return url
 
 
 class OllamaProvider(ChatProvider):
@@ -50,19 +59,35 @@ class OllamaProvider(ChatProvider):
         self.base_url = base_url
 
     def _flatten_messages(self, messages: list[ChatMessage]) -> list[dict]:
-        """Flatten multimodal messages for Ollama (text only for now)."""
+        """Flatten OpenAI-style multimodal messages into Ollama's native shape.
+
+        Ollama wants text in ``content`` and images as a base64 list in
+        ``images`` (no data-url prefix). Tool calls / tool results are preserved.
+        """
         flattened_messages = []
         for msg in messages:
             msg_dict = msg.to_dict()
             content = msg_dict.get("content")
             if isinstance(content, list):
-                text_parts = []
+                text_parts: list[str] = []
+                images: list[str] = []
                 for part in content:
-                    if isinstance(part, dict) and part.get("type") == "text":
+                    if not isinstance(part, dict):
+                        continue
+                    ptype = part.get("type")
+                    if ptype == "text":
                         text_parts.append(part.get("text", ""))
-                # Join text parts, or use placeholder if no text (e.g., image-only message)
-                msg_dict["content"] = "".join(text_parts) if text_parts else "[content]"
-            # Remove keys that Ollama doesn't expect in its native /api/chat if they are empty
+                    elif ptype == "image_url":
+                        url = part.get("image_url") or {}
+                        if isinstance(url, dict):
+                            url = url.get("url", "")
+                        b64 = _strip_data_url(url)
+                        if b64:
+                            images.append(b64)
+                msg_dict["content"] = "".join(text_parts) if text_parts else ""
+                if images:
+                    msg_dict["images"] = images
+            # Drop empty optional keys Ollama doesn't need
             if not msg_dict.get("tool_calls"):
                 msg_dict.pop("tool_calls", None)
             if not msg_dict.get("tool_call_id"):
@@ -129,18 +154,25 @@ class OllamaProvider(ChatProvider):
             "options": {}
         }
 
+        if getattr(request, "tools", None):
+            payload["tools"] = request.tools
+
         if request.temperature is not None:
             payload["options"]["temperature"] = request.temperature
 
         if request.max_tokens is not None:
             payload["options"]["num_predict"] = request.max_tokens
 
+        # Reasoning control: ollama's dialect of reasoning_effort is the native
+        # `think` flag. none/minimal -> off, any other level -> on. Read off the
+        # request so callers never pass a provider-specific `think` kwarg.
+        if request.reasoning_effort is not None:
+            payload["think"] = request.reasoning_effort not in REASONING_OFF
+
         if provider_specific_kwargs:
             for key, value in provider_specific_kwargs.items():
                 if key == "options" and isinstance(value, dict):
                     payload["options"].update(value)
-                elif key == "think":
-                    payload["think"] = value
                 else:
                     payload[key] = value
 
@@ -166,9 +198,17 @@ class OllamaProvider(ChatProvider):
             response_data = response.json()
             assistant_message = response_data.get("message", {})
 
+            tool_calls = assistant_message.get("tool_calls") or None
+            if tool_calls:
+                # Normalise to OpenAI shape: arguments must be a JSON string.
+                for tc in tool_calls:
+                    fn = tc.get("function") if isinstance(tc, dict) else None
+                    if fn and not isinstance(fn.get("arguments"), str):
+                        fn["arguments"] = json.dumps(fn.get("arguments") or {})
             message = ChatMessage(
                 role=assistant_message.get("role", "assistant"),
-                content=assistant_message.get("content", "")
+                content=assistant_message.get("content", ""),
+                tool_calls=tool_calls,
             )
             
             # Handle thinking field (Qwen 3 on Ollama)
@@ -214,11 +254,20 @@ class OllamaProvider(ChatProvider):
             "options": {}
         }
 
+        if getattr(request, "tools", None):
+            payload["tools"] = request.tools
+
         if request.temperature is not None:
             payload["options"]["temperature"] = request.temperature
 
         if request.max_tokens is not None:
             payload["options"]["num_predict"] = request.max_tokens
+
+        # Reasoning control: ollama's dialect of reasoning_effort is the native
+        # `think` flag. none/minimal -> off, any other level -> on. Read off the
+        # request so callers never pass a provider-specific `think` kwarg.
+        if request.reasoning_effort is not None:
+            payload["think"] = request.reasoning_effort not in REASONING_OFF
 
         if provider_specific_kwargs:
             for key, value in provider_specific_kwargs.items():
