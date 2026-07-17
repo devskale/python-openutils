@@ -18,6 +18,11 @@ class MistralProvider(OpenAICompatibleChatProvider):
     PROVIDER_ID = "mistral"
     ERROR_PROVIDER_NAME = "Mistral"
     DEFAULT_MODEL: str | None = None
+    # Mistral requires prefix=True on a trailing assistant message (prefill) or
+    # it 400s ("Expected last role User or Tool (or Assistant with prefix True)").
+    # Declared via the base PREFILL_FLAG mechanism — prefix isn't an OpenAI field,
+    # so the provider must set it.
+    PREFILL_FLAG = "prefix"
 
     def __init__(self, api_key: Optional[str] = None):
         super().__init__(api_key=api_key, base_url=self.BASE_URL)

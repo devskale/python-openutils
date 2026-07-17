@@ -294,6 +294,20 @@ try:
 except Exception as e:  # noqa: BLE001
     bad("developer role", str(e))
 
+# D-prefill — trailing assistant message (OpenAI prefill/continuation) must be
+# accepted. Mistral requires prefix=True on it (the provider sets it).
+try:
+    r = _chat(messages=[
+        {"role": "user", "content": "Say OK"},
+        {"role": "assistant", "content": "{"},
+    ])
+    if r.status_code == 200:
+        ok("trailing assistant (prefill) -> 200")
+    else:
+        bad("trailing assistant (prefill)", f"status={r.status_code} {str(r.text)[:80]}")
+except Exception as e:  # noqa: BLE001
+    bad("trailing assistant (prefill)", str(e))
+
 # D6 — embeddings return a non-zero vector
 try:
     r = httpx.post(

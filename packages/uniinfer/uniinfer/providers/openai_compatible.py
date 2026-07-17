@@ -25,6 +25,12 @@ class OpenAICompatibleChatProvider(ChatProvider):
     PROVIDER_ID = ""
     ERROR_PROVIDER_NAME = ""
     DEFAULT_MODEL: str | None = None
+    # OpenAI-compat: a trailing assistant message is a prefill (continuation).
+    # Backends that need a flag to accept it declare the JSON key here (e.g.
+    # Mistral's "prefix"); the base _flatten_messages sets it True on the last
+    # message when it's an assistant turn. None = the backend accepts a trailing
+    # assistant natively (no flag needed).
+    PREFILL_FLAG: str | None = None
 
     def __init__(self, api_key: Optional[str] = None, base_url: Optional[str] = None, **kwargs):
         super().__init__(api_key, **kwargs)
@@ -43,6 +49,16 @@ class OpenAICompatibleChatProvider(ChatProvider):
                 # Join text parts, or use placeholder if no text (e.g., image-only message)
                 msg_dict["content"] = "".join(text_parts) if text_parts else "[content]"
             flattened_messages.append(msg_dict)
+        # Trailing-assistant prefill: if this backend needs a continuation flag,
+        # set it on the last message (only when it's an assistant turn).
+        # Generalized from the Mistral-specific override — any backend declares
+        # its flag via PREFILL_FLAG instead of overriding this method.
+        if (
+            self.PREFILL_FLAG
+            and flattened_messages
+            and flattened_messages[-1].get("role") == "assistant"
+        ):
+            flattened_messages[-1][self.PREFILL_FLAG] = True
         return flattened_messages
 
     def _get_extra_headers(self) -> dict[str, str]:
