@@ -128,6 +128,11 @@ free tiers, and rate limits (baked into `config/provider_limits.json`).
 
 Model counts from `models.json` (regenerated daily 04:00 UTC). Free = provider offers free-tier models.
 
+> 💸 **Free models available now** — OpenCode/Zen ships six free models
+> (`opencode@deepseek-v4-flash-free`, `big-pickle`, `mimo-v2.5-free`, `hy3-free`,
+> `nemotron-3-ultra-free`, `north-mini-code-free`); plus Groq (forever free),
+> Pollinations (no key), Z.AI flash, and self-hosted Ollama (unlimited).
+
 ---
 
 ## Library usage

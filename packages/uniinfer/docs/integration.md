@@ -5,7 +5,8 @@ the **uniioai proxy** (OpenAI-compatible HTTP API). Same models, same
 `provider@model` routing, same credgoo key resolution.
 
 > **Model id convention (everywhere):** `provider@model` — e.g.
-> `groq@openai/gpt-oss-20b`, `ollama@qwen3.5:0.8b`, `tu@glm-5.2-744b-preview`.
+> `groq@openai/gpt-oss-20b`, `ollama@qwen3.5:0.8b`, `tu@glm-5.2-744b-preview`,
+> `opencode@deepseek-v4-flash-free`.
 > The proxy splits on the **first** `@`. A bare id or a `:` separator will not
 > route. See [AGENTS.md](../AGENTS.md) "Ollama provider" for the Ollama specifics.
 
@@ -49,6 +50,20 @@ import asyncio
 resp = asyncio.run(Target("mistral@mistral-medium-latest", api_key).acomplete(
     [{"role": "user", "content": "Hello"}],
 ))
+```
+
+### Free models (OpenCode/Zen)
+
+OpenCode (the `opencode` provider) routes to many models and offers several
+for free (id ends in `-free`, plus `big-pickle`). Same `provider@model` form:
+
+```python
+# free reasoning model — give it token room (it reasons before answering)
+resp = Target("opencode@deepseek-v4-flash-free", api_key).complete(
+    [{"role": "user", "content": "Reply with exactly: OK"}],
+    max_tokens=256,
+)
+print(resp.message.content)   # → OK  (resp.thinking holds the reasoning)
 ```
 
 ### Streaming
