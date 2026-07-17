@@ -4,6 +4,26 @@ All notable changes to **uniinfer** are documented in this file.
 Versions follow [Semantic Versioning](https://semver.org/); this file
 adheres to [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.6.6] - 2026-07-17
+
+### Added
+- **OpenAI passthrough** — the proxy forwards unmapped OpenAI params
+  (`top_p`, `response_format`, `seed`, `stream_options`, `logprobs`, …) verbatim
+  to OpenAI-compatible backends instead of dropping them. New OpenAI features
+  reach backends without a per-field code change: the input schema captures
+  extras (`extra="allow"`) → flow through `Target` /
+  `ChatCompletionRequest.extra` → the OpenAI-compatible provider payload. JSON
+  mode (`response_format`), sampling (`top_p`/`seed`), and stream usage
+  (`stream_options`) now work against supporting backends (e.g. Mistral JSON mode
+  returns clean JSON, no fences). A per-provider `EXTRA_FORWARD_DENY` safety
+  valve strips any field that 400s a backend (empty by default). Compat tests + a
+  live JSON-mode check.
+
+  This future-proofs the OpenAI-compatible claim: the earlier hard-breaks
+  (`developer` role, trailing-assistant prefill) were symptoms of a fixed-field
+  whitelist; passthrough makes the proxy absorb new OpenAI features automatically
+  instead of one-off patching each.
+
 ## [0.6.5] - 2026-07-17
 
 ### Fixed

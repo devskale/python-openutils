@@ -3,7 +3,7 @@ import time
 import uuid
 from typing import Any, ClassVar
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
 class ChatMessageInput(BaseModel):
@@ -14,6 +14,12 @@ class ChatMessageInput(BaseModel):
 
 
 class ChatCompletionRequestInput(BaseModel):
+    # OpenAI passthrough: capture every OpenAI param the schema doesn't model
+    # explicitly (top_p, response_format, seed, stream_options, logprobs, …) so
+    # the router can forward them to backends instead of dropping them. New
+    # OpenAI features then reach backends without a schema change.
+    model_config = ConfigDict(extra="allow")
+
     model: str
     messages: list[ChatMessageInput]
     temperature: float | None = 0.7

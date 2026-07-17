@@ -156,6 +156,7 @@ class ChatCompletionRequest:
         tool_choice: Any | None = None,
         reasoning_effort: ReasoningEffort | None = None,
         chat_template_kwargs: dict | None = None,
+        extra: dict[str, Any] | None = None,
     ):
         """Initialize a chat completion request.
 
@@ -178,6 +179,10 @@ class ChatCompletionRequest:
                 ``{"enable_thinking": False}`` is the reliable way to disable
                 reasoning on Qwen3.x / GLM-5.x, and it OVERRIDES any
                 reasoning_effort-derived default. See vLLM #35574.
+            extra: OpenAI passthrough params forwarded verbatim to OpenAI-compatible
+                backends (e.g. top_p, response_format, seed, stream_options) —
+                everything the proxy doesn't model explicitly. Lets new OpenAI
+                features reach backends without a per-field code change.
         """
         self.messages = messages
         self.model = model
@@ -188,6 +193,7 @@ class ChatCompletionRequest:
         self.tool_choice = tool_choice
         self.reasoning_effort = reasoning_effort
         self.chat_template_kwargs = chat_template_kwargs
+        self.extra = extra
 
 
 class ChatCompletionResponse:

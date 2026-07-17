@@ -104,6 +104,7 @@ class Target:
         tool_choice: Any = None,
         reasoning_effort: Optional[str] = None,
         chat_template_kwargs: Optional[dict] = None,
+        extra: Optional[dict] = None,
     ) -> ChatCompletionRequest:
         msgs = [
             m if isinstance(m, ChatMessage) else ChatMessage(**m) for m in messages
@@ -118,6 +119,7 @@ class Target:
             tool_choice=tool_choice,
             reasoning_effort=reasoning_effort,
             chat_template_kwargs=chat_template_kwargs,
+            extra=extra,
         )
 
     def _record(self, resp: Any) -> None:
@@ -149,6 +151,7 @@ class Target:
         tool_choice: Any = None,
         reasoning_effort: Optional[str] = None,
         chat_template_kwargs: Optional[dict] = None,
+        extra: Optional[dict] = None,
     ) -> ChatCompletionResponse:
         req = self._build_request(
             messages,
@@ -159,6 +162,7 @@ class Target:
             tool_choice=tool_choice,
             reasoning_effort=reasoning_effort,
             chat_template_kwargs=chat_template_kwargs,
+            extra=extra,
         )
         logger.info("Requesting response from %s (%s)", self.provider_name, self.model_name)
         resp = self.provider.complete(req)
@@ -175,6 +179,7 @@ class Target:
         tool_choice: Any = None,
         reasoning_effort: Optional[str] = None,
         chat_template_kwargs: Optional[dict] = None,
+        extra: Optional[dict] = None,
     ) -> Iterator[ChatCompletionResponse]:
         req = self._build_request(
             messages,
@@ -185,6 +190,7 @@ class Target:
             tool_choice=tool_choice,
             reasoning_effort=reasoning_effort,
             chat_template_kwargs=chat_template_kwargs,
+            extra=extra,
         )
         logger.info("Streaming response from %s (%s)", self.provider_name, self.model_name)
         for chunk in self.provider.stream_complete(req):
@@ -201,6 +207,7 @@ class Target:
         tool_choice: Any = None,
         reasoning_effort: Optional[str] = None,
         chat_template_kwargs: Optional[dict] = None,
+        extra: Optional[dict] = None,
     ) -> ChatCompletionResponse:
         req = self._build_request(
             messages,
@@ -211,6 +218,7 @@ class Target:
             tool_choice=tool_choice,
             reasoning_effort=reasoning_effort,
             chat_template_kwargs=chat_template_kwargs,
+            extra=extra,
         )
         logger.info(
             "Requesting async response from %s (%s)", self.provider_name, self.model_name
@@ -229,6 +237,7 @@ class Target:
         tool_choice: Any = None,
         reasoning_effort: Optional[str] = None,
         chat_template_kwargs: Optional[dict] = None,
+        extra: Optional[dict] = None,
     ) -> AsyncIterator[ChatCompletionResponse]:
         req = self._build_request(
             messages,
@@ -239,6 +248,7 @@ class Target:
             tool_choice=tool_choice,
             reasoning_effort=reasoning_effort,
             chat_template_kwargs=chat_template_kwargs,
+            extra=extra,
         )
         logger.info(
             "Streaming async response from %s (%s)", self.provider_name, self.model_name

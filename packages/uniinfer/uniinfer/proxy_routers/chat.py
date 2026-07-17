@@ -73,6 +73,10 @@ def create_chat_router(
                 for _m in messages_dict:
                     if _m.get("role") == "developer":
                         _m["role"] = "system"
+            # OpenAI passthrough: forward unmapped OpenAI params (top_p,
+            # response_format, seed, stream_options, …) to the backend instead
+            # of dropping them. The schema captures them via extra="allow".
+            extras = dict(getattr(request_input, "__pydantic_extra__", None) or {})
             if provider_name == "ollama" and base_url is None:
                 base_url = (
                     provider_configs.get("ollama", {})
@@ -110,6 +114,7 @@ def create_chat_router(
                         request_id=getattr(request.state, "request_id", None),
                         reasoning_effort=reasoning_effort,
                         chat_template_kwargs=request_input.chat_template_kwargs,
+                        extra=extras,
                     ),
                     media_type="text/event-stream",
                     headers={
@@ -127,6 +132,7 @@ def create_chat_router(
                 tool_choice=request_input.tool_choice,
                 reasoning_effort=reasoning_effort,
                 chat_template_kwargs=request_input.chat_template_kwargs,
+                extra=extras,
             )
 
             raw_content = full_content.message.content

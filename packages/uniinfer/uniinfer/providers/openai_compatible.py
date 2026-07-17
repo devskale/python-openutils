@@ -21,6 +21,9 @@ def _load_model_defaults() -> dict[str, dict[str, Any]]:
 
 
 class OpenAICompatibleChatProvider(ChatProvider):
+    # OpenAI params to NEVER forward even if a client sends them as extras
+    # (none known yet; add here if one 400s a backend).
+    EXTRA_FORWARD_DENY: frozenset[str] = frozenset()
     BASE_URL = ""
     PROVIDER_ID = ""
     ERROR_PROVIDER_NAME = ""
@@ -99,6 +102,14 @@ class OpenAICompatibleChatProvider(ChatProvider):
                 payload[key] = value
 
         payload.update(provider_specific_kwargs)
+        # OpenAI passthrough: forward unmapped OpenAI params (top_p, response_format,
+        # seed, stream_options, logprobs, …) verbatim so new OpenAI features reach
+        # backends without a per-field code change. EXTRA_FORWARD_DENY strips any
+        # that 400 a backend; empty by default (most backends ignore unknowns).
+        if getattr(request, "extra", None):
+            for _k, _v in request.extra.items():
+                if _k not in self.EXTRA_FORWARD_DENY:
+                    payload[_k] = _v
         return payload
 
     def _build_headers(self) -> dict[str, str]:

@@ -70,6 +70,7 @@ async def astream_response_generator(
     request_id: str | None = None,
     reasoning_effort: str | None = None,
     chat_template_kwargs: dict | None = None,
+    extra: dict | None = None,
 ) -> AsyncGenerator[str, None]:
     completion_id = f"chatcmpl-{uuid.uuid4()}"
     created_time = int(time.time())
@@ -121,6 +122,7 @@ async def astream_response_generator(
             tool_choice=tool_choice,
             reasoning_effort=reasoning_effort,
             chat_template_kwargs=chat_template_kwargs,
+            extra=extra,
         ).__aiter__()
         while True:
             try:
