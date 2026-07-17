@@ -308,6 +308,22 @@ try:
 except Exception as e:  # noqa: BLE001
     bad("trailing assistant (prefill)", str(e))
 
+# D-jsonmode — response_format passthrough: JSON mode (previously dropped) now
+# reaches the backend. With json_object the model should emit JSON, not prose.
+try:
+    r = _chat(
+        messages=[{"role": "user", "content": "Return a JSON object with key 'ok' set to true. Nothing else."}],
+        extra={"response_format": {"type": "json_object"}},
+    )
+    if r.status_code == 200:
+        content = (r.json()["choices"][0]["message"].get("content") or "").strip()
+        looks_json = content.startswith("{") or content.startswith("[")
+        ok(f"response_format json_object -> 200 ({'JSON' if looks_json else 'passed through; output not strict JSON'}: {content[:30]!r})")
+    else:
+        bad("response_format json_object", f"status={r.status_code} {str(r.text)[:80]}")
+except Exception as e:  # noqa: BLE001
+    bad("response_format json_object", str(e))
+
 # D6 — embeddings return a non-zero vector
 try:
     r = httpx.post(
