@@ -8,9 +8,9 @@ version = "0.5.38"
 description = "Unified Inference API for LLM chat completions across 15+ providers with streaming, fallback strategies, and secure API key management"
 readme = "README.md"
 requires-python = ">=3.9"
-license = {text = "MIT License"}
+license = "MIT"
 authors = [
-  {name = "Han Woo", email = "dev@skale.dev"}
+  {name = "skale.dev", email = "dev@skale.dev"}
 ]
 keywords = ["llm", "ai", "inference", "openai", "anthropic", "gemini", "mistral", "chat", "completion", "streaming", "api"]
 classifiers = [

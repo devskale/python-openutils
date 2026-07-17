@@ -6,7 +6,7 @@ readme = "README.md"
 requires-python = ">=3.9"
 license = "MIT"
 authors = [
-    {name = "Han Woo", email = "dev@skale.dev"}
+    {name = "skale.dev", email = "dev@skale.dev"}
 ]
 classifiers = [
     "Programming Language :: Python :: 3",
