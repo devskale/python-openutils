@@ -4,6 +4,27 @@ All notable changes to **uniinfer** are documented in this file.
 Versions follow [Semantic Versioning](https://semver.org/); this file
 adheres to [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.6.5] - 2026-07-17
+
+### Fixed
+- **Trailing assistant message (prefill) no longer 400s on Mistral.** A
+  trailing assistant message is the OpenAI-compatible prefill/continuation
+  pattern (force raw JSON, no markdown fences). Mistral requires `prefix=True`
+  on it (400 otherwise), but `prefix` isn't an OpenAI field so no client can set
+  it. Regression tests cover the prefix logic; live details check validates the
+  prefill against Mistral.
+
+### Changed (generalized)
+- **OpenAI-compatibility layer is now declarative, not one-off.** A trailing
+  assistant prefill is handled by a base `PREFILL_FLAG` on
+  `OpenAICompatibleChatProvider`: backends that need a continuation flag declare
+  it (`MistralProvider.PREFILL_FLAG = "prefix"`); the base `_flatten_messages`
+  applies it to the last assistant turn. Backends that accept a trailing
+  assistant natively (Anthropic, Gemini, vLLM, Ollama, …) leave it `None`. The
+  `developer`-role normalization stays at the proxy (universal scope).
+  Documented in ARCHITECTURE.md ("OpenAI compatibility layer") so the next
+  backend quirk lands in the right place.
+
 ## [0.6.4] - 2026-07-17
 
 ### Fixed

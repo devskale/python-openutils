@@ -81,3 +81,29 @@ Keep this file thin. Prefer adding endpoint logic in routers/services.
 - Current default is non-strict OpenAI mode for TU/vLLM thinking visibility.
 - Proxy emits/normalizes `reasoning_content` for Pi compatibility.
 - Preserve this behavior unless explicitly changed.
+
+## OpenAI compatibility layer
+
+The proxy presents itself as an OpenAI endpoint, but OpenAI clients emit inputs
+that some backends reject. Two layers handle this — generalize here, don't
+one-off patch:
+
+**Proxy — input normalization** (`proxy_routers/chat.py`): accept the full
+OpenAI role set; normalize for backends that reject parts of it.
+- `developer` role → `system` for backends without it (most: Mistral, Gemini,
+  Ollama, TU/vLLM, Anthropic, …); preserved for `_DEVELOPER_ROLE_PROVIDERS`
+  (`openai`, `openrouter`) whose APIs accept it natively. `developer` is
+  functionally equivalent to `system` and universally accepted.
+
+**Provider — backend-flag adaptation** (`providers/`): when a backend needs a
+non-OpenAI flag to accept valid OpenAI input, the provider sets it. The
+declarative mechanism is `PREFILL_FLAG` on `OpenAICompatibleChatProvider`:
+- A trailing assistant message is OpenAI's prefill/continuation pattern. Backends
+  that require a flag declare it (`PREFILL_FLAG = "prefix"` for Mistral); the
+  base `_flatten_messages` sets it `True` on the last message when it's an
+  assistant turn. Backends that accept a trailing assistant natively (Anthropic,
+  Gemini, vLLM, Ollama, …) leave `PREFILL_FLAG = None`.
+
+**Adding a new quirk:** input the backend rejects → normalize at the proxy (if
+universal, like roles) or declare a flag / override `_flatten_messages` in the
+provider (if backend-specific). Never make OpenAI clients set backend fields.
