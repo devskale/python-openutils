@@ -16,6 +16,13 @@
 - 🔐 **Key management via [credgoo](https://github.com/devskale/python-openutils/tree/main/packages/credgoo)** — one token unlocks every provider
 - ⚡ **Streaming, tools, embeddings, TTS, STT, fallback strategies**
 
+<table>
+  <tr>
+    <td width="50%" align="center"><b>Chat</b><br/><sub>streaming + markdown + reasoning aside</sub><br/><img src="docs/screenshots/chat.png" alt="Chat"/></td>
+    <td width="50%" align="center"><b>Dashboard — Provider limits</b><br/><sub>free-tier limits vs live usage</sub><br/><img src="docs/screenshots/dashboard-limits.png" alt="Dashboard — Provider limits"/></td>
+  </tr>
+</table>
+
 ---
 
 ## Quick start
@@ -198,6 +205,14 @@ An OpenAI-compatible FastAPI server. Model ids are **`provider@model`**
 | `/v1/system/version` | GET | Version |
 
 Dashboards: `/v1/system/stats.html`, `/v1/system/provider-limits.html`, `/capabilities`, `/perf`, `/guide`.
+
+<details>
+<summary><b>More screenshots</b></summary>
+<table>
+  <tr><td width="50%" align="center"><b>Dashboard — Usage</b><br/><img src="docs/screenshots/dashboard-usage.png" alt="Dashboard — Usage"/></td>
+      <td width="50%" align="center"><b>Settings</b><br/><img src="docs/screenshots/settings.png" alt="Settings"/></td></tr>
+</table>
+</details>
 
 ### Authentication
 
