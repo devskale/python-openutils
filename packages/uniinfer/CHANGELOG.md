@@ -4,6 +4,19 @@ All notable changes to **uniinfer** are documented in this file.
 Versions follow [Semantic Versioning](https://semver.org/); this file
 adheres to [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.6.2] - 2026-07-17
+
+### Added
+- **Unified web app at `/`** — a cohesive, production-grade single-page app
+  split into **Chat** (provider/model selectors, streaming + markdown, reasoning
+  aside, stop/abort), **Dashboard** (Usage from `/v1/system/stats`, Provider
+  limits from `/v1/system/provider-limits`, links to the dedicated dashboards),
+  and **Settings** (proxy base URL, API key with remember toggle, default
+  temperature/max_tokens/reasoning_effort/system prompt, refresh-models).
+  Self-contained (inline CSS/JS, no build), dark theme, responsive. Replaces the
+  old root JSON; the legacy `/webdemo`, `/perf`, `/capabilities`, `/guide` pages
+  remain.
+
 ## [0.6.1] - 2026-07-17
 
 ### Added
