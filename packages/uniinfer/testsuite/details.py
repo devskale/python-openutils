@@ -69,7 +69,7 @@ def _headers(auth=True):
 #   reasoning OFF (none/minimal) -> small  (fast, deterministic; no reasoning)
 #   reasoning ON  (low/medium/high) -> generous (room for the chain + answer)
 _SMALL = 256
-_GENEROUS = 4096
+_GENEROUS = 2048
 
 
 def _chat(extra=None, model=None, auth=True, messages=None):
@@ -90,7 +90,7 @@ def _chat(extra=None, model=None, auth=True, messages=None):
         f"{PROXY_URL}/v1/chat/completions",
         headers=_headers(auth),
         json=body,
-        timeout=60,
+        timeout=120,
         verify=False,
     )
 
@@ -297,6 +297,29 @@ try:
         bad("embeddings", "zero/empty vector")
 except Exception as e:  # noqa: BLE001
     bad("embeddings", str(e))
+
+# D7 — provider-limits observability endpoint: documented limits + live usage join
+try:
+    r = httpx.get(f"{PROXY_URL}/v1/system/provider-limits", headers=_headers(), timeout=30, verify=False)
+    d = r.json()
+    provs = d.get("providers", {})
+    has_join = any(p.get("limits") and isinstance(p.get("utilization"), list) for p in provs.values())
+    if r.status_code == 200 and provs and has_join:
+        ok(f"provider-limits endpoint -> {len(provs)} providers, limits+usage joined")
+    else:
+        bad("provider-limits endpoint", f"status={r.status_code} providers={len(provs)}")
+except Exception as e:  # noqa: BLE001
+    bad("provider-limits endpoint", str(e))
+
+# D8 — provider-limits dashboard HTML is served
+try:
+    r = httpx.get(f"{PROXY_URL}/v1/system/provider-limits.html", timeout=30, verify=False)
+    if r.status_code == 200 and "<html" in r.text.lower():
+        ok("provider-limits dashboard -> 200 (html)")
+    else:
+        bad("provider-limits dashboard", f"status={r.status_code}")
+except Exception as e:  # noqa: BLE001
+    bad("provider-limits dashboard", str(e))
 
 print("-" * 52)
 print(f"Details: {passed} passed, {failed} failed, {skipped} skipped")

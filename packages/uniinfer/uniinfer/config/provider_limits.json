@@ -1,0 +1,163 @@
+{
+  "_doc": "Documented FREE-tier rate limits per provider, transcribed from docs/providers.md. Limits change — update this file, not code. Units are explicit keys (requests_per_minute, requests_per_day, tokens_per_minute, tokens_per_day, ...). Omitted key = unknown/not published. `per_model` overrides the provider defaults for specific models. Approximate values are flagged in `notes`.",
+
+  "groq": {
+    "requests_per_minute": 30,
+    "tokens_per_day": 100000,
+    "notes": "TPD scales with model size; ~100K TPD for 70B-class. Forever free, no CC.",
+    "source": "https://console.groq.com/docs/rate-limits"
+  },
+
+  "openrouter": {
+    "requests_per_day": 50,
+    "notes": "Free tier: 50 req/day. With >=$10 deposit: 1000 req/day.",
+    "source": "https://openrouter.ai/pricing"
+  },
+
+  "pollinations": {
+    "unlimited": true,
+    "notes": "sk_ (secret) key: unlimited. pk_ (publishable): 1 pollen/hr/IP. No key needed at all.",
+    "source": "https://gen.pollinations.ai/docs"
+  },
+
+  "ollama": {
+    "unlimited": true,
+    "notes": "Self-hosted: unlimited. Cloud Free: 1 concurrent request.",
+    "source": "https://ollama.com/pricing"
+  },
+
+  "arli": {
+    "concurrent_requests": 1,
+    "notes": "Qwen-3.5-27B-Derestricted: 12K ctx, 1 concurrent. Other models: 5 trial requests / 2 days.",
+    "source": "https://www.arliai.com/pricing"
+  },
+
+  "gemini": {
+    "requests_per_minute": 15,
+    "requests_per_day": 1500,
+    "tokens_per_minute": 1000000,
+    "per_model": {
+      "gemini-2.5-flash": {
+        "requests_per_minute": 15,
+        "requests_per_day": 1500,
+        "tokens_per_minute": 1000000
+      },
+      "gemini-3.5-flash": {
+        "requests_per_minute": 10,
+        "requests_per_day": 20,
+        "tokens_per_minute": 1000000,
+        "notes": "CRITICAL: only 20 requests/day. Confirmed by live 429s. Other Flash models get 1500 RPD."
+      }
+    },
+    "notes": "Permanent free, no CC. Defaults shown are gemini-2.5-flash. Per-model overrides above.",
+    "source": "https://ai.google.dev/pricing"
+  },
+
+  "zai": {
+    "unlimited": true,
+    "notes": "glm-4.5-flash, glm-4.7-flash, glm-4.6v-flash permanently free; no explicit RPM limit (fair use).",
+    "source": "https://docs.z.ai"
+  },
+
+  "mistral": {
+    "requests_per_minute": 2,
+    "tokens_per_month": 1000000000,
+    "notes": "Experiment mode: all models, 2 RPM, ~1B tokens/month.",
+    "source": "https://docs.mistral.ai/admin/user-management-finops/tier"
+  },
+
+  "cohere": {
+    "requests_per_minute": 5,
+    "requests_per_month": 100000,
+    "notes": "Trial: 5 RPM, 100K calls/month. Production tier: 500 RPM.",
+    "source": "https://docs.cohere.com/docs/rate-limits"
+  },
+
+  "huggingface": {
+    "notes": "Serverless: ~few hundred requests/hour, models <10GB. Cold starts 10-30s. PRO $9/mo raises limits.",
+    "source": "https://huggingface.co/docs/inference-providers"
+  },
+
+  "cloudflare": {
+    "notes": "10,000 Neurons/day (Cloudflare's unit; ~20-60 requests for a 70B model). Also covers embeddings/image/TTS/STT.",
+    "source": "https://developers.cloudflare.com/workers-ai/platform/pricing"
+  },
+
+  "sambanova": {
+    "requests_per_minute": 20,
+    "tokens_per_day": 200000,
+    "notes": "$5 credits (3 months) + ongoing 20 RPM / 200K TPD. Dev tier: 240 RPM (70B).",
+    "source": "https://docs.sambanova.ai/docs/en/models/rate-limits"
+  },
+
+  "ngc": {
+    "requests_per_minute": 40,
+    "notes": "~40 RPM on Developer Program; varies per model. 100+ models.",
+    "source": "https://build.nvidia.com"
+  },
+
+  "moonshot": {
+    "requests_per_minute": 3,
+    "tokens_per_minute": 40000,
+    "notes": "Free ~3 RPM. Paid: 60 RPM. Also free via Cloudflare/OpenRouter.",
+    "source": "https://platform.moonshot.ai/docs/pricing"
+  },
+
+  "stepfun": {
+    "requests_per_minute": 10,
+    "tokens_per_minute": 5000000,
+    "concurrent_requests": 5,
+    "notes": "V0 tier (no payment): 10 RPM / 5M TPM / 5 concurrent. V1 ($15): 1000 RPM.",
+    "source": "https://platform.stepfun.ai/docs/en/guides/pricing/details"
+  },
+
+  "internlm": {
+    "requests_per_minute": 10,
+    "tokens_per_minute": 5000000,
+    "notes": "V0 tier (no payment): identical ladder to StepFun. V1 ($15): 1000 RPM.",
+    "source": "https://chat.intern-ai.org.cn"
+  },
+
+  "upstage": {
+    "notes": "Varies by model. solar-pro-3:free (MoE 102B/12B active).",
+    "source": "https://upstage.ai"
+  },
+
+  "minimax": {
+    "notes": "Trial credits only; no recurring free tier. M3 open-weight imminent.",
+    "source": "https://minimax.io"
+  },
+
+  "ai21": {
+    "notes": "Trial credits only. Contact sales for rate limits.",
+    "source": "https://ai21.com"
+  },
+
+  "chutes": {
+    "notes": "No free tier. Pay-per-token only.",
+    "source": "https://chutes.ai/pricing"
+  },
+
+  "openai": {
+    "requests_per_minute": 3,
+    "requests_per_day": 200,
+    "notes": "$5 credits (3 months). Free: 3 RPM / 200 RPD. Tier 1 ($5 top-up): 500 RPM. GPT-5+ needs paid tier.",
+    "source": "https://platform.openai.com/api/docs/pricing"
+  },
+
+  "anthropic": {
+    "requests_per_minute": 50,
+    "notes": "Tier 1 ($5): 50 RPM; varies by model. Prompt caching doesn't count toward limits. ~$5 signup credits, no recurring free.",
+    "source": "https://docs.anthropic.com/en/api/rate-limits"
+  },
+
+  "tu": {
+    "notes": "Self-hosted (Aqueduct relay -> vLLM). No published per-user quota; the adaptive AIMD limiter (uniinfer/ratelimit.py) self-tunes per (provider, model) from observed 429s.",
+    "source": "https://tu-wien-datalab.github.io/aqueduct/"
+  },
+
+  "zai-code": {
+    "notes": "Coding endpoint from Zhipu AI; inherits Z.AI fair-use. See zai.",
+    "source": "https://docs.z.ai"
+  }
+}
