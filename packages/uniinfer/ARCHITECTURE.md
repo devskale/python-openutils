@@ -52,7 +52,7 @@ Keep this file thin. Prefer adding endpoint logic in routers/services.
 ## Services
 
 - `uniinfer/proxy_services/models_registry.py`
-  - `models.txt` refresh/staleness parsing logic
+  - `models.json` catalog: load / refresh / staleness, model overrides, new / deprecated / stale diffs
 
 - `uniinfer/proxy_services/streaming.py`
   - SSE streaming shaping
