@@ -22,6 +22,7 @@ from __future__ import annotations
 import hashlib
 import os
 import re
+import subprocess
 import sys
 from pathlib import Path
 
@@ -94,7 +95,9 @@ def _clone_dir() -> Path | None:
 def _bundled_dir(package: str | None) -> Path | None:
     """The consumer's bundled prompts/, discovered by importing the package.
 
-    ``packages/<pkg>/<pkg>/__init__.py`` → ``packages/<pkg>/prompts``.
+    Tries both the editable-sibling layout (``packages/<pkg>/<pkg>/`` →
+    ``packages/<pkg>/prompts``) and an in-package layout (``<pkg>/prompts``),
+    so it resolves for editable installs (dev) and for wheels that ship prompts.
     """
     if not package:
         return None
@@ -102,11 +105,26 @@ def _bundled_dir(package: str | None) -> Path | None:
         import importlib
 
         mod = importlib.import_module(package)
-        if getattr(mod, "__file__", None):
-            return Path(mod.__file__).resolve().parent.parent / "prompts"
+        bases = []
+        if getattr(mod, "__path__", None):
+            bases = [Path(p).resolve() for p in mod.__path__]
+        elif getattr(mod, "__file__", None):
+            bases = [Path(mod.__file__).resolve().parent]
+        for base in bases:
+            for cand in (base.parent / "prompts", base / "prompts"):
+                if cand.is_dir():
+                    return cand
     except Exception:
         pass
     return None
+
+
+def _git_head_text(root: Path, rel: str) -> str | None:
+    """File contents at HEAD inside `root` (a git repo), or None if absent/not a repo."""
+    r = subprocess.run(
+        ["git", "show", f"HEAD:{rel}"], cwd=str(root), capture_output=True, text=True
+    )
+    return r.stdout if r.returncode == 0 else None
 
 
 def _warn_bundled(name: str, package: str | None) -> None:
@@ -192,13 +210,15 @@ def get_prompt_set_info() -> dict:
                     text = md.read_text(encoding="utf-8")
                 except OSError:
                     continue
+                head = _git_head_text(root, rel)
                 prompts.append(
                     {
                         "name": rel,
                         "version": _get_version(text) or "",
                         "source": source,
                         "sha256": _semantic_fingerprint(text)[:12],
-                        "modified": False,
+                        "modified": head is not None
+                        and _semantic_fingerprint(text) != _semantic_fingerprint(head),
                     }
                 )
 
