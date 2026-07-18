@@ -148,7 +148,7 @@ def load_prompt(name: str, *, package: str | None = None) -> str:
     # "package/name" shorthand
     if "/" in name and package is None:
         head, tail = name.split("/", 1)
-        if head in ("agentos", "strukt2meta"):
+        if head in ("agentos", "strukt2meta", "pdf2md"):
             package, name = head, tail
 
     stem = name[:-3] if name.endswith(".md") else name
@@ -200,7 +200,7 @@ def get_prompt_set_info() -> dict:
 
     prompts: list[dict] = []
     if root and root.is_dir():
-        for ns in ("agentos", "strukt2meta"):
+        for ns in ("agentos", "strukt2meta", "pdf2md"):
             ns_dir = root / ns
             if not ns_dir.is_dir():
                 continue
