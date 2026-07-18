@@ -1,0 +1,16 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "kontextprompts"
+version = "0.1.0"
+description = "Shared workflow-prompt loader for the kontext.one engine — 5-tier resolution (literal → $KONTEXT_PROMPTS_DIR → clone → CWD → bundled) + prompt-set observability"
+readme = "README.md"
+requires-python = ">=3.9"
+license = "MIT"
+authors = [{ name = "skale.dev", email = "dev@skale.dev" }]
+dependencies = ["pyyaml>=5"]
+
+[tool.hatch.build.targets.wheel]
+packages = ["kontextprompts"]
