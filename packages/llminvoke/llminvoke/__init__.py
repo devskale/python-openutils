@@ -23,7 +23,7 @@ from uniinfer import (
     extract_response_text,
 )
 
-__all__ = ["invoke_llm", "call_llm", "stream_llm"]
+__all__ = ["invoke_llm", "call_llm", "stream_llm", "create_provider"]
 __version__ = "0.1.0"
 
 
@@ -42,8 +42,9 @@ def _build_messages(
     return msgs
 
 
-def _create_provider(provider: str):
-    """credgoo key → ProviderFactory.get_provider."""
+def create_provider(provider: str):
+    """credgoo key → ProviderFactory.get_provider. Public for consumers that
+    need the raw provider (e.g. custom streaming with chunk inspection)."""
     api_key = get_api_key(provider)
     return ProviderFactory.get_provider(provider, api_key=api_key)
 
@@ -62,7 +63,7 @@ def invoke_llm(
     Returns the raw ChatCompletionResponse (for consumers that need
     usage data, error classification, or custom extraction).
     """
-    prov = _create_provider(provider)
+    prov = create_provider(provider)
     request = ChatCompletionRequest(
         messages=messages,
         model=model,
@@ -148,7 +149,7 @@ def stream_llm(
     Yields: str chunk texts (may be empty strings for keep-alive chunks).
     """
     msgs = _build_messages(prompt, messages, system_prompt)
-    prov = _create_provider(provider)
+    prov = create_provider(provider)
     request = ChatCompletionRequest(
         messages=msgs,
         model=model,
