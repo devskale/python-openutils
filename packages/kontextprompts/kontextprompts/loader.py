@@ -5,23 +5,23 @@ Single source of truth for loading the engine's *workflow* prompts (the
 Business content (PAs/FAPs) is NOT resolved here — that lives in the OFS data
 layer (see ADR 0001).
 
-5-tier resolution (first hit wins):
+Resolution (first matching tier wins):
   1. literal file path (any extension) — read directly
-  2. ``$KONTEXT_PROMPTS_DIR/<package>/<name>.md`` — explicit override
-  3. default clone ``<discovered>/​<package>/​<name>.md`` — the in-place
-     kontext-prompts checkout (sibling of python-utils)
-  4. ``./prompts/<name>.md`` — CWD-local pack
+  2. ``$KONTEXT_PROMPTS_DIR/<package>/`` — explicit override tree
+  3. default clone ``<discovered>/<package>/`` — the in-place kontext-prompts checkout
+  4. ``./prompts/`` — CWD-local pack
   5. bundled in-package copy — the consumer's own ``prompts/`` (last resort)
 
-A loud warning fires when the bundled tier is hit with no clone and no env-var,
-so the invisible-drift case (running stale bundled prompts by accident) is
-surfaced.
+Within a package tree the loader resolves by **basename** recursively (prompts
+may live in functional subdirs — ADR 0002); ``README.md``, anything under a
+``_*``-prefixed or ``docs/`` dir is excluded from the active set. Basenames must
+be unique within a package (the index build raises on a duplicate). A loud
+warning fires when the bundled tier is hit with no clone and no env-var.
 """
 from __future__ import annotations
 
 import hashlib
 import os
-import re
 import subprocess
 import sys
 from pathlib import Path
@@ -75,17 +75,14 @@ def _env_path(var: str) -> Path | None:
 
 def _clone_dir() -> Path | None:
     """The default in-place kontext-prompts checkout (NOT the explicit env override)."""
-    # PYTHON_UTILS_ROOT sibling: dirname($PYTHON_UTILS_ROOT)/kontext-prompts
     pur = _env_path("PYTHON_UTILS_ROOT")
     if pur:
         c = pur.parent / "kontext-prompts"
         if c.is_dir():
             return c
-    # CWD sibling (dev: kontext.one/kontext-prompts/)
     c = Path.cwd() / "kontext-prompts"
     if c.is_dir():
         return c
-    # pi5 / generic home layout
     c = Path.home() / "code" / "kontext-prompts"
     if c.is_dir():
         return c
@@ -93,12 +90,7 @@ def _clone_dir() -> Path | None:
 
 
 def _bundled_dir(package: str | None) -> Path | None:
-    """The consumer's bundled prompts/, discovered by importing the package.
-
-    Tries both the editable-sibling layout (``packages/<pkg>/<pkg>/`` →
-    ``packages/<pkg>/prompts``) and an in-package layout (``<pkg>/prompts``),
-    so it resolves for editable installs (dev) and for wheels that ship prompts.
-    """
+    """The consumer's bundled prompts/, discovered by importing the package."""
     if not package:
         return None
     try:
@@ -137,9 +129,66 @@ def _warn_bundled(name: str, package: str | None) -> None:
         )
 
 
+# ── recursive active-set index (ADR 0002) ────────────────────────────────
+_INDEX_CACHE: dict[str, dict[str, Path]] = {}
+
+
+def _is_excluded(path: Path, pkg_dir: Path) -> bool:
+    """Skip README.md and anything under a _*-prefixed or `docs/` dir (within pkg_dir)."""
+    if path.name.lower() == "readme.md":
+        return True
+    try:
+        ancestors = path.relative_to(pkg_dir).parts[:-1]
+    except ValueError:
+        return False
+    return any(p == "docs" or p.startswith("_") for p in ancestors)
+
+
+def _index(pkg_dir: Path) -> dict[str, Path]:
+    """Cached basename→path map of active prompts under pkg_dir (recursive, skip rules).
+
+    Enforces per-package basename uniqueness — raises FileNotFoundError on a duplicate.
+    """
+    key = str(pkg_dir)
+    cached = _INDEX_CACHE.get(key)
+    if cached is not None:
+        return cached
+    idx: dict[str, Path] = {}
+    for path in sorted(pkg_dir.rglob("*.md")):
+        if _is_excluded(path, pkg_dir):
+            continue
+        base = path.stem
+        if base in idx:
+            raise FileNotFoundError(
+                f"prompt name {base!r} is not unique under {pkg_dir}: "
+                f"{idx[base]} and {path}"
+            )
+        idx[base] = path
+    _INDEX_CACHE[key] = idx
+    return idx
+
+
+def _resolve_in_dir(pkg_dir: Path, stem: str) -> Path | None:
+    """Resolve <stem>.md anywhere under pkg_dir (recursive, cached). None if absent/not a dir."""
+    if not pkg_dir.is_dir():
+        return None
+    return _index(pkg_dir).get(stem)
+
+
+def _active_prompts(pkg_dir: Path):
+    """Yield active prompt paths under pkg_dir (recursive, skip rules), sorted."""
+    if not pkg_dir.is_dir():
+        return []
+    return [p for p in sorted(pkg_dir.rglob("*.md")) if not _is_excluded(p, pkg_dir)]
+
+
 # ── public API ───────────────────────────────────────────────────────────
 def load_prompt(name: str, *, package: str | None = None) -> str:
-    """Load a workflow prompt by name (or literal path). First matching tier wins."""
+    """Load a workflow prompt by basename (or literal path). First matching tier wins.
+
+    Within a package tree the basename is resolved recursively (prompts may live in
+    functional subdirs); ``README.md``/``_*``/``docs`` are excluded.
+    """
     # tier 1 — literal path
     p = Path(name).expanduser()
     if p.is_file():
@@ -153,28 +202,31 @@ def load_prompt(name: str, *, package: str | None = None) -> str:
 
     stem = name[:-3] if name.endswith(".md") else name
     ns = package or ""
-
-    candidates: list[tuple[str, Path]] = []
     env = _env_path("KONTEXT_PROMPTS_DIR")
-    if env:
-        candidates.append(("KONTEXT_PROMPTS_DIR", env / ns / f"{stem}.md"))
     clone = _clone_dir()
-    if clone:
-        candidates.append(("clone", clone / ns / f"{stem}.md"))
-    candidates.append(("cwd", Path("prompts") / f"{stem}.md"))
     bundled = _bundled_dir(package)
-    if bundled:
-        candidates.append(("bundled", bundled / f"{stem}.md"))
 
-    for label, path in candidates:
-        if path.is_file():
+    # ordered tiers — each resolves <stem>.md anywhere under its package tree
+    tiers: list[tuple[str, Path | None]] = [
+        ("KONTEXT_PROMPTS_DIR", env / ns if env else None),
+        ("clone", clone / ns if clone else None),
+        ("cwd", Path("prompts")),
+        ("bundled", bundled),
+    ]
+    searched = []
+    for label, pkg_dir in tiers:
+        if pkg_dir is None:
+            continue
+        path = _resolve_in_dir(pkg_dir, stem)
+        searched.append(f"[{label}] {pkg_dir}")
+        if path is not None:
             if label == "bundled":
                 _warn_bundled(stem, package)
             return path.read_text(encoding="utf-8")
 
-    searched = "\n  ".join(f"[{lbl}] {pth}" for lbl, pth in candidates)
     raise FileNotFoundError(
-        f"workflow prompt {stem!r} (package={package or '?'}) not found. Searched:\n  {searched}"
+        f"workflow prompt {stem!r} (package={package or '?'}) not found. Searched:\n  "
+        + "\n  ".join(searched)
     )
 
 
@@ -183,12 +235,7 @@ def get_prompt_set_info() -> dict:
     env = _env_path("KONTEXT_PROMPTS_DIR")
     clone = _clone_dir()
     root = env or clone
-    if env:
-        source = "KONTEXT_PROMPTS_DIR"
-    elif clone:
-        source = "clone"
-    else:
-        source = "bundled"
+    source = "KONTEXT_PROMPTS_DIR" if env else ("clone" if clone else "bundled")
 
     version = commit = None
     if root and (root / "VERSION").is_file():
@@ -201,10 +248,7 @@ def get_prompt_set_info() -> dict:
     prompts: list[dict] = []
     if root and root.is_dir():
         for ns in ("agentos", "strukt2meta", "pdf2md"):
-            ns_dir = root / ns
-            if not ns_dir.is_dir():
-                continue
-            for md in sorted(ns_dir.rglob("*.md")):
+            for md in _active_prompts(root / ns):
                 rel = str(md.relative_to(root))
                 try:
                     text = md.read_text(encoding="utf-8")

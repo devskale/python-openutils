@@ -69,6 +69,43 @@ def test_version_none_when_no_frontmatter(fake_clone):
     assert plain["version"] == ""
 
 
+def test_recursive_resolution(fake_clone):
+    """A prompt in a functional subdir resolves by basename (ADR 0002)."""
+    (fake_clone / "agentos" / "retrieval").mkdir()
+    (fake_clone / "agentos" / "retrieval" / "deep.md").write_text("deep prompt", encoding="utf-8")
+    assert load_prompt("deep", package="agentos") == "deep prompt"
+
+
+def test_skip_rules(fake_clone):
+    """README.md, _* dirs, docs/ are excluded from the active set."""
+    (fake_clone / "agentos" / "README.md").write_text("bucket readme", encoding="utf-8")
+    (fake_clone / "agentos" / "_draft").mkdir()
+    (fake_clone / "agentos" / "_draft" / "wip.md").write_text("wip", encoding="utf-8")
+    (fake_clone / "agentos" / "docs").mkdir()
+    (fake_clone / "agentos" / "docs" / "guide.md").write_text("guide", encoding="utf-8")
+    names = {p["name"] for p in get_prompt_set_info()["prompts"]}
+    assert "agentos/README.md" not in names
+    assert not any("_draft" in n for n in names)
+    assert not any("agentos/docs/" in n for n in names)
+    # README/_draft/docs are NOT resolvable as prompts
+    import pytest
+    with pytest.raises(FileNotFoundError):
+        load_prompt("guide", package="agentos")
+
+
+def test_uniqueness_invariant(fake_clone, monkeypatch):
+    """Two prompts with the same basename in a package → FileNotFoundError."""
+    (fake_clone / "agentos" / "retrieval").mkdir()
+    (fake_clone / "agentos" / "retrieval" / "dup.md").write_text("a", encoding="utf-8")
+    (fake_clone / "agentos" / "extract").mkdir()
+    (fake_clone / "agentos" / "extract" / "dup.md").write_text("b", encoding="utf-8")
+    # clear any cached index for this clone's agentos dir
+    from kontextprompts.loader import _INDEX_CACHE
+    _INDEX_CACHE.pop(str(fake_clone / "agentos"), None)
+    with pytest.raises(FileNotFoundError, match="not unique"):
+        load_prompt("dup", package="agentos")
+
+
 def test_fingerprint_excludes_version(fake_clone):
     """Bumping version must NOT change the semantic fingerprint."""
     from kontextprompts.loader import _semantic_fingerprint
