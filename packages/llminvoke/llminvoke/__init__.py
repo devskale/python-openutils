@@ -12,6 +12,8 @@ model + provider (resolved by their own config); the module handles the rest.
 """
 from __future__ import annotations
 
+import json
+import os
 import time
 from typing import Iterator
 
@@ -23,7 +25,7 @@ from uniinfer import (
     extract_response_text,
 )
 
-__all__ = ["invoke_llm", "call_llm", "stream_llm", "create_provider"]
+__all__ = ["invoke_llm", "call_llm", "stream_llm", "create_provider", "read_model_config"]
 __version__ = "0.1.0"
 
 
@@ -40,6 +42,61 @@ def _build_messages(
         msgs.append(ChatMessage(role="system", content=system_prompt))
     msgs.append(ChatMessage(role="user", content=prompt or ""))
     return msgs
+
+
+def read_model_config(config_path: str | None = None, *, env_prefix: str | None = None) -> dict:
+    """Read a package's model config, normalized to {default, tiers, tasks}.
+
+    Handles the known config shapes without changing them:
+    - agentos: ``llm.tiers`` with model lists → ``tiers``
+    - strukt2meta: task-type entries (e.g. ``kriterien``) → ``tasks``
+    - generic: top-level ``provider`` + ``model`` → ``default``
+    - pdf2md: env vars (``{prefix}_PROVIDER``, ``{prefix}_MODEL``) → ``default``
+
+    Returns ``{"default": str | None, "tiers": {name: str}, "tasks": {name: str}}``.
+    Best-effort: silently skips what it can't parse.
+    """
+    result: dict = {"default": None, "tiers": {}, "tasks": {}}
+
+    if config_path and os.path.isfile(config_path):
+        try:
+            cfg = json.load(open(config_path, encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            cfg = {}
+
+        # top-level provider/model (generic, also agentos/strukt2meta)
+        p, m = cfg.get("provider"), cfg.get("model")
+        if p and m:
+            result["default"] = f"{p}@{m}"
+
+        # agentos: llm.tiers + llm.default_*
+        llm = cfg.get("llm") or {}
+        if isinstance(llm, dict):
+            dp, dm = llm.get("default_provider"), llm.get("default_model")
+            if dp and dm:
+                result["default"] = f"{dp}@{dm}"
+            for tier_name, tier_cfg in (llm.get("tiers") or {}).items():
+                if isinstance(tier_cfg, dict):
+                    models = tier_cfg.get("models") or []
+                    if models:
+                        result["tiers"][tier_name] = models[0]
+
+        # strukt2meta: task-type entries (any nested dict with provider+model,
+        # excluding ``llm`` which is agentos-specific)
+        for key, val in cfg.items():
+            if key == "llm":
+                continue
+            if isinstance(val, dict) and val.get("provider") and val.get("model"):
+                result["tasks"][key] = f"{val['provider']}@{val['model']}"
+
+    # env vars (pdf2md: PDF2MD_VLM_PROVIDER / PDF2MD_VLM_MODEL)
+    if env_prefix:
+        ep = os.environ.get(f"{env_prefix}_PROVIDER", "")
+        em = os.environ.get(f"{env_prefix}_MODEL", "")
+        if ep and em:
+            result["default"] = f"{ep}@{em}"
+
+    return result
 
 
 def create_provider(provider: str):
