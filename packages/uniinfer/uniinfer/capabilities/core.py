@@ -120,8 +120,18 @@ class CapabilityReport:
 # Fixtures
 # --------------------------------------------------------------------------- #
 def load_tools() -> list[dict]:
-    """Canonical tool definitions used by the tool-calling probe."""
+    """Canonical single-tool definition used by the basic tool-calling probe."""
     return json.loads((FIXTURES / "tools.json").read_text())
+
+
+def load_multi_tools() -> list[dict]:
+    """Multi-tool set used by the tool-selection probe (3 tools)."""
+    return json.loads((FIXTURES / "tools_multi.json").read_text())
+
+
+def load_person_schema() -> dict:
+    """JSON schema used by the structured-output probe."""
+    return json.loads((FIXTURES / "person_schema.json").read_text())
 
 
 def image_b64() -> str:
