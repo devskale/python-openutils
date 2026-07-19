@@ -230,6 +230,8 @@ async def _catalog_profile(t: ProbeTarget) -> dict[str, Any]:
                     declared.append("tools")
                 if caps.get("reasoning"):
                     declared.append("thinking")
+                if caps.get("structured_output"):
+                    declared.append("structured_output")
                 if "image" in inputs:
                     declared.append("vision")
                 return {
@@ -356,53 +358,121 @@ async def probe_chat(t: ProbeTarget) -> ProbeResult:
 
 
 # --------------------------------------------------------------------------- #
-# Probe: tool calling
+# Probe: tool calling — selection (precision) + parameter structure + negative
 # --------------------------------------------------------------------------- #
+_WEATHER_PROMPT = (
+    "What is the weather in Paris right now? You must call the get_weather tool."
+)
+_NO_TOOL_PROMPT = "What is 2+2? Answer with just the number."
+
+
+def _tool_call_names(tool_calls: list) -> list[str]:
+    """Pull function names out of OpenAI-shaped tool_calls (dicts or objects)."""
+    names = []
+    for tc in tool_calls or []:
+        if isinstance(tc, dict):
+            names.append(tc.get("function", {}).get("name", "?"))
+        else:
+            names.append(getattr(getattr(tc, "function", None), "name", "?"))
+    return names
+
+
+def _tool_call_args(tool_calls: list, index: int = 0) -> dict:
+    """Parse the JSON arguments of the Nth tool call to a dict ({} on any failure)."""
+    if not tool_calls or index >= len(tool_calls):
+        return {}
+    tc = tool_calls[index]
+    raw = (
+        tc.get("function", {}).get("arguments")
+        if isinstance(tc, dict)
+        else getattr(getattr(tc, "function", None), "arguments", None)
+    )
+    if not raw:
+        return {}
+    if isinstance(raw, dict):
+        return raw
+    try:
+        return json.loads(raw)
+    except Exception:  # noqa: BLE001
+        return {}
+
+
 async def probe_tool_calling(t: ProbeTarget) -> ProbeResult:
+    """Tool-calling capability probe — three facets:
+
+    1. **selection** (precision): offer 3 tools, ask for one by name, check the
+       *correct* tool is called (not just any tool). This is the gap the
+       ecosystem (LLMToolCallingTester / DeepEval) exposes — boolean "did a tool
+       fire" hides a model that calls the wrong tool.
+    2. **parameter structure**: the called tool's arguments parse as JSON and
+       carry the required key (``location`` for weather, ``ticker`` for stock).
+    3. **negative**: with tools available but a prompt that needs none, the
+       model should *not* call a tool (catches over-eager callers).
+
+    Status is ``pass`` only if all three facets pass. A partial pass (e.g.
+    selection correct but parameter missing) is ``fail`` with evidence naming
+    the failing facet, so the detail is not lost.
+    """
     caps = getattr(t, "profile", {}).get("capabilities") or []
     if caps and "tools" not in caps:
         return ProbeResult(
             "tool_calling", "skip", evidence="model declares no tools capability"
         )
     started = time.monotonic()
+    tools = load_multi_tools()
+    facets: dict[str, str] = {}
     try:
+        # --- facet 1+2: selection + parameter structure (weather) ---
         resp = await asyncio.wait_for(
             _complete_quiet(
                 t,
-                [
-                    {
-                        "role": "user",
-                        "content": "What is the weather in Paris right now? You must call the get_weather tool.",
-                    }
-                ],
-                tools=load_tools(),
+                [{"role": "user", "content": _WEATHER_PROMPT}],
+                tools=tools,
                 tool_choice="auto",
             ),
             t.timeout,
         )
         tool_calls = getattr(resp.message, "tool_calls", None) or []
-        content = _as_text(getattr(resp.message, "content", ""))
-        finish = getattr(resp, "finish_reason", None)
-        if tool_calls:
-            names = ",".join(
-                tc.get("function", {}).get("name", "?") if isinstance(tc, dict) else "?"
-                for tc in tool_calls
+        names = _tool_call_names(tool_calls)
+        if "get_weather" in names:
+            facets["selection"] = "pass"
+            args = _tool_call_args(tool_calls, names.index("get_weather"))
+            facets["parameters"] = (
+                "pass" if "location" in args else f"fail (no 'location' arg; got {sorted(args)})"
             )
-            return ProbeResult(
-                "tool_calling",
-                "pass",
-                evidence=f"tool_calls=[{names}]",
-                latency_ms=_ms(started),
-                detail={"tool_calls": tool_calls},
-            )
-        leaked = "get_weather" in content or "tool_call" in content
-        evidence = f"no structured tool_call; finish={finish}; content_hint={leaked}"
+        elif names:
+            facets["selection"] = f"fail (called {names[0]}, expected get_weather)"
+            facets["parameters"] = "skip (wrong tool)"
+        else:
+            facets["selection"] = "fail (no tool called)"
+            facets["parameters"] = "skip (no tool)"
+
+        # --- facet 3: negative (should NOT call a tool) ---
+        resp_neg = await asyncio.wait_for(
+            _complete_quiet(
+                t,
+                [{"role": "user", "content": _NO_TOOL_PROMPT}],
+                tools=tools,
+                tool_choice="auto",
+            ),
+            t.timeout,
+        )
+        neg_calls = getattr(resp_neg.message, "tool_calls", None) or []
+        facets["negative"] = "pass" if not neg_calls else f"fail (called {_tool_call_names(neg_calls)})"
+
+        all_pass = all(v == "pass" for v in facets.values())
+        status = "pass" if all_pass else "fail"
+        evidence = "; ".join(f"{k}={v}" for k, v in facets.items())
         return ProbeResult(
             "tool_calling",
-            "fail",
+            status,
             evidence=evidence,
             latency_ms=_ms(started),
-            detail={"content_preview": _preview(content, 120)},
+            detail={
+                "facets": facets,
+                "tool_calls": tool_calls,
+                "negative_tool_calls": neg_calls,
+            },
         )
     except Exception as e:  # noqa: BLE001
         msg = str(e)
@@ -458,6 +528,124 @@ async def probe_image(t: ProbeTarget) -> ProbeResult:
         )
     except Exception as e:  # noqa: BLE001
         return ProbeResult("image", "error", _short_error(e), latency_ms=_ms(started))
+
+
+# --------------------------------------------------------------------------- #
+# Probe: structured output (response_format: json_schema conformance)
+# --------------------------------------------------------------------------- #
+_STRUCT_PROMPT = (
+    "Extract the person's details as JSON: name is Alice, age is 30, "
+    "city is Berlin. Return only the JSON object."
+)
+
+
+def _validate_structured(content: str, schema: dict) -> tuple[str, dict]:
+    """Lightweight structural validation of a JSON response against ``schema``.
+
+    Returns ``(status, parsed)`` where status is ``pass``/``fail`` and ``parsed``
+    is the decoded dict (``{}`` on decode failure). No jsonschema dependency —
+    we check required keys + declared type, which is enough to catch models
+    that declare structured_output but don't honor it (the Requesty matrix gap).
+    """
+    try:
+        obj = json.loads(content)
+    except Exception:  # noqa: BLE001
+        return "fail (not valid JSON)", {}
+    if not isinstance(obj, dict):
+        return f"fail (not an object: {type(obj).__name__})", {}
+    required = schema.get("required", [])
+    missing = [k for k in required if k not in obj]
+    if missing:
+        return f"fail (missing required keys: {missing})", obj
+    props = schema.get("properties", {})
+    type_ok = True
+    for key, spec in props.items():
+        if key in obj:
+            expected = spec.get("type")
+            actual = type(obj[key]).__name__
+            if expected and not _type_matches(actual, expected):
+                type_ok = False
+                return f"fail ({key}: expected {expected}, got {actual})", obj
+    return ("pass" if type_ok else "fail"), obj
+
+
+_PY_TO_JSON_TYPE = {
+    "str": "string",
+    "int": "integer",
+    "float": "number",
+    "bool": "boolean",
+    "list": "array",
+    "dict": "object",
+}
+
+
+def _type_matches(py_type: str, json_type: str) -> bool:
+    """True if a Python type name satisfies a JSON-schema type declaration."""
+    return _PY_TO_JSON_TYPE.get(py_type) == json_type or (
+        json_type == "number" and py_type in ("int", "float")
+    )
+
+
+async def probe_structured_output(t: ProbeTarget) -> ProbeResult:
+    """Structured-output probe — sends ``response_format: json_schema`` and
+    validates the response parses as JSON and conforms to the schema.
+
+    The catalog records ``structured_output`` as a capability, but Requesty's
+    244-model matrix shows it's "a compatibility mess" — declared but not
+    honored. This probe catches that empirically. Skips if the model declares
+    no structured_output capability.
+    """
+    caps = getattr(t, "profile", {}).get("capabilities") or []
+    if caps and "structured_output" not in caps:
+        return ProbeResult(
+            "structured_output",
+            "skip",
+            evidence="model declares no structured_output capability",
+        )
+    started = time.monotonic()
+    schema = load_person_schema()
+    try:
+        resp = await asyncio.wait_for(
+            _completion_target(t).acomplete(
+                [{"role": "user", "content": _STRUCT_PROMPT}],
+                temperature=0.0,
+                max_tokens=t.max_tokens,
+                reasoning_effort="none",
+                extra={"response_format": {"type": "json_schema", "json_schema": {"name": "person", "schema": schema, "strict": True}}},
+            ),
+            t.timeout,
+        )
+        content = _as_text(getattr(resp.message, "content", "")).strip()
+        if not content:
+            return ProbeResult(
+                "structured_output",
+                "fail",
+                evidence="empty response",
+                latency_ms=_ms(started),
+            )
+        status, parsed = _validate_structured(content, schema)
+        return ProbeResult(
+            "structured_output",
+            "pass" if status == "pass" else "fail",
+            evidence=f"{status}; keys={sorted(parsed)}",
+            latency_ms=_ms(started),
+            detail={"schema_required": schema.get("required", []), "parsed": parsed},
+        )
+    except Exception as e:  # noqa: BLE001
+        msg = str(e).lower()
+        if "response_format" in msg or "json_schema" in msg or "not support" in msg:
+            return ProbeResult(
+                "structured_output",
+                "skip",
+                evidence=f"model does not support response_format (400): {_short_error(e)}",
+                latency_ms=_ms(started),
+            )
+        return ProbeResult(
+            "structured_output",
+            "error",
+            _short_error(e),
+            latency_ms=_ms(started),
+        )
 
 
 # --------------------------------------------------------------------------- #
@@ -533,6 +721,7 @@ PROBES: dict[str, Callable[[ProbeTarget], "Any"]] = {
     "probe": probe_profile,
     "chat": probe_chat,
     "tool_calling": probe_tool_calling,
+    "structured_output": probe_structured_output,
     "image": probe_image,
     "thinking_on": probe_thinking_on,
     "thinking_off": probe_thinking_off,
@@ -542,6 +731,7 @@ DEFAULT_PROBES = [
     "probe",
     "chat",
     "tool_calling",
+    "structured_output",
     "image",
     "thinking_on",
     "thinking_off",

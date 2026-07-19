@@ -3,7 +3,9 @@
 ``GET /v1/system/capabilities?model=ollama@qwen3.5:0.8b[&probes=csv][&perf=true]``
 
 Returns the capability matrix (profile + per-probe ``pass|fail|skip|error`` with
-evidence). Mirrors the chat router's credential resolution (Ollama uses credgoo
+evidence). Probes: profile, chat, tool-calling (selection + parameter structure
++ negative), structured-output (json_schema conformance), image, thinking on/off.
+Mirrors the chat router's credential resolution (Ollama uses credgoo
 ``ollama`` + the configured ``base_url``; other providers use bearer access).
 """
 import logging

@@ -1,8 +1,9 @@
 """UniInfer capability test suite.
 
 Public API for probing what a model can do and exercising each feature
-(chat, tool-calling, image, thinking on/off) plus optional perf probes
-(maxspeed across varying contexts, context ceiling, rate-limit ceiling).
+(chat, tool-calling selection + parameter structure + negative, structured
+output, image, thinking on/off) plus optional perf probes (maxspeed across
+varying contexts, context ceiling, rate-limit ceiling).
 """
 from .core import (
     DEFAULT_PROBES,
@@ -11,12 +12,15 @@ from .core import (
     ProbeResult,
     ProbeTarget,
     format_report,
+    load_multi_tools,
+    load_person_schema,
     load_tools,
     image_b64,
     image_data_url,
     probe_chat,
     probe_image,
     probe_profile,
+    probe_structured_output,
     probe_thinking_off,
     probe_thinking_on,
     probe_tool_calling,
@@ -38,6 +42,8 @@ __all__ = [
     "ProbeTarget",
     "Target",
     "format_report",
+    "load_multi_tools",
+    "load_person_schema",
     "load_tools",
     "image_b64",
     "image_data_url",
@@ -47,9 +53,11 @@ __all__ = [
     "probe_chat",
     "probe_image",
     "probe_profile",
+    "probe_structured_output",
     "probe_thinking_off",
     "probe_thinking_on",
     "probe_tool_calling",
     "run_capabilities",
     "save_probe_result",
+    "softprobe_catalog",
 ]
