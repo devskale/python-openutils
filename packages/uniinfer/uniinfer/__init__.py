@@ -27,6 +27,7 @@ from .errors import (
     RateLimitError, TimeoutError, InvalidRequestError
 )
 from .strategies import FallbackStrategy, CostBasedStrategy
+from .response_utils import extract_response_text
 
 # Import optional providers conditionally
 try:
@@ -140,6 +141,7 @@ __all__ = [
     'STTResponse',
     'STTProvider',
     'ModelInfo',
+    'extract_response_text',
     'MistralProvider',
     'AnthropicProvider',
     'MiniMaxProvider',
