@@ -1,0 +1,19 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "llminvoke"
+version = "0.1.0"
+description = "Shared LLM invocation layer — bridges uniinfer + credgoo (call_llm + invoke_llm + stream_llm)"
+readme = "README.md"
+requires-python = ">=3.9"
+license = "MIT"
+dependencies = ["uniinfer", "credgoo"]
+
+[tool.uv.sources]
+uniinfer = { git = "https://github.com/devskale/python-openutils.git", subdirectory = "packages/uniinfer" }
+credgoo = { git = "https://github.com/devskale/python-openutils.git", subdirectory = "packages/credgoo" }
+
+[tool.hatch.build.targets.wheel]
+packages = ["llminvoke"]
