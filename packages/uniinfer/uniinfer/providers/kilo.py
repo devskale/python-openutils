@@ -38,21 +38,36 @@ class KiloProvider(OpenAICompatibleChatProvider):
     DEFAULT_MODEL = "tencent/hy3:free"
     CREDGOO_SERVICE = "kilocode"
     # Free models are usable anonymously (200 req/hr per IP); paid models need a key.
+    # A key is still resolved from credgoo when available so free-model requests
+    # are authenticated (higher rate limits than the anonymous tier).
     REQUIRES_API_KEY = False
 
     def __init__(self, api_key: Optional[str] = None):
+        if not api_key:
+            try:
+                from credgoo import get_api_key
+                api_key = get_api_key(self.CREDGOO_SERVICE)
+            except Exception:
+                api_key = None
         super().__init__(api_key=api_key, base_url=self.BASE_URL)
 
     @classmethod
     def list_models(cls, api_key: Optional[str] = None) -> list["ModelInfo"]:
         """List models from the Kilo Gateway.
 
-        The ``/models`` endpoint is public (no auth required). When ``api_key`` is
-        provided it is sent as a Bearer token (some models may be gated to paid
-        accounts). Free models (``isFree=true`` or id ending ``:free``) are marked
-        cost 0/0 so the catalog surfaces them as free.
+        The ``/models`` endpoint is public (no auth required). When no key is
+        passed, one is resolved from credgoo (``kilocode`` service) so the
+        request is authenticated (higher rate limits than the anonymous tier);
+        free models work either way. Free models (``isFree=true`` or id ending
+        ``:free``) are marked cost 0/0 so the catalog surfaces them as free.
         """
         from ..core import ModelInfo
+        if not api_key:
+            try:
+                from credgoo import get_api_key
+                api_key = get_api_key(cls.CREDGOO_SERVICE)
+            except Exception:
+                api_key = None
         try:
             headers = {"accept": "application/json"}
             if api_key:
