@@ -535,7 +535,7 @@ def main():
     parser.add_argument(
         "--capabilities",
         action="store_true",
-        help="Run the capability matrix (probe/chat/tool-calling/image/thinking on+off) against provider@model.",
+        help="Run the capability matrix (probe/chat/tool-calling/structured-output/image/thinking on+off) against provider@model.",
     )
     parser.add_argument(
         "--perf",
@@ -546,7 +546,7 @@ def main():
         "--probes",
         type=str,
         metavar="CSV",
-        help="With --capabilities: comma-separated subset, e.g. probe,chat,tool_calling,image,thinking_on,thinking_off.",
+        help="With --capabilities: comma-separated subset, e.g. probe,chat,tool_calling,structured_output,image,thinking_on,thinking_off.",
     )
     parser.add_argument(
         "--no-save",

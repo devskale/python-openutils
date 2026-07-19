@@ -4,6 +4,29 @@ All notable changes to **uniinfer** are documented in this file.
 Versions follow [Semantic Versioning](https://semver.org/); this file
 adheres to [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.6.10] - 2026-07-19
+
+### Added
+- **Structured-output probe** (`probe_structured_output`) — sends
+  `response_format: {type: json_schema, json_schema: {...}}` and validates the
+  response parses as JSON and conforms to the schema (required keys + declared
+  types). Closes the gap exposed by Requesty's 244-model structured-output
+  matrix: models that *declare* `structured_output` but don't honor it. Skips
+  when the catalog declares no `structured_output` capability or the backend
+  400s on `response_format`. No `jsonschema` dependency — lightweight structural
+  validation only.
+- **Tool-calling probe upgrade** — `probe_tool_calling` is no longer boolean
+  ("did any tool fire?"). It now scores three facets, matching the ecosystem
+  (LLMToolCallingTester / DeepEval ToolCorrectness): **selection** (precision —
+  offer 3 tools, ask for one by name, the *correct* tool must fire),
+  **parameters** (the called tool's args parse as JSON and carry the required
+  key), and **negative** (with tools available but a plain prompt, the model
+  must *not* call a tool — catches over-eager callers). Status is `pass` only
+  if all three pass; `fail` carries evidence naming the failing facet.
+- New fixtures: `tools_multi.json` (3-tool set), `person_schema.json`.
+- `structured_output` now added to the declared-capabilities list (was tracked
+  in the catalog but not surfaced to probe skip-logic).
+
 ## [0.6.9] - 2026-07-19
 
 ### Changed
