@@ -4,6 +4,34 @@ All notable changes to **uniinfer** are documented in this file.
 Versions follow [Semantic Versioning](https://semver.org/); this file
 adheres to [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.6.8] - 2026-07-17
+
+### Added
+- **Kilo Gateway provider** (`kilo`) — the Kilo AI Gateway
+  (OpenAI/OpenRouter-compatible at `https://api.kilo.ai/api/gateway`) aggregates
+  300+ models from 60+ providers (Anthropic, OpenAI, Google, xAI, DeepSeek, Qwen,
+  NVIDIA, …). The `/models` endpoint is public (no auth) and returns rich
+  metadata (pricing, context window, max tokens, modalities, capabilities).
+  **Free models work anonymously** — 12+ free models usable with no key at all,
+  rate-limited to 200 req/hr per IP (e.g. `tencent/hy3:free`,
+  `nvidia/nemotron-3-ultra-550b-a55b:free`, `cohere/north-mini-code:free`,
+  `poolside/laguna-m.1:free`). Paid models need a Kilo Gateway API key, stored
+  via `credgoo --add kilocode <key>` (credgoo service is `kilocode`). Use as
+  `kilo@<model>`; model ids are `provider/model-name` (e.g.
+  `kilo@anthropic/claude-sonnet-4.6`). The `kilo-auto/*` tiers
+  (`frontier`/`balanced`/`free`/`small`/`efficient`) route server-side. Note:
+  `nvidia/*:free` endpoints log prompts/outputs for NVIDIA service improvement —
+  do not send confidential data. Tests + docs/providers.md + README.
+
+### Changed
+- `OpenAICompatibleChatProvider`: new `REQUIRES_API_KEY` class flag (default
+  `True`). When `False`, `acomplete`/`astream_complete` skip the api-key guard,
+  so gateways with an anonymous free tier (Kilo) can serve free models without a
+  key. No behaviour change for existing providers.
+- CLI `_resolve_credgoo_service` now honors a provider's `CREDGOO_SERVICE`
+  attribute (was hard-coded to the provider id), so the kilo gateway resolves its
+  key from the `kilocode` credgoo service.
+
 ## [0.6.7] - 2026-07-17
 
 ### Added

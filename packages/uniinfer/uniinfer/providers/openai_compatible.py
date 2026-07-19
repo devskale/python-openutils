@@ -34,6 +34,10 @@ class OpenAICompatibleChatProvider(ChatProvider):
     # message when it's an assistant turn. None = the backend accepts a trailing
     # assistant natively (no flag needed).
     PREFILL_FLAG: str | None = None
+    # Whether completions require an API key. Most OpenAI-compatible backends do;
+    # gateways with an anonymous free tier (e.g. Kilo) set this False so
+    # acomplete/astream_complete skip the api_key guard for free models.
+    REQUIRES_API_KEY: bool = True
 
     def __init__(self, api_key: Optional[str] = None, base_url: Optional[str] = None, **kwargs):
         super().__init__(api_key, **kwargs)
@@ -130,7 +134,7 @@ class OpenAICompatibleChatProvider(ChatProvider):
         request: ChatCompletionRequest,
         **provider_specific_kwargs,
     ) -> ChatCompletionResponse:
-        if self.api_key is None:
+        if self.REQUIRES_API_KEY and self.api_key is None:
             raise ValueError(f"{self._error_name()} API key is required")
 
         endpoint = self._completion_endpoint()
@@ -181,7 +185,7 @@ class OpenAICompatibleChatProvider(ChatProvider):
         request: ChatCompletionRequest,
         **provider_specific_kwargs,
     ) -> AsyncIterator[ChatCompletionResponse]:
-        if self.api_key is None:
+        if self.REQUIRES_API_KEY and self.api_key is None:
             raise ValueError(f"{self._error_name()} API key is required")
 
         endpoint = self._completion_endpoint()
