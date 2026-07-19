@@ -3,13 +3,13 @@
 [![Version](https://img.shields.io/badge/version-0.6.3-38bdf8)](#)
 [![Python](https://img.shields.io/badge/python-3.9+-blue)](#)
 [![License](https://img.shields.io/badge/license-MIT-blue)](#)
-[![Providers](https://img.shields.io/badge/providers-25-success)](#)
+[![Providers](https://img.shields.io/badge/providers-26-success)](#)
 
 > **One interface for 20+ LLM providers** — chat, embeddings, TTS, STT, streaming,
 > tool-calling, and cross-provider reasoning control, behind a single API and an
 > OpenAI-compatible proxy. Free-tier-friendly.
 
-- 🌐 **25 providers, 900+ models** — OpenAI, Anthropic, Gemini, Mistral, Groq, Ollama, vLLM (TU), OpenRouter, OpenCode/Zen, and more
+- 🌐 **26 providers, 1200+ models** — OpenAI, Anthropic, Gemini, Mistral, Groq, Ollama, vLLM (TU), OpenRouter, OpenCode/Zen, Kilo Gateway, and more
 - 🧠 **Unified thinking control** — `reasoning_effort` flips reasoning on/off across every provider's native dialect
 - 🔌 **OpenAI-compatible proxy** — drop-in for any OpenAI client; model id is `provider@model`
 - 🖥️ **Web app** — Chat / Dashboard / Settings served at `/`
@@ -125,11 +125,14 @@ free tiers, and rate limits (baked into `config/provider_limits.json`).
 | InternLM | ✅ | — | — | — | — | — |
 | MiniMax | ✅ | — | — | — | — | — |
 | OpenCode (Zen) | ✅ | — | — | — | ✅ | — |
+| Kilo Gateway | ✅ | — | — | — | ✅ | 346 |
 
 Model counts from `models.json` (regenerated daily 04:00 UTC). Free = provider offers free-tier models.
 
-> 💸 **Free models available now** — OpenCode/Zen ships six free models
-> (`opencode@deepseek-v4-flash-free`, `big-pickle`, `mimo-v2.5-free`, `hy3-free`,
+> 💸 **Free models available now** — Kilo Gateway ships 12+ free models
+> usable anonymously (`kilo@tencent/hy3:free`, `kilo@nvidia/nemotron-3-ultra-550b-a55b:free`,
+> `kilo@cohere/north-mini-code:free`, …; 200 req/hr per IP, no key); OpenCode/Zen ships
+> six free models (`opencode@deepseek-v4-flash-free`, `big-pickle`, `mimo-v2.5-free`, `hy3-free`,
 > `nemotron-3-ultra-free`, `north-mini-code-free`); plus Groq (forever free),
 > Pollinations (no key), Z.AI flash, and self-hosted Ollama (unlimited).
 

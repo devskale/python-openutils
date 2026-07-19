@@ -18,6 +18,7 @@ from .ngc import NGCProvider
 from .cloudflare import CloudflareProvider
 from .chutes import ChutesProvider
 from .opencode import OpenCodeProvider
+from .kilo import KiloProvider
 from .pollinations import PollinationsProvider
 from .zai import ZAIProvider, ZAICodeProvider
 
@@ -80,6 +81,7 @@ __all__ = [
     'NGCProvider',
     'CloudflareProvider',
     'ChutesProvider',
+    'KiloProvider',
     'PollinationsProvider',
     'ZAIProvider',
     'ZAICodeProvider',

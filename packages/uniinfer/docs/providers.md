@@ -27,6 +27,7 @@
 | `openai` | $5 credits (3mo); GPT-5 needs paid tier | Free: 3 RPM / 200 RPD | [platform.openai.com/api/docs/pricing](https://platform.openai.com/api/docs/pricing) |
 | `anthropic` | ~$5 credits (signup); no recurring free | Tier 1: 50 RPM / varies by model | [docs.anthropic.com/en/api/rate-limits](https://docs.anthropic.com/en/api/rate-limits) |
 | `opencode` | Free models: `deepseek-v4-flash-free`, `big-pickle`, `mimo-v2.5-free`, `hy3-free`, `nemotron-3-ultra-free`, `north-mini-code-free` | Router (aggregates many models); many free models reason | [opencode.ai/zen](https://opencode.ai/zen) |
+| `kilo` | 12+ free models usable **anonymously** (`tencent/hy3:free`, `nvidia/nemotron-3-ultra-550b-a55b:free`, `cohere/north-mini-code:free`, `poolside/laguna-*:free`, …) | Free: 200 req/hr per IP (anonymous); paid: per-key | [kilo.ai/gateway](https://kilo.ai/gateway) |
 
 ## Embedding Providers
 
@@ -76,6 +77,17 @@ Multi-modal (text, image, video, audio). No key needed. · 🧠 ✅ · 👁️ �
 - **Docs**: [gen.pollinations.ai/docs](https://gen.pollinations.ai/docs) · [get key](https://enter.pollinations.ai/) (free)
 - **Free**: fully free. `pk_` (publishable): 1 pollen/hr/IP. `sk_` (secret): **no rate limits**
 - **Implementation**: `OpenAICompatibleChatProvider`
+
+### kilo — Kilo Gateway
+
+Unified OpenAI/OpenRouter-compatible API for 300+ models from 60+ providers (Anthropic, OpenAI, Google, xAI, DeepSeek, Qwen, NVIDIA, …). Free models work **without a key**. · 🧠 ✅ · 👁️ ✅ · 🔧 ✅ · 📡 ✅
+
+- **Docs**: [kilo.ai/docs/gateway](https://kilo.ai/docs/gateway) · [models](https://kilo.ai/docs/gateway/models-and-providers) · [get key](https://kilo.ai/) (paid models only)
+- **Base URL**: `https://api.kilo.ai/api/gateway` · **Credgoo service**: `kilocode`
+- **Free**: 12+ models usable anonymously — 200 req/hr per IP. Notable: `tencent/hy3:free` (295B MoE, 262K ctx), `nvidia/nemotron-3-ultra-550b-a55b:free` (1M ctx), `cohere/north-mini-code:free`, `poolside/laguna-m.1:free`, `stepfun/step-3.7-flash:free`, `kwaipilot/kat-coder-pro-v2.5:free`.
+- **Auto tiers**: `kilo-auto/frontier|balanced|free|small|efficient` — server-side routing; underlying model can change.
+- **⚠️ NVIDIA free endpoints** (`nvidia/*:free`): trial use only — prompts/outputs are logged by NVIDIA for service improvement. Do not send confidential data.
+- **Implementation**: `OpenAICompatibleChatProvider` (`REQUIRES_API_KEY = False` — free models work without a key)
 
 ### gemini — Google Gemini
 

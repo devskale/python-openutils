@@ -250,6 +250,19 @@ def _speedtest(args):
 
 
 def _resolve_credgoo_service(provider: str) -> str:
+    """Resolve the credgoo service name for a provider.
+
+    Prefers the provider class's CREDGOO_SERVICE attribute (e.g. the kilo
+    gateway stores its key under the 'kilocode' service); falls back to the
+    provider id for providers that don't override it.
+    """
+    try:
+        cls = ProviderFactory.get_provider_class(provider)
+        credgoo_service = getattr(cls, "CREDGOO_SERVICE", None)
+        if credgoo_service:
+            return credgoo_service
+    except Exception:
+        pass
     return provider
 
 

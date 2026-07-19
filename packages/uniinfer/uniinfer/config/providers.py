@@ -127,6 +127,11 @@ PROVIDER_CONFIGS = {
         'default_model': 'deepseek-v4-flash-free',
         'needs_api_key': True,
     },
+    'kilo': {
+        'name': 'Kilo Gateway',
+        'default_model': 'tencent/hy3:free',
+        'needs_api_key': False,
+    },
     'zai': {
         'name': 'Z.ai',
         'default_model': 'glm-4.5-flash',
