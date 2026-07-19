@@ -4,6 +4,16 @@ All notable changes to **uniinfer** are documented in this file.
 Versions follow [Semantic Versioning](https://semver.org/); this file
 adheres to [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.6.9] - 2026-07-19
+
+### Changed
+- **Kilo Gateway: credgoo auto-resolution for free models.** `KiloProvider`
+  now resolves a key from credgoo (`kilocode` service) in both `__init__` and
+  `list_models` when no key is passed. Free models still work anonymously if no
+  key is stored, but authenticated free-model requests get higher rate limits
+  than the 200 req/hr anonymous tier. Paid models already needed the key; this
+  just makes free models use it too when available.
+
 ## [0.6.8] - 2026-07-17
 
 ### Added
