@@ -1,0 +1,126 @@
+# Canonical model registry — single source of truth for kontext.one.
+#
+# This file ships with the llminvoke package (python-openutils). It holds the
+# SLOW-changing infrastructure: which providers exist (+ DSGVO status), which
+# models exist (+ capabilities), and the global default profile.
+#
+# FAST-changing business config (which provider/model a given client/deal uses)
+# lives in a runtime `clients.yml` on the server — see ADR 0004.
+#
+# Adding a provider (e.g. wwhb) = one row here + a clients.yml/team-settings
+# mapping. No package code changes.
+
+# ── Providers ──────────────────────────────────────────────────────────
+# dsgvo = provider is contractually allowed to process sensitive Vergabedaten.
+# Only DSGVO providers may receive tender documents / bidder submissions.
+# A DSGVO-bound client's backup chain is filtered to dsgvo:true only.
+providers:
+  tu:
+    dsgvo: true
+    description: "TU Aqueduct — DSGVO-konform, einzige erlaubte Quelle für sensible Vergabedaten"
+  wwhb:
+    dsgvo: true
+    description: "wwhb — DSGVO-konform (incoming)"
+  gemini:
+    dsgvo: false
+    description: "Google Gemini"
+  openrouter:
+    dsgvo: false
+    description: "OpenRouter — Multi-Provider"
+  groq:
+    dsgvo: false
+    description: "Groq — schnelle Inference"
+  mistral:
+    dsgvo: false
+    description: "Mistral AI"
+
+# ── Model catalog ──────────────────────────────────────────────────────
+# Keyed provider@model. context_window = fair standard (upstream spec), NOT
+# measured maximum — represents the safe operating range.
+models:
+  tu@qwen-3.6-35b:
+    context_window: 131072
+    max_output_tokens: 64000
+    supports_thinking: true
+    description: "Qwen 3.6 35B via TU Aqueduct (production default)"
+  tu@qwen-3.6-30b:
+    context_window: 131072
+    supports_thinking: true
+    description: "Qwen 3.6 30B via TU Aqueduct"
+  tu@qwen-3.5-397b:
+    context_window: 131072
+    supports_thinking: true
+    description: "Qwen 3.5 397B via TU Aqueduct (kriterien task)"
+  tu@gemma-4-26b:
+    context_window: 262000
+    description: "Gemma 4 26B via TU Aqueduct"
+  tu@qwen-coder-30b:
+    context_window: 16384
+    description: "Qwen Coder 30B via TU Aqueduct"
+  tu@mistral-small-3.2-24b:
+    context_window: 16384
+    description: "Mistral Small 3.2 24B via TU Aqueduct"
+  gemini@models/gemini-2.5-pro:
+    context_window: 1048576
+    max_output_tokens: 8192
+    description: "Gemini 2.5 Pro"
+  gemini@models/gemini-2.5-flash:
+    context_window: 1048576
+    max_output_tokens: 8192
+    description: "Gemini 2.5 Flash"
+  gemini@models/gemini-2.5-flash-lite:
+    context_window: 1048576
+    max_output_tokens: 8192
+    description: "Gemini 2.5 Flash Lite"
+  gemini@gemma-4-31b-it:
+    context_window: 262000
+    max_output_tokens: 8192
+    description: "Gemma 4 31B IT via Gemini"
+  groq@qwen/qwen3-32b:
+    context_window: 131072
+    max_output_tokens: 32768
+    description: "Qwen3 32B via Groq"
+  groq@moonshotai/kimi-k2-instruct:
+    context_window: 131072
+    max_output_tokens: 32768
+    description: "Kimi K2 Instruct via Groq"
+  openrouter@google/gemma-3-27b-it:free:
+    context_window: 262000
+    max_output_tokens: 8192
+    description: "Gemma 3 27B IT via OpenRouter (free tier)"
+  mistral@mistral-small-latest:
+    context_window: 32768
+    max_output_tokens: 8192
+    description: "Mistral Small Latest via Mistral AI"
+  mistral@mistral-medium-2505:
+    context_window: 32768
+    max_output_tokens: 8192
+    description: "Mistral Medium 2505 via Mistral AI"
+
+# ── Global default profile ─────────────────────────────────────────────
+# The fallback when nothing else is specified. Per-client overrides live in
+# clients.yml / team settings. See ADR 0004 for the full precedence chain.
+default:
+  model: tu@qwen-3.6-35b
+  temperature: 0.7
+  max_tokens: 10000
+  retry:
+    attempts: 3              # per model before escalating to next backup
+    backoff: exponential     # exponential | fixed
+    base_delay: 2.0          # seconds — first retry wait
+    max_delay: 30.0          # backoff cap
+    honor_retry_after: true  # obey Retry-After header on 429s
+
+# ── Per-package task-type defaults (optional) ──────────────────────────
+# Packages can declare per-task overrides here. These are the ENGINEERING
+# defaults; clients override the BUSINESS choice (which model) in clients.yml.
+packages:
+  pdf2md:
+    temperature: 0.2
+    max_tokens: 4096
+  strukt2meta:
+    max_tokens: 16384
+    tasks:
+      kriterien:
+        model: tu@qwen-3.5-397b
+        max_tokens: 32768

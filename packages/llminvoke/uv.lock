@@ -1050,12 +1050,14 @@ version = "0.1.0"
 source = { editable = "." }
 dependencies = [
     { name = "credgoo" },
+    { name = "pyyaml" },
     { name = "uniinfer" },
 ]
 
 [package.metadata]
 requires-dist = [
     { name = "credgoo", git = "https://github.com/devskale/python-openutils.git?subdirectory=packages%2Fcredgoo" },
+    { name = "pyyaml" },
     { name = "uniinfer", git = "https://github.com/devskale/python-openutils.git?subdirectory=packages%2Funiinfer" },
 ]
 
