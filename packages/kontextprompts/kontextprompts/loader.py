@@ -73,6 +73,16 @@ def _env_path(var: str) -> Path | None:
     return Path(v).expanduser() if v else None
 
 
+def _resolve_pkg_dir(root: Path, package: str) -> Path | None:
+    """Find a package directory — checks system/ first (new structure), then root (legacy)."""
+    for candidate in (root / "system" / package, root / package):
+        if candidate.is_dir():
+            return candidate
+    return None
+    v = os.environ.get(var)
+    return Path(v).expanduser() if v else None
+
+
 def _clone_dir() -> Path | None:
     """The default in-place kontext-prompts checkout (NOT the explicit env override)."""
     pur = _env_path("PYTHON_UTILS_ROOT")
@@ -87,6 +97,19 @@ def _clone_dir() -> Path | None:
     if c.is_dir():
         return c
     return None
+
+
+def get_prompts_root() -> Path | None:
+    """The resolved kontext-prompts root directory (clone or env override).
+
+    Use this to access non-prompt content (e.g. ``fachbibliothek/pas/``,
+    ``fachbibliothek/faps/``) that lives in the repo but isn't loaded by
+    :func:`load_prompt`.
+    """
+    env = _env_path("KONTEXT_PROMPTS_DIR")
+    if env and env.is_dir():
+        return env
+    return _clone_dir()
 
 
 def _bundled_dir(package: str | None) -> Path | None:
@@ -208,8 +231,8 @@ def load_prompt(name: str, *, package: str | None = None) -> str:
 
     # ordered tiers — each resolves <stem>.md anywhere under its package tree
     tiers: list[tuple[str, Path | None]] = [
-        ("KONTEXT_PROMPTS_DIR", env / ns if env else None),
-        ("clone", clone / ns if clone else None),
+        ("KONTEXT_PROMPTS_DIR", _resolve_pkg_dir(env, ns) if env else None),
+        ("clone", _resolve_pkg_dir(clone, ns) if clone else None),
         ("cwd", Path("prompts")),
         ("bundled", bundled),
     ]
