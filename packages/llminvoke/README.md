@@ -1,65 +1,105 @@
 # llminvoke
 
-Shared LLM invocation layer for **kontext.one** — bridges
-[uniinfer](https://github.com/devskale/python-openutils/tree/main/packages/uniinfer)
-(the inference library) + [credgoo](https://github.com/devskale/python-openutils/tree/main/packages/credgoo)
-(the API key manager) behind one small interface.
+Shared LLM invocation layer for kontext.one. Bridges uniinfer (inference) + credgoo (API keys) behind a config-aware interface with retry, backup chains, and DSGVO enforcement.
 
-## Install
-
-```bash
-pip install git+https://github.com/devskale/python-openutils.git#subdirectory=packages/llminvoke
-```
-
-uv workspace (`[tool.uv.sources]`):
-```toml
-llminvoke = { git = "https://github.com/devskale/python-openutils.git", subdirectory = "packages/llminvoke" }
-```
-
-## Interface — three levels
+## Quick start
 
 ```python
-from llminvoke import call_llm, invoke_llm, stream_llm
+from llminvoke import call_llm, stream_llm, resolve_model
+
+# Recommended: resolve from package (catalog + clients.yml + env)
+text = call_llm("Summarize this", package="pdf2md")
+
+# Streaming (before-first-token retry + backup; after first token, no backup)
+for chunk in stream_llm("Write a haiku", package="md2blank"):
+    print(chunk, end="")
+
+# Explicit model/provider (backward compat)
+text = call_llm("prompt", model="qwen-3.6-35b", provider="tu")
+
+# Pre-resolve and inspect
+cfg = resolve_model(package="strukt2meta", task="kriterien")
+print(cfg.primary, cfg.backups, cfg.temperature, cfg.retry)
+text = call_llm("prompt", config=cfg)
 ```
 
-### `call_llm` — full invocation (retry + extraction) → `str`
+## Three invocation levels
+
+| function | returns | retry | backup | use when |
+|---|---|---|---|---|
+| `call_llm` | `str` | ✅ backoff | ✅ chain | **default** — most callers |
+| `stream_llm` | `Iterator[str]` | before first token | before first token | streaming output |
+| `invoke_llm` | raw response | ❌ | ❌ | escape hatch (agentos chain/breaker) |
+| `create_provider` | `ChatProvider` | — | — | raw provider (tool-calling, custom loops) |
+
+## Config resolution (ADR 0004)
+
+Model config — which model, params, backups, retry, DSGVO — resolves through `resolve_model` per a strict precedence chain:
+
+```
+env var  >  team-settings (DB)  >  clients.yml (runtime)  >  catalog default
+```
+
+- **`models.yml`** (ships with the package): the catalog — providers (DSGVO-flagged), models (context windows, capabilities), global default profile, per-package/task engineering defaults.
+- **`clients.yml`** (runtime, server-side): client→provider mapping. Editable without redeploy. The backend-only source.
+- **Team settings** (klark0 DB): override for app-driven jobs.
+- **Env**: pins primary only (`PDF2MD_VLM_MODEL` etc.); backups still flow from config.
 
 ```python
-# simple
-text = call_llm("Du bist ein Prüfer…", model="qwen-3.6-35b", provider="tu")
-
-# with system prompt
-text = call_llm(prompt=user_text, system_prompt="Du bist ein Experte", model=…, provider=…)
-
-# with multipart messages (image)
-text = call_llm(messages=[sys_msg, user_with_image], model=…, provider=…)
-
-# with retry
-text = call_llm(prompt=…, model=…, provider=…, max_attempts=3)
-
-# passthrough kwargs (e.g. chat_template_kwargs for thinking-model control)
-text = call_llm(prompt=…, model=…, provider=…, chat_template_kwargs={"enable_thinking": False})
+cfg = resolve_model(package="pdf2md", client="default", task="assess")
+# → ResolvedConfig(
+#     primary=ModelRef("tu", "qwen-3.6-35b"),
+#     backups=[...],               # DSGVO-filtered
+#     temperature=0.2,
+#     max_tokens=4096,
+#     retry=RetryPolicy(attempts=3, backoff="exponential", ...),
+#     dsgvo_required=False,
+#   )
 ```
 
-Handles: credgoo key → provider → request → `.complete()` → `extract_response_text()`
-(thinking-model aware). Retries on error/empty with exponential backoff (2s, doubled).
+### DSGVO enforcement
 
-### `invoke_llm` — one-shot, raw response
+A client declaring `dsgvo_required: true` gets its backup chain filtered at resolve time — non-DSGVO providers are silently dropped. The loop never sees them.
 
-```python
-response = invoke_llm(model=…, provider=…, messages=[…])
-# response.message.content, response.usage, response.raw_response, etc.
+### Backend-only operation
+
+CLI/backend-only runs pick their client via `KONTEXT_CLIENT` env (default `"default"`). No app/DB required.
+
+## Retry + fail-over model
+
+```
+transient (429/timeout/network) → retry same model with backoff
+                                   3 attempts · exponential 2s→4s→8s · cap 30s · honor Retry-After
+                                 → exhausted → escalate to backup
+permanent (auth/context-exceeded) → escalate immediately
+fail_fast=True (opt-in param)     → skip retry, immediate escalation
+empty response                    → treated as failure → backup
 ```
 
-For consumers that need the raw `ChatCompletionResponse` (usage data, error
-classification, circuit-breaker decisions). No retry, no extraction.
+429 means "slow down" — retry with delay (lowers rate), not "switch models".
 
-### `stream_llm` — streaming chunks → `Iterator[str]`
+## Alarms
 
-```python
-for chunk_text in stream_llm(prompt=…, model=…, provider=…):
-    print(chunk_text, end="", flush=True)
-```
+Empty responses and hard failures emit structured alarms (`emit_alarm`) — the worker surfaces recent alarms via an endpoint for healthcheck/UI.
 
-Yields chunk texts as they arrive. One-shot (no retry). For verbose/progressive
-output during development.
+## Migration status
+
+| package | resolution | notes |
+|---|---|---|
+| **pdf2md** | `call_llm(package="pdf2md", env_prefix="PDF2MD_VLM")` | assess, vlm, nail_vlm, visual_verify all migrated |
+| **strukt2meta** | `call_llm(package="strukt2meta", task=task_type)` | manual retry loop absorbed; verbose streaming kept (raw thinking display) |
+| **md2blank** | `stream_llm(package="md2blank")` | CLI model/provider still override |
+| **agentos** | keeps its own resolver+breaker | wraps `invoke_llm`/`stream_llm` one-shot; reads context windows from catalog |
+
+## Adding a provider (e.g. wwhb)
+
+1. Add a row to `providers:` in `models.yml` (with `dsgvo: true/false`)
+2. Add model entries to `models:` if new
+3. Map the client in `clients.yml` or team settings
+
+No package code changes. Deploy openutils to ship the catalog edit.
+
+## See also
+
+- [ADR 0003](../../../docs/adr/0003-shared-llm-invocation-layer.md) — the invocation seam (call_llm / invoke_llm / stream_llm)
+- [ADR 0004](../../../docs/adr/0004-canonical-model-config.md) — canonical model config (registry + resolve_model + retry/backup)
