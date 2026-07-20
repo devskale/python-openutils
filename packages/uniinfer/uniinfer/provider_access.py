@@ -33,6 +33,21 @@ logger.debug(f".env file found and loaded: {found_dotenv}")
 
 
 def _resolve_credgoo_service(provider_name: str) -> str:
+    """Resolve the credgoo service name for a provider.
+
+    Prefers the provider class's CREDGOO_SERVICE attribute (e.g. the kilo
+    gateway stores its key under the 'kilocode' service); falls back to the
+    provider id for providers that don't override it. Mirrors the CLI resolver
+    in uniinfer_cli._resolve_credgoo_service.
+    """
+    try:
+        from uniinfer import ProviderFactory
+        cls = ProviderFactory.get_provider_class(provider_name)
+        credgoo_service = getattr(cls, "CREDGOO_SERVICE", None)
+        if credgoo_service:
+            return credgoo_service
+    except Exception:
+        pass
     return provider_name
 
 
