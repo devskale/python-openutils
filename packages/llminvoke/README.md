@@ -29,7 +29,7 @@ text = call_llm("prompt", config=cfg)
 |---|---|---|---|---|
 | `call_llm` | `str` | ✅ backoff | ✅ chain | **default** — most callers |
 | `stream_llm` | `Iterator[str]` | before first token | before first token | streaming output |
-| `invoke_llm` | raw response | ❌ | ❌ | escape hatch (agentos chain/breaker) |
+| `invoke_llm` | raw response | ❌ | ❌ | escape hatch (tool-calling, custom loops) |
 | `create_provider` | `ChatProvider` | — | — | raw provider (tool-calling, custom loops) |
 
 ## Config resolution (ADR 0004)
@@ -89,7 +89,7 @@ Empty responses and hard failures emit structured alarms (`emit_alarm`) — the 
 | **pdf2md** | `call_llm(package="pdf2md", env_prefix="PDF2MD_VLM")` | assess, vlm, nail_vlm, visual_verify all migrated |
 | **strukt2meta** | `call_llm(package="strukt2meta", task=task_type)` | manual retry loop absorbed; verbose streaming kept (raw thinking display) |
 | **md2blank** | `stream_llm(package="md2blank")` | CLI model/provider still override |
-| **agentos** | keeps its own resolver+breaker | wraps `invoke_llm`/`stream_llm` one-shot; reads context windows from catalog |
+| **agentos** | `call_llm_with_usage(package="agentos", task=step_name)` | resolver+breaker+caller DELETED (~1500 LOC); all via llminvoke. Token/JSON utilities kept locally. |
 
 ## Adding a provider (e.g. wwhb)
 
