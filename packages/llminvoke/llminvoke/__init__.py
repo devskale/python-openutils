@@ -122,6 +122,10 @@ def _resolve_call_config(
             "call_llm needs one of: config=, package=/client=/task=, or model=+provider="
         )
 
+    # explicit model/provider override the resolved primary (but keep backups/retry)
+    if model and provider and cfg.primary.model != model:
+        cfg = replace(cfg, primary=ModelRef(provider=provider, model=model))
+
     overrides: dict = {}
     if temperature is not None:
         overrides["temperature"] = float(temperature)
