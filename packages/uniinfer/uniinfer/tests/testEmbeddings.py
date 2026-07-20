@@ -10,7 +10,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-BASE_URL = "https://localhost:8123/v1"
+BASE_URL = os.getenv("PROXY_URL", "https://localhost:8123/v1")
 # BASE_URL = "http://localhost:8123/v1"
 
 

@@ -27,8 +27,10 @@ import time
 
 import httpx
 
-PROXY_URL = os.getenv("PROXY_URL", "http://127.0.0.1:8013")
-AUTH = os.getenv("PROXY_AUTH", "")
+from _proxy_common import proxy_auth, proxy_base_url
+
+PROXY_URL = proxy_base_url()
+AUTH = proxy_auth()
 MODEL = os.getenv("MODEL", "ollama@qwen3.5:0.8b")
 RUNS = int(os.getenv("RUNS", "4"))
 GEN_TOKENS = 512  # large enough that prefill doesn't dominate the decode window
