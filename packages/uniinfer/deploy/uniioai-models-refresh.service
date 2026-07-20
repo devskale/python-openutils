@@ -10,6 +10,9 @@ WorkingDirectory=/home/ubuntu/code/python-openutils/packages/uniinfer
 Environment=PATH=/home/ubuntu/.local/bin:/usr/local/bin:/usr/bin:/bin
 ExecStart=/home/ubuntu/.local/bin/uv run python scripts/generate_models.py
 TimeoutStartSec=600
+# Cap memory so a runaway refresh is OOM-killed locally instead of thrashing
+# the whole (tiny) box. A single run peaks ~211 MiB; 400 M leaves headroom.
+MemoryMax=400M
 StandardOutput=journal
 StandardError=journal
 
