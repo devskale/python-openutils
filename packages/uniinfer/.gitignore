@@ -29,3 +29,6 @@ uniinfer/models/_probe_results.json
 runs/
 testsuite/models.json
 testsuite/*.local.json
+# Handover-Doku mit echten Keys — NIEMALS committen:
+SETUP.md
+*.local.md
