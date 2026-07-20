@@ -99,7 +99,7 @@ def create_tools_router() -> APIRouter:
             try:
                 async with httpx.AsyncClient(timeout=15.0) as client:
                     resp = await client.get(
-                        "https://localhost/api/duck/search",
+                        "https://amd1.mooo.com/api/duck/search",
                         params={"query": query},
                         headers={"Authorization": f"Bearer {duck_token}", "User-Agent": "UniInfer/1.0"},
                     )
