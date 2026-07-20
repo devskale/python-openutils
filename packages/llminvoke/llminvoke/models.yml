@@ -120,7 +120,11 @@ packages:
     max_tokens: 4096
   strukt2meta:
     max_tokens: 16384
+    temperature: 0.7
     tasks:
       kriterien:
         model: tu@qwen-3.5-397b
         max_tokens: 32768
+  md2blank:
+    temperature: 0.7
+    max_tokens: 4096
