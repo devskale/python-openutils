@@ -5,6 +5,8 @@ import sys
 import enum
 import dataclasses
 import os
+import fcntl
+import tempfile
 from uniinfer.core import ModelInfo
 import logging
 from datetime import datetime, timezone
@@ -504,7 +506,29 @@ def probe_ollama_show_metadata(base_url, api_key, model_ids):
     return metadata
 
 
+_run_lock_fd = None
+
+
+def _acquire_run_lock() -> None:
+    """Single-flight guard: only one generate_models.py may run at a time.
+
+    Prevents the daily systemd timer and the proxy's on-demand refresh from
+    overlapping. Each run peaks ~211 MiB; two concurrent runs on the 951 MiB
+    amd box trigger swap thrash (load spike, SSH crawl). If the lock is already
+    held, exit 0 immediately so the overlapping run is a harmless no-op.
+    """
+    global _run_lock_fd
+    lock_path = os.path.join(tempfile.gettempdir(), "uniinfer_generate_models.lock")
+    _run_lock_fd = open(lock_path, "w")
+    try:
+        fcntl.flock(_run_lock_fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except OSError:
+        log.info("generate_models.py already running (lock held); skipping refresh.")
+        sys.exit(0)
+
+
 def main():
+    _acquire_run_lock()
     log.info("Discovering providers...")
     providers = discover_providers()
     log.info("Found %d providers\n", len(providers))

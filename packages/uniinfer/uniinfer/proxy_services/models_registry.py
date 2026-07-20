@@ -1,6 +1,7 @@
 import os
 import sys
 import time
+import asyncio
 import logging
 import dataclasses
 from typing import Any
@@ -51,33 +52,43 @@ def models_file_is_stale() -> bool:
     return age_seconds > get_refetch_interval_seconds()
 
 
+_refresh_lock = asyncio.Lock()
+
+
 async def refresh_models_file() -> dict[str, Any]:
-    """Re-generate models.json by calling list_models() on all providers."""
-    cmd = [sys.executable, "-m", "scripts.generate_models"]
+    """Re-generate models.json (single-flight: only one refresh at a time).
 
-    scripts_dir = os.path.join(PACKAGE_ROOT, "scripts")
-    if not os.path.exists(scripts_dir):
-        scripts_dir = os.path.join(os.path.dirname(PACKAGE_ROOT), "scripts")
+    The lock stops concurrent /v1/models requests (and the manual refresh
+    endpoint) from each spawning their own generate_models.py subprocess, which
+    would stack memory on small hosts. generate_models.py also holds its own
+    flock, so even an overlap with the systemd timer is a harmless no-op.
+    """
+    if _refresh_lock.locked():
+        return {"status": "skipped", "message": "A models refresh is already in progress"}
+    async with _refresh_lock:
+        scripts_dir = os.path.join(PACKAGE_ROOT, "scripts")
+        if not os.path.exists(scripts_dir):
+            scripts_dir = os.path.join(os.path.dirname(PACKAGE_ROOT), "scripts")
 
-    result = await run_in_threadpool(
-        subprocess.run,
-        [sys.executable, os.path.join(scripts_dir, "generate_models.py")],
-        capture_output=True,
-        text=True,
-        check=False,
-    )
+        result = await run_in_threadpool(
+            subprocess.run,
+            [sys.executable, os.path.join(scripts_dir, "generate_models.py")],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
 
-    if result.returncode != 0:
-        logger.error("generate_models.py failed: %s", result.stderr)
-
-    return {
-        "status": "success" if result.returncode == 0 else "error",
-        "message": "Models updated successfully" if result.returncode == 0 else result.stderr,
-    }
+        if result.returncode != 0:
+            logger.error("generate_models.py failed: %s", result.stderr)
+            return {"status": "error", "message": result.stderr}
+        return {"status": "success", "message": "Models updated successfully"}
 
 
 async def ensure_fresh_models_file() -> None:
     if not models_file_is_stale():
+        return
+    if _refresh_lock.locked():
+        # A refresh is already running (on-demand or timer); don't stack spawns.
         return
     try:
         await refresh_models_file()
