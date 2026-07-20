@@ -43,6 +43,7 @@ import os
 import statistics
 import sys
 import time
+from pathlib import Path
 
 import httpx
 
@@ -195,7 +196,51 @@ def build_filler(n_tokens: int) -> str:
     return " ".join(words[i % len(words)] for i in range(target_words))
 
 
-def ctx_scaling(base: str, auth: str, model: str, reasoning: dict, contexts: list[str]) -> None:
+_EXCLUDE_SEGMENTS = (".venv", "node_modules", ".pytest_cache", "egg-info", "build", ".git")
+
+
+def load_corpus(path: str) -> str:
+    """Load a pool of real document text (.md/.txt) for realistic prefilled context.
+
+    Used so tok/s is measured against real tokenization (code/markdown/tables/names)
+    instead of synthetic 'lorem ipsum'. The files are read at runtime and must NOT
+    be committed — they typically hold real client data.
+    """
+    p = Path(path)
+    files: list[Path] = []
+    if p.is_dir():
+        for ext in ("*.md", "*.txt"):
+            for f in p.rglob(ext):
+                sp = str(f)
+                if any(seg in sp for seg in _EXCLUDE_SEGMENTS):
+                    continue
+                files.append(f)
+    elif p.is_file():
+        files = [p]
+    chunks = []
+    for f in files:
+        try:
+            chunks.append(f.read_text(encoding="utf-8", errors="ignore"))
+        except Exception:  # noqa: BLE001
+            pass
+    return "\n\n".join(chunks)
+
+
+def real_filler(pool: str, n_tokens: int, offset: int = 0) -> str:
+    """~n_tokens Text ab Position `offset` (verschiedene Fenster => unterschiedlicher
+    Praefix => kein Server-Prefix-Cache zwischen aufeinanderfolgenden Aufrufen)."""
+    target = int(n_tokens * 3.5)
+    if not pool:
+        return build_filler(n_tokens)
+    need = offset + target
+    if len(pool) >= need:
+        return pool[offset:offset + target]
+    reps = (need // len(pool)) + 1
+    big = pool * reps
+    return big[offset:offset + target]
+
+
+def ctx_scaling(base: str, auth: str, model: str, reasoning: dict, contexts: list[str], corpus: str = "") -> None:
     # Measure tok/s at increasing prefilled-context sizes.
     # The proxy buffers full completions into one chunk, so streaming can't give
     # incremental decode timing. Instead we use the SAME non-streaming path twice
@@ -203,17 +248,28 @@ def ctx_scaling(base: str, auth: str, model: str, reasoning: dict, contexts: lis
     #   prefill call (max_tokens=8):  total ~= prefill time (8 tokens negligible)
     #   gen call      (max_tokens=512): total  = prefill + decode(512)
     #   decode_time = gen_total - prefill_total ; usage gives real token counts.
-    print(f"\n{mark('info')} CONTEXT SCALING — tok/s vs prefilled context (gen=512 tok)")
+    real = bool(corpus)
+    pool = load_corpus(corpus) if real else ""
+    if not pool:
+        pool = build_filler(60000)  # grosser synthetischer Pool zum Fenstern
+    src = f"real docs ({len(pool) // 1024} KB)" if real else "synthetic filler (gewindowed)"
+    print(f"\n{mark('info')} CONTEXT SCALING — tok/s vs prefilled context ({src}, gen=512 tok)")
     H = {"Content-Type": "application/json"}
     if auth:
         H["Authorization"] = f"Bearer {auth}"
 
-    def _prompt(n: int) -> str:
-        return (f"[context ~{n} tokens]\n{build_filler(n)}\n\nNow write a thorough, detailed "
-                f"explanation of how transformer attention works, with a concrete example. Be complete.")
+    def _prompt(n: int, offset: int = 0) -> str:
+        # Verschiedene offset-Fenster => unterschiedliche Praefixe => kein
+        # Server-Prefix-Cache zwischen Prefill- und Gen-Aufruf (sonst waere die
+        # Decode-Messung verfaelscht: der 2. Aufruf laege im Cache).
+        ctx = real_filler(pool, n, offset)
+        task = ("Extract a concise structured summary of the document below: title, parties, "
+                "currency, total amount, date, and a numbered list of the main line items. "
+                "Be thorough and complete.")
+        return f"[document ~{n} tokens]\n{ctx}\n\n{task}"
 
-    def _post(n: int, max_tokens: int) -> tuple[float | None, int, str]:
-        body = {"model": model, "messages": [{"role": "user", "content": _prompt(n)}],
+    def _post(n: int, max_tokens: int, offset: int = 0) -> tuple[float | None, int, int, str]:
+        body = {"model": model, "messages": [{"role": "user", "content": _prompt(n, offset)}],
                 "max_tokens": max_tokens}
         body.update(reasoning)
         try:
@@ -233,8 +289,9 @@ def ctx_scaling(base: str, auth: str, model: str, reasoning: dict, contexts: lis
 
     for ctx in contexts:
         n = parse_ctx(ctx)
-        pdt, _, ptok, e1 = _post(n, 8)
-        gdt, ctok, _, e2 = _post(n, 512)
+        shift = int(n * 3.5)  # ein Fenster weiter => anderer Praefix (kein Cache-Hit)
+        pdt, _, ptok, e1 = _post(n, 8, 0)
+        gdt, ctok, _, e2 = _post(n, 512, shift)
         if pdt is None or gdt is None:
             err = e1 or e2
             hint = " (exceeds context window)" if any(k in err for k in ("400", "413")) else ""
@@ -260,6 +317,8 @@ def main() -> None:
     ap.add_argument("--skip-long", action="store_true")
     ap.add_argument("--contexts", default=os.getenv("CONTEXTS", ""),
                    help="comma-separated context sizes to scale over, e.g. 16k,32k,1000k,4000k,8000k")
+    ap.add_argument("--corpus", default=os.getenv("CORPUS", ""),
+                   help="dir of real docs (.md/.txt) to prefill with (realistic tokenization); not committed")
     args = ap.parse_args()
 
     # Reasoning models need room: a small max_tokens starves the visible answer.
@@ -281,7 +340,7 @@ def main() -> None:
     if args.contexts:
         ctx_list = [c.strip() for c in args.contexts.split(",") if c.strip()]
         if ctx_list:
-            ctx_scaling(args.base_url, args.bearer, args.model, reasoning, ctx_list)
+            ctx_scaling(args.base_url, args.bearer, args.model, reasoning, ctx_list, args.corpus)
 
     print(f"\nDone. (slow? increase --long-tokens for reasoning models, or set --reasoning none)")
 

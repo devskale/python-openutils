@@ -1,0 +1,813 @@
+---
+title: 2026_LV_Gebaeudereinigung_800pos
+extractor: prerendered_fixture
+note: FIKTIV — PII-frei. Nur Benchmark-Fixture.
+---
+Sauberfeld Reinigung GmbH
+Erlenweg 7, 1100 Wien · Ansprechpartner: Christine Halm · UID ATU00000003
+
+Leistungsverzeichnis Gebäudereinigung - AS 2026.12345 (fiktiv). Auftraggeber: Stadt Wien.
+
+| Pos. | Beschreibung | Einheit | Menge | Einheitspreis (€) | Positionspreis (€) |
+|----:|:--|:--|--:|--:|--:|
+| 1 | Glasreinigung Fenster/Rahmen Abschnitt 1 | Stk | 21 | 12.45 | 261.45 |
+| 2 | Treppenhausreinigung Treppen/Stiegen/Handläufe Abschnitt 2 | m | 4 | 8.10 | 32.40 |
+| 3 | Fassadenreinigung Außenfassade Abschnitt 3 | m² | 7 | 16.22 | 113.54 |
+| 4 | Bodenreinigung PVC/Steinzeug Abschnitt 4 | m² | 49 | 2.18 | 106.82 |
+| 5 | Sanitärreinigung WC/Waschbecken Abschnitt 5 | Stk | 45 | 16.12 | 725.40 |
+| 6 | Desinfektion Sanitärbereiche Abschnitt 6 | m² | 5 | 23.83 | 119.15 |
+| 7 | Maschinelle Grundreinigung Steinboden Abschnitt 7 | m² | 23 | 14.80 | 340.40 |
+| 8 | Teppichbodenreinigung Grund-/Unterhaltsreinigung Abschnitt 8 | m² | 57 | 19.79 | 1,128.03 |
+| 9 | Winterdienst Schauftrag Abschnitt 9 | Einsatz | 18 | 15.55 | 279.90 |
+| 10 | Grünflächenpflege Rasen/Gehölz Abschnitt 10 | m² | 9 | 21.10 | 189.90 |
+| 11 | Kristallisationsversiegelung Boden Abschnitt 11 | m² | 17 | 13.65 | 232.05 |
+| 12 | Unterhaltsreinigung Büro/Betriebsräume Abschnitt 12 | m² | 2 | 3.67 | 7.34 |
+| 13 | Glasreinigung Fenster/Rahmen Abschnitt 13 | Stk | 69 | 12.73 | 878.37 |
+| 14 | Treppenhausreinigung Treppen/Stiegen/Handläufe Abschnitt 14 | m | 8 | 17.75 | 142.00 |
+| 15 | Fassadenreinigung Außenfassade Abschnitt 15 | m² | 3 | 15.31 | 45.93 |
+| 16 | Bodenreinigung PVC/Steinzeug Abschnitt 16 | m² | 51 | 17.64 | 899.64 |
+| 17 | Sanitärreinigung WC/Waschbecken Abschnitt 17 | Stk | 180 | 9.87 | 1,776.60 |
+| 18 | Desinfektion Sanitärbereiche Abschnitt 18 | m² | 31 | 16.22 | 502.82 |
+| 19 | Maschinelle Grundreinigung Steinboden Abschnitt 19 | m² | 6 | 17.32 | 103.92 |
+| 20 | Teppichbodenreinigung Grund-/Unterhaltsreinigung Abschnitt 20 | m² | 34 | 12.53 | 426.02 |
+| 21 | Winterdienst Schauftrag Abschnitt 21 | Einsatz | 4 | 10.86 | 43.44 |
+| 22 | Grünflächenpflege Rasen/Gehölz Abschnitt 22 | m² | 2 | 9.66 | 19.32 |
+| 23 | Kristallisationsversiegelung Boden Abschnitt 23 | m² | 35 | 7.68 | 268.80 |
+| 24 | Unterhaltsreinigung Büro/Betriebsräume Abschnitt 24 | m² | 5 | 2.08 | 10.40 |
+| 25 | Glasreinigung Fenster/Rahmen Abschnitt 25 | Stk | 84 | 10.57 | 887.88 |
+| 26 | Treppenhausreinigung Treppen/Stiegen/Handläufe Abschnitt 26 | m | 79 | 24.39 | 1,926.81 |
+| 27 | Fassadenreinigung Außenfassade Abschnitt 27 | m² | 36 | 8.47 | 304.92 |
+| 28 | Bodenreinigung PVC/Steinzeug Abschnitt 28 | m² | 10 | 2.92 | 29.20 |
+| 29 | Sanitärreinigung WC/Waschbecken Abschnitt 29 | Stk | 12 | 22.23 | 266.76 |
+| 30 | Desinfektion Sanitärbereiche Abschnitt 30 | m² | 156 | 8.07 | 1,258.92 |
+| 31 | Maschinelle Grundreinigung Steinboden Abschnitt 31 | m² | 21 | 15.53 | 326.13 |
+| 32 | Teppichbodenreinigung Grund-/Unterhaltsreinigung Abschnitt 32 | m² | 9 | 9.90 | 89.10 |
+| 33 | Winterdienst Schauftrag Abschnitt 33 | Einsatz | 11 | 17.48 | 192.28 |
+| 34 | Grünflächenpflege Rasen/Gehölz Abschnitt 34 | m² | 1 | 16.13 | 16.13 |
+| 35 | Kristallisationsversiegelung Boden Abschnitt 35 | m² | 16 | 21.83 | 349.28 |
+| 36 | Unterhaltsreinigung Büro/Betriebsräume Abschnitt 36 | m² | 31 | 9.73 | 301.63 |
+| 37 | Glasreinigung Fenster/Rahmen Abschnitt 37 | Stk | 9 | 7.04 | 63.36 |
+| 38 | Treppenhausreinigung Treppen/Stiegen/Handläufe Abschnitt 38 | m | 24 | 8.51 | 204.24 |
+| 39 | Fassadenreinigung Außenfassade Abschnitt 39 | m² | 11 | 23.40 | 257.40 |
+| 40 | Bodenreinigung PVC/Steinzeug Abschnitt 40 | m² | 10 | 1.75 | 17.50 |
+| 41 | Sanitärreinigung WC/Waschbecken Abschnitt 41 | Stk | 10 | 23.03 | 230.30 |
+| 42 | Desinfektion Sanitärbereiche Abschnitt 42 | m² | 1 | 10.17 | 10.17 |
+| 43 | Maschinelle Grundreinigung Steinboden Abschnitt 43 | m² | 7 | 3.27 | 22.89 |
+| 44 | Teppichbodenreinigung Grund-/Unterhaltsreinigung Abschnitt 44 | m² | 3 | 1.18 | 3.54 |
+| 45 | Winterdienst Schauftrag Abschnitt 45 | Einsatz | 11 | 3.74 | 41.14 |
+| 46 | Grünflächenpflege Rasen/Gehölz Abschnitt 46 | m² | 10 | 12.23 | 122.30 |
+| 47 | Kristallisationsversiegelung Boden Abschnitt 47 | m² | 22 | 11.71 | 257.62 |
+| 48 | Unterhaltsreinigung Büro/Betriebsräume Abschnitt 48 | m² | 6 | 18.07 | 108.42 |
+| 49 | Glasreinigung Fenster/Rahmen Abschnitt 49 | Stk | 196 | 16.01 | 3,137.96 |
+| 50 | Treppenhausreinigung Treppen/Stiegen/Handläufe Abschnitt 50 | m | 127 | 22.91 | 2,909.57 |
+| 51 | Fassadenreinigung Außenfassade Abschnitt 51 | m² | 8 | 2.27 | 18.16 |
+| 52 | Bodenreinigung PVC/Steinzeug Abschnitt 52 | m² | 109 | 18.45 | 2,011.05 |
+| 53 | Sanitärreinigung WC/Waschbecken Abschnitt 53 | Stk | 15 | 8.45 | 126.75 |
+| 54 | Desinfektion Sanitärbereiche Abschnitt 54 | m² | 33 | 4.31 | 142.23 |
+| 55 | Maschinelle Grundreinigung Steinboden Abschnitt 55 | m² | 12 | 16.04 | 192.48 |
+| 56 | Teppichbodenreinigung Grund-/Unterhaltsreinigung Abschnitt 56 | m² | 132 | 23.67 | 3,124.44 |
+| 57 | Winterdienst Schauftrag Abschnitt 57 | Einsatz | 26 | 15.85 | 412.10 |
+| 58 | Grünflächenpflege Rasen/Gehölz Abschnitt 58 | m² | 26 | 20.92 | 543.92 |
+| 59 | Kristallisationsversiegelung Boden Abschnitt 59 | m² | 24 | 9.92 | 238.08 |
+| 60 | Unterhaltsreinigung Büro/Betriebsräume Abschnitt 60 | m² | 164 | 7.66 | 1,256.24 |
+| 61 | Glasreinigung Fenster/Rahmen Abschnitt 61 | Stk | 92 | 11.02 | 1,013.84 |
+| 62 | Treppenhausreinigung Treppen/Stiegen/Handläufe Abschnitt 62 | m | 3 | 4.36 | 13.08 |
+| 63 | Fassadenreinigung Außenfassade Abschnitt 63 | m² | 185 | 13.74 | 2,541.90 |
+| 64 | Bodenreinigung PVC/Steinzeug Abschnitt 64 | m² | 151 | 5.65 | 853.15 |
+| 65 | Sanitärreinigung WC/Waschbecken Abschnitt 65 | Stk | 19 | 17.20 | 326.80 |
+| 66 | Desinfektion Sanitärbereiche Abschnitt 66 | m² | 191 | 14.99 | 2,863.09 |
+| 67 | Maschinelle Grundreinigung Steinboden Abschnitt 67 | m² | 8 | 2.92 | 23.36 |
+| 68 | Teppichbodenreinigung Grund-/Unterhaltsreinigung Abschnitt 68 | m² | 26 | 14.83 | 385.58 |
+| 69 | Winterdienst Schauftrag Abschnitt 69 | Einsatz | 143 | 13.05 | 1,866.15 |
+| 70 | Grünflächenpflege Rasen/Gehölz Abschnitt 70 | m² | 17 | 3.03 | 51.51 |
+| 71 | Kristallisationsversiegelung Boden Abschnitt 71 | m² | 10 | 9.49 | 94.90 |
+| 72 | Unterhaltsreinigung Büro/Betriebsräume Abschnitt 72 | m² | 38 | 23.13 | 878.94 |
+| 73 | Glasreinigung Fenster/Rahmen Abschnitt 73 | Stk | 105 | 16.11 | 1,691.55 |
+| 74 | Treppenhausreinigung Treppen/Stiegen/Handläufe Abschnitt 74 | m | 6 | 1.53 | 9.18 |
+| 75 | Fassadenreinigung Außenfassade Abschnitt 75 | m² | 22 | 3.08 | 67.76 |
+| 76 | Bodenreinigung PVC/Steinzeug Abschnitt 76 | m² | 8 | 14.53 | 116.24 |
+| 77 | Sanitärreinigung WC/Waschbecken Abschnitt 77 | Stk | 21 | 23.71 | 497.91 |
+| 78 | Desinfektion Sanitärbereiche Abschnitt 78 | m² | 75 | 5.66 | 424.50 |
+| 79 | Maschinelle Grundreinigung Steinboden Abschnitt 79 | m² | 16 | 2.03 | 32.48 |
+| 80 | Teppichbodenreinigung Grund-/Unterhaltsreinigung Abschnitt 80 | m² | 104 | 12.58 | 1,308.32 |
+| 81 | Winterdienst Schauftrag Abschnitt 81 | Einsatz | 163 | 23.12 | 3,768.56 |
+| 82 | Grünflächenpflege Rasen/Gehölz Abschnitt 82 | m² | 6 | 6.44 | 38.64 |
+| 83 | Kristallisationsversiegelung Boden Abschnitt 83 | m² | 181 | 5.22 | 944.82 |
+| 84 | Unterhaltsreinigung Büro/Betriebsräume Abschnitt 84 | m² | 4 | 6.17 | 24.68 |
+| 85 | Glasreinigung Fenster/Rahmen Abschnitt 85 | Stk | 7 | 22.65 | 158.55 |
+| 86 | Treppenhausreinigung Treppen/Stiegen/Handläufe Abschnitt 86 | m | 5 | 17.97 | 89.85 |
+| 87 | Fassadenreinigung Außenfassade Abschnitt 87 | m² | 35 | 8.49 | 297.15 |
+| 88 | Bodenreinigung PVC/Steinzeug Abschnitt 88 | m² | 11 | 8.03 | 88.33 |
+| 89 | Sanitärreinigung WC/Waschbecken Abschnitt 89 | Stk | 177 | 8.64 | 1,529.28 |
+| 90 | Desinfektion Sanitärbereiche Abschnitt 90 | m² | 109 | 12.45 | 1,357.05 |
+| 91 | Maschinelle Grundreinigung Steinboden Abschnitt 91 | m² | 15 | 22.93 | 343.95 |
+| 92 | Teppichbodenreinigung Grund-/Unterhaltsreinigung Abschnitt 92 | m² | 5 | 20.13 | 100.65 |
+| 93 | Winterdienst Schauftrag Abschnitt 93 | Einsatz | 2 | 21.78 | 43.56 |
+| 94 | Grünflächenpflege Rasen/Gehölz Abschnitt 94 | m² | 124 | 21.18 | 2,626.32 |
+| 95 | Kristallisationsversiegelung Boden Abschnitt 95 | m² | 125 | 20.72 | 2,590.00 |
+| 96 | Unterhaltsreinigung Büro/Betriebsräume Abschnitt 96 | m² | 39 | 4.25 | 165.75 |
+| 97 | Glasreinigung Fenster/Rahmen Abschnitt 97 | Stk | 19 | 18.07 | 343.33 |
+| 98 | Treppenhausreinigung Treppen/Stiegen/Handläufe Abschnitt 98 | m | 40 | 7.25 | 290.00 |
+| 99 | Fassadenreinigung Außenfassade Abschnitt 99 | m² | 31 | 7.36 | 228.16 |
+| 100 | Bodenreinigung PVC/Steinzeug Abschnitt 100 | m² | 95 | 12.68 | 1,204.60 |
+| 101 | Sanitärreinigung WC/Waschbecken Abschnitt 101 | Stk | 25 | 4.51 | 112.75 |
+| 102 | Desinfektion Sanitärbereiche Abschnitt 102 | m² | 11 | 23.19 | 255.09 |
+| 103 | Maschinelle Grundreinigung Steinboden Abschnitt 103 | m² | 40 | 7.04 | 281.60 |
+| 104 | Teppichbodenreinigung Grund-/Unterhaltsreinigung Abschnitt 104 | m² | 103 | 24.95 | 2,569.85 |
+| 105 | Winterdienst Schauftrag Abschnitt 105 | Einsatz | 34 | 10.86 | 369.24 |
+| 106 | Grünflächenpflege Rasen/Gehölz Abschnitt 106 | m² | 24 | 4.29 | 102.96 |
+| 107 | Kristallisationsversiegelung Boden Abschnitt 107 | m² | 123 | 13.16 | 1,618.68 |
+| 108 | Unterhaltsreinigung Büro/Betriebsräume Abschnitt 108 | m² | 10 | 5.30 | 53.00 |
+| 109 | Glasreinigung Fenster/Rahmen Abschnitt 109 | Stk | 32 | 7.50 | 240.00 |
+| 110 | Treppenhausreinigung Treppen/Stiegen/Handläufe Abschnitt 110 | m | 3 | 19.44 | 58.32 |
+| 111 | Fassadenreinigung Außenfassade Abschnitt 111 | m² | 16 | 20.86 | 333.76 |
+| 112 | Bodenreinigung PVC/Steinzeug Abschnitt 112 | m² | 36 | 4.12 | 148.32 |
+| 113 | Sanitärreinigung WC/Waschbecken Abschnitt 113 | Stk | 17 | 1.04 | 17.68 |
+| 114 | Desinfektion Sanitärbereiche Abschnitt 114 | m² | 38 | 13.35 | 507.30 |
+| 115 | Maschinelle Grundreinigung Steinboden Abschnitt 115 | m² | 5 | 21.72 | 108.60 |
+| 116 | Teppichbodenreinigung Grund-/Unterhaltsreinigung Abschnitt 116 | m² | 33 | 22.83 | 753.39 |
+| 117 | Winterdienst Schauftrag Abschnitt 117 | Einsatz | 44 | 6.81 | 299.64 |
+| 118 | Grünflächenpflege Rasen/Gehölz Abschnitt 118 | m² | 3 | 9.78 | 29.34 |
+| 119 | Kristallisationsversiegelung Boden Abschnitt 119 | m² | 101 | 24.24 | 2,448.24 |
+| 120 | Unterhaltsreinigung Büro/Betriebsräume Abschnitt 120 | m² | 6 | 6.72 | 40.32 |
+| 121 | Glasreinigung Fenster/Rahmen Abschnitt 121 | Stk | 7 | 18.98 | 132.86 |
+| 122 | Treppenhausreinigung Treppen/Stiegen/Handläufe Abschnitt 122 | m | 2 | 12.77 | 25.54 |
+| 123 | Fassadenreinigung Außenfassade Abschnitt 123 | m² | 9 | 4.05 | 36.45 |
+| 124 | Bodenreinigung PVC/Steinzeug Abschnitt 124 | m² | 4 | 5.21 | 20.84 |
+| 125 | Sanitärreinigung WC/Waschbecken Abschnitt 125 | Stk | 5 | 20.58 | 102.90 |
+| 126 | Desinfektion Sanitärbereiche Abschnitt 126 | m² | 2 | 18.68 | 37.36 |
+| 127 | Maschinelle Grundreinigung Steinboden Abschnitt 127 | m² | 10 | 14.75 | 147.50 |
+| 128 | Teppichbodenreinigung Grund-/Unterhaltsreinigung Abschnitt 128 | m² | 71 | 3.29 | 233.59 |
+| 129 | Winterdienst Schauftrag Abschnitt 129 | Einsatz | 11 | 7.41 | 81.51 |
+| 130 | Grünflächenpflege Rasen/Gehölz Abschnitt 130 | m² | 10 | 19.23 | 192.30 |
+| 131 | Kristallisationsversiegelung Boden Abschnitt 131 | m² | 41 | 22.20 | 910.20 |
+| 132 | Unterhaltsreinigung Büro/Betriebsräume Abschnitt 132 | m² | 39 | 4.36 | 170.04 |
+| 133 | Glasreinigung Fenster/Rahmen Abschnitt 133 | Stk | 34 | 23.49 | 798.66 |
+| 134 | Treppenhausreinigung Treppen/Stiegen/Handläufe Abschnitt 134 | m | 7 | 21.12 | 147.84 |
+| 135 | Fassadenreinigung Außenfassade Abschnitt 135 | m² | 38 | 19.60 | 744.80 |
+| 136 | Bodenreinigung PVC/Steinzeug Abschnitt 136 | m² | 112 | 18.12 | 2,029.44 |
+| 137 | Sanitärreinigung WC/Waschbecken Abschnitt 137 | Stk | 25 | 8.66 | 216.50 |
+| 138 | Desinfektion Sanitärbereiche Abschnitt 138 | m² | 14 | 21.87 | 306.18 |
+| 139 | Maschinelle Grundreinigung Steinboden Abschnitt 139 | m² | 2 | 5.34 | 10.68 |
+| 140 | Teppichbodenreinigung Grund-/Unterhaltsreinigung Abschnitt 140 | m² | 4 | 16.99 | 67.96 |
+| 141 | Winterdienst Schauftrag Abschnitt 141 | Einsatz | 45 | 19.59 | 881.55 |
+| 142 | Grünflächenpflege Rasen/Gehölz Abschnitt 142 | m² | 34 | 1.63 | 55.42 |
+| 143 | Kristallisationsversiegelung Boden Abschnitt 143 | m² | 183 | 16.00 | 2,928.00 |
+| 144 | Unterhaltsreinigung Büro/Betriebsräume Abschnitt 144 | m² | 169 | 3.75 | 633.75 |
+| 145 | Glasreinigung Fenster/Rahmen Abschnitt 145 | Stk | 5 | 7.76 | 38.80 |
+| 146 | Treppenhausreinigung Treppen/Stiegen/Handläufe Abschnitt 146 | m | 24 | 3.71 | 89.04 |
+| 147 | Fassadenreinigung Außenfassade Abschnitt 147 | m² | 78 | 15.08 | 1,176.24 |
+| 148 | Bodenreinigung PVC/Steinzeug Abschnitt 148 | m² | 2 | 3.98 | 7.96 |
+| 149 | Sanitärreinigung WC/Waschbecken Abschnitt 149 | Stk | 114 | 7.43 | 847.02 |
+| 150 | Desinfektion Sanitärbereiche Abschnitt 150 | m² | 199 | 21.12 | 4,202.88 |
+| 151 | Maschinelle Grundreinigung Steinboden Abschnitt 151 | m² | 19 | 14.08 | 267.52 |
+| 152 | Teppichbodenreinigung Grund-/Unterhaltsreinigung Abschnitt 152 | m² | 127 | 15.63 | 1,985.01 |
+| 153 | Winterdienst Schauftrag Abschnitt 153 | Einsatz | 35 | 8.87 | 310.45 |
+| 154 | Grünflächenpflege Rasen/Gehölz Abschnitt 154 | m² | 141 | 24.26 | 3,420.66 |
+| 155 | Kristallisationsversiegelung Boden Abschnitt 155 | m² | 30 | 21.66 | 649.80 |
+| 156 | Unterhaltsreinigung Büro/Betriebsräume Abschnitt 156 | m² | 92 | 12.69 | 1,167.48 |
+| 157 | Glasreinigung Fenster/Rahmen Abschnitt 157 | Stk | 23 | 19.49 | 448.27 |
+| 158 | Treppenhausreinigung Treppen/Stiegen/Handläufe Abschnitt 158 | m | 2 | 21.88 | 43.76 |
+| 159 | Fassadenreinigung Außenfassade Abschnitt 159 | m² | 1 | 10.19 | 10.19 |
+| 160 | Bodenreinigung PVC/Steinzeug Abschnitt 160 | m² | 33 | 13.41 | 442.53 |
+| 161 | Sanitärreinigung WC/Waschbecken Abschnitt 161 | Stk | 6 | 9.33 | 55.98 |
+| 162 | Desinfektion Sanitärbereiche Abschnitt 162 | m² | 167 | 20.67 | 3,451.89 |
+| 163 | Maschinelle Grundreinigung Steinboden Abschnitt 163 | m² | 12 | 23.11 | 277.32 |
+| 164 | Teppichbodenreinigung Grund-/Unterhaltsreinigung Abschnitt 164 | m² | 11 | 16.10 | 177.10 |
+| 165 | Winterdienst Schauftrag Abschnitt 165 | Einsatz | 13 | 10.73 | 139.49 |
+| 166 | Grünflächenpflege Rasen/Gehölz Abschnitt 166 | m² | 159 | 10.42 | 1,656.78 |
+| 167 | Kristallisationsversiegelung Boden Abschnitt 167 | m² | 5 | 15.50 | 77.50 |
+| 168 | Unterhaltsreinigung Büro/Betriebsräume Abschnitt 168 | m² | 125 | 7.77 | 971.25 |
+| 169 | Glasreinigung Fenster/Rahmen Abschnitt 169 | Stk | 84 | 13.53 | 1,136.52 |
+| 170 | Treppenhausreinigung Treppen/Stiegen/Handläufe Abschnitt 170 | m | 29 | 19.85 | 575.65 |
+| 171 | Fassadenreinigung Außenfassade Abschnitt 171 | m² | 107 | 5.26 | 562.82 |
+| 172 | Bodenreinigung PVC/Steinzeug Abschnitt 172 | m² | 7 | 9.92 | 69.44 |
+| 173 | Sanitärreinigung WC/Waschbecken Abschnitt 173 | Stk | 32 | 24.25 | 776.00 |
+| 174 | Desinfektion Sanitärbereiche Abschnitt 174 | m² | 93 | 22.37 | 2,080.41 |
+| 175 | Maschinelle Grundreinigung Steinboden Abschnitt 175 | m² | 16 | 14.47 | 231.52 |
+| 176 | Teppichbodenreinigung Grund-/Unterhaltsreinigung Abschnitt 176 | m² | 86 | 13.83 | 1,189.38 |
+| 177 | Winterdienst Schauftrag Abschnitt 177 | Einsatz | 9 | 17.38 | 156.42 |
+| 178 | Grünflächenpflege Rasen/Gehölz Abschnitt 178 | m² | 29 | 15.19 | 440.51 |
+| 179 | Kristallisationsversiegelung Boden Abschnitt 179 | m² | 1 | 2.45 | 2.45 |
+| 180 | Unterhaltsreinigung Büro/Betriebsräume Abschnitt 180 | m² | 35 | 12.92 | 452.20 |
+| 181 | Glasreinigung Fenster/Rahmen Abschnitt 181 | Stk | 40 | 24.14 | 965.60 |
+| 182 | Treppenhausreinigung Treppen/Stiegen/Handläufe Abschnitt 182 | m | 8 | 22.56 | 180.48 |
+| 183 | Fassadenreinigung Außenfassade Abschnitt 183 | m² | 9 | 20.54 | 184.86 |
+| 184 | Bodenreinigung PVC/Steinzeug Abschnitt 184 | m² | 102 | 24.48 | 2,496.96 |
+| 185 | Sanitärreinigung WC/Waschbecken Abschnitt 185 | Stk | 24 | 16.67 | 400.08 |
+| 186 | Desinfektion Sanitärbereiche Abschnitt 186 | m² | 6 | 22.29 | 133.74 |
+| 187 | Maschinelle Grundreinigung Steinboden Abschnitt 187 | m² | 3 | 7.82 | 23.46 |
+| 188 | Teppichbodenreinigung Grund-/Unterhaltsreinigung Abschnitt 188 | m² | 37 | 10.78 | 398.86 |
+| 189 | Winterdienst Schauftrag Abschnitt 189 | Einsatz | 10 | 3.38 | 33.80 |
+| 190 | Grünflächenpflege Rasen/Gehölz Abschnitt 190 | m² | 7 | 19.86 | 139.02 |
+| 191 | Kristallisationsversiegelung Boden Abschnitt 191 | m² | 12 | 0.89 | 10.68 |
+| 192 | Unterhaltsreinigung Büro/Betriebsräume Abschnitt 192 | m² | 2 | 1.17 | 2.34 |
+| 193 | Glasreinigung Fenster/Rahmen Abschnitt 193 | Stk | 60 | 19.41 | 1,164.60 |
+| 194 | Treppenhausreinigung Treppen/Stiegen/Handläufe Abschnitt 194 | m | 9 | 24.93 | 224.37 |
+| 195 | Fassadenreinigung Außenfassade Abschnitt 195 | m² | 17 | 4.32 | 73.44 |
+| 196 | Bodenreinigung PVC/Steinzeug Abschnitt 196 | m² | 38 | 3.22 | 122.36 |
+| 197 | Sanitärreinigung WC/Waschbecken Abschnitt 197 | Stk | 143 | 15.63 | 2,235.09 |
+| 198 | Desinfektion Sanitärbereiche Abschnitt 198 | m² | 1 | 19.45 | 19.45 |
+| 199 | Maschinelle Grundreinigung Steinboden Abschnitt 199 | m² | 25 | 9.36 | 234.00 |
+| 200 | Teppichbodenreinigung Grund-/Unterhaltsreinigung Abschnitt 200 | m² | 5 | 3.21 | 16.05 |
+| 201 | Winterdienst Schauftrag Abschnitt 201 | Einsatz | 99 | 15.90 | 1,574.10 |
+| 202 | Grünflächenpflege Rasen/Gehölz Abschnitt 202 | m² | 23 | 14.90 | 342.70 |
+| 203 | Kristallisationsversiegelung Boden Abschnitt 203 | m² | 1 | 6.57 | 6.57 |
+| 204 | Unterhaltsreinigung Büro/Betriebsräume Abschnitt 204 | m² | 3 | 21.48 | 64.44 |
+| 205 | Glasreinigung Fenster/Rahmen Abschnitt 205 | Stk | 11 | 10.92 | 120.12 |
+| 206 | Treppenhausreinigung Treppen/Stiegen/Handläufe Abschnitt 206 | m | 21 | 17.19 | 360.99 |
+| 207 | Fassadenreinigung Außenfassade Abschnitt 207 | m² | 115 | 21.98 | 2,527.70 |
+| 208 | Bodenreinigung PVC/Steinzeug Abschnitt 208 | m² | 36 | 5.00 | 180.00 |
+| 209 | Sanitärreinigung WC/Waschbecken Abschnitt 209 | Stk | 27 | 24.31 | 656.37 |
+| 210 | Desinfektion Sanitärbereiche Abschnitt 210 | m² | 111 | 3.58 | 397.38 |
+| 211 | Maschinelle Grundreinigung Steinboden Abschnitt 211 | m² | 108 | 16.56 | 1,788.48 |
+| 212 | Teppichbodenreinigung Grund-/Unterhaltsreinigung Abschnitt 212 | m² | 6 | 6.73 | 40.38 |
+| 213 | Winterdienst Schauftrag Abschnitt 213 | Einsatz | 129 | 6.54 | 843.66 |
+| 214 | Grünflächenpflege Rasen/Gehölz Abschnitt 214 | m² | 7 | 9.06 | 63.42 |
+| 215 | Kristallisationsversiegelung Boden Abschnitt 215 | m² | 14 | 3.04 | 42.56 |
+| 216 | Unterhaltsreinigung Büro/Betriebsräume Abschnitt 216 | m² | 3 | 11.53 | 34.59 |
+| 217 | Glasreinigung Fenster/Rahmen Abschnitt 217 | Stk | 50 | 6.04 | 302.00 |
+| 218 | Treppenhausreinigung Treppen/Stiegen/Handläufe Abschnitt 218 | m | 11 | 5.84 | 64.24 |
+| 219 | Fassadenreinigung Außenfassade Abschnitt 219 | m² | 35 | 21.57 | 754.95 |
+| 220 | Bodenreinigung PVC/Steinzeug Abschnitt 220 | m² | 5 | 22.57 | 112.85 |
+| 221 | Sanitärreinigung WC/Waschbecken Abschnitt 221 | Stk | 146 | 15.52 | 2,265.92 |
+| 222 | Desinfektion Sanitärbereiche Abschnitt 222 | m² | 2 | 13.22 | 26.44 |
+| 223 | Maschinelle Grundreinigung Steinboden Abschnitt 223 | m² | 79 | 1.49 | 117.71 |
+| 224 | Teppichbodenreinigung Grund-/Unterhaltsreinigung Abschnitt 224 | m² | 89 | 18.00 | 1,602.00 |
+| 225 | Winterdienst Schauftrag Abschnitt 225 | Einsatz | 16 | 16.84 | 269.44 |
+| 226 | Grünflächenpflege Rasen/Gehölz Abschnitt 226 | m² | 27 | 20.29 | 547.83 |
+| 227 | Kristallisationsversiegelung Boden Abschnitt 227 | m² | 2 | 8.33 | 16.66 |
+| 228 | Unterhaltsreinigung Büro/Betriebsräume Abschnitt 228 | m² | 3 | 10.46 | 31.38 |
+| 229 | Glasreinigung Fenster/Rahmen Abschnitt 229 | Stk | 8 | 22.16 | 177.28 |
+| 230 | Treppenhausreinigung Treppen/Stiegen/Handläufe Abschnitt 230 | m | 13 | 9.67 | 125.71 |
+| 231 | Fassadenreinigung Außenfassade Abschnitt 231 | m² | 1 | 17.83 | 17.83 |
+| 232 | Bodenreinigung PVC/Steinzeug Abschnitt 232 | m² | 73 | 22.73 | 1,659.29 |
+| 233 | Sanitärreinigung WC/Waschbecken Abschnitt 233 | Stk | 11 | 7.36 | 80.96 |
+| 234 | Desinfektion Sanitärbereiche Abschnitt 234 | m² | 19 | 10.59 | 201.21 |
+| 235 | Maschinelle Grundreinigung Steinboden Abschnitt 235 | m² | 120 | 4.58 | 549.60 |
+| 236 | Teppichbodenreinigung Grund-/Unterhaltsreinigung Abschnitt 236 | m² | 5 | 16.25 | 81.25 |
+| 237 | Winterdienst Schauftrag Abschnitt 237 | Einsatz | 4 | 12.85 | 51.40 |
+| 238 | Grünflächenpflege Rasen/Gehölz Abschnitt 238 | m² | 7 | 17.36 | 121.52 |
+| 239 | Kristallisationsversiegelung Boden Abschnitt 239 | m² | 2 | 7.73 | 15.46 |
+| 240 | Unterhaltsreinigung Büro/Betriebsräume Abschnitt 240 | m² | 10 | 1.95 | 19.50 |
+| 241 | Glasreinigung Fenster/Rahmen Abschnitt 241 | Stk | 20 | 19.95 | 399.00 |
+| 242 | Treppenhausreinigung Treppen/Stiegen/Handläufe Abschnitt 242 | m | 18 | 10.90 | 196.20 |
+| 243 | Fassadenreinigung Außenfassade Abschnitt 243 | m² | 167 | 13.56 | 2,264.52 |
+| 244 | Bodenreinigung PVC/Steinzeug Abschnitt 244 | m² | 118 | 17.54 | 2,069.72 |
+| 245 | Sanitärreinigung WC/Waschbecken Abschnitt 245 | Stk | 1 | 17.70 | 17.70 |
+| 246 | Desinfektion Sanitärbereiche Abschnitt 246 | m² | 32 | 12.65 | 404.80 |
+| 247 | Maschinelle Grundreinigung Steinboden Abschnitt 247 | m² | 12 | 7.12 | 85.44 |
+| 248 | Teppichbodenreinigung Grund-/Unterhaltsreinigung Abschnitt 248 | m² | 39 | 13.96 | 544.44 |
+| 249 | Winterdienst Schauftrag Abschnitt 249 | Einsatz | 25 | 9.20 | 230.00 |
+| 250 | Grünflächenpflege Rasen/Gehölz Abschnitt 250 | m² | 61 | 4.12 | 251.32 |
+| 251 | Kristallisationsversiegelung Boden Abschnitt 251 | m² | 36 | 17.88 | 643.68 |
+| 252 | Unterhaltsreinigung Büro/Betriebsräume Abschnitt 252 | m² | 141 | 4.02 | 566.82 |
+| 253 | Glasreinigung Fenster/Rahmen Abschnitt 253 | Stk | 27 | 22.21 | 599.67 |
+| 254 | Treppenhausreinigung Treppen/Stiegen/Handläufe Abschnitt 254 | m | 14 | 8.87 | 124.18 |
+| 255 | Fassadenreinigung Außenfassade Abschnitt 255 | m² | 12 | 17.18 | 206.16 |
+| 256 | Bodenreinigung PVC/Steinzeug Abschnitt 256 | m² | 163 | 20.91 | 3,408.33 |
+| 257 | Sanitärreinigung WC/Waschbecken Abschnitt 257 | Stk | 12 | 9.52 | 114.24 |
+| 258 | Desinfektion Sanitärbereiche Abschnitt 258 | m² | 21 | 8.15 | 171.15 |
+| 259 | Maschinelle Grundreinigung Steinboden Abschnitt 259 | m² | 189 | 24.10 | 4,554.90 |
+| 260 | Teppichbodenreinigung Grund-/Unterhaltsreinigung Abschnitt 260 | m² | 93 | 14.57 | 1,355.01 |
+| 261 | Winterdienst Schauftrag Abschnitt 261 | Einsatz | 23 | 1.90 | 43.70 |
+| 262 | Grünflächenpflege Rasen/Gehölz Abschnitt 262 | m² | 2 | 18.15 | 36.30 |
+| 263 | Kristallisationsversiegelung Boden Abschnitt 263 | m² | 37 | 23.95 | 886.15 |
+| 264 | Unterhaltsreinigung Büro/Betriebsräume Abschnitt 264 | m² | 58 | 1.00 | 58.00 |
+| 265 | Glasreinigung Fenster/Rahmen Abschnitt 265 | Stk | 5 | 15.64 | 78.20 |
+| 266 | Treppenhausreinigung Treppen/Stiegen/Handläufe Abschnitt 266 | m | 21 | 4.16 | 87.36 |
+| 267 | Fassadenreinigung Außenfassade Abschnitt 267 | m² | 6 | 7.97 | 47.82 |
+| 268 | Bodenreinigung PVC/Steinzeug Abschnitt 268 | m² | 9 | 4.88 | 43.92 |
+| 269 | Sanitärreinigung WC/Waschbecken Abschnitt 269 | Stk | 200 | 9.98 | 1,996.00 |
+| 270 | Desinfektion Sanitärbereiche Abschnitt 270 | m² | 91 | 4.10 | 373.10 |
+| 271 | Maschinelle Grundreinigung Steinboden Abschnitt 271 | m² | 28 | 1.80 | 50.40 |
+| 272 | Teppichbodenreinigung Grund-/Unterhaltsreinigung Abschnitt 272 | m² | 22 | 11.04 | 242.88 |
+| 273 | Winterdienst Schauftrag Abschnitt 273 | Einsatz | 10 | 15.96 | 159.60 |
+| 274 | Grünflächenpflege Rasen/Gehölz Abschnitt 274 | m² | 14 | 4.15 | 58.10 |
+| 275 | Kristallisationsversiegelung Boden Abschnitt 275 | m² | 32 | 12.40 | 396.80 |
+| 276 | Unterhaltsreinigung Büro/Betriebsräume Abschnitt 276 | m² | 18 | 1.57 | 28.26 |
+| 277 | Glasreinigung Fenster/Rahmen Abschnitt 277 | Stk | 118 | 2.54 | 299.72 |
+| 278 | Treppenhausreinigung Treppen/Stiegen/Handläufe Abschnitt 278 | m | 141 | 22.35 | 3,151.35 |
+| 279 | Fassadenreinigung Außenfassade Abschnitt 279 | m² | 1 | 23.94 | 23.94 |
+| 280 | Bodenreinigung PVC/Steinzeug Abschnitt 280 | m² | 195 | 7.96 | 1,552.20 |
+| 281 | Sanitärreinigung WC/Waschbecken Abschnitt 281 | Stk | 154 | 14.53 | 2,237.62 |
+| 282 | Desinfektion Sanitärbereiche Abschnitt 282 | m² | 31 | 13.31 | 412.61 |
+| 283 | Maschinelle Grundreinigung Steinboden Abschnitt 283 | m² | 32 | 24.38 | 780.16 |
+| 284 | Teppichbodenreinigung Grund-/Unterhaltsreinigung Abschnitt 284 | m² | 12 | 8.82 | 105.84 |
+| 285 | Winterdienst Schauftrag Abschnitt 285 | Einsatz | 154 | 23.86 | 3,674.44 |
+| 286 | Grünflächenpflege Rasen/Gehölz Abschnitt 286 | m² | 35 | 8.04 | 281.40 |
+| 287 | Kristallisationsversiegelung Boden Abschnitt 287 | m² | 26 | 21.32 | 554.32 |
+| 288 | Unterhaltsreinigung Büro/Betriebsräume Abschnitt 288 | m² | 183 | 17.53 | 3,207.99 |
+| 289 | Glasreinigung Fenster/Rahmen Abschnitt 289 | Stk | 179 | 14.23 | 2,547.17 |
+| 290 | Treppenhausreinigung Treppen/Stiegen/Handläufe Abschnitt 290 | m | 31 | 14.47 | 448.57 |
+| 291 | Fassadenreinigung Außenfassade Abschnitt 291 | m² | 30 | 5.17 | 155.10 |
+| 292 | Bodenreinigung PVC/Steinzeug Abschnitt 292 | m² | 17 | 6.15 | 104.55 |
+| 293 | Sanitärreinigung WC/Waschbecken Abschnitt 293 | Stk | 21 | 13.64 | 286.44 |
+| 294 | Desinfektion Sanitärbereiche Abschnitt 294 | m² | 21 | 14.21 | 298.41 |
+| 295 | Maschinelle Grundreinigung Steinboden Abschnitt 295 | m² | 10 | 3.54 | 35.40 |
+| 296 | Teppichbodenreinigung Grund-/Unterhaltsreinigung Abschnitt 296 | m² | 37 | 21.41 | 792.17 |
+| 297 | Winterdienst Schauftrag Abschnitt 297 | Einsatz | 3 | 14.12 | 42.36 |
+| 298 | Grünflächenpflege Rasen/Gehölz Abschnitt 298 | m² | 12 | 3.27 | 39.24 |
+| 299 | Kristallisationsversiegelung Boden Abschnitt 299 | m² | 30 | 14.43 | 432.90 |
+| 300 | Unterhaltsreinigung Büro/Betriebsräume Abschnitt 300 | m² | 6 | 2.19 | 13.14 |
+| 301 | Glasreinigung Fenster/Rahmen Abschnitt 301 | Stk | 20 | 1.17 | 23.40 |
+| 302 | Treppenhausreinigung Treppen/Stiegen/Handläufe Abschnitt 302 | m | 18 | 17.92 | 322.56 |
+| 303 | Fassadenreinigung Außenfassade Abschnitt 303 | m² | 32 | 14.42 | 461.44 |
+| 304 | Bodenreinigung PVC/Steinzeug Abschnitt 304 | m² | 6 | 21.16 | 126.96 |
+| 305 | Sanitärreinigung WC/Waschbecken Abschnitt 305 | Stk | 5 | 9.83 | 49.15 |
+| 306 | Desinfektion Sanitärbereiche Abschnitt 306 | m² | 101 | 1.85 | 186.85 |
+| 307 | Maschinelle Grundreinigung Steinboden Abschnitt 307 | m² | 6 | 8.72 | 52.32 |
+| 308 | Teppichbodenreinigung Grund-/Unterhaltsreinigung Abschnitt 308 | m² | 12 | 6.96 | 83.52 |
+| 309 | Winterdienst Schauftrag Abschnitt 309 | Einsatz | 17 | 21.08 | 358.36 |
+| 310 | Grünflächenpflege Rasen/Gehölz Abschnitt 310 | m² | 39 | 3.47 | 135.33 |
+| 311 | Kristallisationsversiegelung Boden Abschnitt 311 | m² | 3 | 23.33 | 69.99 |
+| 312 | Unterhaltsreinigung Büro/Betriebsräume Abschnitt 312 | m² | 46 | 13.83 | 636.18 |
+| 313 | Glasreinigung Fenster/Rahmen Abschnitt 313 | Stk | 22 | 9.09 | 199.98 |
+| 314 | Treppenhausreinigung Treppen/Stiegen/Handläufe Abschnitt 314 | m | 134 | 21.93 | 2,938.62 |
+| 315 | Fassadenreinigung Außenfassade Abschnitt 315 | m² | 3 | 20.60 | 61.80 |
+| 316 | Bodenreinigung PVC/Steinzeug Abschnitt 316 | m² | 3 | 21.25 | 63.75 |
+| 317 | Sanitärreinigung WC/Waschbecken Abschnitt 317 | Stk | 10 | 2.64 | 26.40 |
+| 318 | Desinfektion Sanitärbereiche Abschnitt 318 | m² | 145 | 22.43 | 3,252.35 |
+| 319 | Maschinelle Grundreinigung Steinboden Abschnitt 319 | m² | 64 | 18.40 | 1,177.60 |
+| 320 | Teppichbodenreinigung Grund-/Unterhaltsreinigung Abschnitt 320 | m² | 157 | 23.49 | 3,687.93 |
+| 321 | Winterdienst Schauftrag Abschnitt 321 | Einsatz | 6 | 12.50 | 75.00 |
+| 322 | Grünflächenpflege Rasen/Gehölz Abschnitt 322 | m² | 15 | 22.01 | 330.15 |
+| 323 | Kristallisationsversiegelung Boden Abschnitt 323 | m² | 3 | 17.04 | 51.12 |
+| 324 | Unterhaltsreinigung Büro/Betriebsräume Abschnitt 324 | m² | 22 | 12.90 | 283.80 |
+| 325 | Glasreinigung Fenster/Rahmen Abschnitt 325 | Stk | 10 | 13.58 | 135.80 |
+| 326 | Treppenhausreinigung Treppen/Stiegen/Handläufe Abschnitt 326 | m | 1 | 22.64 | 22.64 |
+| 327 | Fassadenreinigung Außenfassade Abschnitt 327 | m² | 7 | 14.64 | 102.48 |
+| 328 | Bodenreinigung PVC/Steinzeug Abschnitt 328 | m² | 11 | 21.92 | 241.12 |
+| 329 | Sanitärreinigung WC/Waschbecken Abschnitt 329 | Stk | 184 | 24.10 | 4,434.40 |
+| 330 | Desinfektion Sanitärbereiche Abschnitt 330 | m² | 6 | 21.45 | 128.70 |
+| 331 | Maschinelle Grundreinigung Steinboden Abschnitt 331 | m² | 9 | 10.62 | 95.58 |
+| 332 | Teppichbodenreinigung Grund-/Unterhaltsreinigung Abschnitt 332 | m² | 6 | 8.62 | 51.72 |
+| 333 | Winterdienst Schauftrag Abschnitt 333 | Einsatz | 35 | 20.38 | 713.30 |
+| 334 | Grünflächenpflege Rasen/Gehölz Abschnitt 334 | m² | 27 | 0.98 | 26.46 |
+| 335 | Kristallisationsversiegelung Boden Abschnitt 335 | m² | 113 | 14.56 | 1,645.28 |
+| 336 | Unterhaltsreinigung Büro/Betriebsräume Abschnitt 336 | m² | 24 | 4.28 | 102.72 |
+| 337 | Glasreinigung Fenster/Rahmen Abschnitt 337 | Stk | 12 | 14.14 | 169.68 |
+| 338 | Treppenhausreinigung Treppen/Stiegen/Handläufe Abschnitt 338 | m | 4 | 23.18 | 92.72 |
+| 339 | Fassadenreinigung Außenfassade Abschnitt 339 | m² | 87 | 24.70 | 2,148.90 |
+| 340 | Bodenreinigung PVC/Steinzeug Abschnitt 340 | m² | 7 | 21.81 | 152.67 |
+| 341 | Sanitärreinigung WC/Waschbecken Abschnitt 341 | Stk | 9 | 7.48 | 67.32 |
+| 342 | Desinfektion Sanitärbereiche Abschnitt 342 | m² | 21 | 15.96 | 335.16 |
+| 343 | Maschinelle Grundreinigung Steinboden Abschnitt 343 | m² | 20 | 1.95 | 39.00 |
+| 344 | Teppichbodenreinigung Grund-/Unterhaltsreinigung Abschnitt 344 | m² | 61 | 21.71 | 1,324.31 |
+| 345 | Winterdienst Schauftrag Abschnitt 345 | Einsatz | 4 | 2.17 | 8.68 |
+| 346 | Grünflächenpflege Rasen/Gehölz Abschnitt 346 | m² | 13 | 2.58 | 33.54 |
+| 347 | Kristallisationsversiegelung Boden Abschnitt 347 | m² | 26 | 5.35 | 139.10 |
+| 348 | Unterhaltsreinigung Büro/Betriebsräume Abschnitt 348 | m² | 1 | 8.61 | 8.61 |
+| 349 | Glasreinigung Fenster/Rahmen Abschnitt 349 | Stk | 64 | 21.80 | 1,395.20 |
+| 350 | Treppenhausreinigung Treppen/Stiegen/Handläufe Abschnitt 350 | m | 176 | 15.56 | 2,738.56 |
+| 351 | Fassadenreinigung Außenfassade Abschnitt 351 | m² | 54 | 20.07 | 1,083.78 |
+| 352 | Bodenreinigung PVC/Steinzeug Abschnitt 352 | m² | 170 | 19.58 | 3,328.60 |
+| 353 | Sanitärreinigung WC/Waschbecken Abschnitt 353 | Stk | 30 | 1.42 | 42.60 |
+| 354 | Desinfektion Sanitärbereiche Abschnitt 354 | m² | 154 | 2.16 | 332.64 |
+| 355 | Maschinelle Grundreinigung Steinboden Abschnitt 355 | m² | 26 | 4.58 | 119.08 |
+| 356 | Teppichbodenreinigung Grund-/Unterhaltsreinigung Abschnitt 356 | m² | 145 | 20.50 | 2,972.50 |
+| 357 | Winterdienst Schauftrag Abschnitt 357 | Einsatz | 9 | 15.04 | 135.36 |
+| 358 | Grünflächenpflege Rasen/Gehölz Abschnitt 358 | m² | 11 | 14.71 | 161.81 |
+| 359 | Kristallisationsversiegelung Boden Abschnitt 359 | m² | 199 | 20.49 | 4,077.51 |
+| 360 | Unterhaltsreinigung Büro/Betriebsräume Abschnitt 360 | m² | 18 | 16.57 | 298.26 |
+| 361 | Glasreinigung Fenster/Rahmen Abschnitt 361 | Stk | 8 | 7.53 | 60.24 |
+| 362 | Treppenhausreinigung Treppen/Stiegen/Handläufe Abschnitt 362 | m | 38 | 6.92 | 262.96 |
+| 363 | Fassadenreinigung Außenfassade Abschnitt 363 | m² | 2 | 20.38 | 40.76 |
+| 364 | Bodenreinigung PVC/Steinzeug Abschnitt 364 | m² | 28 | 10.50 | 294.00 |
+| 365 | Sanitärreinigung WC/Waschbecken Abschnitt 365 | Stk | 10 | 3.76 | 37.60 |
+| 366 | Desinfektion Sanitärbereiche Abschnitt 366 | m² | 4 | 19.61 | 78.44 |
+| 367 | Maschinelle Grundreinigung Steinboden Abschnitt 367 | m² | 6 | 4.41 | 26.46 |
+| 368 | Teppichbodenreinigung Grund-/Unterhaltsreinigung Abschnitt 368 | m² | 3 | 1.50 | 4.50 |
+| 369 | Winterdienst Schauftrag Abschnitt 369 | Einsatz | 20 | 16.19 | 323.80 |
+| 370 | Grünflächenpflege Rasen/Gehölz Abschnitt 370 | m² | 27 | 8.64 | 233.28 |
+| 371 | Kristallisationsversiegelung Boden Abschnitt 371 | m² | 11 | 1.17 | 12.87 |
+| 372 | Unterhaltsreinigung Büro/Betriebsräume Abschnitt 372 | m² | 30 | 6.32 | 189.60 |
+| 373 | Glasreinigung Fenster/Rahmen Abschnitt 373 | Stk | 7 | 15.98 | 111.86 |
+| 374 | Treppenhausreinigung Treppen/Stiegen/Handläufe Abschnitt 374 | m | 19 | 7.15 | 135.85 |
+| 375 | Fassadenreinigung Außenfassade Abschnitt 375 | m² | 71 | 5.72 | 406.12 |
+| 376 | Bodenreinigung PVC/Steinzeug Abschnitt 376 | m² | 174 | 22.08 | 3,841.92 |
+| 377 | Sanitärreinigung WC/Waschbecken Abschnitt 377 | Stk | 36 | 12.35 | 444.60 |
+| 378 | Desinfektion Sanitärbereiche Abschnitt 378 | m² | 44 | 2.94 | 129.36 |
+| 379 | Maschinelle Grundreinigung Steinboden Abschnitt 379 | m² | 5 | 8.54 | 42.70 |
+| 380 | Teppichbodenreinigung Grund-/Unterhaltsreinigung Abschnitt 380 | m² | 33 | 22.17 | 731.61 |
+| 381 | Winterdienst Schauftrag Abschnitt 381 | Einsatz | 18 | 19.67 | 354.06 |
+| 382 | Grünflächenpflege Rasen/Gehölz Abschnitt 382 | m² | 33 | 24.87 | 820.71 |
+| 383 | Kristallisationsversiegelung Boden Abschnitt 383 | m² | 24 | 4.48 | 107.52 |
+| 384 | Unterhaltsreinigung Büro/Betriebsräume Abschnitt 384 | m² | 5 | 12.96 | 64.80 |
+| 385 | Glasreinigung Fenster/Rahmen Abschnitt 385 | Stk | 34 | 17.32 | 588.88 |
+| 386 | Treppenhausreinigung Treppen/Stiegen/Handläufe Abschnitt 386 | m | 6 | 23.03 | 138.18 |
+| 387 | Fassadenreinigung Außenfassade Abschnitt 387 | m² | 1 | 6.48 | 6.48 |
+| 388 | Bodenreinigung PVC/Steinzeug Abschnitt 388 | m² | 3 | 15.20 | 45.60 |
+| 389 | Sanitärreinigung WC/Waschbecken Abschnitt 389 | Stk | 2 | 1.28 | 2.56 |
+| 390 | Desinfektion Sanitärbereiche Abschnitt 390 | m² | 25 | 23.96 | 599.00 |
+| 391 | Maschinelle Grundreinigung Steinboden Abschnitt 391 | m² | 13 | 5.13 | 66.69 |
+| 392 | Teppichbodenreinigung Grund-/Unterhaltsreinigung Abschnitt 392 | m² | 11 | 14.00 | 154.00 |
+| 393 | Winterdienst Schauftrag Abschnitt 393 | Einsatz | 145 | 23.97 | 3,475.65 |
+| 394 | Grünflächenpflege Rasen/Gehölz Abschnitt 394 | m² | 9 | 18.50 | 166.50 |
+| 395 | Kristallisationsversiegelung Boden Abschnitt 395 | m² | 22 | 7.20 | 158.40 |
+| 396 | Unterhaltsreinigung Büro/Betriebsräume Abschnitt 396 | m² | 4 | 1.96 | 7.84 |
+| 397 | Glasreinigung Fenster/Rahmen Abschnitt 397 | Stk | 40 | 8.68 | 347.20 |
+| 398 | Treppenhausreinigung Treppen/Stiegen/Handläufe Abschnitt 398 | m | 8 | 7.63 | 61.04 |
+| 399 | Fassadenreinigung Außenfassade Abschnitt 399 | m² | 7 | 18.17 | 127.19 |
+| 400 | Bodenreinigung PVC/Steinzeug Abschnitt 400 | m² | 6 | 10.94 | 65.64 |
+| 401 | Sanitärreinigung WC/Waschbecken Abschnitt 401 | Stk | 109 | 20.25 | 2,207.25 |
+| 402 | Desinfektion Sanitärbereiche Abschnitt 402 | m² | 10 | 23.22 | 232.20 |
+| 403 | Maschinelle Grundreinigung Steinboden Abschnitt 403 | m² | 10 | 9.92 | 99.20 |
+| 404 | Teppichbodenreinigung Grund-/Unterhaltsreinigung Abschnitt 404 | m² | 20 | 2.90 | 58.00 |
+| 405 | Winterdienst Schauftrag Abschnitt 405 | Einsatz | 193 | 17.60 | 3,396.80 |
+| 406 | Grünflächenpflege Rasen/Gehölz Abschnitt 406 | m² | 185 | 14.08 | 2,604.80 |
+| 407 | Kristallisationsversiegelung Boden Abschnitt 407 | m² | 25 | 12.26 | 306.50 |
+| 408 | Unterhaltsreinigung Büro/Betriebsräume Abschnitt 408 | m² | 6 | 14.02 | 84.12 |
+| 409 | Glasreinigung Fenster/Rahmen Abschnitt 409 | Stk | 11 | 21.84 | 240.24 |
+| 410 | Treppenhausreinigung Treppen/Stiegen/Handläufe Abschnitt 410 | m | 192 | 24.42 | 4,688.64 |
+| 411 | Fassadenreinigung Außenfassade Abschnitt 411 | m² | 11 | 20.79 | 228.69 |
+| 412 | Bodenreinigung PVC/Steinzeug Abschnitt 412 | m² | 9 | 6.20 | 55.80 |
+| 413 | Sanitärreinigung WC/Waschbecken Abschnitt 413 | Stk | 8 | 9.22 | 73.76 |
+| 414 | Desinfektion Sanitärbereiche Abschnitt 414 | m² | 35 | 2.39 | 83.65 |
+| 415 | Maschinelle Grundreinigung Steinboden Abschnitt 415 | m² | 38 | 13.56 | 515.28 |
+| 416 | Teppichbodenreinigung Grund-/Unterhaltsreinigung Abschnitt 416 | m² | 28 | 4.49 | 125.72 |
+| 417 | Winterdienst Schauftrag Abschnitt 417 | Einsatz | 11 | 21.80 | 239.80 |
+| 418 | Grünflächenpflege Rasen/Gehölz Abschnitt 418 | m² | 92 | 20.94 | 1,926.48 |
+| 419 | Kristallisationsversiegelung Boden Abschnitt 419 | m² | 32 | 17.80 | 569.60 |
+| 420 | Unterhaltsreinigung Büro/Betriebsräume Abschnitt 420 | m² | 36 | 16.84 | 606.24 |
+| 421 | Glasreinigung Fenster/Rahmen Abschnitt 421 | Stk | 143 | 16.83 | 2,406.69 |
+| 422 | Treppenhausreinigung Treppen/Stiegen/Handläufe Abschnitt 422 | m | 111 | 17.62 | 1,955.82 |
+| 423 | Fassadenreinigung Außenfassade Abschnitt 423 | m² | 8 | 20.12 | 160.96 |
+| 424 | Bodenreinigung PVC/Steinzeug Abschnitt 424 | m² | 1 | 3.96 | 3.96 |
+| 425 | Sanitärreinigung WC/Waschbecken Abschnitt 425 | Stk | 36 | 15.87 | 571.32 |
+| 426 | Desinfektion Sanitärbereiche Abschnitt 426 | m² | 97 | 1.23 | 119.31 |
+| 427 | Maschinelle Grundreinigung Steinboden Abschnitt 427 | m² | 10 | 2.20 | 22.00 |
+| 428 | Teppichbodenreinigung Grund-/Unterhaltsreinigung Abschnitt 428 | m² | 12 | 7.45 | 89.40 |
+| 429 | Winterdienst Schauftrag Abschnitt 429 | Einsatz | 75 | 20.99 | 1,574.25 |
+| 430 | Grünflächenpflege Rasen/Gehölz Abschnitt 430 | m² | 144 | 21.59 | 3,108.96 |
+| 431 | Kristallisationsversiegelung Boden Abschnitt 431 | m² | 42 | 15.75 | 661.50 |
+| 432 | Unterhaltsreinigung Büro/Betriebsräume Abschnitt 432 | m² | 21 | 9.89 | 207.69 |
+| 433 | Glasreinigung Fenster/Rahmen Abschnitt 433 | Stk | 192 | 11.23 | 2,156.16 |
+| 434 | Treppenhausreinigung Treppen/Stiegen/Handläufe Abschnitt 434 | m | 100 | 21.36 | 2,136.00 |
+| 435 | Fassadenreinigung Außenfassade Abschnitt 435 | m² | 4 | 14.84 | 59.36 |
+| 436 | Bodenreinigung PVC/Steinzeug Abschnitt 436 | m² | 180 | 21.62 | 3,891.60 |
+| 437 | Sanitärreinigung WC/Waschbecken Abschnitt 437 | Stk | 124 | 13.52 | 1,676.48 |
+| 438 | Desinfektion Sanitärbereiche Abschnitt 438 | m² | 36 | 15.15 | 545.40 |
+| 439 | Maschinelle Grundreinigung Steinboden Abschnitt 439 | m² | 128 | 10.84 | 1,387.52 |
+| 440 | Teppichbodenreinigung Grund-/Unterhaltsreinigung Abschnitt 440 | m² | 55 | 10.42 | 573.10 |
+| 441 | Winterdienst Schauftrag Abschnitt 441 | Einsatz | 1 | 6.42 | 6.42 |
+| 442 | Grünflächenpflege Rasen/Gehölz Abschnitt 442 | m² | 17 | 23.20 | 394.40 |
+| 443 | Kristallisationsversiegelung Boden Abschnitt 443 | m² | 151 | 19.43 | 2,933.93 |
+| 444 | Unterhaltsreinigung Büro/Betriebsräume Abschnitt 444 | m² | 12 | 14.62 | 175.44 |
+| 445 | Glasreinigung Fenster/Rahmen Abschnitt 445 | Stk | 5 | 21.33 | 106.65 |
+| 446 | Treppenhausreinigung Treppen/Stiegen/Handläufe Abschnitt 446 | m | 18 | 20.74 | 373.32 |
+| 447 | Fassadenreinigung Außenfassade Abschnitt 447 | m² | 192 | 21.68 | 4,162.56 |
+| 448 | Bodenreinigung PVC/Steinzeug Abschnitt 448 | m² | 186 | 21.22 | 3,946.92 |
+| 449 | Sanitärreinigung WC/Waschbecken Abschnitt 449 | Stk | 1 | 4.32 | 4.32 |
+| 450 | Desinfektion Sanitärbereiche Abschnitt 450 | m² | 26 | 5.30 | 137.80 |
+| 451 | Maschinelle Grundreinigung Steinboden Abschnitt 451 | m² | 80 | 2.90 | 232.00 |
+| 452 | Teppichbodenreinigung Grund-/Unterhaltsreinigung Abschnitt 452 | m² | 75 | 14.25 | 1,068.75 |
+| 453 | Winterdienst Schauftrag Abschnitt 453 | Einsatz | 37 | 8.23 | 304.51 |
+| 454 | Grünflächenpflege Rasen/Gehölz Abschnitt 454 | m² | 7 | 7.02 | 49.14 |
+| 455 | Kristallisationsversiegelung Boden Abschnitt 455 | m² | 17 | 13.79 | 234.43 |
+| 456 | Unterhaltsreinigung Büro/Betriebsräume Abschnitt 456 | m² | 128 | 17.98 | 2,301.44 |
+| 457 | Glasreinigung Fenster/Rahmen Abschnitt 457 | Stk | 14 | 11.85 | 165.90 |
+| 458 | Treppenhausreinigung Treppen/Stiegen/Handläufe Abschnitt 458 | m | 1 | 8.41 | 8.41 |
+| 459 | Fassadenreinigung Außenfassade Abschnitt 459 | m² | 7 | 20.73 | 145.11 |
+| 460 | Bodenreinigung PVC/Steinzeug Abschnitt 460 | m² | 80 | 7.86 | 628.80 |
+| 461 | Sanitärreinigung WC/Waschbecken Abschnitt 461 | Stk | 161 | 10.63 | 1,711.43 |
+| 462 | Desinfektion Sanitärbereiche Abschnitt 462 | m² | 33 | 5.16 | 170.28 |
+| 463 | Maschinelle Grundreinigung Steinboden Abschnitt 463 | m² | 12 | 20.51 | 246.12 |
+| 464 | Teppichbodenreinigung Grund-/Unterhaltsreinigung Abschnitt 464 | m² | 1 | 14.38 | 14.38 |
+| 465 | Winterdienst Schauftrag Abschnitt 465 | Einsatz | 4 | 18.23 | 72.92 |
+| 466 | Grünflächenpflege Rasen/Gehölz Abschnitt 466 | m² | 23 | 4.33 | 99.59 |
+| 467 | Kristallisationsversiegelung Boden Abschnitt 467 | m² | 142 | 3.10 | 440.20 |
+| 468 | Unterhaltsreinigung Büro/Betriebsräume Abschnitt 468 | m² | 10 | 16.74 | 167.40 |
+| 469 | Glasreinigung Fenster/Rahmen Abschnitt 469 | Stk | 8 | 11.07 | 88.56 |
+| 470 | Treppenhausreinigung Treppen/Stiegen/Handläufe Abschnitt 470 | m | 8 | 4.68 | 37.44 |
+| 471 | Fassadenreinigung Außenfassade Abschnitt 471 | m² | 4 | 20.09 | 80.36 |
+| 472 | Bodenreinigung PVC/Steinzeug Abschnitt 472 | m² | 194 | 22.87 | 4,436.78 |
+| 473 | Sanitärreinigung WC/Waschbecken Abschnitt 473 | Stk | 25 | 23.68 | 592.00 |
+| 474 | Desinfektion Sanitärbereiche Abschnitt 474 | m² | 110 | 10.00 | 1,100.00 |
+| 475 | Maschinelle Grundreinigung Steinboden Abschnitt 475 | m² | 11 | 17.60 | 193.60 |
+| 476 | Teppichbodenreinigung Grund-/Unterhaltsreinigung Abschnitt 476 | m² | 3 | 5.25 | 15.75 |
+| 477 | Winterdienst Schauftrag Abschnitt 477 | Einsatz | 26 | 1.74 | 45.24 |
+| 478 | Grünflächenpflege Rasen/Gehölz Abschnitt 478 | m² | 27 | 24.91 | 672.57 |
+| 479 | Kristallisationsversiegelung Boden Abschnitt 479 | m² | 144 | 12.66 | 1,823.04 |
+| 480 | Unterhaltsreinigung Büro/Betriebsräume Abschnitt 480 | m² | 6 | 12.53 | 75.18 |
+| 481 | Glasreinigung Fenster/Rahmen Abschnitt 481 | Stk | 10 | 19.10 | 191.00 |
+| 482 | Treppenhausreinigung Treppen/Stiegen/Handläufe Abschnitt 482 | m | 45 | 19.38 | 872.10 |
+| 483 | Fassadenreinigung Außenfassade Abschnitt 483 | m² | 19 | 14.84 | 281.96 |
+| 484 | Bodenreinigung PVC/Steinzeug Abschnitt 484 | m² | 11 | 23.65 | 260.15 |
+| 485 | Sanitärreinigung WC/Waschbecken Abschnitt 485 | Stk | 22 | 9.28 | 204.16 |
+| 486 | Desinfektion Sanitärbereiche Abschnitt 486 | m² | 6 | 9.61 | 57.66 |
+| 487 | Maschinelle Grundreinigung Steinboden Abschnitt 487 | m² | 2 | 14.33 | 28.66 |
+| 488 | Teppichbodenreinigung Grund-/Unterhaltsreinigung Abschnitt 488 | m² | 11 | 15.21 | 167.31 |
+| 489 | Winterdienst Schauftrag Abschnitt 489 | Einsatz | 34 | 13.22 | 449.48 |
+| 490 | Grünflächenpflege Rasen/Gehölz Abschnitt 490 | m² | 11 | 3.99 | 43.89 |
+| 491 | Kristallisationsversiegelung Boden Abschnitt 491 | m² | 6 | 16.85 | 101.10 |
+| 492 | Unterhaltsreinigung Büro/Betriebsräume Abschnitt 492 | m² | 3 | 23.59 | 70.77 |
+| 493 | Glasreinigung Fenster/Rahmen Abschnitt 493 | Stk | 11 | 8.14 | 89.54 |
+| 494 | Treppenhausreinigung Treppen/Stiegen/Handläufe Abschnitt 494 | m | 21 | 3.63 | 76.23 |
+| 495 | Fassadenreinigung Außenfassade Abschnitt 495 | m² | 9 | 3.65 | 32.85 |
+| 496 | Bodenreinigung PVC/Steinzeug Abschnitt 496 | m² | 3 | 13.76 | 41.28 |
+| 497 | Sanitärreinigung WC/Waschbecken Abschnitt 497 | Stk | 37 | 7.66 | 283.42 |
+| 498 | Desinfektion Sanitärbereiche Abschnitt 498 | m² | 40 | 18.38 | 735.20 |
+| 499 | Maschinelle Grundreinigung Steinboden Abschnitt 499 | m² | 39 | 1.17 | 45.63 |
+| 500 | Teppichbodenreinigung Grund-/Unterhaltsreinigung Abschnitt 500 | m² | 12 | 5.90 | 70.80 |
+| 501 | Winterdienst Schauftrag Abschnitt 501 | Einsatz | 19 | 21.15 | 401.85 |
+| 502 | Grünflächenpflege Rasen/Gehölz Abschnitt 502 | m² | 7 | 13.34 | 93.38 |
+| 503 | Kristallisationsversiegelung Boden Abschnitt 503 | m² | 23 | 16.87 | 388.01 |
+| 504 | Unterhaltsreinigung Büro/Betriebsräume Abschnitt 504 | m² | 4 | 19.55 | 78.20 |
+| 505 | Glasreinigung Fenster/Rahmen Abschnitt 505 | Stk | 37 | 2.57 | 95.09 |
+| 506 | Treppenhausreinigung Treppen/Stiegen/Handläufe Abschnitt 506 | m | 26 | 15.76 | 409.76 |
+| 507 | Fassadenreinigung Außenfassade Abschnitt 507 | m² | 16 | 20.42 | 326.72 |
+| 508 | Bodenreinigung PVC/Steinzeug Abschnitt 508 | m² | 34 | 8.48 | 288.32 |
+| 509 | Sanitärreinigung WC/Waschbecken Abschnitt 509 | Stk | 31 | 19.88 | 616.28 |
+| 510 | Desinfektion Sanitärbereiche Abschnitt 510 | m² | 9 | 4.84 | 43.56 |
+| 511 | Maschinelle Grundreinigung Steinboden Abschnitt 511 | m² | 27 | 23.18 | 625.86 |
+| 512 | Teppichbodenreinigung Grund-/Unterhaltsreinigung Abschnitt 512 | m² | 26 | 19.96 | 518.96 |
+| 513 | Winterdienst Schauftrag Abschnitt 513 | Einsatz | 8 | 19.66 | 157.28 |
+| 514 | Grünflächenpflege Rasen/Gehölz Abschnitt 514 | m² | 9 | 5.62 | 50.58 |
+| 515 | Kristallisationsversiegelung Boden Abschnitt 515 | m² | 8 | 16.55 | 132.40 |
+| 516 | Unterhaltsreinigung Büro/Betriebsräume Abschnitt 516 | m² | 159 | 17.08 | 2,715.72 |
+| 517 | Glasreinigung Fenster/Rahmen Abschnitt 517 | Stk | 5 | 23.48 | 117.40 |
+| 518 | Treppenhausreinigung Treppen/Stiegen/Handläufe Abschnitt 518 | m | 8 | 15.09 | 120.72 |
+| 519 | Fassadenreinigung Außenfassade Abschnitt 519 | m² | 11 | 8.04 | 88.44 |
+| 520 | Bodenreinigung PVC/Steinzeug Abschnitt 520 | m² | 39 | 2.45 | 95.55 |
+| 521 | Sanitärreinigung WC/Waschbecken Abschnitt 521 | Stk | 21 | 15.02 | 315.42 |
+| 522 | Desinfektion Sanitärbereiche Abschnitt 522 | m² | 8 | 22.78 | 182.24 |
+| 523 | Maschinelle Grundreinigung Steinboden Abschnitt 523 | m² | 110 | 20.01 | 2,201.10 |
+| 524 | Teppichbodenreinigung Grund-/Unterhaltsreinigung Abschnitt 524 | m² | 26 | 6.33 | 164.58 |
+| 525 | Winterdienst Schauftrag Abschnitt 525 | Einsatz | 179 | 19.99 | 3,578.21 |
+| 526 | Grünflächenpflege Rasen/Gehölz Abschnitt 526 | m² | 8 | 1.20 | 9.60 |
+| 527 | Kristallisationsversiegelung Boden Abschnitt 527 | m² | 131 | 15.44 | 2,022.64 |
+| 528 | Unterhaltsreinigung Büro/Betriebsräume Abschnitt 528 | m² | 6 | 5.97 | 35.82 |
+| 529 | Glasreinigung Fenster/Rahmen Abschnitt 529 | Stk | 8 | 1.59 | 12.72 |
+| 530 | Treppenhausreinigung Treppen/Stiegen/Handläufe Abschnitt 530 | m | 26 | 17.77 | 462.02 |
+| 531 | Fassadenreinigung Außenfassade Abschnitt 531 | m² | 11 | 20.33 | 223.63 |
+| 532 | Bodenreinigung PVC/Steinzeug Abschnitt 532 | m² | 11 | 1.80 | 19.80 |
+| 533 | Sanitärreinigung WC/Waschbecken Abschnitt 533 | Stk | 109 | 23.98 | 2,613.82 |
+| 534 | Desinfektion Sanitärbereiche Abschnitt 534 | m² | 52 | 22.33 | 1,161.16 |
+| 535 | Maschinelle Grundreinigung Steinboden Abschnitt 535 | m² | 88 | 23.93 | 2,105.84 |
+| 536 | Teppichbodenreinigung Grund-/Unterhaltsreinigung Abschnitt 536 | m² | 37 | 10.26 | 379.62 |
+| 537 | Winterdienst Schauftrag Abschnitt 537 | Einsatz | 5 | 23.67 | 118.35 |
+| 538 | Grünflächenpflege Rasen/Gehölz Abschnitt 538 | m² | 154 | 18.63 | 2,869.02 |
+| 539 | Kristallisationsversiegelung Boden Abschnitt 539 | m² | 12 | 16.92 | 203.04 |
+| 540 | Unterhaltsreinigung Büro/Betriebsräume Abschnitt 540 | m² | 74 | 2.64 | 195.36 |
+| 541 | Glasreinigung Fenster/Rahmen Abschnitt 541 | Stk | 123 | 9.56 | 1,175.88 |
+| 542 | Treppenhausreinigung Treppen/Stiegen/Handläufe Abschnitt 542 | m | 29 | 22.75 | 659.75 |
+| 543 | Fassadenreinigung Außenfassade Abschnitt 543 | m² | 6 | 24.42 | 146.52 |
+| 544 | Bodenreinigung PVC/Steinzeug Abschnitt 544 | m² | 2 | 9.93 | 19.86 |
+| 545 | Sanitärreinigung WC/Waschbecken Abschnitt 545 | Stk | 3 | 15.49 | 46.47 |
+| 546 | Desinfektion Sanitärbereiche Abschnitt 546 | m² | 18 | 4.12 | 74.16 |
+| 547 | Maschinelle Grundreinigung Steinboden Abschnitt 547 | m² | 4 | 23.02 | 92.08 |
+| 548 | Teppichbodenreinigung Grund-/Unterhaltsreinigung Abschnitt 548 | m² | 37 | 18.89 | 698.93 |
+| 549 | Winterdienst Schauftrag Abschnitt 549 | Einsatz | 170 | 19.50 | 3,315.00 |
+| 550 | Grünflächenpflege Rasen/Gehölz Abschnitt 550 | m² | 117 | 16.50 | 1,930.50 |
+| 551 | Kristallisationsversiegelung Boden Abschnitt 551 | m² | 136 | 17.52 | 2,382.72 |
+| 552 | Unterhaltsreinigung Büro/Betriebsräume Abschnitt 552 | m² | 3 | 12.80 | 38.40 |
+| 553 | Glasreinigung Fenster/Rahmen Abschnitt 553 | Stk | 8 | 5.66 | 45.28 |
+| 554 | Treppenhausreinigung Treppen/Stiegen/Handläufe Abschnitt 554 | m | 5 | 13.40 | 67.00 |
+| 555 | Fassadenreinigung Außenfassade Abschnitt 555 | m² | 23 | 24.31 | 559.13 |
+| 556 | Bodenreinigung PVC/Steinzeug Abschnitt 556 | m² | 187 | 8.29 | 1,550.23 |
+| 557 | Sanitärreinigung WC/Waschbecken Abschnitt 557 | Stk | 60 | 23.26 | 1,395.60 |
+| 558 | Desinfektion Sanitärbereiche Abschnitt 558 | m² | 37 | 9.56 | 353.72 |
+| 559 | Maschinelle Grundreinigung Steinboden Abschnitt 559 | m² | 108 | 3.52 | 380.16 |
+| 560 | Teppichbodenreinigung Grund-/Unterhaltsreinigung Abschnitt 560 | m² | 7 | 4.67 | 32.69 |
+| 561 | Winterdienst Schauftrag Abschnitt 561 | Einsatz | 21 | 19.12 | 401.52 |
+| 562 | Grünflächenpflege Rasen/Gehölz Abschnitt 562 | m² | 9 | 10.76 | 96.84 |
+| 563 | Kristallisationsversiegelung Boden Abschnitt 563 | m² | 80 | 18.16 | 1,452.80 |
+| 564 | Unterhaltsreinigung Büro/Betriebsräume Abschnitt 564 | m² | 5 | 3.73 | 18.65 |
+| 565 | Glasreinigung Fenster/Rahmen Abschnitt 565 | Stk | 1 | 20.80 | 20.80 |
+| 566 | Treppenhausreinigung Treppen/Stiegen/Handläufe Abschnitt 566 | m | 100 | 7.23 | 723.00 |
+| 567 | Fassadenreinigung Außenfassade Abschnitt 567 | m² | 20 | 19.04 | 380.80 |
+| 568 | Bodenreinigung PVC/Steinzeug Abschnitt 568 | m² | 192 | 4.82 | 925.44 |
+| 569 | Sanitärreinigung WC/Waschbecken Abschnitt 569 | Stk | 11 | 17.55 | 193.05 |
+| 570 | Desinfektion Sanitärbereiche Abschnitt 570 | m² | 110 | 10.48 | 1,152.80 |
+| 571 | Maschinelle Grundreinigung Steinboden Abschnitt 571 | m² | 36 | 18.03 | 649.08 |
+| 572 | Teppichbodenreinigung Grund-/Unterhaltsreinigung Abschnitt 572 | m² | 12 | 10.81 | 129.72 |
+| 573 | Winterdienst Schauftrag Abschnitt 573 | Einsatz | 44 | 17.30 | 761.20 |
+| 574 | Grünflächenpflege Rasen/Gehölz Abschnitt 574 | m² | 31 | 21.42 | 664.02 |
+| 575 | Kristallisationsversiegelung Boden Abschnitt 575 | m² | 157 | 5.98 | 938.86 |
+| 576 | Unterhaltsreinigung Büro/Betriebsräume Abschnitt 576 | m² | 22 | 6.18 | 135.96 |
+| 577 | Glasreinigung Fenster/Rahmen Abschnitt 577 | Stk | 138 | 22.55 | 3,111.90 |
+| 578 | Treppenhausreinigung Treppen/Stiegen/Handläufe Abschnitt 578 | m | 3 | 17.84 | 53.52 |
+| 579 | Fassadenreinigung Außenfassade Abschnitt 579 | m² | 5 | 2.43 | 12.15 |
+| 580 | Bodenreinigung PVC/Steinzeug Abschnitt 580 | m² | 37 | 22.67 | 838.79 |
+| 581 | Sanitärreinigung WC/Waschbecken Abschnitt 581 | Stk | 6 | 14.57 | 87.42 |
+| 582 | Desinfektion Sanitärbereiche Abschnitt 582 | m² | 1 | 13.32 | 13.32 |
+| 583 | Maschinelle Grundreinigung Steinboden Abschnitt 583 | m² | 12 | 11.88 | 142.56 |
+| 584 | Teppichbodenreinigung Grund-/Unterhaltsreinigung Abschnitt 584 | m² | 5 | 2.23 | 11.15 |
+| 585 | Winterdienst Schauftrag Abschnitt 585 | Einsatz | 9 | 20.34 | 183.06 |
+| 586 | Grünflächenpflege Rasen/Gehölz Abschnitt 586 | m² | 7 | 12.51 | 87.57 |
+| 587 | Kristallisationsversiegelung Boden Abschnitt 587 | m² | 171 | 13.64 | 2,332.44 |
+| 588 | Unterhaltsreinigung Büro/Betriebsräume Abschnitt 588 | m² | 19 | 7.62 | 144.78 |
+| 589 | Glasreinigung Fenster/Rahmen Abschnitt 589 | Stk | 39 | 19.63 | 765.57 |
+| 590 | Treppenhausreinigung Treppen/Stiegen/Handläufe Abschnitt 590 | m | 139 | 9.86 | 1,370.54 |
+| 591 | Fassadenreinigung Außenfassade Abschnitt 591 | m² | 2 | 3.52 | 7.04 |
+| 592 | Bodenreinigung PVC/Steinzeug Abschnitt 592 | m² | 141 | 6.28 | 885.48 |
+| 593 | Sanitärreinigung WC/Waschbecken Abschnitt 593 | Stk | 105 | 16.72 | 1,755.60 |
+| 594 | Desinfektion Sanitärbereiche Abschnitt 594 | m² | 28 | 14.73 | 412.44 |
+| 595 | Maschinelle Grundreinigung Steinboden Abschnitt 595 | m² | 11 | 15.75 | 173.25 |
+| 596 | Teppichbodenreinigung Grund-/Unterhaltsreinigung Abschnitt 596 | m² | 17 | 3.51 | 59.67 |
+| 597 | Winterdienst Schauftrag Abschnitt 597 | Einsatz | 15 | 18.61 | 279.15 |
+| 598 | Grünflächenpflege Rasen/Gehölz Abschnitt 598 | m² | 38 | 19.92 | 756.96 |
+| 599 | Kristallisationsversiegelung Boden Abschnitt 599 | m² | 4 | 19.08 | 76.32 |
+| 600 | Unterhaltsreinigung Büro/Betriebsräume Abschnitt 600 | m² | 12 | 15.64 | 187.68 |
+| 601 | Glasreinigung Fenster/Rahmen Abschnitt 601 | Stk | 6 | 10.91 | 65.46 |
+| 602 | Treppenhausreinigung Treppen/Stiegen/Handläufe Abschnitt 602 | m | 77 | 15.99 | 1,231.23 |
+| 603 | Fassadenreinigung Außenfassade Abschnitt 603 | m² | 25 | 1.87 | 46.75 |
+| 604 | Bodenreinigung PVC/Steinzeug Abschnitt 604 | m² | 186 | 22.56 | 4,196.16 |
+| 605 | Sanitärreinigung WC/Waschbecken Abschnitt 605 | Stk | 34 | 21.57 | 733.38 |
+| 606 | Desinfektion Sanitärbereiche Abschnitt 606 | m² | 28 | 22.86 | 640.08 |
+| 607 | Maschinelle Grundreinigung Steinboden Abschnitt 607 | m² | 25 | 13.58 | 339.50 |
+| 608 | Teppichbodenreinigung Grund-/Unterhaltsreinigung Abschnitt 608 | m² | 21 | 9.36 | 196.56 |
+| 609 | Winterdienst Schauftrag Abschnitt 609 | Einsatz | 59 | 23.68 | 1,397.12 |
+| 610 | Grünflächenpflege Rasen/Gehölz Abschnitt 610 | m² | 12 | 10.10 | 121.20 |
+| 611 | Kristallisationsversiegelung Boden Abschnitt 611 | m² | 32 | 3.49 | 111.68 |
+| 612 | Unterhaltsreinigung Büro/Betriebsräume Abschnitt 612 | m² | 39 | 20.48 | 798.72 |
+| 613 | Glasreinigung Fenster/Rahmen Abschnitt 613 | Stk | 10 | 22.31 | 223.10 |
+| 614 | Treppenhausreinigung Treppen/Stiegen/Handläufe Abschnitt 614 | m | 28 | 15.91 | 445.48 |
+| 615 | Fassadenreinigung Außenfassade Abschnitt 615 | m² | 34 | 0.98 | 33.32 |
+| 616 | Bodenreinigung PVC/Steinzeug Abschnitt 616 | m² | 18 | 3.17 | 57.06 |
+| 617 | Sanitärreinigung WC/Waschbecken Abschnitt 617 | Stk | 61 | 14.64 | 893.04 |
+| 618 | Desinfektion Sanitärbereiche Abschnitt 618 | m² | 10 | 18.20 | 182.00 |
+| 619 | Maschinelle Grundreinigung Steinboden Abschnitt 619 | m² | 7 | 17.08 | 119.56 |
+| 620 | Teppichbodenreinigung Grund-/Unterhaltsreinigung Abschnitt 620 | m² | 193 | 17.55 | 3,387.15 |
+| 621 | Winterdienst Schauftrag Abschnitt 621 | Einsatz | 35 | 22.80 | 798.00 |
+| 622 | Grünflächenpflege Rasen/Gehölz Abschnitt 622 | m² | 29 | 20.16 | 584.64 |
+| 623 | Kristallisationsversiegelung Boden Abschnitt 623 | m² | 7 | 19.87 | 139.09 |
+| 624 | Unterhaltsreinigung Büro/Betriebsräume Abschnitt 624 | m² | 12 | 16.48 | 197.76 |
+| 625 | Glasreinigung Fenster/Rahmen Abschnitt 625 | Stk | 20 | 1.72 | 34.40 |
+| 626 | Treppenhausreinigung Treppen/Stiegen/Handläufe Abschnitt 626 | m | 8 | 19.56 | 156.48 |
+| 627 | Fassadenreinigung Außenfassade Abschnitt 627 | m² | 11 | 23.05 | 253.55 |
+| 628 | Bodenreinigung PVC/Steinzeug Abschnitt 628 | m² | 20 | 1.24 | 24.80 |
+| 629 | Sanitärreinigung WC/Waschbecken Abschnitt 629 | Stk | 11 | 4.27 | 46.97 |
+| 630 | Desinfektion Sanitärbereiche Abschnitt 630 | m² | 10 | 8.62 | 86.20 |
+| 631 | Maschinelle Grundreinigung Steinboden Abschnitt 631 | m² | 37 | 21.40 | 791.80 |
+| 632 | Teppichbodenreinigung Grund-/Unterhaltsreinigung Abschnitt 632 | m² | 2 | 14.39 | 28.78 |
+| 633 | Winterdienst Schauftrag Abschnitt 633 | Einsatz | 39 | 16.81 | 655.59 |
+| 634 | Grünflächenpflege Rasen/Gehölz Abschnitt 634 | m² | 7 | 0.98 | 6.86 |
+| 635 | Kristallisationsversiegelung Boden Abschnitt 635 | m² | 3 | 20.44 | 61.32 |
+| 636 | Unterhaltsreinigung Büro/Betriebsräume Abschnitt 636 | m² | 2 | 16.53 | 33.06 |
+| 637 | Glasreinigung Fenster/Rahmen Abschnitt 637 | Stk | 18 | 15.63 | 281.34 |
+| 638 | Treppenhausreinigung Treppen/Stiegen/Handläufe Abschnitt 638 | m | 149 | 17.20 | 2,562.80 |
+| 639 | Fassadenreinigung Außenfassade Abschnitt 639 | m² | 10 | 2.97 | 29.70 |
+| 640 | Bodenreinigung PVC/Steinzeug Abschnitt 640 | m² | 87 | 4.38 | 381.06 |
+| 641 | Sanitärreinigung WC/Waschbecken Abschnitt 641 | Stk | 26 | 2.61 | 67.86 |
+| 642 | Desinfektion Sanitärbereiche Abschnitt 642 | m² | 12 | 5.98 | 71.76 |
+| 643 | Maschinelle Grundreinigung Steinboden Abschnitt 643 | m² | 7 | 14.70 | 102.90 |
+| 644 | Teppichbodenreinigung Grund-/Unterhaltsreinigung Abschnitt 644 | m² | 18 | 21.06 | 379.08 |
+| 645 | Winterdienst Schauftrag Abschnitt 645 | Einsatz | 6 | 21.37 | 128.22 |
+| 646 | Grünflächenpflege Rasen/Gehölz Abschnitt 646 | m² | 3 | 23.61 | 70.83 |
+| 647 | Kristallisationsversiegelung Boden Abschnitt 647 | m² | 33 | 6.91 | 228.03 |
+| 648 | Unterhaltsreinigung Büro/Betriebsräume Abschnitt 648 | m² | 99 | 10.05 | 994.95 |
+| 649 | Glasreinigung Fenster/Rahmen Abschnitt 649 | Stk | 3 | 16.67 | 50.01 |
+| 650 | Treppenhausreinigung Treppen/Stiegen/Handläufe Abschnitt 650 | m | 169 | 20.25 | 3,422.25 |
+| 651 | Fassadenreinigung Außenfassade Abschnitt 651 | m² | 5 | 9.05 | 45.25 |
+| 652 | Bodenreinigung PVC/Steinzeug Abschnitt 652 | m² | 39 | 19.44 | 758.16 |
+| 653 | Sanitärreinigung WC/Waschbecken Abschnitt 653 | Stk | 2 | 4.70 | 9.40 |
+| 654 | Desinfektion Sanitärbereiche Abschnitt 654 | m² | 7 | 8.95 | 62.65 |
+| 655 | Maschinelle Grundreinigung Steinboden Abschnitt 655 | m² | 147 | 4.70 | 690.90 |
+| 656 | Teppichbodenreinigung Grund-/Unterhaltsreinigung Abschnitt 656 | m² | 11 | 13.83 | 152.13 |
+| 657 | Winterdienst Schauftrag Abschnitt 657 | Einsatz | 12 | 2.97 | 35.64 |
+| 658 | Grünflächenpflege Rasen/Gehölz Abschnitt 658 | m² | 18 | 18.09 | 325.62 |
+| 659 | Kristallisationsversiegelung Boden Abschnitt 659 | m² | 32 | 15.58 | 498.56 |
+| 660 | Unterhaltsreinigung Büro/Betriebsräume Abschnitt 660 | m² | 186 | 19.03 | 3,539.58 |
+| 661 | Glasreinigung Fenster/Rahmen Abschnitt 661 | Stk | 20 | 3.02 | 60.40 |
+| 662 | Treppenhausreinigung Treppen/Stiegen/Handläufe Abschnitt 662 | m | 5 | 24.14 | 120.70 |
+| 663 | Fassadenreinigung Außenfassade Abschnitt 663 | m² | 2 | 2.44 | 4.88 |
+| 664 | Bodenreinigung PVC/Steinzeug Abschnitt 664 | m² | 30 | 18.46 | 553.80 |
+| 665 | Sanitärreinigung WC/Waschbecken Abschnitt 665 | Stk | 13 | 2.60 | 33.80 |
+| 666 | Desinfektion Sanitärbereiche Abschnitt 666 | m² | 38 | 16.49 | 626.62 |
+| 667 | Maschinelle Grundreinigung Steinboden Abschnitt 667 | m² | 186 | 5.10 | 948.60 |
+| 668 | Teppichbodenreinigung Grund-/Unterhaltsreinigung Abschnitt 668 | m² | 75 | 10.70 | 802.50 |
+| 669 | Winterdienst Schauftrag Abschnitt 669 | Einsatz | 16 | 21.64 | 346.24 |
+| 670 | Grünflächenpflege Rasen/Gehölz Abschnitt 670 | m² | 34 | 1.54 | 52.36 |
+| 671 | Kristallisationsversiegelung Boden Abschnitt 671 | m² | 37 | 17.03 | 630.11 |
+| 672 | Unterhaltsreinigung Büro/Betriebsräume Abschnitt 672 | m² | 22 | 2.56 | 56.32 |
+| 673 | Glasreinigung Fenster/Rahmen Abschnitt 673 | Stk | 11 | 15.00 | 165.00 |
+| 674 | Treppenhausreinigung Treppen/Stiegen/Handläufe Abschnitt 674 | m | 21 | 12.45 | 261.45 |
+| 675 | Fassadenreinigung Außenfassade Abschnitt 675 | m² | 5 | 2.95 | 14.75 |
+| 676 | Bodenreinigung PVC/Steinzeug Abschnitt 676 | m² | 25 | 1.16 | 29.00 |
+| 677 | Sanitärreinigung WC/Waschbecken Abschnitt 677 | Stk | 6 | 18.29 | 109.74 |
+| 678 | Desinfektion Sanitärbereiche Abschnitt 678 | m² | 104 | 9.77 | 1,016.08 |
+| 679 | Maschinelle Grundreinigung Steinboden Abschnitt 679 | m² | 15 | 21.91 | 328.65 |
+| 680 | Teppichbodenreinigung Grund-/Unterhaltsreinigung Abschnitt 680 | m² | 15 | 6.22 | 93.30 |
+| 681 | Winterdienst Schauftrag Abschnitt 681 | Einsatz | 66 | 6.63 | 437.58 |
+| 682 | Grünflächenpflege Rasen/Gehölz Abschnitt 682 | m² | 35 | 3.21 | 112.35 |
+| 683 | Kristallisationsversiegelung Boden Abschnitt 683 | m² | 104 | 1.51 | 157.04 |
+| 684 | Unterhaltsreinigung Büro/Betriebsräume Abschnitt 684 | m² | 33 | 11.93 | 393.69 |
+| 685 | Glasreinigung Fenster/Rahmen Abschnitt 685 | Stk | 36 | 12.54 | 451.44 |
+| 686 | Treppenhausreinigung Treppen/Stiegen/Handläufe Abschnitt 686 | m | 69 | 2.27 | 156.63 |
+| 687 | Fassadenreinigung Außenfassade Abschnitt 687 | m² | 27 | 11.54 | 311.58 |
+| 688 | Bodenreinigung PVC/Steinzeug Abschnitt 688 | m² | 20 | 2.53 | 50.60 |
+| 689 | Sanitärreinigung WC/Waschbecken Abschnitt 689 | Stk | 19 | 14.42 | 273.98 |
+| 690 | Desinfektion Sanitärbereiche Abschnitt 690 | m² | 38 | 13.50 | 513.00 |
+| 691 | Maschinelle Grundreinigung Steinboden Abschnitt 691 | m² | 3 | 21.72 | 65.16 |
+| 692 | Teppichbodenreinigung Grund-/Unterhaltsreinigung Abschnitt 692 | m² | 35 | 7.22 | 252.70 |
+| 693 | Winterdienst Schauftrag Abschnitt 693 | Einsatz | 34 | 20.32 | 690.88 |
+| 694 | Grünflächenpflege Rasen/Gehölz Abschnitt 694 | m² | 35 | 16.84 | 589.40 |
+| 695 | Kristallisationsversiegelung Boden Abschnitt 695 | m² | 2 | 24.62 | 49.24 |
+| 696 | Unterhaltsreinigung Büro/Betriebsräume Abschnitt 696 | m² | 3 | 1.06 | 3.18 |
+| 697 | Glasreinigung Fenster/Rahmen Abschnitt 697 | Stk | 16 | 17.42 | 278.72 |
+| 698 | Treppenhausreinigung Treppen/Stiegen/Handläufe Abschnitt 698 | m | 7 | 19.50 | 136.50 |
+| 699 | Fassadenreinigung Außenfassade Abschnitt 699 | m² | 13 | 10.17 | 132.21 |
+| 700 | Bodenreinigung PVC/Steinzeug Abschnitt 700 | m² | 199 | 16.69 | 3,321.31 |
+| 701 | Sanitärreinigung WC/Waschbecken Abschnitt 701 | Stk | 16 | 15.27 | 244.32 |
+| 702 | Desinfektion Sanitärbereiche Abschnitt 702 | m² | 10 | 7.70 | 77.00 |
+| 703 | Maschinelle Grundreinigung Steinboden Abschnitt 703 | m² | 5 | 8.40 | 42.00 |
+| 704 | Teppichbodenreinigung Grund-/Unterhaltsreinigung Abschnitt 704 | m² | 17 | 17.23 | 292.91 |
+| 705 | Winterdienst Schauftrag Abschnitt 705 | Einsatz | 5 | 2.39 | 11.95 |
+| 706 | Grünflächenpflege Rasen/Gehölz Abschnitt 706 | m² | 140 | 17.08 | 2,391.20 |
+| 707 | Kristallisationsversiegelung Boden Abschnitt 707 | m² | 18 | 20.98 | 377.64 |
+| 708 | Unterhaltsreinigung Büro/Betriebsräume Abschnitt 708 | m² | 89 | 6.28 | 558.92 |
+| 709 | Glasreinigung Fenster/Rahmen Abschnitt 709 | Stk | 25 | 9.10 | 227.50 |
+| 710 | Treppenhausreinigung Treppen/Stiegen/Handläufe Abschnitt 710 | m | 6 | 6.57 | 39.42 |
+| 711 | Fassadenreinigung Außenfassade Abschnitt 711 | m² | 49 | 15.48 | 758.52 |
+| 712 | Bodenreinigung PVC/Steinzeug Abschnitt 712 | m² | 9 | 10.15 | 91.35 |
+| 713 | Sanitärreinigung WC/Waschbecken Abschnitt 713 | Stk | 21 | 7.43 | 156.03 |
+| 714 | Desinfektion Sanitärbereiche Abschnitt 714 | m² | 3 | 4.07 | 12.21 |
+| 715 | Maschinelle Grundreinigung Steinboden Abschnitt 715 | m² | 25 | 11.03 | 275.75 |
+| 716 | Teppichbodenreinigung Grund-/Unterhaltsreinigung Abschnitt 716 | m² | 159 | 6.93 | 1,101.87 |
+| 717 | Winterdienst Schauftrag Abschnitt 717 | Einsatz | 48 | 24.22 | 1,162.56 |
+| 718 | Grünflächenpflege Rasen/Gehölz Abschnitt 718 | m² | 34 | 22.94 | 779.96 |
+| 719 | Kristallisationsversiegelung Boden Abschnitt 719 | m² | 11 | 7.79 | 85.69 |
+| 720 | Unterhaltsreinigung Büro/Betriebsräume Abschnitt 720 | m² | 16 | 13.61 | 217.76 |
+| 721 | Glasreinigung Fenster/Rahmen Abschnitt 721 | Stk | 11 | 13.21 | 145.31 |
+| 722 | Treppenhausreinigung Treppen/Stiegen/Handläufe Abschnitt 722 | m | 124 | 16.73 | 2,074.52 |
+| 723 | Fassadenreinigung Außenfassade Abschnitt 723 | m² | 28 | 11.35 | 317.80 |
+| 724 | Bodenreinigung PVC/Steinzeug Abschnitt 724 | m² | 21 | 21.60 | 453.60 |
+| 725 | Sanitärreinigung WC/Waschbecken Abschnitt 725 | Stk | 174 | 9.66 | 1,680.84 |
+| 726 | Desinfektion Sanitärbereiche Abschnitt 726 | m² | 38 | 17.77 | 675.26 |
+| 727 | Maschinelle Grundreinigung Steinboden Abschnitt 727 | m² | 169 | 5.94 | 1,003.86 |
+| 728 | Teppichbodenreinigung Grund-/Unterhaltsreinigung Abschnitt 728 | m² | 12 | 9.03 | 108.36 |
+| 729 | Winterdienst Schauftrag Abschnitt 729 | Einsatz | 16 | 24.47 | 391.52 |
+| 730 | Grünflächenpflege Rasen/Gehölz Abschnitt 730 | m² | 63 | 10.51 | 662.13 |
+| 731 | Kristallisationsversiegelung Boden Abschnitt 731 | m² | 6 | 17.94 | 107.64 |
+| 732 | Unterhaltsreinigung Büro/Betriebsräume Abschnitt 732 | m² | 179 | 3.89 | 696.31 |
+| 733 | Glasreinigung Fenster/Rahmen Abschnitt 733 | Stk | 173 | 3.54 | 612.42 |
+| 734 | Treppenhausreinigung Treppen/Stiegen/Handläufe Abschnitt 734 | m | 7 | 10.98 | 76.86 |
+| 735 | Fassadenreinigung Außenfassade Abschnitt 735 | m² | 130 | 23.61 | 3,069.30 |
+| 736 | Bodenreinigung PVC/Steinzeug Abschnitt 736 | m² | 6 | 19.15 | 114.90 |
+| 737 | Sanitärreinigung WC/Waschbecken Abschnitt 737 | Stk | 8 | 1.23 | 9.84 |
+| 738 | Desinfektion Sanitärbereiche Abschnitt 738 | m² | 15 | 24.09 | 361.35 |
+| 739 | Maschinelle Grundreinigung Steinboden Abschnitt 739 | m² | 23 | 16.16 | 371.68 |
+| 740 | Teppichbodenreinigung Grund-/Unterhaltsreinigung Abschnitt 740 | m² | 5 | 6.99 | 34.95 |
+| 741 | Winterdienst Schauftrag Abschnitt 741 | Einsatz | 8 | 21.98 | 175.84 |
+| 742 | Grünflächenpflege Rasen/Gehölz Abschnitt 742 | m² | 1 | 13.74 | 13.74 |
+| 743 | Kristallisationsversiegelung Boden Abschnitt 743 | m² | 40 | 20.12 | 804.80 |
+| 744 | Unterhaltsreinigung Büro/Betriebsräume Abschnitt 744 | m² | 16 | 0.90 | 14.40 |
+| 745 | Glasreinigung Fenster/Rahmen Abschnitt 745 | Stk | 5 | 19.80 | 99.00 |
+| 746 | Treppenhausreinigung Treppen/Stiegen/Handläufe Abschnitt 746 | m | 20 | 2.80 | 56.00 |
+| 747 | Fassadenreinigung Außenfassade Abschnitt 747 | m² | 60 | 8.92 | 535.20 |
+| 748 | Bodenreinigung PVC/Steinzeug Abschnitt 748 | m² | 99 | 10.90 | 1,079.10 |
+| 749 | Sanitärreinigung WC/Waschbecken Abschnitt 749 | Stk | 35 | 23.24 | 813.40 |
+| 750 | Desinfektion Sanitärbereiche Abschnitt 750 | m² | 21 | 2.33 | 48.93 |
+| 751 | Maschinelle Grundreinigung Steinboden Abschnitt 751 | m² | 8 | 19.96 | 159.68 |
+| 752 | Teppichbodenreinigung Grund-/Unterhaltsreinigung Abschnitt 752 | m² | 97 | 4.21 | 408.37 |
+| 753 | Winterdienst Schauftrag Abschnitt 753 | Einsatz | 3 | 11.03 | 33.09 |
+| 754 | Grünflächenpflege Rasen/Gehölz Abschnitt 754 | m² | 23 | 8.34 | 191.82 |
+| 755 | Kristallisationsversiegelung Boden Abschnitt 755 | m² | 9 | 14.99 | 134.91 |
+| 756 | Unterhaltsreinigung Büro/Betriebsräume Abschnitt 756 | m² | 191 | 19.95 | 3,810.45 |
+| 757 | Glasreinigung Fenster/Rahmen Abschnitt 757 | Stk | 2 | 12.22 | 24.44 |
+| 758 | Treppenhausreinigung Treppen/Stiegen/Handläufe Abschnitt 758 | m | 32 | 23.39 | 748.48 |
+| 759 | Fassadenreinigung Außenfassade Abschnitt 759 | m² | 37 | 6.63 | 245.31 |
+| 760 | Bodenreinigung PVC/Steinzeug Abschnitt 760 | m² | 7 | 13.70 | 95.90 |
+| 761 | Sanitärreinigung WC/Waschbecken Abschnitt 761 | Stk | 4 | 1.37 | 5.48 |
+| 762 | Desinfektion Sanitärbereiche Abschnitt 762 | m² | 4 | 18.17 | 72.68 |
+| 763 | Maschinelle Grundreinigung Steinboden Abschnitt 763 | m² | 34 | 5.75 | 195.50 |
+| 764 | Teppichbodenreinigung Grund-/Unterhaltsreinigung Abschnitt 764 | m² | 24 | 4.61 | 110.64 |
+| 765 | Winterdienst Schauftrag Abschnitt 765 | Einsatz | 6 | 18.13 | 108.78 |
+| 766 | Grünflächenpflege Rasen/Gehölz Abschnitt 766 | m² | 6 | 18.25 | 109.50 |
+| 767 | Kristallisationsversiegelung Boden Abschnitt 767 | m² | 8 | 7.90 | 63.20 |
+| 768 | Unterhaltsreinigung Büro/Betriebsräume Abschnitt 768 | m² | 25 | 5.04 | 126.00 |
+| 769 | Glasreinigung Fenster/Rahmen Abschnitt 769 | Stk | 20 | 8.56 | 171.20 |
+| 770 | Treppenhausreinigung Treppen/Stiegen/Handläufe Abschnitt 770 | m | 193 | 17.40 | 3,358.20 |
+| 771 | Fassadenreinigung Außenfassade Abschnitt 771 | m² | 35 | 3.37 | 117.95 |
+| 772 | Bodenreinigung PVC/Steinzeug Abschnitt 772 | m² | 169 | 12.50 | 2,112.50 |
+| 773 | Sanitärreinigung WC/Waschbecken Abschnitt 773 | Stk | 21 | 11.68 | 245.28 |
+| 774 | Desinfektion Sanitärbereiche Abschnitt 774 | m² | 7 | 9.79 | 68.53 |
+| 775 | Maschinelle Grundreinigung Steinboden Abschnitt 775 | m² | 6 | 2.04 | 12.24 |
+| 776 | Teppichbodenreinigung Grund-/Unterhaltsreinigung Abschnitt 776 | m² | 32 | 4.02 | 128.64 |
+| 777 | Winterdienst Schauftrag Abschnitt 777 | Einsatz | 43 | 17.35 | 746.05 |
+| 778 | Grünflächenpflege Rasen/Gehölz Abschnitt 778 | m² | 7 | 21.43 | 150.01 |
+| 779 | Kristallisationsversiegelung Boden Abschnitt 779 | m² | 26 | 4.30 | 111.80 |
+| 780 | Unterhaltsreinigung Büro/Betriebsräume Abschnitt 780 | m² | 11 | 1.57 | 17.27 |
+| 781 | Glasreinigung Fenster/Rahmen Abschnitt 781 | Stk | 2 | 2.51 | 5.02 |
+| 782 | Treppenhausreinigung Treppen/Stiegen/Handläufe Abschnitt 782 | m | 146 | 4.89 | 713.94 |
+| 783 | Fassadenreinigung Außenfassade Abschnitt 783 | m² | 7 | 8.98 | 62.86 |
+| 784 | Bodenreinigung PVC/Steinzeug Abschnitt 784 | m² | 8 | 3.63 | 29.04 |
+| 785 | Sanitärreinigung WC/Waschbecken Abschnitt 785 | Stk | 199 | 12.24 | 2,435.76 |
+| 786 | Desinfektion Sanitärbereiche Abschnitt 786 | m² | 164 | 10.32 | 1,692.48 |
+| 787 | Maschinelle Grundreinigung Steinboden Abschnitt 787 | m² | 3 | 5.49 | 16.47 |
+| 788 | Teppichbodenreinigung Grund-/Unterhaltsreinigung Abschnitt 788 | m² | 37 | 20.21 | 747.77 |
+| 789 | Winterdienst Schauftrag Abschnitt 789 | Einsatz | 75 | 20.50 | 1,537.50 |
+| 790 | Grünflächenpflege Rasen/Gehölz Abschnitt 790 | m² | 167 | 4.98 | 831.66 |
+| 791 | Kristallisationsversiegelung Boden Abschnitt 791 | m² | 4 | 10.93 | 43.72 |
+| 792 | Unterhaltsreinigung Büro/Betriebsräume Abschnitt 792 | m² | 69 | 1.05 | 72.45 |
+| 793 | Glasreinigung Fenster/Rahmen Abschnitt 793 | Stk | 21 | 23.84 | 500.64 |
+| 794 | Treppenhausreinigung Treppen/Stiegen/Handläufe Abschnitt 794 | m | 68 | 23.78 | 1,617.04 |
+| 795 | Fassadenreinigung Außenfassade Abschnitt 795 | m² | 105 | 10.34 | 1,085.70 |
+| 796 | Bodenreinigung PVC/Steinzeug Abschnitt 796 | m² | 23 | 22.81 | 524.63 |
+| 797 | Sanitärreinigung WC/Waschbecken Abschnitt 797 | Stk | 31 | 20.57 | 637.67 |
+| 798 | Desinfektion Sanitärbereiche Abschnitt 798 | m² | 8 | 20.47 | 163.76 |
+| 799 | Maschinelle Grundreinigung Steinboden Abschnitt 799 | m² | 139 | 10.01 | 1,391.39 |
+| 800 | Teppichbodenreinigung Grund-/Unterhaltsreinigung Abschnitt 800 | m² | 4 | 18.06 | 72.24 |
+| | | | | **Gesamtbetrag netto** | **483,137.72** |
