@@ -15,6 +15,7 @@ Config (args or env):
   --long-tokens  N       gen tokens for the long run    (default 1024)
   --runs N               long-run repetition             (default 3)
   --skip-long            only the quick run
+  --contexts SIZES       context-scaling: comma-separated sizes (e.g. 16k,32k,1000k,4000k,8000k)
 
 Reasoning-model note: thinking models spend the output-token budget on
 reasoning before the visible answer, so a SMALL max_tokens starves the answer
@@ -177,6 +178,75 @@ def long_tps(base: str, auth: str, model: str, reasoning: dict, gen_tokens: int,
         return None
 
 
+def parse_ctx(s: str) -> int:
+    s = s.strip().lower().replace("_", "")
+    mult = 1
+    if s.endswith("k"):
+        mult, s = 1_000, s[:-1]
+    elif s.endswith("m"):
+        mult, s = 1_000_000, s[:-1]
+    return int(round(float(s) * mult))
+
+
+def build_filler(n_tokens: int) -> str:
+    words = ("lorem ipsum dolor sit amet consectetur adipiscing elit sed do "
+             "eiusmod tempor incididunt ut labore et dolore magna aliqua").split()
+    target_words = max(1, int(n_tokens / 1.3))  # ~1.3 tokens/word heuristic
+    return " ".join(words[i % len(words)] for i in range(target_words))
+
+
+def ctx_scaling(base: str, auth: str, model: str, reasoning: dict, contexts: list[str]) -> None:
+    # Measure tok/s at increasing prefilled-context sizes.
+    # The proxy buffers full completions into one chunk, so streaming can't give
+    # incremental decode timing. Instead we use the SAME non-streaming path twice
+    # per size and subtract, which cancels prefill variance between the calls:
+    #   prefill call (max_tokens=8):  total ~= prefill time (8 tokens negligible)
+    #   gen call      (max_tokens=512): total  = prefill + decode(512)
+    #   decode_time = gen_total - prefill_total ; usage gives real token counts.
+    print(f"\n{mark('info')} CONTEXT SCALING — tok/s vs prefilled context (gen=512 tok)")
+    H = {"Content-Type": "application/json"}
+    if auth:
+        H["Authorization"] = f"Bearer {auth}"
+
+    def _prompt(n: int) -> str:
+        return (f"[context ~{n} tokens]\n{build_filler(n)}\n\nNow write a thorough, detailed "
+                f"explanation of how transformer attention works, with a concrete example. Be complete.")
+
+    def _post(n: int, max_tokens: int) -> tuple[float | None, int, str]:
+        body = {"model": model, "messages": [{"role": "user", "content": _prompt(n)}],
+                "max_tokens": max_tokens}
+        body.update(reasoning)
+        try:
+            with client(timeout=1800.0) as c:
+                t0 = time.perf_counter()
+                r = c.post(f"{base}/chat/completions", headers=H, json=body)
+                dt = time.perf_counter() - t0
+                r.raise_for_status()
+                u = r.json().get("usage", {}) or {}
+                tok = int(u.get("completion_tokens", max_tokens) or max_tokens)
+                ptok = int(u.get("prompt_tokens", n) or n)
+                return dt, tok, ptok, ""
+        except httpx.HTTPStatusError as e:
+            return None, max_tokens, 0, f"HTTP {e.response.status_code}"
+        except Exception as e:  # noqa: BLE001
+            return None, max_tokens, 0, f"{type(e).__name__}: {str(e)[:120]}"
+
+    for ctx in contexts:
+        n = parse_ctx(ctx)
+        pdt, _, ptok, e1 = _post(n, 8)
+        gdt, ctok, _, e2 = _post(n, 512)
+        if pdt is None or gdt is None:
+            err = e1 or e2
+            hint = " (exceeds context window)" if any(k in err for k in ("400", "413")) else ""
+            print(f"  {mark('fail')} ctx={ctx}: {err}{hint}")
+            continue
+        decode_time = max(gdt - pdt, 1e-6)
+        prefill_tps = ptok / pdt if pdt > 0 else 0.0
+        decode_tps = ctok / decode_time
+        print(f"  {mark('pass')} ctx={n:>9} tok  prefill={prefill_tps:.0f} tok/s (TTFT {pdt:.1f}s)  "
+              f"decode={decode_tps:.0f} tok/s")
+
+
 def main() -> None:
     ap = argparse.ArgumentParser(description="Probe + tok/s for any OpenAI-compatible endpoint")
     ap.add_argument("--base-url", default=os.getenv("BASEURL", "https://localhost:8123/v1"))
@@ -188,6 +258,8 @@ def main() -> None:
     ap.add_argument("--long-tokens", type=int, default=int(os.getenv("LONG_TOKENS", "1024")))
     ap.add_argument("--runs", type=int, default=int(os.getenv("RUNS", "3")))
     ap.add_argument("--skip-long", action="store_true")
+    ap.add_argument("--contexts", default=os.getenv("CONTEXTS", ""),
+                   help="comma-separated context sizes to scale over, e.g. 16k,32k,1000k,4000k,8000k")
     args = ap.parse_args()
 
     # Reasoning models need room: a small max_tokens starves the visible answer.
@@ -206,6 +278,10 @@ def main() -> None:
     quick_tps(args.base_url, args.bearer, args.model, reasoning, args.quick_tokens)
     if not args.skip_long:
         long_tps(args.base_url, args.bearer, args.model, reasoning, args.long_tokens, args.runs)
+    if args.contexts:
+        ctx_list = [c.strip() for c in args.contexts.split(",") if c.strip()]
+        if ctx_list:
+            ctx_scaling(args.base_url, args.bearer, args.model, reasoning, ctx_list)
 
     print(f"\nDone. (slow? increase --long-tokens for reasoning models, or set --reasoning none)")
 

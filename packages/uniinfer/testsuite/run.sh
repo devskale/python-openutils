@@ -93,7 +93,7 @@ bench() {
   fi
   uv run python testsuite/bench_openai.py \
     --base-url "$BASEURL" ${BEARER:+--bearer "$BEARER"} ${MODEL:+--model "$MODEL"} \
-    ${REASONING:+--reasoning "$REASONING"} ${BENCH_ARGS:-} || fail=1
+    ${REASONING:+--reasoning "$REASONING"} ${CONTEXTS:+--contexts "$CONTEXTS"} $BENCH_ARGS || fail=1
 }
 
 case "$TIER" in
