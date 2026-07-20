@@ -105,6 +105,7 @@ class ResolvedConfig:
     max_tokens: int = 4096
     retry: RetryPolicy = field(default_factory=RetryPolicy)
     dsgvo_required: bool = False
+    request_kwargs: dict = field(default_factory=dict)  # e.g. chat_template_kwargs
 
     @property
     def chain(self) -> list[ModelRef]:
@@ -269,6 +270,7 @@ def resolve_model(
     dsgvo_required = False
 
     # ── layer 1: package defaults (engineering tuning) ──
+    task_kwargs: dict = {}
     pkg_cfg = packages.get(package or "", {})
     if pkg_cfg:
         primary_spec = pkg_cfg.get("model", primary_spec)
@@ -282,6 +284,7 @@ def resolve_model(
             primary_spec = task_cfg.get("model", primary_spec)
             temperature = float(task_cfg.get("temperature", temperature))
             max_tokens = int(task_cfg.get("max_tokens", max_tokens))
+            task_kwargs = task_cfg.get("request_kwargs", {})
 
     # ── layer 2: client overrides (business choice, from clients.yml) ──
     client_id = client or os.environ.get("KONTEXT_CLIENT", "").strip() or "default"
@@ -316,6 +319,7 @@ def resolve_model(
         max_tokens=max_tokens,
         retry=retry,
         dsgvo_required=dsgvo_required,
+        request_kwargs=task_kwargs,
     )
 
 
