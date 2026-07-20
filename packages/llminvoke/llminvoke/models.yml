@@ -128,3 +128,20 @@ packages:
   md2blank:
     temperature: 0.7
     max_tokens: 4096
+  agentos:
+    temperature: 0.7
+    max_tokens: 10000
+    tasks:
+      # nothink steps — fast classification/routing/extraction (thinking wastes latency)
+      stepRoute: {request_kwargs: {chat_template_kwargs: {enable_thinking: false}}}
+      stepPasRoute: {request_kwargs: {chat_template_kwargs: {enable_thinking: false}}}
+      stepNeedsContext: {request_kwargs: {chat_template_kwargs: {enable_thinking: false}}}
+      stepRetrieve: {request_kwargs: {chat_template_kwargs: {enable_thinking: false}}}
+      precheck: {request_kwargs: {chat_template_kwargs: {enable_thinking: false}}}
+      stepDateExtract: {request_kwargs: {chat_template_kwargs: {enable_thinking: false}}}
+      stepLoopFactsheet: {request_kwargs: {chat_template_kwargs: {enable_thinking: false}}}
+      # thinking-enabled steps (deep analysis) — model default is thinking on,
+      # so no explicit request_kwargs needed; listed for documentation
+      stepAssess: {}
+      stepSynthesis: {}
+      stepFirmenstruktur: {}

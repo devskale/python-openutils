@@ -59,7 +59,7 @@ __all__ = [
     "is_dsgvo_provider",
     "classify_error",
     "emit_alarm",
-    "read_model_config",
+    "call_llm_with_usage",
 ]
 
 
@@ -183,8 +183,9 @@ def _try_model(
     *,
     package: str | None,
     client: str | None,
-) -> str | None:
-    """Try one model with retry/backoff. Returns text on success, None on failure.
+) -> tuple[str | None, object | None]:
+    """Try one model with retry/backoff. Returns (text, response) on success,
+    (None, None) on failure.
 
     - fail_fast: one shot, no retry.
     - transient errors (429/timeout/network): retry with backoff (honors Retry-After).
@@ -192,6 +193,7 @@ def _try_model(
     - empty response: treated as a failure (Q8) — retried, then walks to backup.
     """
     attempts = 1 if fail_fast else cfg.retry.attempts
+    merged_kwargs = {**cfg.request_kwargs, **request_kwargs}
     err: BaseException = RuntimeError("not attempted")
     for attempt in range(attempts):
         try:
@@ -201,11 +203,11 @@ def _try_model(
                 messages=msgs,
                 temperature=cfg.temperature,
                 max_tokens=cfg.max_tokens,
-                **request_kwargs,
+                **merged_kwargs,
             )
             text = extract_response_text(response)
             if text:
-                return text
+                return text, response
             err = RuntimeError("empty_response")  # empty = failure (Q8)
         except Exception as exc:
             err = exc
@@ -223,7 +225,7 @@ def _try_model(
         classify_error(err), str(err),
         package=package, client=client,
     )
-    return None
+    return None, None
 
 
 def call_llm(
@@ -274,10 +276,60 @@ def call_llm(
     cli = client or os.environ.get("KONTEXT_CLIENT", "").strip() or None
 
     for ref in cfg.chain:
-        text = _try_model(ref, cfg, msgs, fail_fast, request_kwargs, package=pkg, client=cli)
+        text, _response = _try_model(ref, cfg, msgs, fail_fast, request_kwargs, package=pkg, client=cli)
         if text is not None:
             return text
     return ""  # entire chain exhausted
+
+
+def _extract_usage(response: object) -> dict | None:
+    """Best-effort usage extraction from a raw response."""
+    if response is None:
+        return None
+    usage = getattr(response, "usage", None)
+    if isinstance(usage, dict):
+        return usage
+    return None
+
+
+def call_llm_with_usage(
+    prompt: str | None = None,
+    *,
+    config: ResolvedConfig | None = None,
+    package: str | None = None,
+    client: str | None = None,
+    task: str | None = None,
+    model: str | None = None,
+    provider: str | None = None,
+    messages: list[ChatMessage] | None = None,
+    system_prompt: str | None = None,
+    temperature: float | None = None,
+    max_tokens: int | None = None,
+    max_attempts: int | None = None,
+    fail_fast: bool = False,
+    env_prefix: str | None = None,
+    **request_kwargs,
+) -> tuple[str, dict | None]:
+    """Same as call_llm but also returns a usage dict (prompt/completion/total tokens).
+
+    Usage is extracted from the raw response on success; ``None`` if unavailable.
+    Same retry/backoff/backup chain as ``call_llm``.
+    """
+    cfg = _resolve_call_config(
+        config=config, package=package, client=client, task=task,
+        model=model, provider=provider,
+        temperature=temperature, max_tokens=max_tokens,
+        max_attempts=max_attempts, env_prefix=env_prefix,
+    )
+    msgs = _build_messages(prompt, messages, system_prompt)
+    pkg = package or _package_from_env()
+    cli = client or os.environ.get("KONTEXT_CLIENT", "").strip() or None
+
+    for ref in cfg.chain:
+        text, response = _try_model(ref, cfg, msgs, fail_fast, request_kwargs, package=pkg, client=cli)
+        if text is not None:
+            return text, _extract_usage(response)
+    return "", None
 
 
 # ════════════════════════════════════════════════════════════════════════
