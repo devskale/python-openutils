@@ -451,10 +451,23 @@ class TUProvider(ChatProvider):
                             message=message,
                             provider=self._CREDGOO_SERVICE,
                             model=data.get("model", request.model),
-                            usage={},
+                            usage=data.get("usage") or {},
                             raw_response=data,
                             finish_reason=finish_reason,
                             thinking=reasoning_content  # Separate thinking content
+                        )
+                    elif data.get("usage"):
+                        # Terminal usage-only chunk (choices:[]). vLLM emits this
+                        # when stream_options.include_usage is set; forward it so
+                        # the proxy can emit usage to clients.
+                        yield ChatCompletionResponse(
+                            message=ChatMessage(role="assistant", content=None),
+                            provider=self._CREDGOO_SERVICE,
+                            model=data.get("model", request.model),
+                            usage=data["usage"],
+                            raw_response=data,
+                            finish_reason=None,
+                            thinking=None,
                         )
                 except json.JSONDecodeError:
                     continue

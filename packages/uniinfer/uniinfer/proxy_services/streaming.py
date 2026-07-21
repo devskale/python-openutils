@@ -56,6 +56,8 @@ def format_chunk_to_openai(response, provider_model: str) -> dict[str, Any]:
     if getattr(response, "finish_reason", None):
         choice_data["finish_reason"] = response.finish_reason
     chunk_data["choices"] = [choice_data]
+    if getattr(response, "usage", None):
+        chunk_data["usage"] = response.usage
     return chunk_data
 
 
@@ -131,7 +133,10 @@ async def astream_response_generator(
                 )
                 # Capture usage if the backend emits it (often on the final chunk).
                 _raw = getattr(raw_chunk, "raw_response", None)
-                if isinstance(_raw, dict) and isinstance(_raw.get("usage"), dict):
+                _chunk_usage = getattr(raw_chunk, "usage", None)
+                if isinstance(_chunk_usage, dict) and _chunk_usage:
+                    _stats_usage = _chunk_usage
+                elif isinstance(_raw, dict) and isinstance(_raw.get("usage"), dict):
                     _stats_usage = _raw["usage"]
                 # Target yields raw ChatCompletionResponse; convert to the
                 # OpenAI-dict shape the chunk-shaping logic below consumes.
@@ -412,6 +417,24 @@ async def astream_response_generator(
                 ],
             )
             yield f"data: {final_chunk_data.model_dump_json(exclude_none=True)}\n\n"
+
+            # OpenAI streaming contract: when the client requested
+            # stream_options.include_usage, emit a terminal chunk with empty
+            # choices and the accumulated usage, immediately before [DONE].
+            # Without this, streaming consumers (pi, etc.) never see token counts
+            # and cannot track context-window fill / cost.
+            if _stats_usage:
+                _stream_opts = (extra or {}).get("stream_options") or {}
+                if _stream_opts.get("include_usage"):
+                    usage_chunk = {
+                        "id": completion_id,
+                        "object": "chat.completion.chunk",
+                        "created": created_time,
+                        "model": model_name,
+                        "choices": [],
+                        "usage": _stats_usage,
+                    }
+                    yield f"data: {json.dumps(usage_chunk)}\n\n"
 
     except (UniInferError, ValueError) as e:
         _stats_status = int(getattr(e, "status_code", 500) or 500)

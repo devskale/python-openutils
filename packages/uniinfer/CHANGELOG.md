@@ -4,6 +4,22 @@ All notable changes to **uniinfer** are documented in this file.
 Versions follow [Semantic Versioning](https://semver.org/); this file
 adheres to [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.6.13] - 2026-07-21
+
+### Fixed
+
+- **Streaming usage never emitted** — the proxy's streaming `/v1/chat/completions`
+  now honors `stream_options.include_usage` and emits a terminal `choices:[]` +
+  `usage` chunk before `[DONE]`. Fixes context-% display and token stats
+  (`↑↓RW`, `CH`, `$`) for streaming consumers (pi, OpenAI-compatible clients).
+  Three-layer fix:
+  - `TUProvider.astream_complete`: forward upstream `usage` instead of hardcoding `{}`;
+    forward the terminal `choices:[]` usage chunk instead of skipping it.
+  - `OpenAICompatibleChatProvider.astream_complete`: forward the terminal
+    `choices:[]` usage chunk (was skipped by the `if not choices: continue` gate).
+  - Proxy `streaming.py`: attach `usage` to chunks via `format_chunk_to_openai`;
+    emit the terminal usage chunk when `include_usage` was requested.
+
 ## [0.6.12] - 2026-07-21
 
 ### Fixed

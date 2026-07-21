@@ -238,6 +238,19 @@ class OpenAICompatibleChatProvider(ChatProvider):
 
                     choices = data.get("choices", [])
                     if not choices:
+                        # Terminal usage-only chunk (choices:[]). vLLM emits this
+                        # when stream_options.include_usage is set; forward it so
+                        # the proxy can emit usage to clients.
+                        if data.get("usage"):
+                            yield ChatCompletionResponse(
+                                message=ChatMessage(role="assistant", content=None),
+                                provider=self.PROVIDER_ID,
+                                model=data.get("model", request.model),
+                                usage=data["usage"],
+                                raw_response=data,
+                                finish_reason=None,
+                                thinking=None,
+                            )
                         continue
 
                     choice = choices[0]

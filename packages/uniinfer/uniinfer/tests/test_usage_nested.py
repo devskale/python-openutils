@@ -83,3 +83,99 @@ def test_router_nonstream_nested_usage_returns_200():
     usage = resp.json()["usage"]
     assert usage["prompt_tokens"] == 5
     assert usage["prompt_tokens_details"]["cached_tokens"] == 0
+
+
+async def _fake_stream_with_usage(*args, **kwargs):
+    """Mimic a provider that yields content chunks then a terminal usage chunk.
+
+    Matches the vLLM/OpenAI streaming shape: usage arrives in a final chunk
+    with choices:[] (or carried on the finish_reason chunk).
+    """
+    from uniinfer.core import ChatCompletionResponse, ChatMessage
+
+    # Content chunk (no usage yet)
+    yield ChatCompletionResponse(
+        message=ChatMessage(role="assistant", content="OK"),
+        provider="tu",
+        model="tu@glm-test",
+        usage={},
+        raw_response={},
+        finish_reason=None,
+        thinking=None,
+    )
+    # Terminal usage-only chunk (choices:[] upstream)
+    yield ChatCompletionResponse(
+        message=ChatMessage(role="assistant", content=None),
+        provider="tu",
+        model="tu@glm-test",
+        usage={"prompt_tokens": 9, "completion_tokens": 2, "total_tokens": 11},
+        raw_response={"usage": {"prompt_tokens": 9, "completion_tokens": 2, "total_tokens": 11}},
+        finish_reason=None,
+        thinking=None,
+    )
+
+
+def test_router_stream_emits_terminal_usage_chunk():
+    """Streaming must emit a terminal choices:[]+usage chunk when the client
+    requested stream_options.include_usage and the backend supplied usage.
+
+    Regression for the bug where streaming /v1/chat/completions never emitted
+    usage, breaking context-% and token stats for streaming consumers.
+    """
+    from fastapi.testclient import TestClient
+
+    from uniinfer.proxy_app import app
+
+    mock_target = MagicMock()
+    mock_target.provider_model = "tu@glm-test"
+    mock_target.astream_complete = _fake_stream_with_usage
+
+    with patch("uniinfer.proxy_routers.chat.verify_provider_access", return_value="k"), \
+         patch("uniinfer.proxy_routers.chat.Target", return_value=mock_target):
+        client = TestClient(app)
+        resp = client.post(
+            "/v1/chat/completions",
+            json={
+                "model": "tu@glm-test",
+                "messages": [{"role": "user", "content": "Reply with exactly: OK"}],
+                "max_tokens": 16,
+                "stream": True,
+                "stream_options": {"include_usage": True},
+            },
+        )
+
+    assert resp.status_code == 200, resp.text
+    body = resp.text
+    # A terminal usage chunk with choices:[] must be present.
+    assert '"choices":[]' in body.replace(" ", ""), "no empty-choices usage chunk emitted"
+    # And the usage values must be carried.
+    assert '"prompt_tokens":9' in body.replace(" ", "")
+    assert '"total_tokens":11' in body.replace(" ", "")
+
+
+def test_router_stream_omits_usage_when_not_requested():
+    """When include_usage is not requested, no terminal usage chunk is emitted."""
+    from fastapi.testclient import TestClient
+
+    from uniinfer.proxy_app import app
+
+    mock_target = MagicMock()
+    mock_target.provider_model = "tu@glm-test"
+    mock_target.astream_complete = _fake_stream_with_usage
+
+    with patch("uniinfer.proxy_routers.chat.verify_provider_access", return_value="k"), \
+         patch("uniinfer.proxy_routers.chat.Target", return_value=mock_target):
+        client = TestClient(app)
+        resp = client.post(
+            "/v1/chat/completions",
+            json={
+                "model": "tu@glm-test",
+                "messages": [{"role": "user", "content": "hi"}],
+                "max_tokens": 16,
+                "stream": True,
+            },
+        )
+
+    assert resp.status_code == 200, resp.text
+    body = resp.text.replace(" ", "")
+    assert '"choices":[]' not in body, "usage chunk emitted without include_usage"
