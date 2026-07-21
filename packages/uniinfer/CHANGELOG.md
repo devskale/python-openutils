@@ -4,6 +4,16 @@ All notable changes to **uniinfer** are documented in this file.
 Versions follow [Semantic Versioning](https://semver.org/); this file
 adheres to [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.6.19] - 2026-07-22
+
+### Changed
+
+- **testsuite/bench_realworld.py**: streaming tok/s is now measured from real
+  server-reported completion_tokens (the streaming-usage fix 0.6.17 routes
+  the terminal usage chunk through). The ÷3.5 token-count heuristic is now a
+  fallback only — for providers that emit no usage chunk at all. Updated the
+  inline comment + docstring to reflect this.
+
 ## [0.6.18] - 2026-07-21
 
 ### Added

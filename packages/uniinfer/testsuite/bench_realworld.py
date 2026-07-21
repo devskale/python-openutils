@@ -31,7 +31,10 @@ Beispiel:
 
 Known limitation — Tokenizer / think-Spalte:
   - in_tok/out_tok kommen aus der API (usage.prompt_tokens / completion_tokens)
-    => serverseitig exakt, kein lokaler Tokenizer noetig.
+    => serverseitig exakt, kein lokaler Tokenizer noetig. Auch im Stream-Modus
+    seit dem proxy streaming-usage fix (0.6.17): der terminal usage-chunk wird
+    durchgereicht, sodass ct echt ist (nur noch Fallback auf ÷3.5-Schaetzung,
+    wenn ein Provider gar keinen usage-chunk emittet).
   - Die think-Spalte zaehlt reasoning_content (vom Server geliefert, aber nicht in
     usage aufgespalten: completion_tokens_details ist null). Da weder tiktoken
     (OpenAI-only Vokabular, falsch fuer Qwen) noch transformers (korrekt, aber
@@ -224,7 +227,9 @@ def _call_stream(base: str, auth: str, model: str, reasoning: dict, doc_text: st
     ttft = round(first - t0, 2) if first else None
     content = "".join(content_parts).strip()
     reasoning = "".join(reasoning_parts).strip()
-    # Proxy ignoriert oft stream_options.include_usage -> ct schaetzen (÷3.5 Heuristik)
+    # ct/prompt_tokens kommen jetzt i.d.R. echt aus dem terminalen usage-chunk
+    # (proxy fix 0.6.17 gibt stream_options.include_usage durch). Die ÷3.5-Heuristik
+    # ist nur noch Fallback fuer Provider, die keinen usage-chunk emitten.
     if ct is None and (content or reasoning):
         ct = round((len(content) + len(reasoning)) / 3.5)
     return content, reasoning, round(dt, 2), pt, ct, finish, 200, None, ttft
