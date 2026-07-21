@@ -67,6 +67,28 @@ class ZAIBaseProvider(ChatProvider):
     DEFAULT_MODEL = "glm-4.7"
     CREDGOO_SERVICE = "zai"
 
+    # Models that work but are NOT returned by the live /models endpoint.
+    # z.ai exposes free "flash" reasoning models that are usable without balance
+    # (unlike the 8 paid models the API lists); they are hidden from the catalog
+    # and must be added manually so they surface in list_models / models.json.
+    # Verified working 2026-07-21 (text-only; reject image input, code 1210).
+    _HIDDEN_MODELS: list[dict] = [
+        {
+            "id": "glm-4.5-flash",
+            "name": "GLM-4.5-Flash",
+            "context_window": 131072,
+            "cost": {"input": 0.0, "output": 0.0},
+            "capabilities": {"reasoning": True, "tool_call": True},
+        },
+        {
+            "id": "glm-4.7-flash",
+            "name": "GLM-4.7-Flash",
+            "context_window": 200000,
+            "cost": {"input": 0.0, "output": 0.0},
+            "capabilities": {"reasoning": True, "tool_call": True},
+        },
+    ]
+
     def __init__(self, api_key: Optional[str] = None, base_url: Optional[str] = None, **kwargs):
         if not api_key:
             try:
@@ -105,7 +127,24 @@ class ZAIBaseProvider(ChatProvider):
                 model_id = _safe_get(model, "id")
                 if model_id:
                     api_models.append(model_id)
-            return [ModelInfo(id=mid, owned_by="z-ai") for mid in list(dict.fromkeys(api_models))]
+            seen = set(api_models)
+            out = [ModelInfo(id=mid, owned_by="z-ai") for mid in list(dict.fromkeys(api_models))]
+            # Merge hidden (working but unlisted) models — free flash tiers that
+            # the /models endpoint omits. Dedup by id in case z.ai lists them later.
+            for hm in cls._HIDDEN_MODELS:
+                if hm["id"] not in seen:
+                    out.append(ModelInfo(
+                        id=hm["id"],
+                        name=hm.get("name"),
+                        type="chat",
+                        status="active",
+                        context_window=hm.get("context_window"),
+                        modalities={"input": ["text"], "output": ["text"]},
+                        capabilities=hm.get("capabilities"),
+                        cost=hm.get("cost", {"input": 0.0, "output": 0.0}),
+                        owned_by="z-ai",
+                    ))
+            return out
         except Exception as e:
             raise map_provider_error(cls.ERROR_PROVIDER_NAME, e)
 
