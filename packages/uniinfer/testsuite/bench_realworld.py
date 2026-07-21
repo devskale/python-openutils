@@ -301,23 +301,28 @@ def main() -> None:
                    help="einzelnes Modell (provider@model_id). Fuer mehrere: --config")
     ap.add_argument("--bearer", "--api-key", dest="bearer",
                    default=os.getenv("BEARER") or os.getenv("PROXY_KEY") or os.getenv("AMD_TOKEN", ""))
-    ap.add_argument("--reasonings", default=os.getenv("REASONINGS", "none,high"),
-                   help="Komma-Liste Reasoning-Modi: none=no-think, high=think, low, off")
+    ap.add_argument("--reasonings", default=os.getenv("REASONINGS", "nothink,think"),
+                   help="Komma-Liste Denk-Modi: nothink=ohne, think=mit (alias: none/high)")
     ap.add_argument("--docs", default=os.getenv("DOCS", _DOC_DEFAULT),
                    help="Verzeichnis (glob *.md/*.txt) oder kommagetrennte Dateien")
     ap.add_argument("--cases", default=os.getenv("CASES", os.path.join(os.path.dirname(_DOC_DEFAULT), "cases", "realworld_lv.jsonl")),
                    help="JSONL mit doc->query+expected (fuer check-Spalte). Leer = kein check.")
     ap.add_argument("--query", default=os.getenv("QUERY", DEFAULT_QUERY))
     ap.add_argument("--gen-tokens", type=int, default=int(os.getenv("GEN_TOKENS", "2048")))
-    ap.add_argument("--streams", default=os.getenv("STREAMS", "none"),
-                   help="Komma-Liste Stream-Modi: none=nostream, stream=streaming (Default: none)")
+    ap.add_argument("--streams", default=os.getenv("STREAMS", "nostrm"),
+                   help="Komma-Liste Stream-Modi: nostrm=ohne, strm=mit (alias: none/stream)")
     ap.add_argument("--limit", type=int, default=int(os.getenv("LIMIT", "0")), help="max Docs (gestreut nach Groesse)")
     ap.add_argument("--out", default=os.getenv("OUT", "runs/realworld.jsonl"))
     args = ap.parse_args()
 
     targets = load_targets(args)
-    modes = [m.strip() for m in args.reasonings.split(",") if m.strip()]
-    streams = [m.strip() for m in args.streams.split(",") if m.strip()]
+    _MODE_ALIASES = {"none": "nothink", "off": "nothink", "nothink": "nothink",
+                     "high": "think", "on": "think", "think": "think",
+                     "low": "low", "default": "default"}
+    _STREAM_ALIASES = {"none": "nostrm", "nostrm": "nostrm",
+                      "stream": "strm", "strm": "strm"}
+    modes = [_MODE_ALIASES.get(m.strip(), m.strip()) for m in args.reasonings.split(",") if m.strip()]
+    streams = [_STREAM_ALIASES.get(s.strip(), s.strip()) for s in args.streams.split(",") if s.strip()]
     docs = expand_docs(args.docs, args.limit)
     case_map = load_cases_for_docs(args.cases, [f.name for f in docs])
 
@@ -339,10 +344,20 @@ def main() -> None:
                 case = case_map.get(f.name)
                 query = case["query"] if case else args.query
                 for mode in modes:
-                    reason = {"reasoning_effort": mode} if mode and mode != "default" else {}
-                    mt = max(args.gen_tokens, 8192) if mode in ("high", "on") else args.gen_tokens
+                    if mode == "think":
+                        reason = {"reasoning_effort": "high"}
+                        mt = max(args.gen_tokens, 8192)
+                    elif mode == "nothink":
+                        reason = {"reasoning_effort": "none"}
+                        mt = args.gen_tokens
+                    elif mode in ("low",):
+                        reason = {"reasoning_effort": mode}
+                        mt = max(args.gen_tokens, 8192)
+                    else:
+                        reason = {}
+                        mt = args.gen_tokens
                     for strm in streams:
-                        do_stream = strm == "stream"
+                        do_stream = strm == "strm"
                         if do_stream:
                             ans, rsn, dt, pt, ct, finish, status, err, ttft = _call_stream(base, auth, model, reason, doc_text, query, mt)
                         else:
