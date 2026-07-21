@@ -418,23 +418,25 @@ async def astream_response_generator(
             )
             yield f"data: {final_chunk_data.model_dump_json(exclude_none=True)}\n\n"
 
-            # OpenAI streaming contract: when the client requested
-            # stream_options.include_usage, emit a terminal chunk with empty
-            # choices and the accumulated usage, immediately before [DONE].
-            # Without this, streaming consumers (pi, etc.) never see token counts
-            # and cannot track context-window fill / cost.
-            if _stats_usage:
-                _stream_opts = (extra or {}).get("stream_options") or {}
-                if _stream_opts.get("include_usage"):
-                    usage_chunk = {
-                        "id": completion_id,
-                        "object": "chat.completion.chunk",
-                        "created": created_time,
-                        "model": model_name,
-                        "choices": [],
-                        "usage": _stats_usage,
-                    }
-                    yield f"data: {json.dumps(usage_chunk)}\n\n"
+        # OpenAI streaming contract: when the client requested
+        # stream_options.include_usage, emit a terminal chunk with empty
+        # choices and the accumulated usage, immediately before [DONE].
+        # Without this, streaming consumers (pi, etc.) never see token counts
+        # and cannot track context-window fill / cost.
+        # NB: deliberately OUTSIDE the `not sent_finish_reason` gate above so it
+        # runs even when the provider sent its own finish_reason (the normal case).
+        if _stats_usage:
+            _stream_opts = (extra or {}).get("stream_options") or {}
+            if _stream_opts.get("include_usage"):
+                usage_chunk = {
+                    "id": completion_id,
+                    "object": "chat.completion.chunk",
+                    "created": created_time,
+                    "model": model_name,
+                    "choices": [],
+                    "usage": _stats_usage,
+                }
+                yield f"data: {json.dumps(usage_chunk)}\n\n"
 
     except (UniInferError, ValueError) as e:
         _stats_status = int(getattr(e, "status_code", 500) or 500)

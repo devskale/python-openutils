@@ -4,6 +4,17 @@ All notable changes to **uniinfer** are documented in this file.
 Versions follow [Semantic Versioning](https://semver.org/); this file
 adheres to [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.6.17] - 2026-07-21
+
+### Fixed
+
+- **Proxy terminal usage chunk was gated on `not sent_finish_reason`** — so it
+  only emitted when the provider did NOT send finish_reason, i.e. almost never.
+  Moved the terminal `choices:[]`+usage chunk outside that gate so it always
+  emits (when include_usage requested). Completes the streaming-usage fix:
+  vLLM now emits usage (0.6.16), and the proxy forwards it as a clean
+  terminal chunk (this).
+
 ## [0.6.16] - 2026-07-21
 
 ### Fixed
