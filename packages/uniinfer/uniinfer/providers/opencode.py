@@ -59,6 +59,7 @@ class OpenCodeProvider(OpenAICompatibleChatProvider):
                     id=mid,
                     owned_by=m.get("owned_by") or "opencode",
                     cost={"input": 0, "output": 0} if free else None,
+                    access="free" if free else "paid",
                     raw=m,
                 )
             )

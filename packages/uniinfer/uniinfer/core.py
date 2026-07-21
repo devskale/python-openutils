@@ -258,6 +258,11 @@ class ChatProvider:
     the complete and stream_complete methods.
     """
 
+    # Provider-wide access tier: "free" (all models $0), "paid" (all models
+    # per-token), or "" (mixed/unknown — derive per-model from cost). Concrete
+    # providers override to stamp a uniform tier without per-model logic.
+    ACCESS_TIER: str = ""
+
     def __init__(self, api_key: str | None = None, **kwargs):
         """
         Initialize the provider with an API key and optional configuration.

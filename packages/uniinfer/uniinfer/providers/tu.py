@@ -88,6 +88,7 @@ class TUProvider(ChatProvider):
     """TU (Tencent Unbounded) LLM Provider implementation."""
 
     _DEFAULT_MAX_TOKENS = 8192
+    ACCESS_TIER = "free"  # university-hosted, universally free
     _CREDGOO_SERVICE = "tu"
     _DEFAULT_BASE_URL = TU_BASE_URL
     # OpenAI passthrough params to NEVER forward to vLLM even if a client sends

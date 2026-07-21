@@ -14,6 +14,7 @@ class StepFunProvider(OpenAICompatibleChatProvider):
     Provider for StepFun API (阶跃星辰).
     """
 
+    ACCESS_TIER = "paid"  # per-token billing
     BASE_URL = "https://api.stepfun.com/v1"
     PROVIDER_ID = "stepfun"
     ERROR_PROVIDER_NAME = "stepfun"

@@ -14,6 +14,7 @@ class MoonshotProvider(OpenAICompatibleChatProvider):
     Provider for Moonshot AI API.
     """
 
+    ACCESS_TIER = "paid"  # per-token billing, no free tier (web-grounded)
     BASE_URL = "https://api.moonshot.cn/v1"
     PROVIDER_ID = "moonshot"
     ERROR_PROVIDER_NAME = "moonshot"

@@ -122,7 +122,7 @@ def _json_safe(obj):
     return str(obj)
 
 
-def model_info_to_dict(m) -> dict:
+def model_info_to_dict(m, default_access: str = "") -> dict:
     """Serialize a ModelInfo to a JSON-safe dict."""
     d = {"id": m.id}
     for field in dataclasses.fields(m):
@@ -132,10 +132,10 @@ def model_info_to_dict(m) -> dict:
         if field.name == "raw":
             continue
         d[field.name] = _json_safe(val)
-    # Derive access tier from cost if the provider didn't set it explicitly.
-    # Empty string means "no info" — keep it empty rather than guessing.
+    # Access tier precedence: explicit model.access > cost-derived > provider
+    # ACCESS_TIER default > "" (unknown).
     if not d.get("access"):
-        d["access"] = m.derive_access()
+        d["access"] = m.derive_access() or default_access
     return d
 
 
@@ -154,7 +154,7 @@ def fetch_provider_models(provider_id, cls, credgoo_service, kind):
         except Exception as e:
             log.warning("  %s: failed without key: %s", provider_id, e)
             return []
-        return [model_info_to_dict(m) for m in models]
+        return [model_info_to_dict(m, getattr(cls, "ACCESS_TIER", "")) for m in models]
 
     # Provider-specific extra params for list_models (only infra params, not chat params)
     from uniinfer.config.providers import PROVIDER_CONFIGS
@@ -174,7 +174,7 @@ def fetch_provider_models(provider_id, cls, credgoo_service, kind):
         traceback.print_exc()
         return []
 
-    return [model_info_to_dict(m) for m in models]
+    return [model_info_to_dict(m, getattr(cls, "ACCESS_TIER", "")) for m in models]
 
 
 def load_type_overrides() -> dict:

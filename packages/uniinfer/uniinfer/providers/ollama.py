@@ -46,6 +46,7 @@ class OllamaProvider(ChatProvider):
     This provider requires a running Ollama instance.
     """
 
+    ACCESS_TIER = "free"  # local, no per-token cost
     def __init__(self, api_key: Optional[str] = None, base_url: str = "https://localhost:11434", **kwargs):
         """
         Initialize the Ollama provider.

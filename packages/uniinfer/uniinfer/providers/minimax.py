@@ -12,6 +12,7 @@ class MiniMaxProvider(AnthropicCompatibleProvider):
     Provider for MiniMax Anthropic-compatible API.
     """
 
+    ACCESS_TIER = "paid"  # per-token billing
     BASE_URL = "https://api.minimax.io/anthropic"
     PROVIDER_ID = "minimax"
     ERROR_PROVIDER_NAME = "MiniMax"

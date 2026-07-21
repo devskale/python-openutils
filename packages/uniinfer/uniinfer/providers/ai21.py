@@ -24,6 +24,7 @@ class AI21Provider(ChatProvider):
     AI21 offers Jamba language models through its own client library.
     """
 
+    ACCESS_TIER = "paid"  # per-token billing
     def __init__(self, api_key: Optional[str] = None, **kwargs):
         """
         Initialize the AI21 provider.

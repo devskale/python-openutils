@@ -128,7 +128,7 @@ class ZAIBaseProvider(ChatProvider):
                 if model_id:
                     api_models.append(model_id)
             seen = set(api_models)
-            out = [ModelInfo(id=mid, owned_by="z-ai") for mid in list(dict.fromkeys(api_models))]
+            out = [ModelInfo(id=mid, owned_by="z-ai", access="paid") for mid in list(dict.fromkeys(api_models))]
             # Merge hidden (working but unlisted) models — free flash tiers that
             # the /models endpoint omits. Dedup by id in case z.ai lists them later.
             for hm in cls._HIDDEN_MODELS:
@@ -142,6 +142,7 @@ class ZAIBaseProvider(ChatProvider):
                         modalities={"input": ["text"], "output": ["text"]},
                         capabilities=hm.get("capabilities"),
                         cost=hm.get("cost", {"input": 0.0, "output": 0.0}),
+                        access="free",
                         owned_by="z-ai",
                     ))
             return out

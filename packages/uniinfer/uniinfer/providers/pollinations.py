@@ -15,6 +15,7 @@ class PollinationsProvider(OpenAICompatibleChatProvider):
     Provider for Pollinations OpenAI-compatible API.
     """
 
+    ACCESS_TIER = "free"  # universally free (pollen/anonymous tier)
     BASE_URL = "https://gen.pollinations.ai/v1"
     PROVIDER_ID = "pollinations"
     ERROR_PROVIDER_NAME = "Pollinations"

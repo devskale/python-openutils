@@ -14,6 +14,7 @@ class UpstageProvider(OpenAICompatibleChatProvider):
     Provider for Upstage AI Solar API.
     """
 
+    ACCESS_TIER = "paid"  # per-token billing
     BASE_URL = "https://api.upstage.ai/v1/solar"
     PROVIDER_ID = "upstage"
     ERROR_PROVIDER_NAME = "upstage"

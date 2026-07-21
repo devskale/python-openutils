@@ -96,6 +96,7 @@ class ArliAIProvider(OpenAICompatibleChatProvider):
                                 modalities={"input": input_mods, "output": ["text"]},
                                 capabilities=capabilities or None,
                                 owned_by=m.get("owned_by"),
+                                access="paid" if mid.startswith("(TRIAL)") else "free",
                                 raw=m,
                             ))
                         if results:

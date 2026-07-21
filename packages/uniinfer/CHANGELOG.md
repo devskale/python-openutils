@@ -4,6 +4,21 @@ All notable changes to **uniinfer** are documented in this file.
 Versions follow [Semantic Versioning](https://semver.org/); this file
 adheres to [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.6.20] - 2026-07-22
+
+### Added
+
+- **Access-tier stamping sweep.** Provider-level ACCESS_TIER class
+  attribute stamps a uniform tier without per-model logic. Universally free:
+  groq, pollinations, tu, tu-staging, ollama. Uniformly paid (web-grounded):
+  moonshot, stepfun, minimax, upstage, ai21. Per-model heuristics: arli
+  ((TRIAL) prefix -> paid, else free), opencode (-free/big-pickle ->
+  free, else paid), zai (hidden flash -> free, API-listed -> paid).
+  model_info_to_dict precedence: explicit model.access > cost-derived
+  > provider ACCESS_TIER > "". Cost-derived (openrouter/kilo/ngc) still works
+  via derive_access. Catalog gains accurate per-model access tiers on next
+  generate_models run.
+
 ## [0.6.19] - 2026-07-22
 
 ### Changed
