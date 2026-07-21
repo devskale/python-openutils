@@ -90,6 +90,9 @@ class TUProvider(ChatProvider):
     _DEFAULT_MAX_TOKENS = 8192
     _CREDGOO_SERVICE = "tu"
     _DEFAULT_BASE_URL = TU_BASE_URL
+    # OpenAI passthrough params to NEVER forward to vLLM even if a client sends
+    # them as extras. Empty by default (vLLM ignores unknowns).
+    EXTRA_FORWARD_DENY: frozenset[str] = frozenset()
 
     def __init__(self, api_key: str | None = None, base_url: str | None = None, supports_reasoning_effort: bool = False):
         """Initialize the TU provider.
@@ -335,8 +338,9 @@ class TUProvider(ChatProvider):
         # this carries stream_options.include_usage so vLLM emits a terminal
         # usage chunk — without it, streaming consumers never see token counts.
         if getattr(request, "extra", None):
+            _deny = getattr(self, "EXTRA_FORWARD_DENY", None) or frozenset()
             for _k, _v in request.extra.items():
-                if _k not in self.EXTRA_FORWARD_DENY:
+                if _k not in _deny:
                     payload[_k] = _v
 
         return payload

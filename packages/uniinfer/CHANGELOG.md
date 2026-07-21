@@ -4,6 +4,16 @@ All notable changes to **uniinfer** are documented in this file.
 Versions follow [Semantic Versioning](https://semver.org/); this file
 adheres to [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.6.15] - 2026-07-21
+
+### Fixed
+
+- **TU `_prepare_payload` passthrough crash** — 0.6.14 referenced
+  `self.EXTRA_FORWARD_DENY` which TU (a direct `ChatProvider` subclass, not
+  `OpenAICompatibleChatProvider`) did not define, causing `AttributeError` on
+  every TU request. Adds `EXTRA_FORWARD_DENY` to `TUProvider` and makes the
+  passthrough failsafe via `getattr(..., frozenset())`.
+
 ## [0.6.14] - 2026-07-21
 
 ### Fixed
