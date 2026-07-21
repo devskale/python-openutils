@@ -132,6 +132,10 @@ def model_info_to_dict(m) -> dict:
         if field.name == "raw":
             continue
         d[field.name] = _json_safe(val)
+    # Derive access tier from cost if the provider didn't set it explicitly.
+    # Empty string means "no info" — keep it empty rather than guessing.
+    if not d.get("access"):
+        d["access"] = m.derive_access()
     return d
 
 

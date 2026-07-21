@@ -4,6 +4,28 @@ All notable changes to **uniinfer** are documented in this file.
 Versions follow [Semantic Versioning](https://semver.org/); this file
 adheres to [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.6.18] - 2026-07-21
+
+### Added
+
+- **Model access-tier classification** (, `uv run uniinfer --keys`):
+  probes every provider's key (lean: /models only, 0 inference tokens) and
+  classifies it free / balance / paid / nokey / invalid. `ModelInfo.access`
+  field ("free"/"paid"/"") derives from cost; providers override for
+  universally-free tiers.
+- **pi metaprovider builder** (`--pi-models`): interactive curses TUI
+  (up/down, space toggle, provider-level select-all) to build a pi
+  metaprovider entry from accessible catalog models. Maps ModelInfo onto pi's
+  schema (id provider@model, reasoning, modalities, contextWindow, cost),
+  merges into ~/.pi/agent/models.json with backup. Falls back to number/range
+  prompt when non-TTY. Free filter detects free models via access field,
+  cost.input==0, or universally-free providers.
+- **pi metadata import** (`--import-pi`): backfills context_window /
+  modalities / capabilities gaps in the catalog FROM the hand-curated
+  ~/.pi/agent/models.json (the bare-API providers tu/opencode expose no ctx).
+  Writes persistent model_overrides.json (runtime merge already applies it) +
+  backfills models.json immediately.
+
 ## [0.6.17] - 2026-07-21
 
 ### Fixed

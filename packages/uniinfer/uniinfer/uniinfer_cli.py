@@ -320,6 +320,124 @@ def _capabilities(args):
     asyncio.run(run_all())
 
 
+def _pi_models(args):
+    """Interactively build a pi metaprovider entry from accessible catalog models.
+
+    Asks for the provider name, proxy base URL + key, then lets the user pick
+    free/all models. Merges the result into ~/.pi/agent/models.json.
+    """
+    import os
+    from pathlib import Path
+
+    from uniinfer.proxy_services.models_registry import load_catalog
+    from uniinfer.pi_export import (
+        accessible_models,
+        build_provider_entry,
+        catalog_model_to_pi,
+        merge_into_pi_models_json,
+        parse_selection,
+        DEFAULT_PI_MODELS_JSON,
+    )
+
+    def ask(prompt, default=None):
+        suffix = f" [{default}]" if default else ""
+        raw = input(f"{prompt}{suffix}: ").strip()
+        return raw or (default if default is not None else "")
+
+    print("\n═══ Build a pi metaprovider from accessible models ═══\n")
+
+    name = ask("Metaprovider name (shown in pi)", "uniioai")
+    # Sensible default base URL for the amd proxy.
+    default_url = "https://amd1.mooo.com:8123/v1"
+    # Try to read a key from .env.local (same dir) for a default.
+    default_key = ""
+    env_local = Path(".env.local")
+    if env_local.exists():
+        for line in env_local.read_text().splitlines():
+            if line.startswith("PROXY_KEY="):
+                default_key = line.split("=", 1)[1].strip()
+                break
+    base_url = ask("Proxy base URL", default_url)
+    api_key = ask("Proxy API key", default_key or None)
+    if not api_key:
+        print("No API key provided — aborting.")
+        return
+
+    catalog = load_catalog()
+    total = sum(len(p.get("models", [])) for p in (catalog.get("providers") or {}).values())
+    if not total:
+        print("Catalog is empty. Run `scripts/generate_models.py` first.")
+        return
+
+    mode = ask("Filter: [f]ree only / [a]ll models", "f").lower()
+    access_filter = "all" if mode.startswith("a") else "free"
+    label = "free" if access_filter == "free" else "all"
+    pairs = accessible_models(catalog, access_filter=access_filter)
+    if not pairs:
+        print(f"No {label} models found in the catalog.")
+        return
+
+    # Selection: curses checkbox TUI when interactive, else number prompt.
+    import sys
+    selected = None
+    if sys.stdin.isatty():
+        from uniinfer.pi_tui import interactive_pick_models
+        selected = interactive_pick_models(
+            pairs, title=f"Select {label} models ({len(pairs)})"
+        )
+        if selected is None:
+            print("Cancelled.")
+            return
+    if not selected:
+        # Fallback: number/range prompt (non-TTY or nothing picked in TUI).
+        shown = []
+        current = None
+        for pid, m in pairs:
+            if pid != current:
+                current = pid
+                n_for_prov = sum(1 for p, _ in pairs if p == pid)
+                print(f"  {pid} ({n_for_prov}):")
+            shown.append((pid, m))
+            idx = len(shown)
+            mods = (m.get("modalities") or {}).get("input") or ["text"]
+            tags = []
+            if "image" in mods or (m.get("capabilities") or {}).get("vision"):
+                tags.append("image")
+            if (m.get("capabilities") or {}).get("reasoning"):
+                tags.append("reasoning")
+            ctx = m.get("context_window")
+            ctxs = f"{ctx // 1000}K" if isinstance(ctx, int) else "?"
+            print(f"    [{idx:3}] {m.get('id'):42} {' '.join(tags):16} ctx {ctxs}")
+        spec = ask("\nSelect models (comma/ranges, or 'all')", "all")
+        chosen = parse_selection(spec, len(shown))
+        if not chosen:
+            print("Nothing selected — aborting.")
+            return
+        selected = [shown[i] for i in chosen]
+
+    if not selected:
+        print("Nothing selected — aborting.")
+        return
+    pi_models = [catalog_model_to_pi(p, m) for p, m in selected]
+
+    print(f"\nAdding {len(pi_models)} models to provider '{name}'.")
+    entry = build_provider_entry(name, base_url, api_key, pi_models)
+
+    out = ask("Output path", str(DEFAULT_PI_MODELS_JSON))
+    out_path = Path(out).expanduser()
+    confirm = ask(f"Write to {out_path} under '{name}'? [Y/n]", "y").lower()
+    if confirm in ("y", "yes", ""):
+        backup = merge_into_pi_models_json(entry, name, out_path)
+        print(f"\n✅ Merged {len(pi_models)} models into '{name}' "
+              f"({out_path})")
+        if backup.exists():
+            print(f"   backup: {backup}")
+    else:
+        # Dry-run: print the entry so the user can pipe it.
+        import json
+        print(json.dumps({"providers": {name: entry}}, indent=2))
+
+
 def _softprobe(args):
     """Probe (metadata ONLY) every catalog model. **Zero inference tokens.**
 
@@ -570,6 +688,35 @@ def main():
         action="store_true",
         help="With --softprobe: reprobe even fresh entries.",
     )
+    parser.add_argument(
+        "--keys",
+        action="store_true",
+        help=(
+            "Probe every provider's API key (lean: calls /models only, 0 inference "
+            "tokens) and classify it as free / balance / paid / invalid / nokey. "
+            "Combine with --models to probe specific providers."
+        ),
+    )
+    parser.add_argument(
+        "--pi-models",
+        action="store_true",
+        help=(
+            "Interactively build a pi metaprovider entry from accessible catalog "
+            "models and merge it into ~/.pi/agent/models.json. Asks for the "
+            "provider name, proxy base URL + key, then lets you pick free/all "
+            "models. Inspired by `npx skills`."
+        ),
+    )
+    parser.add_argument(
+        "--import-pi",
+        action="store_true",
+        help=(
+            "Import curated metadata (context window, modalities, capabilities) "
+            "FROM ~/.pi/agent/models.json INTO the catalog — backfills gaps the "
+            "bare-API providers (tu, opencode, …) don't expose. Writes "
+            "model_overrides.json (persistent) + backfills models.json now."
+        ),
+    )
 
     args = parser.parse_args()
 
@@ -577,6 +724,27 @@ def main():
         from pathlib import Path as _Path
 
         _speedtest(args)
+        return
+
+    if args.keys:
+        from uniinfer.keys import probe_keys, format_report
+
+        providers = args.models if args.models else None
+        reports = probe_keys(providers, encryption_key=args.encryption_key)
+        print(format_report(reports))
+        return
+
+    if args.pi_models:
+        _pi_models(args)
+        return
+
+    if args.import_pi:
+        from uniinfer.pi_export import import_pi_metadata, DEFAULT_PI_MODELS_JSON
+
+        res = import_pi_metadata(DEFAULT_PI_MODELS_JSON)
+        print(f"Imported {res['entries']} entries from pi: "
+              f"{res['backfilled']} backfilled, {res['skipped']} already-set.")
+        print(f"  overrides: {res['overrides_path']}")
         return
 
     if args.softprobe:

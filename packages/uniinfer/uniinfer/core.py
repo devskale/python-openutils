@@ -56,6 +56,10 @@ class ModelInfo:
     owned_by: str | None = None
     created: int | None = None
     raw: dict | None = None
+    # Access tier: "free" ($0 to use, may need a key), "paid" (needs a funded
+    # key — balance or per-token), or "" (no pricing info). Derived from cost
+    # by derive_access(); providers that are universally free override to "free".
+    access: str = ""
 
     def __str__(self) -> str:
         return self.id
@@ -99,6 +103,23 @@ class ModelInfo:
             return "tts"
 
         return "chat"
+
+    def derive_access(self) -> str:
+        """Derive the access tier from cost.
+
+        - cost.input == 0 -> "free"  ($0 to use; may still need a key)
+        - cost.input > 0  -> "paid"  (needs a funded key: balance or per-token)
+        - cost is None    -> ""      (no pricing info)
+        Providers that are universally free (groq, pollinations) set access="free"
+        directly in list_models rather than relying on this derivation.
+        """
+        cost = self.cost
+        if not cost:
+            return ""
+        inp = cost.get("input")
+        if inp is None:
+            return ""
+        return "free" if inp == 0 else "paid"
 
 
 class ChatMessage:

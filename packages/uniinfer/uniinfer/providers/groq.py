@@ -250,6 +250,7 @@ class GroqProvider(ChatProvider):
                 created=getattr(model, "created", None),
                 context_window=getattr(model, "context_window", None),
                 status="active" if getattr(model, "active", True) else "deprecated",
+                access="free",  # Groq is universally free (forever-free tier, no CC)
             ) for model in models.data]
         except Exception as e:
             import logging

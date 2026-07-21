@@ -27,6 +27,7 @@ from .errors import (
     RateLimitError, TimeoutError, InvalidRequestError
 )
 from .strategies import FallbackStrategy, CostBasedStrategy
+from .keys import KeyReport, probe_keys, format_report
 from .response_utils import extract_response_text
 
 # Import optional providers conditionally
