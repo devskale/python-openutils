@@ -7,7 +7,7 @@ import pytest
 
 # allow running without install: add the package dir to sys.path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from kontextprompts import get_prompt_set_info, load_prompt  # noqa: E402
+from promptloader import get_prompt_set_info, load_prompt  # noqa: E402
 
 ROUTE = "---\nversion: '1.4'\n---\nYou are a router. Pick the best doc.\n"
 
