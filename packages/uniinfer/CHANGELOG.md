@@ -4,6 +4,18 @@ All notable changes to **uniinfer** are documented in this file.
 Versions follow [Semantic Versioning](https://semver.org/); this file
 adheres to [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.6.23] - 2026-07-22
+
+### Changed
+
+- **bench_realworld.py: collapse two _call functions into one (candidate C).**
+  _call and _call_stream were shallow and duplicated (headers, body, the
+  _result+extract_usage wrapping all twice). Unified into one _call(stream=)
+  that owns the shared request; two thin collectors (_collect_nonstream,
+  _collect_stream) own only the HTTP-shape difference (single read vs SSE
+  iteration). Bugs (the dropped reasoning_tokens, the tok/s conflation) now
+  live in one place, not two copies. main() calls _call(stream=do_stream).
+
 ## [0.6.22] - 2026-07-22
 
 ### Added

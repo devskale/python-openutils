@@ -218,10 +218,72 @@ def expand_docs(spec: str, limit: int) -> list[Path]:
     return files
 
 
+def _collect_nonstream(c, url, H, body):
+    """Single-read collector. Returns (content, reasoning, dt, usage_obj,
+    finish, status, error, ttft)."""
+    t0 = time.perf_counter()
+    r = c.post(url, headers=H, json=body)
+    dt = round(time.perf_counter() - t0, 2)
+    if r.status_code != 200:
+        return None, "", dt, None, None, r.status_code, r.text[:200], None
+    j = r.json()
+    ch = j.get("choices", [{}])[0]
+    msg = ch.get("message") or {}
+    content = (msg.get("content", "") or "").strip()
+    rsn = (msg.get("reasoning_content", "") or "").strip()
+    return content, rsn, dt, j.get("usage"), ch.get("finish_reason"), 200, None, None
+
+
+def _collect_stream(c, url, H, body):
+    """SSE collector. Same return shape as _collect_nonstream, plus ttft.
+    Keeps the full usage object (not just pt/ct) so extract_usage can read
+    completion_tokens_details.reasoning_tokens when vLLM emits it."""
+    content_parts: list[str] = []
+    reasoning_parts: list[str] = []
+    first = usage_obj = finish = None
+    t0 = time.perf_counter()
+    with c.stream("POST", url, headers=H, json=body) as s:
+        if s.status_code != 200:
+            dt = round(time.perf_counter() - t0, 2)
+            return None, "", dt, None, None, s.status_code, \
+                s.read().decode(errors="ignore")[:200], None
+        for line in s.iter_lines():
+            if not line.startswith("data: "):
+                continue
+            if line == "data: [DONE]":
+                break
+            try:
+                d = json.loads(line[6:])
+            except Exception:  # noqa: BLE001
+                continue
+            delta = (d.get("choices") or [{}])[0].get("delta", {}) or {}
+            if (delta.get("content") or delta.get("reasoning_content")) and first is None:
+                first = time.perf_counter()
+            if delta.get("content"):
+                content_parts.append(delta["content"])
+            if delta.get("reasoning_content"):
+                reasoning_parts.append(delta["reasoning_content"])
+            ch = (d.get("choices") or [{}])[0]
+            if ch.get("finish_reason"):
+                finish = ch["finish_reason"]
+            u = d.get("usage")
+            if u:
+                usage_obj = u  # terminal chunk carries full usage incl details
+        dt = round(time.perf_counter() - t0, 2)
+    ttft = round(first - t0, 2) if first else None
+    content = "".join(content_parts).strip()
+    rsn = "".join(reasoning_parts).strip()
+    # Fallback: Server emitiert gar keinen usage-chunk -> ct aus Text schaetzen.
+    if usage_obj is None and (content or rsn):
+        usage_obj = {"completion_tokens": round((len(content) + len(rsn)) / _REASONING_TOKEN_GUESS_DIVISOR)}
+    return content, rsn, dt, usage_obj, finish, 200, None, ttft
+
+
 def _call(base: str, auth: str, model: str, reasoning: dict, doc_text: str,
-          query: str, max_tokens: int):
-    """Nicht-streamender Aufruf. Liefert ein result-dict (content, reasoning,
-    latency, finish_reason, status, error, ttft, + usage-Felder)."""
+          query: str, max_tokens: int, stream: bool = False):
+    """One call path; branches on ``stream``. The shared request (headers,
+    body, the _result + extract_usage wrapping) lives here; the two collectors
+    own only the HTTP-shape difference (single read vs SSE iteration)."""
     H = {"Content-Type": "application/json"}
     if auth:
         H["Authorization"] = f"Bearer {auth}"
@@ -229,83 +291,17 @@ def _call(base: str, auth: str, model: str, reasoning: dict, doc_text: str,
             "messages": [{"role": "user", "content": f"<DOKUMENT>\n{doc_text}\n</DOKUMENT>\n\n{query}"}],
             "max_tokens": max_tokens, "temperature": 0}
     body.update(reasoning)
+    if stream:
+        body["stream"] = True
+        body["stream_options"] = {"include_usage": True}
+    url = f"{base}/chat/completions"
     try:
         with client(timeout=1800.0) as c:
-            t0 = time.perf_counter()
-            r = c.post(f"{base}/chat/completions", headers=H, json=body)
-            dt = round(time.perf_counter() - t0, 2)
-            if r.status_code != 200:
-                return _result(None, "", dt, None, None, r.status_code, r.text[:200])
-            j = r.json()
+            collector = _collect_stream if stream else _collect_nonstream
+            content, rsn, dt, usage, finish, status, err, ttft = collector(c, url, H, body)
     except Exception as e:  # noqa: BLE001
         return _result(None, "", None, None, None, None, f"{type(e).__name__}: {str(e)[:160]}")
-    ch = j.get("choices", [{}])[0]
-    msg = ch.get("message") or {}
-    content = (msg.get("content", "") or "").strip()
-    rsn = (msg.get("reasoning_content", "") or "").strip()
-    return _result(content, rsn, dt, extract_usage(j.get("usage"), rsn),
-                   ch.get("finish_reason"), 200, None)
-
-
-def _call_stream(base: str, auth: str, model: str, reasoning: dict, doc_text: str,
-                 query: str, max_tokens: int):
-    """Streaming-Variante von _call. Liefert dasselbe result-dict plus ttft.
-    Behaelt den vollen usage-object fest (nicht nur pt/ct), damit extract_usage
-    completion_tokens_details.reasoning_tokens lesen kann, wenn vLLM ihn liefert."""
-    H = {"Content-Type": "application/json"}
-    if auth:
-        H["Authorization"] = f"Bearer {auth}"
-    body = {"model": model,
-            "messages": [{"role": "user", "content": f"<DOKUMENT>\n{doc_text}\n</DOKUMENT>\n\n{query}"}],
-            "max_tokens": max_tokens, "temperature": 0,
-            "stream": True, "stream_options": {"include_usage": True}}
-    body.update(reasoning)
-    content_parts: list[str] = []
-    reasoning_parts: list[str] = []
-    first = None
-    usage_obj = None
-    finish = status = None
-    err = None
-    try:
-        with client(timeout=1800.0) as c:
-            t0 = time.perf_counter()
-            with c.stream("POST", f"{base}/chat/completions", headers=H, json=body) as s:
-                if s.status_code != 200:
-                    dt = round(time.perf_counter() - t0, 2)
-                    return _result(None, "", dt, None, None, s.status_code,
-                                   s.read().decode(errors="ignore")[:200])
-                for line in s.iter_lines():
-                    if not line.startswith("data: "):
-                        continue
-                    if line == "data: [DONE]":
-                        break
-                    try:
-                        d = json.loads(line[6:])
-                    except Exception:  # noqa: BLE001
-                        continue
-                    delta = (d.get("choices") or [{}])[0].get("delta", {}) or {}
-                    if (delta.get("content") or delta.get("reasoning_content")) and first is None:
-                        first = time.perf_counter()
-                    if delta.get("content"):
-                        content_parts.append(delta["content"])
-                    if delta.get("reasoning_content"):
-                        reasoning_parts.append(delta["reasoning_content"])
-                    ch = (d.get("choices") or [{}])[0]
-                    if ch.get("finish_reason"):
-                        finish = ch["finish_reason"]
-                    u = d.get("usage")
-                    if u:
-                        usage_obj = u  # terminal chunk carries full usage incl details
-            dt = round(time.perf_counter() - t0, 2)
-    except Exception as e:  # noqa: BLE001
-        return _result(None, "", None, None, None, None, f"{type(e).__name__}: {str(e)[:160]}")
-    ttft = round(first - t0, 2) if first else None
-    content = "".join(content_parts).strip()
-    rsn = "".join(reasoning_parts).strip()
-    # Fallback: Server emitiert gar keinen usage-chunk -> ct aus Text schaetzen.
-    if usage_obj is None and (content or rsn):
-        usage_obj = {"completion_tokens": round((len(content) + len(rsn)) / _REASONING_TOKEN_GUESS_DIVISOR)}
-    return _result(content, rsn, dt, extract_usage(usage_obj, rsn), finish, 200, None, ttft)
+    return _result(content, rsn, dt, extract_usage(usage, rsn), finish, status, err, ttft)
 
 
 def check_answer(answer: str | None, expected: dict | None) -> str:
@@ -436,10 +432,7 @@ def main() -> None:
                         mt = args.gen_tokens
                     for strm in streams:
                         do_stream = strm == "strm"
-                        if do_stream:
-                            res = _call_stream(base, auth, model, reason, doc_text, query, mt)
-                        else:
-                            res = _call(base, auth, model, reason, doc_text, query, mt)
+                        res = _call(base, auth, model, reason, doc_text, query, mt, stream=do_stream)
                         ans = res["content"]; rsn = res["reasoning"]; dt = res["latency"]
                         pt = res["prompt_tokens"]; ct = res["completion_tokens"]
                         rt = res["reasoning_tokens"]; rt_est = res["reasoning_tokens_estimated"]
