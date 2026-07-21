@@ -42,3 +42,5 @@ skills-lock.json
 
 # Local proxy env (real key) — do not commit
 packages/uniinfer/.env
+packages/uniinfer/.env.*
+packages/uniinfer/!.env.example
