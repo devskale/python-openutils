@@ -79,3 +79,9 @@ dev = [
     "pytest-asyncio>=1.2.0",
 ]
 
+[tool.pytest.ini_options]
+# The testsuite/ dir holds LIVE integration tests (need a running proxy + a
+# key) and is run via testsuite/run.sh — NOT by pytest. Only collect the
+# mocked unit suite under uniinfer/tests/.
+testpaths = ["uniinfer/tests"]
+

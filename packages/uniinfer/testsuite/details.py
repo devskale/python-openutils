@@ -25,8 +25,10 @@ import sys
 
 import httpx
 
-PROXY_URL = os.getenv("PROXY_URL", "http://127.0.0.1:8013")
-AUTH = os.getenv("PROXY_AUTH", "")
+from _proxy_common import proxy_auth, proxy_base_url
+
+PROXY_URL = proxy_base_url()
+AUTH = proxy_auth()
 MODEL = os.getenv("MODEL", "ollama@qwen3.5:0.8b")
 EMBED_MODEL = os.getenv("EMBED_MODEL", "ollama@nomic-embed-text-v2-moe")
 AUTH_REQUIRED_MODEL = os.getenv("AUTH_REQUIRED_MODEL", "")

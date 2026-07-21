@@ -57,14 +57,14 @@ the filtered subset and `filtered: true`.
 Download a single provider's catalog:
 
 ```bash
-curl -sOJ "https://amd1.mooo.com:8123/v1/catalog?providers=openai&download=1"
+curl -sOJ "https://localhost:8123/v1/catalog?providers=openai&download=1"
 # → models-openai.json
 ```
 
 Fetch multiple providers inlined:
 
 ```bash
-curl -s "https://amd1.mooo.com:8123/v1/catalog?providers=openai,gemini"
+curl -s "https://localhost:8123/v1/catalog?providers=openai,gemini"
 ```
 
 Fetch from Python:
@@ -72,7 +72,7 @@ Fetch from Python:
 ```python
 import requests
 catalog = requests.get(
-    "https://amd1.mooo.com:8123/v1/catalog",
+    "https://localhost:8123/v1/catalog",
     params={"providers": "openai,gemini"},
 ).json()
 for pid, pdata in catalog["providers"].items():

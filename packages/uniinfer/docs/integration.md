@@ -211,7 +211,7 @@ Bearer token = the proxy `PROXY_KEY` (credgoo combined `bearer@encryption`):
 
 ```bash
 export KEY="$PROXY_KEY"          # credgoo combined token (bearer@encryption) — never commit the real value
-curl -s https://amd1.mooo.com:8123/v1/system/version -H "Authorization: Bearer $KEY"
+curl -s https://localhost:8123/v1/system/version -H "Authorization: Bearer $KEY"
 # {"version":"0.5.44"}
 ```
 
@@ -220,7 +220,7 @@ curl -s https://amd1.mooo.com:8123/v1/system/version -H "Authorization: Bearer $
 ### Chat (OpenAI-shaped)
 
 ```bash
-curl -s https://amd1.mooo.com:8123/v1/chat/completions \
+curl -s https://localhost:8123/v1/chat/completions \
   -H "Authorization: Bearer $KEY" -H "Content-Type: application/json" \
   -d '{
     "model": "groq@openai/gpt-oss-20b",
@@ -234,7 +234,7 @@ Stream: `"stream": true` → SSE `data: {...}` chunks, terminated by `data: [DON
 ### Capability matrix (probe what a model can do)
 
 ```bash
-curl -s "https://amd1.mooo.com:8123/v1/system/capabilities?model=groq@openai/gpt-oss-20b&save=true" \
+curl -s "https://localhost:8123/v1/system/capabilities?model=groq@openai/gpt-oss-20b&save=true" \
   -H "Authorization: Bearer $KEY" | jq '.summary, .profile'
 ```
 
@@ -246,7 +246,7 @@ Returns `{profile, results[], summary}` — each probe `pass|fail|skip|error`.
 
 ```python
 from openai import OpenAI
-client = OpenAI(base_url="https://amd1.mooo.com:8123/v1", api_key=os.environ["PROXY_KEY"])   # your PROXY_KEY (bearer@encryption)
+client = OpenAI(base_url="https://localhost:8123/v1", api_key=os.environ["PROXY_KEY"])   # your PROXY_KEY (bearer@encryption)
 r = client.chat.completions.create(
     model="mistral@mistral-medium-latest",
     messages=[{"role": "user", "content": "Hello"}],

@@ -9,7 +9,7 @@
 #   EMBED_MODEL  provider@model for embeddings (default: an amp ollama embed model)
 set -uo pipefail
 
-PROXY_URL="${PROXY_URL:-https://amd1.mooo.com:8123}"
+PROXY_URL="${PROXY_URL:-https://localhost:8123}"
 PROXY_AUTH="${PROXY_AUTH:?PROXY_AUTH (bearer token) required}"
 CHAT_MODEL="${CHAT_MODEL:-ollama@qwen3.5:0.8b}"
 EMBED_MODEL="${EMBED_MODEL:-ollama@nomic-embed-text-v2-moe}"

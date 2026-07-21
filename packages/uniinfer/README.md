@@ -267,15 +267,41 @@ uv run pytest                             # unit/integration tests (uniinfer/tes
 uv run black . && uv run isort . && uv run ruff check . --fix   # format + lint
 ```
 
-### Live testsuite (smoke → details → perf)
+### Live testsuite (provider-agnostic)
 
-The curated tiered suite that talks to a **real proxy + provider**:
+The curated tiered suite that talks to a **real proxy + provider**. Every script
+is provider-agnostic — the whole point of uniinfer — and the live suite is run
+via `testsuite/run.sh` (the unit/mocked tests live in `uniinfer/tests/`, run with
+`uv run pytest`, no network).
 
 ```bash
-PROXY_URL=http://localhost:8123 PROXY_AUTH=… MODEL=tu@qwen-3.6-35b ./testsuite/run.sh all
-./testsuite/run.sh smoke   # alive?  (CLI + proxy)
-./testsuite/run.sh details # correct? (reasoning, tools, streaming, turn-based)
-./testsuite/run.sh perf    # fast?    (throughput incl. thinking, TTFT, latency)
+PROXY_URL=https://localhost:8123 PROXY_AUTH=… MODEL=tu@qwen-3.6-35b ./testsuite/run.sh all
+./testsuite/run.sh smoke    # alive?   (CLI + proxy: version, chat, stream, embeddings)
+./testsuite/run.sh details  # correct? (reasoning, tools, streaming, turn-based)
+./testsuite/run.sh perf     # fast?    (throughput incl. thinking, TTFT, latency)
+./testsuite/run.sh matrix   # capable? (capability matrix for a provider via /v1/system/capabilities)
+./testsuite/run.sh models   # behaves? (alive/tool_use/thinking for a provider)
+./testsuite/run.sh bench    # probe + tok/s (see below)
+```
+
+Reachability is decided within **seconds**: a model that doesn't answer the
+readiness probe within `DOWN_TIMEOUT` (default 8s) is flagged down and skipped —
+no minutes-long hangs on dead models.
+
+#### Universal probe + tok/s (`bench_openai.py`)
+
+`testsuite/bench_openai.py` is a **standalone, provider-agnostic** probe + tok/s
+benchmark for *any* OpenAI-compatible `/v1/chat/completions` endpoint (uniinfer
+proxy, vLLM, Ollama, OpenAI, …). It only needs `httpx`, so you can copy it into
+any deployment. Config is just **base-url + bearer + model**:
+
+```bash
+# any OpenAI-compatible endpoint
+uv run python testsuite/bench_openai.py \
+  --base-url http://localhost:8000/v1 --model nvidia/Qwen3.6-35B-A3B-NVFP4 --reasoning none
+# uniinfer proxy
+uv run python testsuite/bench_openai.py \
+  --base-url https://localhost:8123/v1 --bearer "$PROXY_AUTH" --model tu@qwen-3.5-397b --reasoning none
 ```
 
 See [testsuite/README.md](testsuite/README.md). Token counting:
