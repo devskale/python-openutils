@@ -26,6 +26,9 @@ class OpenCodeProvider(OpenAICompatibleChatProvider):
     ERROR_PROVIDER_NAME = "OpenCode"
     DEFAULT_MODEL = "deepseek-v4-flash-free"
     CREDGOO_SERVICE = "opencode"
+    # The router forwards native OpenAI multimodal content to vision-capable
+    # upstreams (e.g. big-pickle, mimo-v2.5-free).
+    PRESERVE_MULTIMODAL = True
 
     def __init__(self, api_key: Optional[str] = None):
         super().__init__(api_key=api_key, base_url=self.BASE_URL)

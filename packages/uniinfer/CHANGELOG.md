@@ -4,6 +4,21 @@ All notable changes to **uniinfer** are documented in this file.
 Versions follow [Semantic Versioning](https://semver.org/); this file
 adheres to [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.6.12] - 2026-07-21
+
+### Fixed
+- **Vision was broken through uniinfer for all OpenAI-compatible providers.**
+  `OpenAICompatibleChatProvider._flatten_messages` silently stripped `image_url`
+  parts from multimodal content, collapsing list content to a text-only string —
+  so vision models never received the image and hallucinated. Confirmed against
+  `kilo@stepfun/step-3.7-flash:free` (raw API returned "sylents" 5/5; via uniinfer
+  the image was dropped and the model confabulated). Added an opt-in
+  `PRESERVE_MULTIMODAL: bool = False` class flag: when True, list content
+  (including image_url parts) is forwarded as-is; when False (default), the
+  legacy flatten-to-string behaviour is preserved for text-only backends.
+  Enabled on `KiloProvider` and `OpenCodeProvider` (both gateways forward
+  native OpenAI multimodal content to vision-capable upstreams).
+
 ## [0.6.10] - 2026-07-19
 
 ### Added

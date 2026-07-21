@@ -38,6 +38,12 @@ class OpenAICompatibleChatProvider(ChatProvider):
     # gateways with an anonymous free tier (e.g. Kilo) set this False so
     # acomplete/astream_complete skip the api_key guard for free models.
     REQUIRES_API_KEY: bool = True
+    # Whether the backend accepts native OpenAI multimodal content (a list of
+    # content parts, including image_url). When True, list content is forwarded
+    # as-is so vision models receive images. When False (default, for text-only
+    # backends), list content is flattened to a string (image parts dropped) —
+    # the legacy behaviour. Set True on vision-capable gateways (Kilo, OpenCode).
+    PRESERVE_MULTIMODAL: bool = False
 
     def __init__(self, api_key: Optional[str] = None, base_url: Optional[str] = None, **kwargs):
         super().__init__(api_key, **kwargs)
@@ -48,7 +54,7 @@ class OpenAICompatibleChatProvider(ChatProvider):
         for msg in messages:
             msg_dict = msg.to_dict()
             content = msg_dict.get("content")
-            if isinstance(content, list):
+            if isinstance(content, list) and not self.PRESERVE_MULTIMODAL:
                 text_parts = []
                 for part in content:
                     if isinstance(part, dict) and part.get("type") == "text":

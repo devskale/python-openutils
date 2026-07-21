@@ -41,6 +41,9 @@ class KiloProvider(OpenAICompatibleChatProvider):
     # A key is still resolved from credgoo when available so free-model requests
     # are authenticated (higher rate limits than the anonymous tier).
     REQUIRES_API_KEY = False
+    # The gateway forwards native OpenAI multimodal content (image_url parts)
+    # to vision-capable upstreams (e.g. stepfun/step-3.7-flash:free).
+    PRESERVE_MULTIMODAL = True
 
     def __init__(self, api_key: Optional[str] = None):
         if not api_key:
