@@ -4,6 +4,20 @@ All notable changes to **uniinfer** are documented in this file.
 Versions follow [Semantic Versioning](https://semver.org/); this file
 adheres to [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.6.22] - 2026-07-22
+
+### Added
+
+- **bench_realworld.py: decode tok/s split (candidate B).** New
+  `compute_throughput` seam splits throughput into `effective` (incl prefill,
+  the existing tok/s) and `decode` (generation phase only:
+  completion/(latency-ttft)). decode is reported only when the decode phase is
+  >= 1.0s — below that it is measurement noise (lat ≈ ttft for short outputs
+  → divide by ~0, e.g. nothink rows that previously implied 800-2900 tok/s).
+  New `dec/s` column in the live print + Results table; `avg dec/s` in the
+  summary; `tok_per_s_decode` in JSONL. Also fixes shifted tuple indices in the
+  summary after the dec_tps insertion.
+
 ## [0.6.21] - 2026-07-22
 
 ### Changed
