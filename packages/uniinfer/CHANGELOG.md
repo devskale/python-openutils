@@ -4,6 +4,18 @@ All notable changes to **uniinfer** are documented in this file.
 Versions follow [Semantic Versioning](https://semver.org/); this file
 adheres to [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.6.14] - 2026-07-21
+
+### Fixed
+
+- **TU now forwards `stream_options` (and other OpenAI passthrough params) to
+  vLLM.** TU's `_prepare_payload` built a curated payload and dropped the
+  proxy's OpenAI passthrough extras — so `stream_options.include_usage` never
+  reached vLLM, meaning vLLM never emitted the terminal usage chunk that
+  0.6.13's proxy fix was waiting for. Streaming usage now flows end-to-end.
+  Mirrors the base `OpenAICompatibleChatProvider._build_payload` passthrough
+  (respects `EXTRA_FORWARD_DENY`).
+
 ## [0.6.13] - 2026-07-21
 
 ### Fixed

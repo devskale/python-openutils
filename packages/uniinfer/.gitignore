@@ -32,3 +32,8 @@ testsuite/*.local.json
 # Handover-Doku mit echten Keys — NIEMALS committen:
 SETUP.md
 *.local.md
+
+# local secrets / test keys
+.env
+.env.local
+.env*

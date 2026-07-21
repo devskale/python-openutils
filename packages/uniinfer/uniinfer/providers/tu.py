@@ -329,6 +329,16 @@ class TUProvider(ChatProvider):
         if ctk:
             payload["chat_template_kwargs"] = ctk
 
+        # OpenAI passthrough: forward unmapped OpenAI params (top_p,
+        # response_format, seed, stream_options, logprobs, …) verbatim so new
+        # OpenAI features reach vLLM without a per-field code change. Critically
+        # this carries stream_options.include_usage so vLLM emits a terminal
+        # usage chunk — without it, streaming consumers never see token counts.
+        if getattr(request, "extra", None):
+            for _k, _v in request.extra.items():
+                if _k not in self.EXTRA_FORWARD_DENY:
+                    payload[_k] = _v
+
         return payload
 
     async def acomplete(self, request: ChatCompletionRequest) -> ChatCompletionResponse:
