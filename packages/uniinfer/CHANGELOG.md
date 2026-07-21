@@ -4,6 +4,16 @@ All notable changes to **uniinfer** are documented in this file.
 Versions follow [Semantic Versioning](https://semver.org/); this file
 adheres to [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.6.16] - 2026-07-21
+
+### Fixed
+
+- **vLLM streaming usage finally reaches clients.** vLLM emits usage on a
+  `choices:[{delta:{}}]` chunk (an *empty delta*, not empty choices). Both
+  TU and the base OpenAICompatible provider skipped that chunk via their
+  "empty delta" guard, silently dropping the usage even after 0.6.14/0.6.15
+  forwarded stream_options. The guard now lets usage-carrying chunks through.
+
 ## [0.6.15] - 2026-07-21
 
 ### Fixed

@@ -452,7 +452,8 @@ class TUProvider(ChatProvider):
                         tool_calls = delta.get('tool_calls')
                         
                         if not content and not reasoning_content and not tool_calls and not finish_reason:
-                            continue
+                            if not data.get("usage"):
+                                continue
                             
                         chunks_yielded += 1
                         message = ChatMessage(

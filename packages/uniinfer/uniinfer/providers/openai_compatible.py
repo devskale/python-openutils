@@ -264,7 +264,11 @@ class OpenAICompatibleChatProvider(ChatProvider):
                     tool_calls = delta.get("tool_calls")
 
                     if content is None and reasoning_content is None and tool_calls is None and finish_reason is None:
-                        continue
+                        # Empty-delta chunk — but vLLM emits usage on a
+                        # choices:[{delta:{}}] chunk (not choices:[]). Forward it
+                        # when it carries usage so the proxy can emit it.
+                        if not data.get("usage"):
+                            continue
 
                     yield ChatCompletionResponse(
                         message=ChatMessage(
