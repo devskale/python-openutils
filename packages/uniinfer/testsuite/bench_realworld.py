@@ -33,16 +33,14 @@ Known limitation — Tokenizer / think-Spalte:
   - in_tok/out_tok kommen aus der API (usage.prompt_tokens / completion_tokens)
     => serverseitig exakt, kein lokaler Tokenizer noetig. Auch im Stream-Modus
     seit dem proxy streaming-usage fix (0.6.17): der terminal usage-chunk wird
-    durchgereicht, sodass ct echt ist (nur noch Fallback auf ÷3.5-Schaetzung,
-    wenn ein Provider gar keinen usage-chunk emittet).
-  - Die think-Spalte zaehlt reasoning_content (vom Server geliefert, aber nicht in
-    usage aufgespalten: completion_tokens_details ist null). Da weder tiktoken
-    (OpenAI-only Vokabular, falsch fuer Qwen) noch transformers (korrekt, aber
-    ~500MB) hier als Abhaengigkeit vorliegen, wird geschaetzt:
-        think_tok ~ len(reasoning_content) / 3.5
-    (3.5 statt 4.0, weil Deutsch/dichte Tokenlaeufe). Wer exakte Werte braucht:
-    HF `tokenizers` (Rust, leicht) auf das gecachte tokenizer.json anwenden —
-    nicht tiktoken, nicht transformers.
+    durchgereicht.
+  - reasoning_tokens wird EXAKT aus completion_tokens_details.reasoning_tokens
+    gelesen, wenn der Server ihn liefert (vLLM stream w/ include_usage, openrouter
+    beide Modi). Nur wenn er fehlt (vLLM non-stream, groq) wird aus der Laenge des
+    reasoning_content geschaetzt (÷3.5) und reasoning_tokens_estimated=True gesetzt.
+    ('~' in der think-Spalte = geschaetzt.) vLLM non-stream emitiert details gar
+    nicht (TU-Realitaet, kein proxy-Bug).
+  - content_tokens = completion_tokens − reasoning_tokens (abgeleitet).
 """
 from __future__ import annotations
 
@@ -63,6 +61,57 @@ DEFAULT_QUERY = ("Du pruefst das angehaengte Vergabe-Dokument. Erstelle eine str
                  "und eine kurze Einschaetzung, ob die Arithmetik stimmt. Antworte ausfuehrlich.")
 _DOC_DEFAULT = os.path.join(os.path.dirname(__file__), "fixtures", "docs")
 _EXCLUDE = (".venv", "node_modules", ".pytest_cache", "egg-info", "build", ".git")
+
+# Heuristic divisor for estimating token counts from text length (German /
+# dense runs). Used only when the server provides no exact field.
+_REASONING_TOKEN_GUESS_DIVISOR = 3.5
+
+
+def extract_usage(usage: dict | None, reasoning_text: str = "") -> dict:
+    """Extract token counts from a server usage object (the bench's usage seam).
+
+    reasoning_tokens precedence:
+      1. exact ``completion_tokens_details.reasoning_tokens`` when the server
+         provides it (vLLM stream w/ include_usage, openrouter both modes);
+      2. estimated from reasoning_content text length (÷3.5) when text is
+         present but no details (vLLM non-stream, groq — details never emitted);
+      3. None otherwise.
+
+    content_tokens = completion − reasoning when both known, else None.
+    """
+    u = usage or {}
+    pt = u.get("prompt_tokens")
+    ct = u.get("completion_tokens")
+    det = u.get("completion_tokens_details") or {}
+    rt = det.get("reasoning_tokens")
+    estimated = False
+    if rt is None and reasoning_text:
+        rt = round(len(reasoning_text) / _REASONING_TOKEN_GUESS_DIVISOR)
+        estimated = True
+    # reasoning is a subset of completion — cap an over-estimate at ct so
+    # content_tokens never goes negative.
+    if rt is not None and ct is not None and rt > ct:
+        rt = ct
+    content = (ct - rt) if (ct is not None and rt is not None) else None
+    return {
+        "prompt_tokens": pt,
+        "completion_tokens": ct,
+        "reasoning_tokens": rt,
+        "reasoning_tokens_estimated": estimated,
+        "content_tokens": content,
+    }
+
+
+_EMPTY_USAGE = {"prompt_tokens": None, "completion_tokens": None,
+                "reasoning_tokens": None, "reasoning_tokens_estimated": False,
+                "content_tokens": None}
+
+
+def _result(content, reasoning, latency, usage, finish, status, error, ttft=None) -> dict:
+    """Build a uniform result dict from a call path."""
+    u = usage if usage else dict(_EMPTY_USAGE)
+    return {"content": content, "reasoning": reasoning, "latency": latency,
+            "finish_reason": finish, "status": status, "error": error, "ttft": ttft, **u}
 
 
 def load_dotenv() -> None:
@@ -147,8 +196,8 @@ def expand_docs(spec: str, limit: int) -> list[Path]:
 
 def _call(base: str, auth: str, model: str, reasoning: dict, doc_text: str,
           query: str, max_tokens: int):
-    """Liefert (answer, reasoning, latency_s, prompt_tokens, completion_tokens,
-    finish_reason, status, error). reasoning = Inhalt von reasoning_content (oder "")."""
+    """Nicht-streamender Aufruf. Liefert ein result-dict (content, reasoning,
+    latency, finish_reason, status, error, ttft, + usage-Felder)."""
     H = {"Content-Type": "application/json"}
     if auth:
         H["Authorization"] = f"Bearer {auth}"
@@ -160,24 +209,25 @@ def _call(base: str, auth: str, model: str, reasoning: dict, doc_text: str,
         with client(timeout=1800.0) as c:
             t0 = time.perf_counter()
             r = c.post(f"{base}/chat/completions", headers=H, json=body)
-            dt = time.perf_counter() - t0
+            dt = round(time.perf_counter() - t0, 2)
             if r.status_code != 200:
-                return None, "", round(dt, 2), None, None, None, r.status_code, r.text[:200]
+                return _result(None, "", dt, None, None, r.status_code, r.text[:200])
             j = r.json()
     except Exception as e:  # noqa: BLE001
-        return None, "", None, None, None, None, None, f"{type(e).__name__}: {str(e)[:160]}"
+        return _result(None, "", None, None, None, None, f"{type(e).__name__}: {str(e)[:160]}")
     ch = j.get("choices", [{}])[0]
     msg = ch.get("message") or {}
     content = (msg.get("content", "") or "").strip()
-    reasoning = (msg.get("reasoning_content", "") or "").strip()
-    u = j.get("usage", {}) or {}
-    return content, reasoning, round(dt, 2), u.get("prompt_tokens"), u.get("completion_tokens"), ch.get("finish_reason"), 200, None
+    rsn = (msg.get("reasoning_content", "") or "").strip()
+    return _result(content, rsn, dt, extract_usage(j.get("usage"), rsn),
+                   ch.get("finish_reason"), 200, None)
 
 
 def _call_stream(base: str, auth: str, model: str, reasoning: dict, doc_text: str,
                  query: str, max_tokens: int):
-    """Streaming-Variante von _call. Liefert dieselben Felder plus ttft (Time-to-first-token).
-    (answer, reasoning, latency_s, prompt_tokens, completion_tokens, finish_reason, status, error, ttft)."""
+    """Streaming-Variante von _call. Liefert dasselbe result-dict plus ttft.
+    Behaelt den vollen usage-object fest (nicht nur pt/ct), damit extract_usage
+    completion_tokens_details.reasoning_tokens lesen kann, wenn vLLM ihn liefert."""
     H = {"Content-Type": "application/json"}
     if auth:
         H["Authorization"] = f"Bearer {auth}"
@@ -189,15 +239,17 @@ def _call_stream(base: str, auth: str, model: str, reasoning: dict, doc_text: st
     content_parts: list[str] = []
     reasoning_parts: list[str] = []
     first = None
-    pt = ct = finish = status = None
+    usage_obj = None
+    finish = status = None
     err = None
     try:
         with client(timeout=1800.0) as c:
             t0 = time.perf_counter()
             with c.stream("POST", f"{base}/chat/completions", headers=H, json=body) as s:
                 if s.status_code != 200:
-                    dt = time.perf_counter() - t0
-                    return None, "", round(dt, 2), None, None, None, s.status_code, s.read().decode(errors="ignore")[:200], None
+                    dt = round(time.perf_counter() - t0, 2)
+                    return _result(None, "", dt, None, None, s.status_code,
+                                   s.read().decode(errors="ignore")[:200])
                 for line in s.iter_lines():
                     if not line.startswith("data: "):
                         continue
@@ -219,20 +271,17 @@ def _call_stream(base: str, auth: str, model: str, reasoning: dict, doc_text: st
                         finish = ch["finish_reason"]
                     u = d.get("usage")
                     if u:
-                        pt = u.get("prompt_tokens")
-                        ct = u.get("completion_tokens")
-            dt = time.perf_counter() - t0
+                        usage_obj = u  # terminal chunk carries full usage incl details
+            dt = round(time.perf_counter() - t0, 2)
     except Exception as e:  # noqa: BLE001
-        return None, "", None, None, None, None, None, f"{type(e).__name__}: {str(e)[:160]}", None
+        return _result(None, "", None, None, None, None, f"{type(e).__name__}: {str(e)[:160]}")
     ttft = round(first - t0, 2) if first else None
     content = "".join(content_parts).strip()
-    reasoning = "".join(reasoning_parts).strip()
-    # ct/prompt_tokens kommen jetzt i.d.R. echt aus dem terminalen usage-chunk
-    # (proxy fix 0.6.17 gibt stream_options.include_usage durch). Die ÷3.5-Heuristik
-    # ist nur noch Fallback fuer Provider, die keinen usage-chunk emitten.
-    if ct is None and (content or reasoning):
-        ct = round((len(content) + len(reasoning)) / 3.5)
-    return content, reasoning, round(dt, 2), pt, ct, finish, 200, None, ttft
+    rsn = "".join(reasoning_parts).strip()
+    # Fallback: Server emitiert gar keinen usage-chunk -> ct aus Text schaetzen.
+    if usage_obj is None and (content or rsn):
+        usage_obj = {"completion_tokens": round((len(content) + len(rsn)) / _REASONING_TOKEN_GUESS_DIVISOR)}
+    return _result(content, rsn, dt, extract_usage(usage_obj, rsn), finish, 200, None, ttft)
 
 
 def check_answer(answer: str | None, expected: dict | None) -> str:
@@ -364,27 +413,33 @@ def main() -> None:
                     for strm in streams:
                         do_stream = strm == "strm"
                         if do_stream:
-                            ans, rsn, dt, pt, ct, finish, status, err, ttft = _call_stream(base, auth, model, reason, doc_text, query, mt)
+                            res = _call_stream(base, auth, model, reason, doc_text, query, mt)
                         else:
-                            ans, rsn, dt, pt, ct, finish, status, err = _call(base, auth, model, reason, doc_text, query, mt)
-                            ttft = None
+                            res = _call(base, auth, model, reason, doc_text, query, mt)
+                        ans = res["content"]; rsn = res["reasoning"]; dt = res["latency"]
+                        pt = res["prompt_tokens"]; ct = res["completion_tokens"]
+                        rt = res["reasoning_tokens"]; rt_est = res["reasoning_tokens_estimated"]
+                        content_tok = res["content_tokens"]
+                        finish = res["finish_reason"]; status = res["status"]; err = res["error"]; ttft = res["ttft"]
                         tps = round(ct / dt, 1) if (ct and dt) else None
-                        think_tok = round(len(rsn) / 3.5) if rsn else 0
+                        think_display = (f"{rt}{'~' if rt_est else ''}" if rt is not None else "-")
                         chk = check_answer(ans, case.get("expected") if case else None)
                         x = "x" if (finish == "length" or (status and status != 200)) else ""
                         rec = {"model_id": model, "name": name, "doc": str(f), "query": query,
                                "reasoning": mode, "stream": strm, "prompt_tokens": pt, "completion_tokens": ct,
+                               "reasoning_tokens": rt, "reasoning_tokens_estimated": rt_est,
+                               "content_tokens": content_tok,
                                "tok_per_s": tps, "latency_s": dt, "ttft": ttft, "finish_reason": finish,
                                "status_code": status, "error": err, "answer": ans,
-                               "reasoning_content": rsn, "think_tokens_est": think_tok,
+                               "reasoning_content": rsn,
                                "check": chk, "expected": case.get("expected") if case else None}
-                        rows.append((name, model, f.name, mode, strm, pt, tps, ct, think_tok, ttft, dt, finish, status, chk, x))
+                        rows.append((name, model, f.name, mode, strm, pt, tps, ct, think_display, ttft, dt, finish, status, chk, x))
                         if status and status != 200:
                             print(f"  {f.name:34} {mode:5} {strm:5}  HTTP {status}")
                         else:
                             ttft_s = f"{ttft:.1f}" if ttft else "-"
                             print(f"  {f.name:34} {mode:5} {strm:5} {(pt or 0):>7} {(tps or 0):>6.0f} "
-                                  f"{(ct or 0):>5} {think_tok:>5} {ttft_s:>5} {dt or 0:>5.1f} {(finish or '-')[:5]:>5} {chk:>3} {x:>2}")
+                                  f"{(ct or 0):>5} {think_display:>5} {ttft_s:>5} {dt or 0:>5.1f} {(finish or '-')[:5]:>5} {chk:>3} {x:>2}")
                         fout.write(json.dumps(rec, ensure_ascii=False) + "\n")
                         fout.flush()
 
@@ -392,19 +447,20 @@ def main() -> None:
     print("\n" + "=" * 72)
     print("### Results\n")
     results_rows = []
-    for name, model, fname, mode, strm, pt, tps, ct, think_tok, ttft, dt, finish, status, chk, x in sorted(rows, key=lambda r: (r[0], r[3], r[4], r[5] or 0)):
+    for name, model, fname, mode, strm, pt, tps, ct, think_display, ttft, dt, finish, status, chk, x in sorted(rows, key=lambda r: (r[0], r[3], r[4], r[5] or 0)):
         failed = status is not None and status != 200
         if failed:
-            results_rows.append([name, fname, mode, strm, "-", "-", "-", "-", "-", f"HTTP {status}", "✗", "x"])
+            results_rows.append([name, fname, mode, strm, "-", "-", "-", "-", "-", "-", f"HTTP {status}", "✗", "x"])
         else:
             ttft_s = f"{ttft:.1f}" if ttft else "-"
-            results_rows.append([name, fname, mode, strm, str(pt or "~"), str(tps or "-"), str(ct or "-"), str(think_tok), ttft_s, (finish or "-")[:6], chk, x])
-    print(md_table(["model", "document", "mode", "strm", "in_tok", "tok/s", "out_tok", "think", "ttft", "finish", "check", "x"],
-                   results_rows, align=["left", "left", "left", "left", "right", "right", "right", "right", "right", "left", "center", "center"]))
+            time_s = f"{dt:.1f}" if dt else "-"
+            results_rows.append([name, fname, mode, strm, str(pt or "~"), str(tps or "-"), str(ct or "-"), think_display, ttft_s, time_s, (finish or "-")[:6], chk, x])
+    print(md_table(["model", "document", "mode", "strm", "in_tok", "tok/s", "out_tok", "think", "ttft", "time", "finish", "check", "x"],
+                   results_rows, align=["left", "left", "left", "left", "right", "right", "right", "right", "right", "right", "left", "center", "center"]))
 
     # --- per-model/mode/stream summary ---
     by_key: dict[tuple, list[tuple]] = {}
-    for name, model, fname, mode, strm, pt, tps, ct, think_tok, ttft, dt, finish, status, chk, x in rows:
+    for name, model, fname, mode, strm, pt, tps, ct, think_display, ttft, dt, finish, status, chk, x in rows:
         if status is not None and status != 200:
             continue
         by_key.setdefault((name, mode, strm), []).append((pt or 0, tps or 0, dt, finish, chk, ttft))

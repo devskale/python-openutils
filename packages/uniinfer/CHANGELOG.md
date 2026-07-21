@@ -4,6 +4,23 @@ All notable changes to **uniinfer** are documented in this file.
 Versions follow [Semantic Versioning](https://semver.org/); this file
 adheres to [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.6.21] - 2026-07-22
+
+### Changed
+
+- **bench_realworld.py: exact reasoning tokens (candidate A).** New
+  `extract_usage` seam reads `completion_tokens_details.reasoning_tokens`
+  exactly when the server provides it (vLLM stream w/ include_usage, openrouter
+  both modes) — previously dropped and estimated via len/3.5. The ÷3.5 heuristic
+  is now a fallback only (vLLM non-stream, groq), flagged
+  `reasoning_tokens_estimated=True` (`~` marker in the think column). Derives
+  `content_tokens = completion − reasoning` (capped so never negative).
+  \_call/\_call_stream return a uniform result dict (was a positional tuple);
+  JSONL gains `reasoning_tokens`, `reasoning_tokens_estimated`,
+  `content_tokens`; drops `think_tokens_est`. Added a `time` (latency)
+  column to the Results table. Confirmed vLLM non-stream omits details entirely
+  (TU reality, not a proxy bug).
+
 ## [0.6.20] - 2026-07-22
 
 ### Added
