@@ -286,24 +286,11 @@ def merge_speed_results(models: list[dict], provider_id: str) -> list[dict]:
 
 
 def merge_probe_results(models: list[dict], provider_id: str) -> list[dict]:
-    """Merge capability-probe results from _probe_results.json into model dicts."""
-    if not PROBE_RESULTS_PATH.exists():
-        return models
-    try:
-        with open(PROBE_RESULTS_PATH) as f:
-            probe_data = json.load(f)
-    except (json.JSONDecodeError, OSError):
-        return models
-    if not probe_data:
-        return models
-    enriched = 0
-    for m in models:
-        key = f"{provider_id}/{m['id']}"
-        if key in probe_data:
-            m["probed"] = probe_data[key]
-            enriched += 1
-    if enriched:
-        log.info("  probed: merged results for %d/%d models", enriched, len(models))
+    """Deprecated no-op: probe results are no longer merged into models.json.
+
+    Kept (unused) for backward-compat with any external callers; the live probe
+    data lives in _probe_results.json, read by the /capabilities dashboard.
+    """
     return models
 
 
@@ -601,8 +588,10 @@ def main():
 
             # Merge speed test results
             models = merge_speed_results(models, provider_id)
-            # Merge capability-probe results
-            models = merge_probe_results(models, provider_id)
+            # NOTE: capability-probe results are NOT merged into models.json —
+            # they live in _probe_results.json (read by the /capabilities
+            # dashboard). models.json stays lean; the per-model `probed` field
+            # was 57% of the file and never consumed.
 
             if provider_id in result:
                 # Merge models from a second factory (e.g. embed) for the same provider.
@@ -725,7 +714,9 @@ def main():
     # never leaves a truncated catalog (the live file stays intact until done).
     tmp = OUTPUT_PATH.parent / (OUTPUT_PATH.name + ".tmp")
     with open(tmp, "w") as f:
-        json.dump(output, f, indent=2, ensure_ascii=False)
+        # Compact JSON: the catalog is machine-read, not hand-edited. indent=2
+        # added 57% whitespace overhead; compact cuts models.json ~7x.
+        json.dump(output, f, ensure_ascii=False, separators=(",", ":"))
     tmp.replace(OUTPUT_PATH)
 
     log.info(

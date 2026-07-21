@@ -777,22 +777,13 @@ def _probe_key(target: str) -> str:
 
 
 def _merge_probe_into_models_json(key: str, entry: dict) -> None:
-    """Update the matching model entry in models.json with a ``probed`` field."""
-    if not MODELS_JSON_PATH.exists():
-        return
-    try:
-        catalog = json.loads(MODELS_JSON_PATH.read_text())
-    except Exception:  # noqa: BLE001
-        return
-    provider, model = key.split("/", 1)
-    prov = catalog.get("providers", {}).get(provider, {})
-    for m in prov.get("models", []):
-        if m.get("id") == model:
-            m["probed"] = entry
-            break
-    else:
-        return
-    MODELS_JSON_PATH.write_text(json.dumps(catalog, indent=2))
+    """No-op: probe results are no longer merged into models.json.
+
+    The live probe data lives in _probe_results.json (read by the /capabilities
+    dashboard). models.json stays lean; the per-model `probed` field was 57% of
+    the file and was never consumed by any reader.
+    """
+    return
 
 
 async def softprobe_catalog(

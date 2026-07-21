@@ -407,7 +407,8 @@ def update_provider_in_cache(provider_name: str, models_list) -> None:
     try:
         os.makedirs(os.path.dirname(models_json), exist_ok=True)
         with open(models_json, "w") as f:
-            json.dump(data, f, indent=2, ensure_ascii=False)
+            # Compact JSON: machine-read catalog, not hand-edited.
+            json.dump(data, f, ensure_ascii=False, separators=(",", ":"))
         logger.info("Updated cache for provider %s: %d models", provider_name, len(model_dicts))
     except OSError as e:
         logger.warning("Failed to write models.json: %s", e)
