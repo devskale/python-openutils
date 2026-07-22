@@ -121,3 +121,17 @@ do not run it automatically.
 - **Docstrings** required for all public functions/classes/modules
 - **Type hints** where appropriate
 - Imports: stdlib → third-party → local (use `isort`)
+
+## Agent skills
+
+### Issue tracker
+
+Issues live in GitHub Issues for this repo (uses the `gh` CLI). See `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+Five canonical roles, each label string equals its role name. See `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+Multi-context — root `CONTEXT-MAP.md` points to per-package `CONTEXT.md` files. See `docs/agents/domain.md`.
