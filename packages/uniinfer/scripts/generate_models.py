@@ -241,32 +241,20 @@ PRUNE_DAYS = 90
 
 
 def load_model_history() -> dict[str, dict]:
-    """Load {provider/model_id: {first_seen, last_seen}} from history file.
+    """Load model history via the Catalog (owns _model_history.json).
 
-    Migrates legacy format (string value) to new object format.
+    Thin wrapper kept so the generator can import it at module level without
+    a circular dependency on proxy_services.
     """
-    if MODEL_HISTORY_PATH.exists():
-        with open(MODEL_HISTORY_PATH) as f:
-            raw = json.load(f)
-    else:
-        return {}
-    migrated = {}
-    for key, val in raw.items():
-        if isinstance(val, str):
-            migrated[key] = {"first_seen": val, "last_seen": val}
-        elif isinstance(val, dict) and "first_seen" in val:
-            if "last_seen" not in val:
-                val["last_seen"] = val["first_seen"]
-            migrated[key] = val
-        else:
-            continue
-    return migrated
+    from uniinfer.proxy_services.models_registry import Catalog
+
+    return Catalog().load_history()
 
 
 def save_model_history(history: dict[str, dict]) -> None:
-    MODEL_HISTORY_PATH.parent.mkdir(parents=True, exist_ok=True)
-    with open(MODEL_HISTORY_PATH, "w") as f:
-        json.dump(history, f, indent=2, sort_keys=True)
+    from uniinfer.proxy_services.models_registry import Catalog
+
+    Catalog().save_history(history)
 
 
 def merge_speed_results(models: list[dict], provider_id: str) -> list[dict]:
@@ -714,14 +702,11 @@ def main():
     }
 
     OUTPUT_PATH.parent.mkdir(parents=True, exist_ok=True)
-    # Atomic write: stage to a tmp file then rename, so a crash/timeout mid-dump
-    # never leaves a truncated catalog (the live file stays intact until done).
-    tmp = OUTPUT_PATH.parent / (OUTPUT_PATH.name + ".tmp")
-    with open(tmp, "w") as f:
-        # Compact JSON: the catalog is machine-read, not hand-edited. indent=2
-        # added 57% whitespace overhead; compact cuts models.json ~7x.
-        json.dump(output, f, ensure_ascii=False, separators=(",", ":"))
-    tmp.replace(OUTPUT_PATH)
+    # Catalog.write_all handles the atomic tmp+rename AND the flock that
+    # serializes against concurrent upsert_provider / backfill_fields.
+    from uniinfer.proxy_services.models_registry import Catalog
+
+    Catalog().write_all(output)
 
     log.info(
         "\nWrote %s (%d models across %d providers)",

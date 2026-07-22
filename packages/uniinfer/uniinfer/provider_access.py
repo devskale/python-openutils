@@ -195,9 +195,9 @@ def list_embedding_models_for_provider(
         extra = PROVIDER_CONFIGS.get(provider_name, {}).get("extra_params", {})
     provider_cls = EmbeddingProviderFactory.get_provider_class(provider_name)
     modellist = provider_cls.list_models(api_key=api_key, **extra)
-    from uniinfer.proxy_services.models_registry import update_provider_in_cache
+    from uniinfer.proxy_services.models_registry import Catalog
 
-    update_provider_in_cache(provider_name, modellist)
+    Catalog().upsert_provider(provider_name, modellist)
     return modellist
 
 
@@ -219,9 +219,9 @@ def list_models_for_provider(provider_name: str, api_bearer_token: str) -> list[
     provider_cls = ProviderFactory.get_provider_class(provider_name)
     modellist = provider_cls.list_models(api_key=api_key, **extra)
     update_models(modellist, provider_name)
-    from uniinfer.proxy_services.models_registry import update_provider_in_cache
+    from uniinfer.proxy_services.models_registry import Catalog
 
-    update_provider_in_cache(provider_name, modellist)
+    Catalog().upsert_provider(provider_name, modellist)
     return modellist
 
 

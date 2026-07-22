@@ -329,7 +329,7 @@ def _pi_models(args):
     import os
     from pathlib import Path
 
-    from uniinfer.proxy_services.models_registry import load_catalog
+    from uniinfer.proxy_services.models_registry import Catalog
     from uniinfer.pi_export import (
         accessible_models,
         build_provider_entry,
@@ -363,7 +363,7 @@ def _pi_models(args):
         print("No API key provided — aborting.")
         return
 
-    catalog = load_catalog()
+    catalog = Catalog().read_nested()
     total = sum(len(p.get("models", [])) for p in (catalog.get("providers") or {}).values())
     if not total:
         print("Catalog is empty. Run `scripts/generate_models.py` first.")

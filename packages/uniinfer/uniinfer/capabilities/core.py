@@ -205,9 +205,9 @@ async def _catalog_profile(t: ProbeTarget) -> dict[str, Any]:
     so downstream skip-logic is uniform across providers.
     """
     try:
-        from uniinfer.proxy_services.models_registry import load_catalog
+        from uniinfer.proxy_services.models_registry import Catalog
 
-        catalog = load_catalog(t.provider_name)  # NOTE: takes a string, not a list
+        catalog = Catalog().read_nested(t.provider_name)  # NOTE: takes a string, not a list
         for m in (
             catalog.get("providers", {}).get(t.provider_name, {}).get("models", [])
         ):
@@ -803,7 +803,7 @@ async def softprobe_catalog(
     ``_probe_results.json`` and updates each model's ``probed`` field in
     ``models.json``. Shared by the ``--softprobe`` CLI and the daily refresh.
     """
-    from uniinfer.proxy_services.models_registry import load_catalog
+    from uniinfer.proxy_services.models_registry import Catalog
 
     existing: dict[str, Any] = {}
     if PROBE_RESULTS_PATH.exists():
@@ -816,7 +816,7 @@ async def softprobe_catalog(
         if (stale_days and not force)
         else None
     )
-    catalog = load_catalog(providers) if providers else load_catalog()
+    catalog = Catalog().read_nested(providers) if providers else Catalog().read_nested()
     provs = catalog.get("providers", {})
 
     probed = skipped = errors = 0

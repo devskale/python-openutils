@@ -83,7 +83,6 @@ def parse_pi_entries(pi_data: dict) -> list[tuple[str, str, dict]]:
 def import_pi_metadata(
     pi_path: Path = DEFAULT_PI_MODELS_JSON,
     catalog_path: Optional[Path] = None,
-    overrides_path: Optional[Path] = None,
 ) -> dict:
     """Import curated metadata from pi's models.json into the catalog.
 
@@ -91,58 +90,20 @@ def import_pi_metadata(
     already applies, AND backfills the live ``models.json`` immediately so the
     change is visible without a full regeneration.
 
-    Returns a summary dict: {written, backfilled, skipped}.
+    Returns a summary dict: {entries, backfilled, skipped, overrides_path}.
     """
-    if catalog_path is None:
-        catalog_path = Path(__file__).parent / "models" / "models.json"
-    if overrides_path is None:
-        overrides_path = catalog_path.parent / "model_overrides.json"
+    from uniinfer.proxy_services.models_registry import Catalog
+
+    catalog = Catalog(path=str(catalog_path) if catalog_path else None)
 
     pi_data = json.loads(pi_path.read_text())
     entries = parse_pi_entries(pi_data)
-
-    # Load existing overrides + catalog.
-    overrides = {"_meta": {"description": "Curated metadata (context, modalities, capabilities). Merged at runtime into models.json. Sourced from pi's models.json."}, "models": {}}
-    if overrides_path.exists():
-        try:
-            existing = json.loads(overrides_path.read_text())
-            overrides["models"] = existing.get("models", {})
-        except Exception:
-            pass
-    catalog = json.loads(catalog_path.read_text()) if catalog_path.exists() else {"providers": {}}
-
-    backfilled = 0
-    skipped = 0
-    for prov, model_id, meta in entries:
-        # Only fill GAPS — never overwrite a value the API already provided.
-        cat_models = {
-            m.get("id"): m
-            for m in (catalog.get("providers", {}).get(prov, {}).get("models") or [])
-        }
-        cm = cat_models.get(model_id)
-        applied = False
-        if cm is not None:
-            for k, v in meta.items():
-                if not cm.get(k):
-                    cm[k] = v
-                    applied = True
-        # Persistent override (keyed by model id; global — same model, same ctx).
-        ov = overrides["models"].setdefault(model_id, {})
-        for k, v in meta.items():
-            ov.setdefault(k, v)
-        if applied:
-            backfilled += 1
-        else:
-            skipped += 1
-
-    overrides_path.write_text(json.dumps(overrides, indent=2))
-    if catalog.get("providers"):
-        catalog_path.write_text(json.dumps(catalog, separators=(",", ":")))
+    result = catalog.backfill_fields(entries)
     return {
         "entries": len(entries),
-        "backfilled": backfilled,
-        "skipped": skipped,
-        "overrides_path": str(overrides_path),
+        "backfilled": result["backfilled"],
+        "skipped": result["skipped"],
+        "overrides_path": str(catalog.overrides_path),
     }
 
 # Reasoning-model heuristic: ids/names that indicate a thinking/reasoning model.
@@ -265,7 +226,7 @@ def accessible_models(
     """Return (provider, model) pairs from the catalog that are accessible.
 
     Args:
-        catalog: nested catalog dict (from ``load_catalog``).
+        catalog: nested catalog dict (from ``Catalog().read_nested()``).
         access_filter: "free" (only free/usable models), "all" (everything),
             or "" (only models with no access info).
         providers: restrict to these provider ids; None = all.

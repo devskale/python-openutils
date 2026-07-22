@@ -15,7 +15,7 @@ from fastapi.responses import JSONResponse
 
 from uniinfer.auth import get_optional_proxy_token, verify_provider_access
 from uniinfer.errors import UniInferError
-from uniinfer.proxy_services.models_registry import ensure_fresh_models_file, load_catalog
+from uniinfer.proxy_services.models_registry import ensure_fresh_models_file, Catalog
 from uniinfer.completion import Target
 
 logger = logging.getLogger("uniioai_proxy")
@@ -64,7 +64,7 @@ def create_smoke_router() -> APIRouter:
         respected. Returns a per-provider, per-model report.
         """
         await ensure_fresh_models_file()
-        catalog = load_catalog(providers)
+        catalog = Catalog().read_nested(providers)
         provider_catalog = catalog.get("providers", {})
 
         requested = [p.strip() for p in providers.split(",") if p.strip()]

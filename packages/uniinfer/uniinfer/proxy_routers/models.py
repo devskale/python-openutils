@@ -10,15 +10,9 @@ from uniinfer.provider_access import (
 )
 from uniinfer.errors import AuthenticationError
 from uniinfer.proxy_services.models_registry import (
+    Catalog,
     ensure_fresh_models_file,
     refresh_models_file,
-    list_all_models_from_factories,
-    load_catalog,
-    update_provider_in_cache,
-    save_model_override,
-    load_model_overrides,
-    load_stale_models,
-    delete_model_override,
 )
 from uniinfer.core import ModelInfo
 import dataclasses
@@ -54,7 +48,7 @@ def create_models_router(version: str) -> APIRouter:
     @router.get("/v1/models")
     async def list_models():
         await ensure_fresh_models_file()
-        models = list_all_models_from_factories()
+        models = Catalog().list_resolved()
         return {
             "object": "list",
             "data": models,
@@ -88,7 +82,7 @@ def create_models_router(version: str) -> APIRouter:
         {"_meta": {...}, "providers": {pid: {provider_class, kind, models}}}.
         """
         await ensure_fresh_models_file()
-        catalog = load_catalog(providers)
+        catalog = Catalog().read_nested(providers)
         import json as _json
         body = _json.dumps(catalog, indent=2, ensure_ascii=False)
         headers = {}
@@ -105,7 +99,7 @@ def create_models_router(version: str) -> APIRouter:
     async def list_deprecated_models():
         """List deprecated models with deprecation info."""
         await ensure_fresh_models_file()
-        models = list_all_models_from_factories()
+        models = Catalog().list_resolved()
         deprecated = [
             m for m in models
             if m.get("status") == "deprecated" or m.get("deprecation_date")
@@ -121,7 +115,7 @@ def create_models_router(version: str) -> APIRouter:
         """List models first seen in the last N days."""
         from datetime import datetime, timezone, timedelta
         await ensure_fresh_models_file()
-        models = list_all_models_from_factories()
+        models = Catalog().list_resolved()
         cutoff = (datetime.now(timezone.utc) - timedelta(days=days)).strftime("%Y-%m-%d")
         new = [m for m in models if m.get("first_seen", "") >= cutoff]
         return {
@@ -141,7 +135,7 @@ def create_models_router(version: str) -> APIRouter:
         auto-pruned from the catalog.
         """
         await ensure_fresh_models_file()
-        stale = load_stale_models()
+        stale = Catalog().read_stale_models()
         filtered = [s for s in stale if s.get("days_missing", 0) >= days] if days else stale
         return {
             "object": "list",
@@ -217,7 +211,7 @@ def create_models_router(version: str) -> APIRouter:
     @router.get("/v1/models/overrides")
     async def get_model_overrides(api_bearer_token: str = Depends(validate_proxy_token)):
         """Return all model overrides."""
-        return load_model_overrides()
+        return Catalog().read_overrides()
 
     @router.put("/v1/models/overrides/{model_id:path}")
     async def put_model_override(model_id: str, body: dict, api_bearer_token: str = Depends(validate_proxy_token)):
@@ -226,13 +220,13 @@ def create_models_router(version: str) -> APIRouter:
         override = {k: v for k, v in body.items() if k in allowed and v is not None}
         if not override:
             raise HTTPException(status_code=400, detail="No valid fields to update")
-        save_model_override(model_id, override)
+        Catalog().save_override(model_id, override)
         return {"status": "ok", "model": model_id, "fields": list(override.keys())}
 
     @router.delete("/v1/models/overrides/{model_id:path}")
     async def del_model_override(model_id: str, api_bearer_token: str = Depends(validate_proxy_token)):
         """Delete a model override."""
-        deleted = delete_model_override(model_id)
+        deleted = Catalog().delete_override(model_id)
         return {"status": "ok", "deleted": deleted}
 
     @router.get("/v1/system/info")
