@@ -310,8 +310,8 @@
       return { chat:"#3b82f6", embed:"#8b5cf6", tts:"#f59e0b", stt:"#10b981", image:"#ec4899" }[type] || "#6b7280";
     }
 
-    // Providers where every model is free (mirrors backend _UNIVERSALLY_FREE).
-    const UNIVERSALLY_FREE = new Set(["groq", "pollinations", "ollama", "tu", "tu-staging", "cohere", "mistral", "moonshot"]);
+    // Providers with a free quota tier (mirrors backend _QUOTA_FREE).
+    const QUOTA_FREE = new Set(["groq", "pollinations", "ollama", "tu", "tu-staging", "cohere", "mistral", "moonshot"]);
 
     // A model is accessible (free / usable) when:
     //   - explicit access == "free", OR
@@ -323,7 +323,7 @@
       const inp = cost.input;
       if (acc === "free") return true;
       if (!acc && inp === 0) return true;
-      if (!acc && UNIVERSALLY_FREE.has(m.provider || "") && inp == null) return true;
+      if (!acc && QUOTA_FREE.has(m.provider || "") && inp == null) return true;
       return false;
     }
 
