@@ -35,31 +35,37 @@ class OpenCodeProvider(OpenAICompatibleChatProvider):
 
     @classmethod
     def list_models(cls, api_key: Optional[str] = None) -> list["ModelInfo"]:
-        """List models from OpenCode/Zen.
+        """List models from OpenCode/Zen via pi.dev catalog.
 
-        The ``/v1/models`` endpoint is public (the key is only needed for
-        completions). Free models (id ends in ``-free``, plus ``big-pickle``)
-        are marked cost 0 so the catalog surfaces them as free.
+        The native ``/v1/models`` endpoint returns bare IDs with no metadata.
+        pi.dev maintains an enriched catalog with context windows, max tokens,
+        capabilities, and cost data — pull from there instead.
+
+        Free models (id ends in ``-free``, plus ``big-pickle``) are marked
+        cost 0 so the catalog surfaces them as free.
         """
         from ..core import ModelInfo
         try:
-            headers = {"Authorization": f"Bearer {api_key}"} if api_key else {}
-            r = requests.get("https://opencode.ai/zen/v1/models", headers=headers, timeout=30)
+            # pi.dev has the enriched OpenCode catalog with context sizes
+            r = requests.get("https://pi.dev/api/models/providers/opencode", timeout=30)
             r.raise_for_status()
+            data = r.json()
         except Exception:
             return []
         out = []
-        for m in r.json().get("data", []):
-            mid = m.get("id") or m.get("name")
-            if not mid:
-                continue
+        for mid, m in data.items():
             free = mid.endswith("-free") or mid == "big-pickle"
             out.append(
                 ModelInfo(
                     id=mid,
-                    owned_by=m.get("owned_by") or "opencode",
-                    cost={"input": 0, "output": 0} if free else None,
-                    access="free" if free else "paid",
+                    name=m.get("name"),
+                    owned_by="opencode",
+                    context_window=m.get("contextWindow"),
+                    max_output=m.get("maxTokens"),
+                    cost={"input": 0, "output": 0} if free else m.get("cost"),
+                    access="free" if free else m.get("access", "paid"),
+                    capabilities=m.get("capabilities"),
+                    modalities=m.get("input"),
                     raw=m,
                 )
             )
