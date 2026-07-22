@@ -40,7 +40,7 @@ log = logging.getLogger(__name__)
 # Providers where *every* model is free (forever-free tier, no payment).
 # A working key on one of these is always ``free``. Sourced from each
 # provider's docs / terms; updated when a provider changes its tier model.
-_UNIVERSALLY_FREE = frozenset({"groq", "pollinations", "ollama", "tu", "tu-staging"})
+_UNIVERSALLY_FREE = frozenset({"groq", "pollinations", "ollama", "tu", "tu-staging", "cohere", "mistral", "moonshot"})
 
 # Providers that need no key at all (anonymous access).
 _NO_KEY_REQUIRED = frozenset({"ollama", "pollinations"})
