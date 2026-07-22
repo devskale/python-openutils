@@ -13,6 +13,7 @@ SKIP_COUNT=0
 declare -a SUCCESS_LIST=()
 declare -a FAIL_LIST=()
 declare -a SKIP_LIST=()
+UV_EXTRAS=""
 
 usage() {
   echo "Usage: $0 [-x|-u|-c|-h] [package] [-s]"
@@ -22,6 +23,7 @@ usage() {
   echo "  -h            Show help"
   echo "  [package]     Optional substring to filter packages by directory name"
   echo "  -s            Silent mode (no prompts, concise output)"
+  echo "  --extra NAME  Pass --extra NAME to uv sync (repeatable)"
   echo ""
   echo "Packages are auto-discovered from subdirectories containing pyproject.toml."
   echo ""
@@ -143,13 +145,26 @@ process_dirs() {
   for d in "${dirs[@]}"; do
     case "$MODE" in
       init)
-        log_info "Build: $d"
-        if (cd "$d" && uv sync >>"$LOG_FILE" 2>&1); then
-          log_info "Synced: $d"
-          SUCCESS_COUNT=$((SUCCESS_COUNT+1)); SUCCESS_LIST+=("$d")
+        log_info "Init: $d"
+        if [ -n "$UV_EXTRAS" ]; then
+          if (cd "$d" && uv sync $UV_EXTRAS >>"$LOG_FILE" 2>&1); then
+            log_info "Synced: $d"
+            SUCCESS_COUNT=$((SUCCESS_COUNT+1)); SUCCESS_LIST+=("$d")
+          elif (cd "$d" && uv sync >>"$LOG_FILE" 2>&1); then
+            log_info "Synced: $d (no extras)"
+            SUCCESS_COUNT=$((SUCCESS_COUNT+1)); SUCCESS_LIST+=("$d")
+          else
+            log_error "uv sync failed: $d"
+            FAIL_COUNT=$((FAIL_COUNT+1)); FAIL_LIST+=("$d")
+          fi
         else
-          log_error "uv sync failed: $d"
-          FAIL_COUNT=$((FAIL_COUNT+1)); FAIL_LIST+=("$d")
+          if (cd "$d" && uv sync >>"$LOG_FILE" 2>&1); then
+            log_info "Synced: $d"
+            SUCCESS_COUNT=$((SUCCESS_COUNT+1)); SUCCESS_LIST+=("$d")
+          else
+            log_error "uv sync failed: $d"
+            FAIL_COUNT=$((FAIL_COUNT+1)); FAIL_LIST+=("$d")
+          fi
         fi
         ;;
       upgrade)
@@ -160,12 +175,25 @@ process_dirs() {
           continue
         fi
         log_info "Lock updated: $d"
-        if (cd "$d" && uv sync >>"$LOG_FILE" 2>&1); then
-          log_info "Synced: $d"
-          SUCCESS_COUNT=$((SUCCESS_COUNT+1)); SUCCESS_LIST+=("$d")
+        if [ -n "$UV_EXTRAS" ]; then
+          if (cd "$d" && uv sync $UV_EXTRAS >>"$LOG_FILE" 2>&1); then
+            log_info "Synced: $d"
+            SUCCESS_COUNT=$((SUCCESS_COUNT+1)); SUCCESS_LIST+=("$d")
+          elif (cd "$d" && uv sync >>"$LOG_FILE" 2>&1); then
+            log_info "Synced: $d (no extras)"
+            SUCCESS_COUNT=$((SUCCESS_COUNT+1)); SUCCESS_LIST+=("$d")
+          else
+            log_error "uv sync failed: $d"
+            FAIL_COUNT=$((FAIL_COUNT+1)); FAIL_LIST+=("$d")
+          fi
         else
-          log_error "uv sync failed: $d"
-          FAIL_COUNT=$((FAIL_COUNT+1)); FAIL_LIST+=("$d")
+          if (cd "$d" && uv sync >>"$LOG_FILE" 2>&1); then
+            log_info "Synced: $d"
+            SUCCESS_COUNT=$((SUCCESS_COUNT+1)); SUCCESS_LIST+=("$d")
+          else
+            log_error "uv sync failed: $d"
+            FAIL_COUNT=$((FAIL_COUNT+1)); FAIL_LIST+=("$d")
+          fi
         fi
         ;;
       clean)
@@ -210,6 +238,19 @@ summary() {
 
 parse_args() {
   [ "$#" -eq 0 ] && { usage; exit 1; }
+  # Consume --extra flags before getopts (getopts can't handle --)
+  local _args=("$@")
+  local _final=()
+  local _i=0
+  while [ $_i -lt ${#_args[@]} ]; do
+    case "${_args[$_i]}" in
+      --extra)
+        [ $((_i+1)) -lt ${#_args[@]} ] && { UV_EXTRAS="$UV_EXTRAS --extra ${_args[$((_i+1))]}"; _i=$((_i+2)); continue; } ;;
+    esac
+    _final+=("${_args[$_i]}")
+    _i=$((_i+1))
+  done
+  set -- "${_final[@]}"
   while getopts ":xuchs" opt; do
     case "$opt" in
       x) MODE="init" ;;
