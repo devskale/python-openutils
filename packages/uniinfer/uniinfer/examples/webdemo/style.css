@@ -826,6 +826,23 @@ select:disabled { color: var(--text-muted); opacity: 0.5; cursor: not-allowed; }
   overflow: hidden;
   text-overflow: ellipsis;
 }
+.td-id-row { display: flex; align-items: center; gap: 6px; }
+.td-id-text { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.copy-id-btn {
+  flex-shrink: 0;
+  background: none; border: none; cursor: pointer;
+  font-size: 0.8rem; opacity: 0.35; padding: 2px 4px; border-radius: 4px;
+  transition: opacity 0.15s, background 0.15s;
+}
+.copy-id-btn:hover { opacity: 1; background: #e2e8f0; }
+
+.td-access { text-align: center; width: 50px; }
+.access-badge {
+  display: inline-block; width: 18px; height: 18px; line-height: 18px;
+  border-radius: 50%; font-size: 0.65rem; font-weight: 700; text-align: center;
+}
+.access-free { background: #dcfce7; color: #16a34a; }
+.access-paid { background: #f1f5f9; color: #94a3b8; }
 
 .td-provider {
   font-family: var(--font-mono);
@@ -900,6 +917,9 @@ tr.tr-stale-danger:hover td { opacity: 0.85; background: #fef2f2; }
 .cb-pdf { background: #fff7ed; color: #9a3412; }
 
 .td-status { text-align: center; width: 60px; }
+
+.filter-btn { position: relative; }
+.filter-btn[data-filter="accessible"].active { color: #16a34a; border-color: #16a34a; }
 .status-dep {
   font-family: var(--font-mono);
   font-size: 0.55rem;
