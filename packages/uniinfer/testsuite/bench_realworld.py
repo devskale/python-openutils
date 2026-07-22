@@ -495,7 +495,7 @@ def main() -> None:
     # --- per-model/mode/stream summary ---
     by_key: dict[tuple, list[tuple]] = {}
     for name, mode, strm, fname, tps, ttft, dt, status in rows:
-        if status is not None and status != 200:
+        if status != 200:
             continue
         by_key.setdefault((name, mode, strm), []).append((tps or 0, ttft, dt))
     if by_key:
@@ -506,7 +506,8 @@ def main() -> None:
             avg_tps = sum(tps_vals) / len(tps_vals) if tps_vals else 0
             ttfts = [r[1] for r in recs if r[1]]
             avg_ttft = f"{sum(ttfts)/len(ttfts):.1f}" if ttfts else "-"
-            avg_lat = sum(r[2] for r in recs) / len(recs) if recs else 0
+            lats = [r[2] for r in recs if r[2]]
+            avg_lat = sum(lats) / len(lats) if lats else 0
             sum_rows.append([f"{name} [{mode}]", str(len(recs)), f"{avg_tps:.0f}", avg_ttft, f"{avg_lat:.1f}"])
         print(md_table(["model [mode]", "runs", "avg tok/s", "avg ttft", "avg total"],
                        sum_rows, align=["left", "right", "right", "right", "right"]))
