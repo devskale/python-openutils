@@ -132,10 +132,13 @@ h1 {
   font-size: 1.2rem;
   cursor: pointer;
   color: var(--text-muted);
-  transition: transform 0.3s, color 0.2s;
+  transition: color 0.2s;
   padding: 0;
+  display: inline-flex;
+  align-items: center;
 }
-.icon-btn-lg:hover { transform: rotate(90deg); color: var(--text-color); }
+.icon-btn-lg:hover { color: var(--text-color); }
+.icon-btn-lg svg { width: 20px; height: 20px; }
 
 /* ─── Sections ────────────────────────────────────────────────── */
 .section {
@@ -646,6 +649,8 @@ select:disabled { color: var(--text-muted); opacity: 0.5; cursor: not-allowed; }
   gap: 6px;
   user-select: none;
 }
+.thinking-badge svg { width: 14px; height: 14px; }
+.cb svg { width: 12px; height: 12px; vertical-align: -1px; }
 .thinking-badge:hover { background: linear-gradient(135deg, #e0f2fe 0%, #bae6fd 100%); }
 .thinking-details[open] .thinking-badge { border-bottom: 1px solid var(--border-color); }
 .thinking-content {
@@ -794,6 +799,9 @@ select:disabled { color: var(--text-muted); opacity: 0.5; cursor: not-allowed; }
 .models-table th:hover { color: var(--accent-color); }
 .models-table th.th-num { text-align: right; }
 .models-table th.th-sm { width: 60px; text-align: center; }
+.models-table th.th-check { width: 36px; text-align: center; }
+.td-check { text-align: center; width: 36px; }
+.td-check input, #models-select-all { cursor: pointer; width: 14px; height: 14px; }
 
 .sort-arrow { color: var(--accent-color); font-size: 0.6rem; }
 
@@ -811,7 +819,13 @@ select:disabled { color: var(--text-muted); opacity: 0.5; cursor: not-allowed; }
   white-space: nowrap;
 }
 
-.td-type { font-size: 0.75rem; font-weight: 600; }
+.td-type { font-size: 0.75rem; font-weight: 600; display: flex; align-items: center; gap: 4px; }
+.td-type svg { width: 14px; height: 14px; }
+.access-badge svg { width: 12px; height: 12px; }
+.btn-link { display: inline-flex; align-items: center; gap: 5px; }
+.btn-link svg { width: 15px; height: 15px; }
+.icon-btn svg { width: 18px; height: 18px; }
+.tool-call-header svg { width: 14px; height: 14px; vertical-align: -2px; }
 .td-type-label {
   font-family: var(--font-mono);
   font-size: 0.6rem;
@@ -826,15 +840,6 @@ select:disabled { color: var(--text-muted); opacity: 0.5; cursor: not-allowed; }
   overflow: hidden;
   text-overflow: ellipsis;
 }
-.td-id-row { display: flex; align-items: center; gap: 6px; }
-.td-id-text { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.copy-id-btn {
-  flex-shrink: 0;
-  background: none; border: none; cursor: pointer;
-  font-size: 0.8rem; opacity: 0.35; padding: 2px 4px; border-radius: 4px;
-  transition: opacity 0.15s, background 0.15s;
-}
-.copy-id-btn:hover { opacity: 1; background: #e2e8f0; }
 
 .td-access { text-align: center; width: 50px; }
 .access-badge {

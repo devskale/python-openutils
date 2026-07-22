@@ -9,6 +9,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/dompurify@3.2.6/dist/purify.min.js"></script>
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
   <link rel="stylesheet" href="/webdemo/style.css" />
 </head>
 <body>
@@ -24,12 +25,12 @@
       </div>
       <div id="chat-stats" class="stats-bar">
         <span id="stats-text">0 msgs</span>
-        <button id="clear-chat-btn" class="stats-clear-btn" title="Clear chat">✕</button>
+        <button id="clear-chat-btn" class="stats-clear-btn" title="Clear chat"><i data-lucide="x"></i></button>
       </div>
-      <a href="/capabilities" class="icon-btn-lg" title="Capability matrix" style="text-decoration:none">🧪</a>
-      <a href="/perf" class="icon-btn-lg" title="Performance dashboard" style="text-decoration:none">⚡</a>
-      <a href="/guide" class="icon-btn-lg" title="Integration guide" style="text-decoration:none">📖</a>
-      <button id="settings-button" class="icon-btn-lg" title="Settings">⚙️</button>
+      <a href="/capabilities" class="icon-btn-lg" title="Capability matrix" style="text-decoration:none"><i data-lucide="flask-conical"></i></a>
+      <a href="/perf" class="icon-btn-lg" title="Performance dashboard" style="text-decoration:none"><i data-lucide="zap"></i></a>
+      <a href="/guide" class="icon-btn-lg" title="Integration guide" style="text-decoration:none"><i data-lucide="book-open"></i></a>
+      <button id="settings-button" class="icon-btn-lg" title="Settings"><i data-lucide="settings"></i></button>
     </header>
 
     <!-- Settings Modal -->
@@ -101,9 +102,9 @@
           </div>
         </div>
         <div id="input-area">
-          <button id="web-search-btn" class="icon-btn tool-toggle" title="Toggle web search tool">🔍</button>
-          <button id="fetch-url-btn" class="icon-btn tool-toggle" title="Toggle fetch URL tool">🌐</button>
-          <button id="upload-image-btn" class="icon-btn" title="Upload Image">📷</button>
+          <button id="web-search-btn" class="icon-btn tool-toggle" title="Toggle web search tool"><i data-lucide="search"></i></button>
+          <button id="fetch-url-btn" class="icon-btn tool-toggle" title="Toggle fetch URL tool"><i data-lucide="globe"></i></button>
+          <button id="upload-image-btn" class="icon-btn" title="Upload Image"><i data-lucide="camera"></i></button>
           <input type="file" id="chat-file-input" accept="image/*" style="display:none" />
           <textarea id="message-input" placeholder="Type a message..." rows="1"></textarea>
           <button id="send-button" title="Send">
@@ -123,8 +124,8 @@
           <div class="search-input-wrap"><input type="text" id="models-browser-search" placeholder="Search models..." /><button class="search-clear" data-target="models-browser-search" style="display:none">×</button></div>
         </div>
         <div class="models-filters">
-          <button class="filter-btn active" data-filter="all">All</button>
-          <button class="filter-btn" data-filter="accessible">✓ Access</button>
+          <button class="filter-btn" data-filter="all">All</button>
+          <button class="filter-btn active" data-filter="accessible">✓ Access</button>
           <button class="filter-btn" data-filter="fresh">● Fresh</button>
           <button class="filter-btn" data-filter="stale">◐ Stale</button>
           <button class="filter-btn" data-filter="chat">Chat</button>
@@ -134,7 +135,8 @@
         </div>
         <div class="models-provider-filter">
           <select id="models-browser-provider"><option value="">All providers</option></select>
-          <button id="models-download-btn" class="btn-link" title="Download catalog JSON (filtered by current provider selection)">⬇ JSON</button>
+          <button id="models-copy-pi-btn" class="btn-link" title="Copy a prompt to add selected models to pi's models.json" style="display:none"><i data-lucide="copy"></i> <span>Copy to pi</span> <span id="copy-pi-count"></span></button>
+          <button id="models-download-btn" class="btn-link" title="Download catalog JSON (filtered by current provider selection)"><i data-lucide="download"></i> <span>JSON</span></button>
         </div>
         <div class="models-stats">
           <span id="models-count">0 models</span>
@@ -148,6 +150,7 @@
         <table id="models-table" class="models-table">
           <thead>
             <tr>
+              <th class="th-check"><input type="checkbox" id="models-select-all" title="Select all" /></th>
               <th data-col="type" class="th-sm">Type</th>
               <th data-col="id">Model</th>
               <th data-col="provider">Provider</th>
@@ -288,6 +291,9 @@
       const t = s == null ? "" : String(s);
       return t.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
     }
+
+    // Lucide icons: <i data-lucide="name"></i> → call lucide.createIcons() to render.
+    const LUCIDE_TYPE = { chat: "message-square", embed: "box", tts: "volume-2", stt: "mic", image: "image" };
     function sanitizeHtml(html) { return window.DOMPurify ? DOMPurify.sanitize(html) : escapeHtml(html); }
     function renderMd(content) { return sanitizeHtml(marked.parse(content || "")); }
     function formatCost(cost) {
@@ -298,7 +304,7 @@
     }
     function formatCtx(n) { return n ? `${(n/1000).toFixed(0)}k` : ""; }
     function typeIcon(type) {
-      return { chat:"💬", embed:"📐", tts:"🔊", stt:"🎤", image:"🖼️" }[type] || "💬";
+      return `<i data-lucide="${LUCIDE_TYPE[type] || "message-square"}"></i>`;
     }
     function typeColor(type) {
       return { chat:"#3b82f6", embed:"#8b5cf6", tts:"#f59e0b", stt:"#10b981", image:"#ec4899" }[type] || "#6b7280";
@@ -331,6 +337,61 @@
     function fallbackCopy(text, cb) {
       const ta = document.createElement("textarea"); ta.value = text; ta.style.position = "fixed"; ta.style.opacity = "0";
       document.body.appendChild(ta); ta.select(); try { document.execCommand("copy"); cb(); } catch {} document.body.removeChild(ta);
+    }
+
+    // ── pi models.json entry builder (mirrors backend catalog_model_to_pi) ──
+    const _REASONING_RE = /(?:^|[-/_])(?:r1|o1|o3|thinking|reason|kimi-k|kimi-k2|kimi-k3|qwen3|glm-5|glm-4\.5-flash|glm-4\.7-flash|nemotron|deepseek-r|step-3\.7|reasoning)(?:$|[-/_0-9.])/i;
+
+    function _prettifyName(provider, modelId) {
+      let leaf = modelId.split("/").pop();
+      leaf = leaf.replace(/:free$|-free$/i, "");
+      leaf = leaf.replace(/[-_]/g, " ").trim();
+      leaf = leaf.split(" ").map(w => w.match(/[a-z]/) ? w.charAt(0).toUpperCase() + w.slice(1) : w).join(" ");
+      const prov = provider.length <= 4 ? provider.toUpperCase() : provider.charAt(0).toUpperCase() + provider.slice(1);
+      return `${leaf} (${prov})`;
+    }
+    function _isReasoning(id, caps) {
+      if (caps && caps.reasoning) return true;
+      return _REASONING_RE.test(id);
+    }
+    function _piInputModalities(m) {
+      const mods = (m.modalities || {}).input || ["text"];
+      const caps = m.capabilities || {};
+      const out = ["text"];
+      if (mods.includes("image") || caps.vision) out.push("image");
+      return out;
+    }
+    function _piCost(cost) {
+      const zero = { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 };
+      if (!cost || cost.input == null || cost.input === 0) return zero;
+      return {
+        input: cost.input / 1e6,
+        output: (cost.output || 0) / 1e6,
+        cacheRead: (cost.cache_read || 0) / 1e6,
+        cacheWrite: (cost.cache_write || 0) / 1e6,
+      };
+    }
+    function buildPiModelEntry(m) {
+      const provider = m.provider || "";
+      return {
+        id: `${provider}@${m.id}`,
+        name: m.name || _prettifyName(provider, m.id),
+        reasoning: _isReasoning(m.id, m.capabilities),
+        input: _piInputModalities(m),
+        contextWindow: (typeof m.context_window === "number" && m.context_window > 0) ? m.context_window : 131072,
+        maxTokens: 32768,
+        cost: _piCost(m.cost),
+        compat: { maxTokensField: "max_tokens" },
+      };
+    }
+    function buildPiPrompt(models) {
+      const entries = models.map(buildPiModelEntry);
+      const n = entries.length;
+      const js = JSON.stringify(entries, null, 2);
+      const one = n === 1;
+      return `Add the following model${one ? "" : "s"} to ~/.pi/agent/models.json — merge ${one ? "it" : "them"} into the "uniioai" provider block's models array (create the provider if missing; dedup by id). The provider uses baseUrl "${window.uniinferConfig.apiBaseUrl}" with the proxy API key and api "openai-completions":
+
+${js}`;
     }
 
     function getHeaders() {
@@ -570,7 +631,7 @@
     function renderToolCall(name, argsStr, result) {
       let args;
       try { args = typeof argsStr === "string" ? JSON.parse(argsStr) : argsStr; } catch { args = {}; }
-      const icon = name === "web_search" ? "🔍" : "🌐";
+      const icon = name === "web_search" ? "<i data-lucide=\"search\"></i>" : "<i data-lucide=\"globe\"></i>";
       const label = name === "web_search" ? `Search: ${args.query || ""}` : `Fetch: ${args.url || ""}`;
       const preview = result ? (result.substring(0, 200) + (result.length > 200 ? "..." : "")) : "";
       return `<div class="tool-call-card">
@@ -641,7 +702,7 @@
                 }
                 // Render progress
                 let html = "";
-                if (fullThinking) html += `<details class="thinking-details"><summary class="thinking-badge">💭 Thinking</summary><div class="thinking-content">${escapeHtml(fullThinking)}</div></details>`;
+                if (fullThinking) html += `<details class="thinking-details"><summary class="thinking-badge"><i data-lucide="brain"></i> Thinking</summary><div class="thinking-content">${escapeHtml(fullThinking)}</div></details>`;
                 if (fullResponse) html += renderMd(fullResponse);
                 assistantDiv.innerHTML = html || "";
                 chatContainer.scrollTop = chatContainer.scrollHeight;
@@ -659,13 +720,15 @@
           // Execute tool calls and show in chat
           const toolMsgs = [];
           let toolHtml = "";
-          if (fullThinking) toolHtml += `<details class="thinking-details"><summary class="thinking-badge">💭 Thinking</summary><div class="thinking-content">${escapeHtml(fullThinking)}</div></details>`;
+          if (fullThinking) toolHtml += `<details class="thinking-details"><summary class="thinking-badge"><i data-lucide="brain"></i> Thinking</summary><div class="thinking-content">${escapeHtml(fullThinking)}</div></details>`;
           for (const tc of toolCalls) {
-            assistantDiv.innerHTML = toolHtml + `<div class="tool-call-card"><div class="tool-call-header"><span class="spinner"></span> ${tc.name === "web_search" ? "🔍" : "🌐"} ${escapeHtml(tc.name)}...</span></div></div>`;
+            assistantDiv.innerHTML = toolHtml + `<div class="tool-call-card"><div class="tool-call-header"><span class="spinner"></span> ${tc.name === "web_search" ? "<i data-lucide=\"search\"></i>" : "<i data-lucide=\"globe\"></i>"} ${escapeHtml(tc.name)}...</span></div></div>`;
+            if (window.lucide) lucide.createIcons();
             chatContainer.scrollTop = chatContainer.scrollHeight;
             const result = await executeToolCall(tc.name, tc.arguments);
             toolHtml += renderToolCall(tc.name, tc.arguments, result);
             assistantDiv.innerHTML = toolHtml;
+            if (window.lucide) lucide.createIcons();
             chatContainer.scrollTop = chatContainer.scrollHeight;
             toolMsgs.push({ role: "tool", tool_call_id: tc.id, content: result });
           }
@@ -728,7 +791,8 @@
     // ─── Models Browser (Table) ─────────────────────────────────────
     let modelsBrowserLoaded = false;
     let modelsSortCol = "id", modelsSortDir = 1; // 1=asc, -1=desc
-    let modelsFilter = "all", modelsSearchText = "", modelsProviderFilter = "";
+    let modelsFilter = "accessible", modelsSearchText = "", modelsProviderFilter = "";
+    const checkedModels = new Set();  // "provider@model" keys selected for batch copy
 
     async function loadModelsBrowser() {
       if (modelsBrowserLoaded) return;
@@ -763,7 +827,7 @@
       if (caps.vision) badges.push('<span class="cb cb-vision">V</span>');
       if (caps.tool_call) badges.push('<span class="cb cb-tools">T</span>');
       if (caps.code_exec) badges.push('<span class="cb cb-code">C</span>');
-      if (caps.thinking) badges.push('<span class="cb cb-thinking">💭</span>');
+      if (caps.thinking) badges.push('<span class="cb cb-thinking"><i data-lucide="brain"></i></span>');
       if (caps.audio) badges.push('<span class="cb cb-audio">🔊</span>');
       if (caps.ocr) badges.push('<span class="cb cb-ocr">OCR</span>');
       if (caps.pdf) badges.push('<span class="cb cb-pdf">PDF</span>');
@@ -811,7 +875,7 @@
       $("#models-count").textContent = `${models.length} models`;
       const tbody = $("#models-tbody");
       tbody.innerHTML = "";
-      if (!models.length) { tbody.innerHTML = '<tr><td colspan="12" class="models-empty">No models match your filter.</td></tr>'; return; }
+      if (!models.length) { tbody.innerHTML = '<tr><td colspan="13" class="models-empty">No models match your filter.</td></tr>'; return; }
       // Render in chunks to keep UI responsive
       const frag = document.createDocumentFragment();
       for (const m of models) {
@@ -823,10 +887,12 @@
         tr.className = m.status === "deprecated" ? "tr-deprecated" : isStale && staleDays >= 60 ? "tr-stale-danger" : isStale ? "tr-stale" : "";
         tr.dataset.provider = m.provider || "";
         tr.dataset.id = m.id;
-        const copyId = `${m.provider || ""}@${m.id}`;
+        const modelKey = `${m.provider || ""}@${m.id}`;
+        const checked = checkedModels.has(modelKey) ? "checked" : "";
         tr.innerHTML =
+          `<td class="td-check"><input type="checkbox" class="row-check" data-key="${escapeHtml(modelKey)}" ${checked} /></td>` +
           `<td class="td-type"><span style="color:${typeColor(type)}">${typeIcon(type)}</span> <span class="td-type-label">${type}</span></td>` +
-          `<td class="td-id" title="${escapeHtml(m.id)}"><div class="td-id-row"><span class="td-id-text">${escapeHtml(m.id)}</span><button class="copy-id-btn" title="Copy '${escapeHtml(copyId)}' for pi models.json">📋</button></div></td>` +
+          `<td class="td-id" title="${escapeHtml(m.id)}">${escapeHtml(m.id)}</td>` +
           `<td class="td-provider">${escapeHtml(m.provider || "")}</td>` +
           `<td class="td-num">${m.context_window ? m.context_window.toLocaleString() : ""}</td>` +
           `<td class="td-num">${m.max_output ? m.max_output.toLocaleString() : ""}</td>` +
@@ -835,15 +901,21 @@
           `<td class="td-num">${m.cost?.output != null ? m.cost.output : ""}</td>` +
           `<td class="td-num td-age" title="First seen ${m.first_seen || "?"}">${m.first_seen ? (() => { const d = Math.floor((Date.now() - new Date(m.first_seen + "T00:00:00Z")) / 864e5); const y = Math.floor(d/365); const mo = Math.floor(d/30); if (y >= 1) return y + "y"; if (mo >= 1) return mo + "mo"; const w = Math.floor(d/7); return w >= 1 ? w + "w" : "" + d + "d"; })() : ""}</td>` +
           `<td class="td-caps">${capBadges(m)}</td>` +
-          `<td class="td-access"><span class="access-badge ${accessible ? "access-free" : "access-paid"}" title="${accessible ? "Accessible (free)" : "Paid / needs credits"}">${accessible ? "✓" : "✕"}</span></td>` +
+          `<td class="td-access"><span class="access-badge ${accessible ? "access-free" : "access-paid"}" title="${accessible ? "Accessible (free)" : "Paid / needs credits"}">${accessible ? "<i data-lucide=\"check\"></i>" : "<i data-lucide=\"x\"></i>"}</span></td>` +
           `<td class="td-status">${m.status === "deprecated" ? '<span class="status-dep">dep</span>' : ""}</td>`;
         tr.addEventListener("click", () => showModelDetail(m.provider || "", m.id));
-        // Copy button — stop propagation so the row-click (detail panel) doesn't fire.
-        const copyBtn = tr.querySelector(".copy-id-btn");
-        if (copyBtn) copyBtn.addEventListener("click", (e) => { e.stopPropagation(); copyToClipboard(copyId, copyBtn); });
+        // Row checkbox — toggle membership in the checked set.
+        const rowCheck = tr.querySelector(".row-check");
+        if (rowCheck) rowCheck.addEventListener("click", (e) => e.stopPropagation());
+        if (rowCheck) rowCheck.addEventListener("change", () => {
+          if (rowCheck.checked) checkedModels.add(modelKey); else checkedModels.delete(modelKey);
+          updateCopyPiBtn();
+        });
         frag.appendChild(tr);
       }
       tbody.appendChild(frag);
+      // Render Lucide icons injected by this table render.
+      if (window.lucide) lucide.createIcons();
       // Update sort indicators
       $$("#models-table th").forEach(th => {
         const col = th.dataset.col;
@@ -887,6 +959,32 @@
       a.href = `${window.uniinferConfig.apiBaseUrl}/v1/catalog?${params}`;
       a.download = modelsProviderFilter ? `models-${modelsProviderFilter}.json` : "models.json";
       document.body.appendChild(a); a.click(); a.remove();
+    });
+
+    // ── batch copy-to-pi ──────────────────────────────────────────
+    function updateCopyPiBtn() {
+      const btn = $("#models-copy-pi-btn");
+      const n = checkedModels.size;
+      if (n > 0) { btn.style.display = "inline-flex"; $("#copy-pi-count").textContent = `(${n})`; }
+      else { btn.style.display = "none"; }
+    }
+    // Select-all checkbox: acts on the currently-visible (filtered) rows.
+    $("#models-select-all").addEventListener("click", (e) => {
+      e.stopPropagation();
+      const checkAll = e.target.checked;
+      // Gather visible model keys from the rendered table.
+      $$(".row-check").forEach(cb => {
+        cb.checked = checkAll;
+        const key = cb.dataset.key;
+        if (checkAll) checkedModels.add(key); else checkedModels.delete(key);
+      });
+      updateCopyPiBtn();
+    });
+    // Batch copy: builds a prompt for all checked models.
+    $("#models-copy-pi-btn").addEventListener("click", () => {
+      const selected = (store.allModels || []).filter(m => checkedModels.has(`${m.provider || ""}@${m.id}`));
+      if (!selected.length) return;
+      copyToClipboard(buildPiPrompt(selected), $("#models-copy-pi-btn"));
     });
 
     // Track current overrides loaded from server
@@ -1193,9 +1291,10 @@
 
     // ─── Init ───────────────────────────────────────────────────────
     async function init() {
+      if (window.lucide) lucide.createIcons();
       try { const { version } = await apiJson("/v1/system/info"); $("#app-version").textContent = `v${version||"?"}`; } catch { $("#app-version").textContent = "v?"; }
       loadHistory(); renderHistory();
-      if (!window.uniinferConfig.apiKey) { openSettings(); $("#chat-container").innerHTML = '<div class="system-message">Enter your API key in ⚙️ Settings to get started.</div>'; return; }
+      if (!window.uniinferConfig.apiKey) { openSettings(); $("#chat-container").innerHTML = '<div class="system-message">Enter your API key in Settings to get started.</div>'; return; }
       loadProviders();
       loadAudioModels();
       updateImageModels();
