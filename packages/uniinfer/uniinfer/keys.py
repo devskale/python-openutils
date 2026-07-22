@@ -39,7 +39,7 @@ log = logging.getLogger(__name__)
 
 # Providers with a free quota tier (trial / free-tier API access).
 # A working key on one of these is effectively "free" up to the quota limit.
-_QUOTA_FREE = frozenset({"groq", "pollinations", "ollama", "tu", "tu-staging", "cohere", "mistral", "moonshot"})
+_QUOTA_FREE = frozenset({"groq", "ollama", "tu", "tu-staging", "cohere", "mistral", "moonshot"})
 
 # Providers that need no key at all (anonymous access).
 _NO_KEY_REQUIRED = frozenset({"ollama", "pollinations"})
