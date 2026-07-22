@@ -4,6 +4,16 @@ All notable changes to **uniinfer** are documented in this file.
 Versions follow [Semantic Versioning](https://semver.org/); this file
 adheres to [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.6.26] - 2026-07-22
+
+### Added
+
+- **bench_realworld.py: configurable per-call timeout** (--timeout / env
+  TIMEOUT, default 1800s = 30 min). The httpx read timeout was hardcoded;
+  now exposed for extreme slow-model cases. The default is generous (a model
+  must be very slow or generate enormous output to hit it); for slow local
+  models pair with --streams strm so the timeout applies per-chunk.
+
 ## [0.6.25] - 2026-07-22
 
 ### Changed

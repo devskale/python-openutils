@@ -286,7 +286,7 @@ def _collect_stream(c, url, H, body):
 
 
 def _call(base: str, auth: str, model: str, reasoning: dict, doc_text: str,
-          query: str, max_tokens: int, stream: bool = False):
+          query: str, max_tokens: int, stream: bool = False, timeout: float = 1800.0):
     """One call path; branches on ``stream``. The shared request (headers,
     body, the _result + extract_usage wrapping) lives here; the two collectors
     own only the HTTP-shape difference (single read vs SSE iteration)."""
@@ -302,7 +302,7 @@ def _call(base: str, auth: str, model: str, reasoning: dict, doc_text: str,
         body["stream_options"] = {"include_usage": True}
     url = f"{base}/chat/completions"
     try:
-        with client(timeout=1800.0) as c:
+        with client(timeout=timeout) as c:
             collector = _collect_stream if stream else _collect_nonstream
             content, rsn, dt, usage, finish, status, err, ttft = collector(c, url, H, body)
     except Exception as e:  # noqa: BLE001
@@ -397,6 +397,10 @@ def main() -> None:
     ap.add_argument("--max-cases", type=int, default=int(os.getenv("MAX_CASES", "0")),
                     help="max cases (oesterreich-Vergaberecht-Tests) pro Doc (0 = alle). "
                          "Klein setzen fuer schnelle Laufe, z.B. --max-cases 1.")
+    ap.add_argument("--timeout", type=float, default=float(os.getenv("TIMEOUT", "1800")),
+                    help="httpx read timeout per call in seconds (default 1800 = 30 min). "
+                         "Raise for slow local models, e.g. --timeout 7200. Use --streams strm "
+                         "so the timeout applies per-chunk, not to the whole response.")
     ap.add_argument("--out", default=os.getenv("OUT", "runs/realworld.jsonl"))
     args = ap.parse_args()
 
@@ -446,7 +450,7 @@ def main() -> None:
                             mt = args.gen_tokens
                         for strm in streams:
                             do_stream = strm == "strm"
-                            res = _call(base, auth, model, reason, doc_text, query, mt, stream=do_stream)
+                            res = _call(base, auth, model, reason, doc_text, query, mt, stream=do_stream, timeout=args.timeout)
                             ans = res["content"]; rsn = res["reasoning"]; dt = res["latency"]
                             pt = res["prompt_tokens"]; ct = res["completion_tokens"]
                             rt = res["reasoning_tokens"]; rt_est = res["reasoning_tokens_estimated"]
