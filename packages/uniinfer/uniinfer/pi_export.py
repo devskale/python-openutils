@@ -238,13 +238,13 @@ def accessible_models(
         - its provider is universally free (groq, tu, pollinations, …) with no
           pricing data.
     """
-    from .keys import _UNIVERSALLY_FREE
+    from .keys import _QUOTA_FREE
 
     out = []
     for pid, pdata in (catalog.get("providers") or {}).items():
         if providers and pid not in providers:
             continue
-        universally_free = pid in _UNIVERSALLY_FREE
+        universally_free = pid in _QUOTA_FREE
         for m in pdata.get("models") or []:
             acc = m.get("access", "")
             cost = m.get("cost") or {}
