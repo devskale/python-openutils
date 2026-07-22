@@ -4,6 +4,20 @@ All notable changes to **uniinfer** are documented in this file.
 Versions follow [Semantic Versioning](https://semver.org/); this file
 adheres to [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.6.24] - 2026-07-22
+
+### Changed
+
+- **bench_realworld.py: one run = multiple ö-Vergaberecht tests.**
+  load_cases_for_docs now returns a *list* per doc and the main loop runs every
+  case (Gesamtbetrag / günstigste Position / Kategorien / größte Menge) per doc,
+  not just one. So a single invocation exercises the whole realistic
+  Austrian-procurement query space on the fictional PII-free LV fixtures, with
+  the ground-truth `check` column scoring each. Also: think-mode max_tokens
+  floor raised to 32768 (`_THINK_MIN_TOKENS`) so reasoning tasks complete
+  instead of truncating at finish=length (the measured duration is then
+  time-to-task, not time-to-cap). README documents bench_realworld.py.
+
 ## [0.6.23] - 2026-07-22
 
 ### Changed

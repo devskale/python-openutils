@@ -118,6 +118,12 @@ def _result(content, reasoning, latency, usage, finish, status, error, ttft=None
 # measurement is noise (lat ≈ ttft for short outputs → divide by ~0).
 _DECODE_MIN_PHASE_S = 1.0
 
+# Minimum max_tokens for reasoning modes. Thinking models spend the budget on
+# reasoning before the visible answer; too low a cap truncates the answer
+# (finish=length) and the measured duration is time-to-cap, not time-to-task.
+# Matches the proxy chat-path default (32768) so reasoning tasks complete.
+_THINK_MIN_TOKENS = 32768
+
 
 def compute_throughput(completion_tokens, latency, ttft) -> dict:
     """Throughput metrics: effective (incl prefill) and decode (generation only).
@@ -318,18 +324,20 @@ def check_answer(answer: str | None, expected: dict | None) -> str:
     return "✓" if ok else "✗"
 
 
-def load_cases_for_docs(cases_path: str, doc_names: list[str]) -> dict[str, dict]:
-    """Mapt doc-basename -> case (mit query+expected). Liefert {} falls kein cases-File."""
+def load_cases_for_docs(cases_path: str, doc_names: list[str]) -> dict[str, list[dict]]:
+    """Mapt doc-basename -> Liste der cases (jeder = ein ö-Vergaberecht-Test mit
+    query+expected). Mehrere Tests pro Doc, damit ein Lauf den ganzen Raum deckt.
+    Liefert {} falls kein cases-File."""
     if not cases_path or not os.path.isfile(cases_path):
         return {}
-    out: dict[str, dict] = {}
+    out: dict[str, list[dict]] = {}
     for line in open(cases_path, encoding="utf-8"):
         line = line.strip()
         if not line:
             continue
         c = json.loads(line)
         for d in c.get("docs", []):
-            out[os.path.basename(d)] = c
+            out.setdefault(os.path.basename(d), []).append(c)
     return {dn: out[dn] for dn in doc_names if dn in out}
 
 
@@ -415,54 +423,55 @@ def main() -> None:
             print(f"  {'Dokument':34} {'mode':5} {'strm':5} {'in_tok':>7} {'tok/s':>6} {'dec/s':>5} {'out':>5} {'think':>5} {'ttft':>5} {'lat':>5} {'fin':>5} {'chk':>3} {'x':>2}")
             for f in docs:
                 doc_text = f.read_text(encoding="utf-8", errors="ignore")
-                case = case_map.get(f.name)
-                query = case["query"] if case else args.query
-                for mode in modes:
-                    if mode == "think":
-                        reason = {"reasoning_effort": "high"}
-                        mt = max(args.gen_tokens, 8192)
-                    elif mode == "nothink":
-                        reason = {"reasoning_effort": "none"}
-                        mt = args.gen_tokens
-                    elif mode in ("low",):
-                        reason = {"reasoning_effort": mode}
-                        mt = max(args.gen_tokens, 8192)
-                    else:
-                        reason = {}
-                        mt = args.gen_tokens
-                    for strm in streams:
-                        do_stream = strm == "strm"
-                        res = _call(base, auth, model, reason, doc_text, query, mt, stream=do_stream)
-                        ans = res["content"]; rsn = res["reasoning"]; dt = res["latency"]
-                        pt = res["prompt_tokens"]; ct = res["completion_tokens"]
-                        rt = res["reasoning_tokens"]; rt_est = res["reasoning_tokens_estimated"]
-                        content_tok = res["content_tokens"]
-                        finish = res["finish_reason"]; status = res["status"]; err = res["error"]; ttft = res["ttft"]
-                        tps = round(ct / dt, 1) if (ct and dt) else None
-                        thr = compute_throughput(ct, dt, ttft)
-                        dec_tps = thr["decode"]
-                        think_display = (f"{rt}{'~' if rt_est else ''}" if rt is not None else "-")
-                        chk = check_answer(ans, case.get("expected") if case else None)
-                        x = "x" if (finish == "length" or (status and status != 200)) else ""
-                        rec = {"model_id": model, "name": name, "doc": str(f), "query": query,
-                               "reasoning": mode, "stream": strm, "prompt_tokens": pt, "completion_tokens": ct,
-                               "reasoning_tokens": rt, "reasoning_tokens_estimated": rt_est,
-                               "content_tokens": content_tok,
-                               "tok_per_s": tps, "tok_per_s_decode": dec_tps,
-                               "latency_s": dt, "ttft": ttft, "finish_reason": finish,
-                               "status_code": status, "error": err, "answer": ans,
-                               "reasoning_content": rsn,
-                               "check": chk, "expected": case.get("expected") if case else None}
-                        rows.append((name, model, f.name, mode, strm, pt, tps, dec_tps, ct, think_display, ttft, dt, finish, status, chk, x))
-                        if status and status != 200:
-                            print(f"  {f.name:34} {mode:5} {strm:5}  HTTP {status}")
+                cases_for_doc = case_map.get(f.name) or [None]  # None = default query
+                for case in cases_for_doc:
+                    query = case["query"] if case else args.query
+                    for mode in modes:
+                        if mode == "think":
+                            reason = {"reasoning_effort": "high"}
+                            mt = max(args.gen_tokens, _THINK_MIN_TOKENS)
+                        elif mode == "nothink":
+                            reason = {"reasoning_effort": "none"}
+                            mt = args.gen_tokens
+                        elif mode in ("low",):
+                            reason = {"reasoning_effort": mode}
+                            mt = max(args.gen_tokens, _THINK_MIN_TOKENS)
                         else:
-                            ttft_s = f"{ttft:.1f}" if ttft else "-"
-                            dec_s = f"{dec_tps:.0f}" if dec_tps else "-"
-                            print(f"  {f.name:34} {mode:5} {strm:5} {(pt or 0):>7} {(tps or 0):>6.0f} "
-                                  f"{dec_s:>5} {(ct or 0):>5} {think_display:>5} {ttft_s:>5} {dt or 0:>5.1f} {(finish or '-')[:5]:>5} {chk:>3} {x:>2}")
-                        fout.write(json.dumps(rec, ensure_ascii=False) + "\n")
-                        fout.flush()
+                            reason = {}
+                            mt = args.gen_tokens
+                        for strm in streams:
+                            do_stream = strm == "strm"
+                            res = _call(base, auth, model, reason, doc_text, query, mt, stream=do_stream)
+                            ans = res["content"]; rsn = res["reasoning"]; dt = res["latency"]
+                            pt = res["prompt_tokens"]; ct = res["completion_tokens"]
+                            rt = res["reasoning_tokens"]; rt_est = res["reasoning_tokens_estimated"]
+                            content_tok = res["content_tokens"]
+                            finish = res["finish_reason"]; status = res["status"]; err = res["error"]; ttft = res["ttft"]
+                            tps = round(ct / dt, 1) if (ct and dt) else None
+                            thr = compute_throughput(ct, dt, ttft)
+                            dec_tps = thr["decode"]
+                            think_display = (f"{rt}{'~' if rt_est else ''}" if rt is not None else "-")
+                            chk = check_answer(ans, case.get("expected") if case else None)
+                            x = "x" if (finish == "length" or (status and status != 200)) else ""
+                            rec = {"model_id": model, "name": name, "doc": str(f), "query": query,
+                                   "reasoning": mode, "stream": strm, "prompt_tokens": pt, "completion_tokens": ct,
+                                   "reasoning_tokens": rt, "reasoning_tokens_estimated": rt_est,
+                                   "content_tokens": content_tok,
+                                   "tok_per_s": tps, "tok_per_s_decode": dec_tps,
+                                   "latency_s": dt, "ttft": ttft, "finish_reason": finish,
+                                   "status_code": status, "error": err, "answer": ans,
+                                   "reasoning_content": rsn,
+                                   "check": chk, "expected": case.get("expected") if case else None}
+                            rows.append((name, model, f.name, mode, strm, pt, tps, dec_tps, ct, think_display, ttft, dt, finish, status, chk, x))
+                            if status and status != 200:
+                                print(f"  {f.name:34} {mode:5} {strm:5}  HTTP {status}")
+                            else:
+                                ttft_s = f"{ttft:.1f}" if ttft else "-"
+                                dec_s = f"{dec_tps:.0f}" if dec_tps else "-"
+                                print(f"  {f.name:34} {mode:5} {strm:5} {(pt or 0):>7} {(tps or 0):>6.0f} "
+                                      f"{dec_s:>5} {(ct or 0):>5} {think_display:>5} {ttft_s:>5} {dt or 0:>5.1f} {(finish or '-')[:5]:>5} {chk:>3} {x:>2}")
+                            fout.write(json.dumps(rec, ensure_ascii=False) + "\n")
+                            fout.flush()
 
     # --- markdown result table (llama-benchy-style, spaltenbuendig) ---
     print("\n" + "=" * 72)
