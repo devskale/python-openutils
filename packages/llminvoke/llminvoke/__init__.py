@@ -50,6 +50,8 @@ __all__ = [
     "call_llm",
     "stream_llm",
     "create_provider",
+    # fo-t7: empty-chain failure signal
+    "LLMChainExhausted",
     # config (ADR 0004)
     "resolve_model",
     "ResolvedConfig",
@@ -228,6 +230,15 @@ def _try_model(
     return None, None
 
 
+class LLMChainExhausted(RuntimeError):
+    """The entire model chain failed (all models returned empty/errored).
+
+    Raised by ``call_llm(raise_on_empty=True)`` so a CLI can turn a silent ``""``
+    into a loud Failure (fo-t7, ADR 0007 Failure plane) — distinct from the
+    Defect plane: this lowers ``job.success`` + emits a ROBOTNI error.
+    """
+
+
 def call_llm(
     prompt: str | None = None,
     *,
@@ -243,6 +254,7 @@ def call_llm(
     max_tokens: int | None = None,
     max_attempts: int | None = None,
     fail_fast: bool = False,
+    raise_on_empty: bool = False,
     env_prefix: str | None = None,
     **request_kwargs,
 ) -> str:
@@ -279,6 +291,10 @@ def call_llm(
         text, _response = _try_model(ref, cfg, msgs, fail_fast, request_kwargs, package=pkg, client=cli)
         if text is not None:
             return text
+    if raise_on_empty:
+        raise LLMChainExhausted(
+            f"LLM chain exhausted ({len(cfg.chain)} model(s)) — all returned empty/failed"
+        )
     return ""  # entire chain exhausted
 
 

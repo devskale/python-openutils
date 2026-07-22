@@ -16,6 +16,7 @@ import pytest
 
 import llminvoke
 from llminvoke import call_llm
+from llminvoke import LLMChainExhausted
 from llminvoke.config import ModelRef, ResolvedConfig, RetryPolicy
 
 
@@ -167,3 +168,40 @@ def test_retry_after_honored(patched):
     mp.setattr(llminvoke, "invoke_llm", inv)
     assert call_llm("x", config=cfg(max_delay=30.0)) == "done"
     assert sleeps == [5.0]                # honored Retry-After, not the backoff default
+
+
+# ── fo-t7: raise_on_empty (silent '' → loud Failure) ──────────────────
+
+def test_raise_on_empty_raises_when_chain_exhausted(patched):
+    """All models return empty → call_llm(raise_on_empty=True) raises
+    LLMChainExhausted (fo-t7), instead of the silent ''."""
+    mp, _sleeps = patched
+    inv, _calls = make_invoke({"m1": [("empty",)], "m2": [("empty",)]})
+    mp.setattr(llminvoke, "invoke_llm", inv)
+    with pytest.raises(LLMChainExhausted):
+        call_llm("x", config=cfg(primary="p1@m1", backups=("p2@m2",)), raise_on_empty=True)
+
+
+def test_raise_on_empty_raises_when_chain_errors(patched):
+    """All models error (not just empty) → also raises with raise_on_empty."""
+    mp, _sleeps = patched
+    inv, _calls = make_invoke({"m1": [("raise", "boom")]})
+    mp.setattr(llminvoke, "invoke_llm", inv)
+    with pytest.raises(LLMChainExhausted):
+        call_llm("x", config=cfg(), raise_on_empty=True)
+
+
+def test_default_still_returns_empty_string(patched):
+    """Without raise_on_empty, a failed chain still returns '' (backward compat)."""
+    mp, _sleeps = patched
+    inv, _calls = make_invoke({"m1": [("empty",)]})
+    mp.setattr(llminvoke, "invoke_llm", inv)
+    assert call_llm("x", config=cfg()) == ""
+
+
+def test_raise_on_empty_not_triggered_on_success(patched):
+    """A normal response never raises, even with raise_on_empty=True."""
+    mp, _sleeps = patched
+    inv, _calls = make_invoke({"m1": [("ok", "hello")]})
+    mp.setattr(llminvoke, "invoke_llm", inv)
+    assert call_llm("x", config=cfg(), raise_on_empty=True) == "hello"
