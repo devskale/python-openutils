@@ -394,6 +394,9 @@ def main() -> None:
     ap.add_argument("--streams", default=os.getenv("STREAMS", "nostrm"),
                    help="Komma-Liste Stream-Modi: nostrm=ohne, strm=mit (alias: none/stream)")
     ap.add_argument("--limit", type=int, default=int(os.getenv("LIMIT", "0")), help="max Docs (gestreut nach Groesse)")
+    ap.add_argument("--max-cases", type=int, default=int(os.getenv("MAX_CASES", "0")),
+                    help="max cases (oesterreich-Vergaberecht-Tests) pro Doc (0 = alle). "
+                         "Klein setzen fuer schnelle Laufe, z.B. --max-cases 1.")
     ap.add_argument("--out", default=os.getenv("OUT", "runs/realworld.jsonl"))
     args = ap.parse_args()
 
@@ -420,10 +423,12 @@ def main() -> None:
         for t in targets:
             name, model, base, auth = t["name"], t["model_id"], t["base_url"], t["bearer"]
             print(f"\n### {name}  ({model} @ {base})")
-            print(f"  {'Dokument':34} {'mode':5} {'strm':5} {'in_tok':>7} {'tok/s':>6} {'dec/s':>5} {'out':>5} {'think':>5} {'ttft':>5} {'lat':>5} {'fin':>5} {'chk':>3} {'x':>2}")
+            print(f"  {'Dokument':34} {'mode':7} {'tok/s':>6} {'ttft':>5} {'total':>6}")
             for f in docs:
                 doc_text = f.read_text(encoding="utf-8", errors="ignore")
                 cases_for_doc = case_map.get(f.name) or [None]  # None = default query
+                if args.max_cases:
+                    cases_for_doc = cases_for_doc[:args.max_cases]
                 for case in cases_for_doc:
                     query = case["query"] if case else args.query
                     for mode in modes:
@@ -448,11 +453,9 @@ def main() -> None:
                             content_tok = res["content_tokens"]
                             finish = res["finish_reason"]; status = res["status"]; err = res["error"]; ttft = res["ttft"]
                             tps = round(ct / dt, 1) if (ct and dt) else None
-                            thr = compute_throughput(ct, dt, ttft)
-                            dec_tps = thr["decode"]
+                            dec_tps = compute_throughput(ct, dt, ttft)["decode"]  # logged only
                             think_display = (f"{rt}{'~' if rt_est else ''}" if rt is not None else "-")
                             chk = check_answer(ans, case.get("expected") if case else None)
-                            x = "x" if (finish == "length" or (status and status != 200)) else ""
                             rec = {"model_id": model, "name": name, "doc": str(f), "query": query,
                                    "reasoning": mode, "stream": strm, "prompt_tokens": pt, "completion_tokens": ct,
                                    "reasoning_tokens": rt, "reasoning_tokens_estimated": rt_est,
@@ -462,14 +465,12 @@ def main() -> None:
                                    "status_code": status, "error": err, "answer": ans,
                                    "reasoning_content": rsn,
                                    "check": chk, "expected": case.get("expected") if case else None}
-                            rows.append((name, model, f.name, mode, strm, pt, tps, dec_tps, ct, think_display, ttft, dt, finish, status, chk, x))
+                            rows.append((name, mode, strm, f.name, tps, ttft, dt, status))
                             if status and status != 200:
-                                print(f"  {f.name:34} {mode:5} {strm:5}  HTTP {status}")
+                                print(f"  {f.name:34} {mode:7}  HTTP {status}")
                             else:
                                 ttft_s = f"{ttft:.1f}" if ttft else "-"
-                                dec_s = f"{dec_tps:.0f}" if dec_tps else "-"
-                                print(f"  {f.name:34} {mode:5} {strm:5} {(pt or 0):>7} {(tps or 0):>6.0f} "
-                                      f"{dec_s:>5} {(ct or 0):>5} {think_display:>5} {ttft_s:>5} {dt or 0:>5.1f} {(finish or '-')[:5]:>5} {chk:>3} {x:>2}")
+                                print(f"  {f.name:34} {mode:7} {(tps or 0):>6.0f} {ttft_s:>5} {dt or 0:>6.1f}")
                             fout.write(json.dumps(rec, ensure_ascii=False) + "\n")
                             fout.flush()
 
@@ -477,44 +478,34 @@ def main() -> None:
     print("\n" + "=" * 72)
     print("### Results\n")
     results_rows = []
-    for name, model, fname, mode, strm, pt, tps, dec_tps, ct, think_display, ttft, dt, finish, status, chk, x in sorted(rows, key=lambda r: (r[0], r[3], r[4], r[5] or 0)):
-        failed = status is not None and status != 200
-        if failed:
-            results_rows.append([name, fname, mode, strm, "-", "-", "-", "-", "-", "-", "-", f"HTTP {status}", "✗", "x"])
+    for name, mode, strm, fname, tps, ttft, dt, status in sorted(rows, key=lambda r: (r[0], r[1], r[2], r[3])):
+        if status is not None and status != 200:
+            results_rows.append([name, fname, mode, "-", "-", f"HTTP {status}"])
         else:
             ttft_s = f"{ttft:.1f}" if ttft else "-"
             time_s = f"{dt:.1f}" if dt else "-"
-            dec_s = f"{dec_tps:.0f}" if dec_tps else "-"
-            results_rows.append([name, fname, mode, strm, str(pt or "~"), str(tps or "-"), dec_s, str(ct or "-"), think_display, ttft_s, time_s, (finish or "-")[:6], chk, x])
-    print(md_table(["model", "document", "mode", "strm", "in_tok", "tok/s", "dec/s", "out_tok", "think", "ttft", "time", "finish", "check", "x"],
-                   results_rows, align=["left", "left", "left", "left", "right", "right", "right", "right", "right", "right", "right", "left", "center", "center"]))
+            results_rows.append([name, fname, mode, str(tps or "-"), ttft_s, time_s])
+    print(md_table(["model", "document", "mode", "tok/s", "ttft", "total"],
+                   results_rows, align=["left", "left", "left", "right", "right", "right"]))
 
     # --- per-model/mode/stream summary ---
     by_key: dict[tuple, list[tuple]] = {}
-    for name, model, fname, mode, strm, pt, tps, dec_tps, ct, think_display, ttft, dt, finish, status, chk, x in rows:
+    for name, mode, strm, fname, tps, ttft, dt, status in rows:
         if status is not None and status != 200:
             continue
-        by_key.setdefault((name, mode, strm), []).append((pt or 0, tps or 0, dec_tps, dt, finish, chk, ttft))
+        by_key.setdefault((name, mode, strm), []).append((tps or 0, ttft, dt))
     if by_key:
-        print("\n### Summary (per model × mode × stream)\n")
+        print("\n### Summary (per model × mode)\n")
         sum_rows = []
         for (name, mode, strm), recs in by_key.items():
-            tps_vals = [r[1] for r in recs if r[1]]
-            dec_vals = [r[2] for r in recs if r[2]]
+            tps_vals = [r[0] for r in recs if r[0]]
             avg_tps = sum(tps_vals) / len(tps_vals) if tps_vals else 0
-            avg_dec = f"{sum(dec_vals) / len(dec_vals):.0f}" if dec_vals else "-"
-            recs_sorted = sorted(recs, key=lambda r: r[0])
-            truncated = sum(1 for r in recs if r[4] == "length")
-            passed = sum(1 for r in recs if r[5] == "✓")
-            ttfts = [r[6] for r in recs if r[6]]
+            ttfts = [r[1] for r in recs if r[1]]
             avg_ttft = f"{sum(ttfts)/len(ttfts):.1f}" if ttfts else "-"
-            flag = f" ({truncated}×length)" if truncated else ""
-            sum_rows.append([f"{name} [{mode}/{strm}]", str(len(recs)), f"{avg_tps:.0f}", avg_dec,
-                            f"{recs_sorted[0][1] or 0:.0f}", f"{recs_sorted[-1][1] or 0:.0f}",
-                            f"{sum(r[3] for r in recs)/len(recs):.1f}" + flag, avg_ttft,
-                            f"{passed}/{len(recs)}"])
-        print(md_table(["model [mode/strm]", "docs", "avg tok/s", "avg dec/s", "tok/s @ min ctx", "tok/s @ max ctx", "avg lat_s", "avg ttft", "check"],
-                       sum_rows, align=["left", "right", "right", "right", "right", "right", "left", "right", "center"]))
+            avg_lat = sum(r[2] for r in recs) / len(recs) if recs else 0
+            sum_rows.append([f"{name} [{mode}]", str(len(recs)), f"{avg_tps:.0f}", avg_ttft, f"{avg_lat:.1f}"])
+        print(md_table(["model [mode]", "runs", "avg tok/s", "avg ttft", "avg total"],
+                       sum_rows, align=["left", "right", "right", "right", "right"]))
 
     print(f"\nbench_realworld date: {time.strftime('%Y-%m-%d %H:%M:%S')} | "
           f"targets: {len(targets)} | docs: {len(docs)} | reasonings: {','.join(modes)} | streams: {','.join(streams)}")

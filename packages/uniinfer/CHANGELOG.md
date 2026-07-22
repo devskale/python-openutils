@@ -4,6 +4,18 @@ All notable changes to **uniinfer** are documented in this file.
 Versions follow [Semantic Versioning](https://semver.org/); this file
 adheres to [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.6.25] - 2026-07-22
+
+### Changed
+
+- **bench_realworld.py: lean display + fast-run params.** Table now shows only
+  the key facts — `tok/s`, `ttft`, `total` (+ model/document/mode). Dropped
+  the noisy `dec/s` (was `-` on most rows), `finish` (=stop is the normal
+  case), and the redundant `x` flag from the display. The full metric set
+  (reasoning_tokens, content_tokens, tok_per_s_decode, check, finish_reason)
+  is still recorded in the JSONL log. New `--max-cases N` caps cases per doc
+  for fast runs (with `--limit` and `--reasonings nothink`).
+
 ## [0.6.24] - 2026-07-22
 
 ### Changed
