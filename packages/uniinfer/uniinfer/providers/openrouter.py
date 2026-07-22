@@ -5,10 +5,10 @@ OpenRouter provider implementation.
 OpenRouter is a unified API to access multiple AI models from different providers.
 """
 import requests
-from typing import Optional
+from typing import Any, Optional
 
 from ..errors import map_provider_error
-from .openai_compatible import OpenAICompatibleChatProvider
+from .openai_compatible import OpenAICompatibleChatProvider, openrouter_reasoning_payload
 
 
 class OpenRouterProvider(OpenAICompatibleChatProvider):
@@ -32,6 +32,10 @@ class OpenRouterProvider(OpenAICompatibleChatProvider):
             "HTTP-Referer": "https://github.com/uniinfer",
             "X-Title": "UniInfer",
         }
+
+    def _reasoning_payload(self, reasoning_effort: Optional[str]) -> dict[str, Any]:
+        """OpenRouter's reasoning dialect is the ``reasoning`` object."""
+        return openrouter_reasoning_payload(reasoning_effort)
 
     @classmethod
     def list_models(cls, api_key: Optional[str] = None) -> list[ModelInfo]:

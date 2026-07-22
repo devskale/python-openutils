@@ -18,6 +18,12 @@ from uniinfer.core import REASONING_OFF, ReasoningEffort  # noqa: F401  (export 
 from uniinfer.providers.ollama import OllamaProvider
 from uniinfer.providers.tu import TUProvider
 from uniinfer.providers.zai import _map_reasoning_effort_to_thinking
+from uniinfer.providers.openai_compatible import (
+    OpenAICompatibleChatProvider,
+    openrouter_reasoning_payload,
+)
+from uniinfer.providers.kilo import KiloProvider
+from uniinfer.providers.openrouter import OpenRouterProvider
 
 
 # --------------------------------------------------------------------------- #
@@ -215,3 +221,67 @@ class TestHttpThinkShim:
         )
         # explicit reasoning_effort wins; shim does not clobber it
         assert captured.get("reasoning_effort") == "high"
+
+
+# --------------------------------------------------------------------------- #
+# OpenRouter / Kilo — reasoning_effort -> `reasoning` object dialect.
+# The bare `reasoning_effort` field is dropped (and on Kilo mis-handled, making
+# reasoning-capable models over-reason and emit no content); the curated
+# `reasoning` object is the correct dialect. See CONTEXT.md.
+# --------------------------------------------------------------------------- #
+class TestOpenRouterKiloReasoningDialect:
+    @pytest.mark.parametrize("effort,expected", [
+        ("low", {"reasoning": {"effort": "low"}}),
+        ("medium", {"reasoning": {"effort": "medium"}}),
+        ("high", {"reasoning": {"effort": "high"}}),
+    ])
+    def test_active_levels_map_to_reasoning_object(self, effort, expected):
+        assert openrouter_reasoning_payload(effort) == expected
+
+    @pytest.mark.parametrize("effort", ["none", "minimal"])
+    def test_off_levels_omit_reasoning(self, effort):
+        # reasoning is mandatory for many routed models; disable -> omit, not 400
+        assert openrouter_reasoning_payload(effort) == {}
+
+    def test_unset_omits_reasoning(self):
+        assert openrouter_reasoning_payload(None) == {}
+
+    def test_normalises_case_and_whitespace(self):
+        assert openrouter_reasoning_payload(" Low ") == {"reasoning": {"effort": "low"}}
+
+    @pytest.mark.parametrize("provider_cls", [KiloProvider, OpenRouterProvider])
+    def test_payload_carries_reasoning_object(self, provider_cls):
+        provider = provider_cls(api_key="k")
+        req = ChatCompletionRequest(
+            messages=[ChatMessage(role="user", content="hi")],
+            model="stepfun/step-3.7-flash:free",
+            reasoning_effort="low",
+        )
+        payload = provider._build_payload(req, False, {})
+        assert payload["reasoning"] == {"effort": "low"}
+        # the bare mis-handled field must NOT be forwarded
+        assert "reasoning_effort" not in payload
+
+    @pytest.mark.parametrize("provider_cls", [KiloProvider, OpenRouterProvider])
+    def test_off_levels_produce_no_reasoning_key(self, provider_cls):
+        provider = provider_cls(api_key="k")
+        req = ChatCompletionRequest(
+            messages=[ChatMessage(role="user", content="hi")],
+            model="stepfun/step-3.7-flash:free",
+            reasoning_effort="none",
+        )
+        payload = provider._build_payload(req, False, {})
+        assert "reasoning" not in payload
+        assert "reasoning_effort" not in payload
+
+    def test_base_default_drops_reasoning_effort(self):
+        """Providers that don't override keep the safe legacy no-op."""
+        provider = OpenAICompatibleChatProvider(api_key="k")
+        req = ChatCompletionRequest(
+            messages=[ChatMessage(role="user", content="hi")],
+            model="x",
+            reasoning_effort="high",
+        )
+        payload = provider._build_payload(req, False, {})
+        assert "reasoning" not in payload
+        assert "reasoning_effort" not in payload

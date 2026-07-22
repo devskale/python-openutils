@@ -23,10 +23,10 @@ Caveats:
   (sentinel for "varies") — mapped to ``cost=None``.
 """
 import requests
-from typing import Optional
+from typing import Any, Optional
 
 from ..errors import map_provider_error
-from .openai_compatible import OpenAICompatibleChatProvider
+from .openai_compatible import OpenAICompatibleChatProvider, openrouter_reasoning_payload
 
 
 class KiloProvider(OpenAICompatibleChatProvider):
@@ -53,6 +53,10 @@ class KiloProvider(OpenAICompatibleChatProvider):
             except Exception:
                 api_key = None
         super().__init__(api_key=api_key, base_url=self.BASE_URL)
+
+    def _reasoning_payload(self, reasoning_effort: Optional[str]) -> dict[str, Any]:
+        """Kilo mirrors OpenRouter: use the ``reasoning`` object dialect."""
+        return openrouter_reasoning_payload(reasoning_effort)
 
     @classmethod
     def list_models(cls, api_key: Optional[str] = None) -> list["ModelInfo"]:

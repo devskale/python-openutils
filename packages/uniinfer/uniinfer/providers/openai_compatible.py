@@ -2,7 +2,7 @@ import json
 from pathlib import Path
 from typing import Any, AsyncIterator, Optional
 
-from ..core import ChatCompletionRequest, ChatCompletionResponse, ChatMessage, ChatProvider
+from ..core import REASONING_OFF, ChatCompletionRequest, ChatCompletionResponse, ChatMessage, ChatProvider
 from ..errors import UniInferError, map_provider_error
 
 _MODEL_DEFAULTS: dict[str, dict[str, Any]] | None = None
@@ -18,6 +18,25 @@ def _load_model_defaults() -> dict[str, dict[str, Any]]:
         except Exception:
             _MODEL_DEFAULTS = {}
     return _MODEL_DEFAULTS
+
+
+def openrouter_reasoning_payload(reasoning_effort: Optional[str]) -> dict[str, Any]:
+    """Map ``reasoning_effort`` to the OpenRouter/Kilo ``reasoning`` object.
+
+    OpenRouter-style gateways (OpenRouter, Kilo) ignore the bare
+    ``reasoning_effort`` field — on Kilo it actively breaks reasoning-capable
+    models (they over-reason and emit no content). The curated ``reasoning``
+    object is the correct dialect. Valid efforts: low/medium/high.
+    ``none``/``minimal`` (``REASONING_OFF``) are omitted: many routed reasoning
+    models reject disabling ("Reasoning is mandatory ... cannot be disabled"),
+    so we let the model default rather than 400.
+    """
+    if not reasoning_effort:
+        return {}
+    effort = str(reasoning_effort).strip().lower()
+    if effort in REASONING_OFF:
+        return {}
+    return {"reasoning": {"effort": effort}}
 
 
 class OpenAICompatibleChatProvider(ChatProvider):
@@ -80,6 +99,17 @@ class OpenAICompatibleChatProvider(ChatProvider):
     def _get_default_payload_params(self, stream: bool) -> dict[str, Any]:
         return {}
 
+    def _reasoning_payload(self, reasoning_effort: Optional[str]) -> dict[str, Any]:
+        """Map ``reasoning_effort`` to backend-specific payload fields.
+
+        Base default is a no-op: ``reasoning_effort`` is dropped, preserving
+        legacy behaviour and staying safe for backends that reject unknown
+        params. Subclasses whose backend supports reasoning control override
+        this with the correct dialect (e.g. OpenRouter/Kilo use the
+        ``reasoning`` object via :func:`openrouter_reasoning_payload`).
+        """
+        return {}
+
     def _build_payload(
         self,
         request: ChatCompletionRequest,
@@ -105,6 +135,9 @@ class OpenAICompatibleChatProvider(ChatProvider):
             payload["tools"] = request.tools
         if request.tool_choice:
             payload["tool_choice"] = request.tool_choice
+
+        if request.reasoning_effort is not None:
+            payload.update(self._reasoning_payload(request.reasoning_effort))
 
         default_params = self._get_default_payload_params(stream)
         for key, value in default_params.items():
