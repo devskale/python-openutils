@@ -119,6 +119,9 @@ def _clone_dir() -> Path | None:
     c = Path.home() / "code" / "kontext-prompts"
     if c.is_dir():
         return c
+    c = Path.home() / "code" / "kontext.one" / "kontext-prompts"
+    if c.is_dir():
+        return c
     return None
 
 
