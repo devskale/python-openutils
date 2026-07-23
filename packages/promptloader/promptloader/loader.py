@@ -29,19 +29,19 @@ from pathlib import Path
 import yaml
 
 # ── Optional dotenv support (low-priority: shell > .env.local > .env) ──
+# Store where .env was found so _env_path can resolve relative paths.
+_DOTENV_DIR: Path | None = None
 try:
     from dotenv import find_dotenv, load_dotenv as _load_dotenv
 
-    # Walk up from CWD to find the nearest .env (works even when uv run --directory
-    # changes CWD to a subdirectory). Shell env vars always win (override=False).
     _dotenv_path = find_dotenv(usecwd=True)
     if _dotenv_path:
+        _DOTENV_DIR = Path(_dotenv_path).parent
         _load_dotenv(_dotenv_path, override=False)
-        # .env.local next to .env overrides .env
-        _local_path = Path(_dotenv_path).parent / ".env.local"
+        _local_path = _DOTENV_DIR / ".env.local"
         if _local_path.is_file():
             _load_dotenv(str(_local_path), override=True)
-    del _load_dotenv, find_dotenv, _dotenv_path, _local_path
+    del _load_dotenv, find_dotenv, _dotenv_path
 except ImportError:
     pass
 
@@ -87,7 +87,13 @@ def _get_version(text: str) -> str | None:
 # ── location discovery ───────────────────────────────────────────────────
 def _env_path(var: str) -> Path | None:
     v = os.environ.get(var)
-    return Path(v).expanduser() if v else None
+    if not v:
+        return None
+    p = Path(v).expanduser()
+    if not p.is_absolute() and _DOTENV_DIR is not None:
+        # Resolve relative paths against the directory where .env was found.
+        p = _DOTENV_DIR / p
+    return p
 
 
 def _resolve_pkg_dir(root: Path, package: str) -> Path | None:
