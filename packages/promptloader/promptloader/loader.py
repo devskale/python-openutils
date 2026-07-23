@@ -271,7 +271,10 @@ def get_prompt_set_info() -> dict:
     prompts: list[dict] = []
     if root and root.is_dir():
         for ns in ("agentos", "strukt2meta", "pdf2md"):
-            for md in _active_prompts(root / ns):
+            pkg_dir = _resolve_pkg_dir(root, ns)
+            if not pkg_dir:
+                continue
+            for md in _active_prompts(pkg_dir):
                 rel = str(md.relative_to(root))
                 try:
                     text = md.read_text(encoding="utf-8")
