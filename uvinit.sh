@@ -14,6 +14,7 @@ declare -a SUCCESS_LIST=()
 declare -a FAIL_LIST=()
 declare -a SKIP_LIST=()
 UV_EXTRAS=""
+UV_MIN_VERSION="0.7.0"
 
 usage() {
   echo "Usage: $0 [-x|-u|-c|-h] [package] [-s]"
@@ -84,6 +85,12 @@ confirm() {
 
 require_uv() {
   command -v uv >/dev/null 2>&1 || { log_error "uv not found. Install with: pipx install uv or brew install uv"; exit 127; }
+  local uv_ver
+  uv_ver=$(uv --version 2>/dev/null | grep -oE '[0-9]+\.[0-9]+\.[0-9]+')
+  if ! printf '%s\n%s\n' "$UV_MIN_VERSION" "$uv_ver" | sort -V | head -1 | grep -q "$UV_MIN_VERSION"; then
+    log_error "uv $uv_ver is too old (need >= $UV_MIN_VERSION). Run: uv self update"
+    exit 127
+  fi
 }
 
 discover_projects() {
@@ -121,7 +128,7 @@ get_installed_version() {
       | sed -E 's/.*name[[:space:]]*=[[:space:]]*"([^"]*)".*/\1/' | tr -d '[:space:]')
   fi
   [ -z "$pkg_name" ] && pkg_name="$(basename "$dir")"
-  ver=$("$py" -m pip show "$pkg_name" 2>/dev/null | grep -E '^Version:' | awk '{print $2}')
+  ver=$("$py" -c "from importlib.metadata import version; print(version('$pkg_name'))" 2>/dev/null)
   if [ -n "$ver" ]; then
     echo "$pkg_name==$ver"
   else
@@ -232,8 +239,34 @@ summary() {
   if [ "$SKIP_COUNT" -gt 0 ]; then
     for k in "${SKIP_LIST[@]}"; do echo "  SKP - $k" | tee -a "$LOG_FILE"; done
   fi
-  [ "$FAIL_COUNT" -gt 0 ] && exit 3
-  exit 0
+  [ "$FAIL_COUNT" -gt 0 ] && return 1
+  return 0
+}
+
+verify_imports() {
+  local d mod subdir b proj_name fails=0
+  log_info "Verifying imports (fail-closed)…"
+  for d in "${SUCCESS_LIST[@]}"; do
+    case "$d" in */deprecated/*|*/scaffolding/*|*/hello_world/*) continue ;; esac
+    proj_name=$(grep -E '^[[:space:]]*name[[:space:]]*=' "$d/pyproject.toml" 2>/dev/null | head -1 \
+      | sed -E 's/.*"([^"]*)".*/\1/' | tr '-' '_')
+    mod=""
+    for subdir in "$d"/* "$d"/src/*; do
+      [ -f "$subdir/__init__.py" ] 2>/dev/null || continue
+      b="$(basename "$subdir")"
+      case "$b" in tests|test|node_modules|.venv|build|dist) continue ;; esac
+      [ "$b" = "$proj_name" ] && { mod="$b"; break; }
+      [ -z "$mod" ] && mod="$b"
+    done
+    [ -z "$mod" ] && mod="$(basename "$d")"
+    if (cd "$d" && uv run python -c "import ${mod}" >>"$LOG_FILE" 2>&1); then
+      log_info "verify OK: ${mod}"
+    else
+      log_error "verify FAILED: cannot import '${mod}' in ${d}"
+      fails=$((fails+1))
+    fi
+  done
+  [ "$fails" -eq 0 ]
 }
 
 parse_args() {
@@ -277,7 +310,18 @@ main() {
   require_uv
   log_info "Mode: $MODE, Filter: '${PACKAGE_FILTER}', Silent: $SILENT"
   process_dirs
-  summary
+  if ! summary; then
+    exit 3
+  fi
+  if [ -z "$PACKAGE_FILTER" ] && [ "$FAIL_COUNT" -eq 0 ]; then
+    if ! verify_imports; then
+      log_error "=========================================================="
+      log_error "VERIFY FAILED — sync completed but imports broken."
+      log_error "See uvinit.log for the failing import."
+      log_error "=========================================================="
+      exit 4
+    fi
+  fi
 }
 
 main "$@"
