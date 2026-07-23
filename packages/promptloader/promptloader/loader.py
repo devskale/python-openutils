@@ -28,6 +28,23 @@ from pathlib import Path
 
 import yaml
 
+# ── Optional dotenv support (low-priority: shell > .env.local > .env) ──
+try:
+    from dotenv import find_dotenv, load_dotenv as _load_dotenv
+
+    # Walk up from CWD to find the nearest .env (works even when uv run --directory
+    # changes CWD to a subdirectory). Shell env vars always win (override=False).
+    _dotenv_path = find_dotenv(usecwd=True)
+    if _dotenv_path:
+        _load_dotenv(_dotenv_path, override=False)
+        # .env.local next to .env overrides .env
+        _local_path = Path(_dotenv_path).parent / ".env.local"
+        if _local_path.is_file():
+            _load_dotenv(str(_local_path), override=True)
+    del _load_dotenv, find_dotenv, _dotenv_path, _local_path
+except ImportError:
+    pass
+
 AUTO_FIELDS = ("version", "content_sha256")  # excluded from the semantic fingerprint
 
 
