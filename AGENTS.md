@@ -31,6 +31,7 @@ cd packages/uniinfer && uv sync --extra all
 | kontext.one (meta) | `..` |
 | klark0 | `../klark0` |
 | python-utils | `../python-utils` |
+| kontext-prompts | `../kontext-prompts` |
 
 **Standalone**: no siblings. Packages install via `uv sync`.
 
@@ -126,7 +127,18 @@ do not run it automatically.
 
 ### Issue tracker
 
-Issues live in GitHub Issues for this repo (uses the `gh` CLI). See `docs/agents/issue-tracker.md`.
+Issues live in the **cross-machine kanban** (`.handoff/kontext.one/issues/`), not
+GitHub Issues — one pool for the whole ecosystem, discriminated by `module:`
+(e.g. `credgoo`, `uniinfer`). Run from anywhere in this repo:
+
+```bash
+../.pi/scripts/issues board           # overview
+../.pi/scripts/issues ls active       # in progress
+../.pi/scripts/issues todo            # waiting on this machine
+../.pi/scripts/issues new <slug> [to] # create in backlog
+```
+
+Convention + full command list: [`kontext.one/.pi/skills/issues/SKILL.md`](https://github.com/devskale/kontext.one/blob/main/.pi/skills/issues/SKILL.md).
 
 ### Triage labels
 
@@ -134,4 +146,4 @@ Five canonical roles, each label string equals its role name. See `docs/agents/t
 
 ### Domain docs
 
-Multi-context — root `CONTEXT-MAP.md` points to per-package `CONTEXT.md` files. See `docs/agents/domain.md`.
+Per-package `CONTEXT.md` files: `packages/credgoo/CONTEXT.md`, `packages/uniinfer/CONTEXT.md`. See `docs/agents/domain.md`.
