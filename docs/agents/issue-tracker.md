@@ -11,10 +11,10 @@ whole ecosystem, discriminated by the `module:` field (`credgoo`, `uniinfer`).
 Quick start (from anywhere in this repo):
 
 ```bash
-../.pi/scripts/issues board           # overview (backlog/active/review/...)
-../.pi/scripts/issues ls active       # in progress
-../.pi/scripts/issues todo            # waiting on THIS machine
-../.pi/scripts/issues new <slug> [to] # create in backlog
+issues board           # overview (backlog/active/review/...)
+issues ls active       # in progress
+issues todo            # waiting on THIS machine
+issues new <slug> [to] # create in backlog
 ```
 
 Sign edits with `<machine>@<module>` (machine from `~/.handoff-me`).

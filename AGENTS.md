@@ -132,10 +132,10 @@ GitHub Issues — one pool for the whole ecosystem, discriminated by `module:`
 (e.g. `credgoo`, `uniinfer`). Run from anywhere in this repo:
 
 ```bash
-../.pi/scripts/issues board           # overview
-../.pi/scripts/issues ls active       # in progress
-../.pi/scripts/issues todo            # waiting on this machine
-../.pi/scripts/issues new <slug> [to] # create in backlog
+issues board           # overview
+issues ls active       # in progress
+issues todo            # waiting on this machine
+issues new <slug> [to] # create in backlog
 ```
 
 Convention + full command list: [`kontext.one/.pi/skills/issues/SKILL.md`](https://github.com/devskale/kontext.one/blob/main/.pi/skills/issues/SKILL.md).
