@@ -7,7 +7,7 @@ precedence chain (ADR 0004), filters DSGVO-incompatible backups, and returns a
 
 Precedence (high → low)::
 
-    env var  >  team-settings (DB)  >  clients.yml (runtime)  >  catalog default
+    env var  >  clients.yml packages.<task> (tier)  >  clients.yml <client> (business)  >  registry packages  >  catalog default
 
 This module is intentionally free of LLM-call logic — it only *resolves*. The
 retry/backup loop lives in ``__init__.call_llm`` and consumes ``ResolvedConfig``.
@@ -297,6 +297,24 @@ def resolve_model(
         backups_raw = list(client_cfg.get("backups", backups_raw))
         retry = _parse_retry(client_cfg.get("retry"), retry)
         dsgvo_required = bool(client_cfg.get("dsgvo_required", dsgvo_required))
+
+    # ── layer 2.5: runtime package/task tier overrides (clients.yml packages:) ─
+    # The operator's per-tier switch — editable without redeploy. Layers above the
+    # client default (a tier override beats the catch-all), below env (per-machine).
+    if package:
+        cpkg = clients.get("packages", {}).get(package, {})
+        if cpkg:
+            primary_spec = cpkg.get("model", primary_spec)
+            temperature = float(cpkg.get("temperature", temperature))
+            max_tokens = int(cpkg.get("max_tokens", max_tokens))
+            backups_raw = list(cpkg.get("backups", backups_raw))
+            retry = _parse_retry(cpkg.get("retry"), retry)
+            if task:
+                ctask = cpkg.get("tasks", {}).get(task, {})
+                primary_spec = ctask.get("model", primary_spec)
+                temperature = float(ctask.get("temperature", temperature))
+                max_tokens = int(ctask.get("max_tokens", max_tokens))
+                task_kwargs = {**task_kwargs, **ctask.get("request_kwargs", {})}
 
     # ── build refs + DSGVO-filter backups ──
     primary = ModelRef.parse(primary_spec)
