@@ -89,8 +89,11 @@ class ModelInfo:
 
         # Explicit modalities check — high confidence
         if self.modalities:
-            out = self.modalities.get("output", [])
-            inp = self.modalities.get("input", [])
+            # Some providers send modalities as a bare list (e.g. ["text","image"]);
+            # normalize to the dict shape this code expects before calling .get().
+            mods = self.modalities if isinstance(self.modalities, dict) else {"input": list(self.modalities), "output": []}
+            out = mods.get("output", [])
+            inp = mods.get("input", [])
             if out == ["audio"] and set(inp) <= {"text"}:
                 return "tts"
             if set(inp) <= {"audio"} and set(out) <= {"text"}:

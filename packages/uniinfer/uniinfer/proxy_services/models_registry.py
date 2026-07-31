@@ -88,16 +88,29 @@ async def refresh_models_file() -> dict[str, Any]:
         return {"status": "success", "message": "Models updated successfully"}
 
 
-async def ensure_fresh_models_file() -> None:
-    if not models_file_is_stale():
-        return
-    if _refresh_lock.locked():
-        # A refresh is already running (on-demand or timer); don't stack spawns.
-        return
+_background_refresh_tasks: set[asyncio.Task] = set()
+
+
+async def _refresh_in_background() -> None:
     try:
         await refresh_models_file()
     except Exception as e:
         logger.warning("Failed to refresh stale models file: %s", e)
+
+
+async def ensure_fresh_models_file() -> None:
+    """Serve the current (possibly stale) file immediately; refresh in the
+    background if stale. Never blocks the caller — /v1/models returns right
+    away and the next request sees the fresh file. Single-flight is still
+    enforced by _refresh_lock inside refresh_models_file (it skips if a
+    refresh is already running).
+    """
+    if not models_file_is_stale() or _refresh_lock.locked():
+        # Fresh enough, or a refresh is already running (on-demand or timer).
+        return
+    task = asyncio.create_task(_refresh_in_background())
+    _background_refresh_tasks.add(task)          # keep a ref so it isn't GC'd
+    task.add_done_callback(_background_refresh_tasks.discard)
 
 
 class Catalog:
