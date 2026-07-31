@@ -2,6 +2,7 @@ from __future__ import annotations
 """
 OpenAI provider implementation.
 """
+import os
 import requests
 from typing import Optional
 
@@ -20,7 +21,9 @@ class OpenAIProvider(OpenAICompatibleChatProvider):
     DEFAULT_MODEL = "gpt-3.5-turbo"
 
     def __init__(self, api_key: Optional[str] = None, organization: Optional[str] = None):
-        super().__init__(api_key=api_key, base_url=self.BASE_URL)
+        # OPENAI_BASE_URL override → point the OpenAI-compat path at any
+        # OpenAI-compliant endpoint (e.g. a local vLLM) without code/config elsewhere.
+        super().__init__(api_key=api_key, base_url=os.getenv("OPENAI_BASE_URL") or self.BASE_URL)
         self.organization = organization
 
     def _get_extra_headers(self) -> dict[str, str]:
