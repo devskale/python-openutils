@@ -315,6 +315,7 @@ class Catalog:
                 "provider_class": "",
                 "kind": "chat",
                 "models": model_dicts,
+                "last_refreshed": datetime.now(timezone.utc).isoformat(),
             }
 
             total = sum(len(p.get("models", [])) for p in data["providers"].values())
@@ -326,6 +327,27 @@ class Catalog:
         logger.info(
             "Updated cache for provider %s: %d models", provider_id, len(model_dicts)
         )
+
+    def provider_age_seconds(self, provider_id: str) -> float | None:
+        """Seconds since *provider_id*'s cache entry was last refreshed, or None.
+
+        None if there is no entry or no ``last_refreshed`` stamp. Drives the
+        per-alias stale-while-revalidate decision for /v1/models/{alias}.
+        """
+        from datetime import datetime, timezone
+
+        data = self._load() or {}
+        entry = data.get("providers", {}).get(provider_id, {})
+        ts = entry.get("last_refreshed")
+        if not ts:
+            return None
+        try:
+            dt = datetime.fromisoformat(ts)
+            if dt.tzinfo is None:
+                dt = dt.replace(tzinfo=timezone.utc)
+            return (datetime.now(timezone.utc) - dt).total_seconds()
+        except ValueError:
+            return None
 
     def backfill_fields(self, entries: list[tuple[str, str, dict]]) -> dict:
         """Read-modify-write: fill metadata gaps from pi imports.

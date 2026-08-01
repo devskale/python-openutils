@@ -341,6 +341,27 @@ def show_instance(alias: str, path: Optional[str] = None) -> InstanceSpec:
     return resolve_instance(alias, path=path)
 
 
+def alias_serve_decision(age, ttl, inflight):
+    """Decide how /v1/models/{alias} serves a custom alias.
+
+    Args:
+        age: Seconds since the alias's catalog entry was last refreshed, or
+            None if it has never been cached.
+        ttl: Freshness window in seconds.
+        inflight: Whether a background refresh for this alias is already running.
+
+    Returns:
+        ``"fetch_sync"`` (no cache -> populate on first hit),
+        ``"serve_cached"`` (fresh, or stale-but-refreshing), or
+        ``"serve_cached_and_refresh"`` (stale and idle -> serve stale + refresh).
+    """
+    if age is None:
+        return "fetch_sync"
+    if age > ttl and not inflight:
+        return "serve_cached_and_refresh"
+    return "serve_cached"
+
+
 def merge_custom_aliases(
     builtins_result: dict[str, Any],
     existing_providers: dict[str, Any],

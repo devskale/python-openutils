@@ -16,6 +16,39 @@ from uniinfer.proxy_services.models_registry import (
 )
 from uniinfer.core import ModelInfo
 import dataclasses
+import asyncio
+import logging
+import os
+from starlette.concurrency import run_in_threadpool
+
+from uniinfer.config.instances import alias_serve_decision, resolve_instance
+
+_logger = logging.getLogger("uniioai_proxy")
+_ALIAS_REFRESH_TTL_DEFAULT = 300.0
+_alias_inflight: set[str] = set()
+_alias_bg_tasks: set[asyncio.Task] = set()
+
+
+def _alias_refresh_ttl() -> float:
+    try:
+        return float(os.getenv("UNIINFER_ALIAS_REFRESH_TTL", _ALIAS_REFRESH_TTL_DEFAULT))
+    except (TypeError, ValueError):
+        return _ALIAS_REFRESH_TTL_DEFAULT
+
+
+async def _bg_refresh_alias(alias: str, token: str | None) -> None:
+    try:
+        await run_in_threadpool(list_models_for_provider, alias, token)
+    except Exception as e:
+        _logger.warning("background alias refresh failed for %s: %s", alias, e)
+    finally:
+        _alias_inflight.discard(alias)
+
+
+def _cached_alias_response(provider_name: str) -> dict:
+    entry = Catalog().read_nested(provider_name)["providers"].get(provider_name, {})
+    data = [dict(m, object="model") for m in entry.get("models", [])]
+    return {"object": "list", "data": data}
 
 
 def _model_info_to_dict(m) -> dict:
@@ -155,7 +188,27 @@ def create_models_router(version: str) -> APIRouter:
     @router.get("/v1/models/{provider_name}")
     async def dynamic_list_models(provider_name: str, api_bearer_token: str = Depends(validate_proxy_token)):
         try:
-            raw_models = list_models_for_provider(provider_name, api_bearer_token)
+            spec = resolve_instance(provider_name)
+        except ValueError as e:
+            raise HTTPException(status_code=400, detail=str(e))
+        try:
+            # Custom alias: serve cached within TTL, stale-while-revalidate beyond it
+            # (background refresh, never blocks). First-ever hit (no cache) fetches sync.
+            if not spec.is_builtin:
+                age = Catalog().provider_age_seconds(provider_name)
+                decision = alias_serve_decision(
+                    age, _alias_refresh_ttl(), provider_name in _alias_inflight
+                )
+                if decision == "serve_cached":
+                    return _cached_alias_response(provider_name)
+                if decision == "serve_cached_and_refresh":
+                    _alias_inflight.add(provider_name)
+                    task = asyncio.create_task(_bg_refresh_alias(provider_name, api_bearer_token))
+                    _alias_bg_tasks.add(task)
+                    task.add_done_callback(_alias_bg_tasks.discard)
+                    return _cached_alias_response(provider_name)
+                # fetch_sync -> fall through to the live fetch below
+            raw_models = await run_in_threadpool(list_models_for_provider, provider_name, api_bearer_token)
             if provider_name == "zai" and "glm-4.5-flash" not in [str(m) for m in raw_models]:
                 raw_models.append("glm-4.5-flash")
             return {
