@@ -1,0 +1,25 @@
+# python-openutils — package architecture. Re-render: d2 architecture.d2 architecture.svg --sketch --theme 4
+vars: { d2-config: { layout-engine: elk } }
+klark0: Klark0 { shape: person }
+pyutils: python-utils { shape: package }
+external: External { shape: package }
+
+monorepo: python-openutils {
+  llminvoke: llminvoke (LLM bridge)
+  uniinfer: uniinfer (inference)
+  credgoo: credgoo (keys)
+  promptloader: promptloader (prompts)
+
+  llminvoke -> uniinfer: invoke
+  llminvoke -> credgoo: key
+  uniinfer -> credgoo: key
+}
+
+providers: LLM providers { shape: cloud }
+sheets: Google Sheets { shape: page }
+
+klark0 -> monorepo.uniinfer: stream
+pyutils -> monorepo.uniinfer: import
+external -> monorepo: install
+monorepo.uniinfer -> providers
+monorepo.credgoo -> sheets: keys

@@ -1,0 +1,15 @@
+# A chat request through uniinfer (FallbackStrategy). Re-render: d2 request-flow.d2 request-flow.svg --sketch --theme 4
+flow: {
+  shape: sequence_diagram
+  caller; strategy; provider; credgoo; llm
+  caller -> strategy: complete(request)
+  loop {
+    strategy -> provider: complete(req, provider_name)
+    provider -> credgoo: get_api_key(service)
+    provider <- credgoo: api_key
+    provider -> llm: POST /chat/completions
+    provider <- llm: response OR error
+    provider <- strategy: success -> return | fail -> next
+  }
+  caller <- strategy: ChatCompletionResponse
+}

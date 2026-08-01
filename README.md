@@ -67,6 +67,18 @@ OpenAI-compatible proxy server providing unified access to 500+ models from 20+ 
 - Embedding support for semantic search
 - Automatic fallback strategies
 
+## Architecture
+
+![architecture](docs/diagrams/architecture.svg)
+
+Four packages — **credgoo** (API keys ← Google Sheets), **uniinfer** (unified LLM inference, 15+ providers, fallback, streaming), **llminvoke** (the `call_llm`/`invoke_llm`/`stream_llm` bridge over credgoo + uniinfer), **promptloader** (standalone prompt resolution). Consumers: klark0 (HTTP → uniinfer proxy), python-utils (imports), external installs.
+
+A chat request flows through `FallbackStrategy` — providers tried in order, each fetching its key via credgoo:
+
+![request-flow](docs/diagrams/request-flow.svg)
+
+Source: [`docs/diagrams/`](docs/diagrams/) (D2 — edit the `.d2` and re-render).
+
 ## Quick Start
 
 ### Credgoo — Get an API Key
@@ -120,6 +132,7 @@ cd packages/uniinfer && uv sync --extra all
 
 - [Credgoo Documentation](packages/credgoo/README.md)
 - [UniInfer Documentation](packages/uniinfer/README.md)
+- [Architecture diagrams](docs/diagrams/README.md)
 
 ## License
 
