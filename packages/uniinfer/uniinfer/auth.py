@@ -3,6 +3,7 @@ from typing import Optional
 from fastapi import HTTPException, Depends
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from .provider_access import get_provider_api_key
+from .config.instances import instance_requires_api_key
 from .errors import AuthenticationError
 
 logger = logging.getLogger(__name__)
@@ -67,7 +68,7 @@ def verify_provider_access(token: str, provider_name: str) -> str:
     """
     try:
         api_key = get_provider_api_key(token, provider_name)
-        if not api_key and provider_name != 'ollama':
+        if not api_key and instance_requires_api_key(provider_name):
             raise AuthenticationError(f"No API key found for provider '{provider_name}'")
         return api_key
     except (ValueError, AuthenticationError) as e:

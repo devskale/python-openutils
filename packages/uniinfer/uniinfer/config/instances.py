@@ -219,3 +219,17 @@ def resolve_instance(
             f"(known: {', '.join(sorted(table))})"
         )
     return spec
+
+
+def instance_requires_api_key(alias: str) -> bool:
+    """Whether dispatching to *alias* needs an API key.
+
+    The single flag that replaces the hardcoded ``provider_name == 'ollama'``
+    keyless special-case: any instance (local vLLM, LM Studio, localhost Ollama)
+    with ``requires_api_key: false`` is auth-optional. Unknown aliases default
+    to True (safe — demand a key).
+    """
+    try:
+        return resolve_instance(alias).requires_api_key
+    except Exception:
+        return True

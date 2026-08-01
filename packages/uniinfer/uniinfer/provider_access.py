@@ -17,6 +17,7 @@ from uniinfer import EmbeddingProviderFactory, EmbeddingRequest, EmbeddingRespon
 from uniinfer import ProviderFactory
 from uniinfer.completion import parse_provider_model
 from uniinfer.config.providers import PROVIDER_CONFIGS
+from uniinfer.config.instances import instance_requires_api_key, resolve_instance
 from uniinfer.errors import AuthenticationError, UniInferError
 from uniinfer.json_utils import update_models
 
@@ -70,13 +71,15 @@ def get_provider_api_key(api_bearer_token: str, provider_name: str) -> str | Non
         provider_name: The provider name (e.g. 'openai', 'ollama').
 
     Returns:
-        The resolved provider API key (None for providers like Ollama).
+        The resolved provider API key (None for keyless providers when no token
+        is available).
 
     Raises:
         ValueError: If the combined credgoo token format is invalid or a key
             is required but missing.
         AuthenticationError: If credgoo fails to retrieve a key.
     """
+    requires_key = instance_requires_api_key(provider_name)
     provider_api_key = None
 
     # Fallback to env vars if token is missing
@@ -100,7 +103,7 @@ def get_provider_api_key(api_bearer_token: str, provider_name: str) -> str | Non
                 encryption_key=credgoo_encryption,
                 bearer_token=credgoo_bearer,
             )
-            if not provider_api_key and provider_name not in ["ollama"]:
+            if not provider_api_key and requires_key:
                 raise AuthenticationError(
                     f"Failed to retrieve API key for '{provider_name}' using the provided credgoo token."
                 )
@@ -115,12 +118,12 @@ def get_provider_api_key(api_bearer_token: str, provider_name: str) -> str | Non
     else:
         if api_bearer_token:
             provider_api_key = api_bearer_token
-        elif provider_name != "ollama":
+        elif requires_key:
             raise ValueError(
                 "API Bearer Token is required (provider key or credgoo combo)."
             )
 
-    if not provider_api_key and provider_name not in ["ollama"]:
+    if not provider_api_key and requires_key:
         logger.warning(
             f"API key for {provider_name} is missing or empty after processing."
         )
@@ -158,6 +161,16 @@ def get_embeddings(
         provider_kwargs: dict[str, Any] = {"api_key": provider_api_key}
         if base_url:
             provider_kwargs["base_url"] = base_url
+        else:
+            # Resolve base_url from the instance overlay (custom alias) or the
+            # legacy extra_params (built-in ollama/cloudflare) when the caller
+            # didn't pass one.
+            spec = resolve_instance(provider_name)
+            eff = spec.base_url or PROVIDER_CONFIGS.get(spec.provider, {}).get(
+                "extra_params", {}
+            ).get("base_url")
+            if eff:
+                provider_kwargs["base_url"] = eff
 
         provider = EmbeddingProviderFactory.get_provider(provider_name, **provider_kwargs)
         request = EmbeddingRequest(input=input_texts, model=model_name)

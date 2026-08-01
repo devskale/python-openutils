@@ -47,6 +47,10 @@ class OllamaProvider(ChatProvider):
     """
 
     ACCESS_TIER = "free"  # local, no per-token cost
+    # Local Ollama needs no key. Deployments behind a bearer (e.g. amp1) declare
+    # requires_api_key: true on their instance entry; credgoo still resolves the
+    # key when a token is present either way.
+    REQUIRES_API_KEY = False
     def __init__(self, api_key: Optional[str] = None, base_url: str = "https://localhost:11434", **kwargs):
         """
         Initialize the Ollama provider.

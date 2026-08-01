@@ -7,6 +7,8 @@ from fastapi.responses import JSONResponse, StreamingResponse
 from starlette.concurrency import run_in_threadpool
 
 from uniinfer.auth import get_optional_proxy_token, verify_provider_access
+from uniinfer.config.instances import instance_requires_api_key
+from uniinfer.provider_access import _resolve_credgoo_service
 from uniinfer.errors import (
     AuthenticationError,
     ProviderError,
@@ -77,12 +79,9 @@ def create_chat_router(
             # response_format, seed, stream_options, …) to the backend instead
             # of dropping them. The schema captures them via extra="allow".
             extras = dict(getattr(request_input, "__pydantic_extra__", None) or {})
-            if provider_name == "ollama" and base_url is None:
-                base_url = (
-                    provider_configs.get("ollama", {})
-                    .get("extra_params", {})
-                    .get("base_url")
-                )
+            # base_url for built-ins (e.g. ollama) is resolved inside Target via
+            # the instance overlay / legacy extra_params; per-request base_url
+            # (if provided) still wins as an explicit override.
 
             provider_api_key = verify_provider_access(api_bearer_token, provider_name)
 
@@ -238,14 +237,20 @@ def create_chat_router(
 
         try:
             provider_name, _ = parse_provider_model(provider_model)
-            if provider_name == "ollama":
+            if not instance_requires_api_key(provider_name):
+                # Keyless/key-optional endpoint (local ollama, vLLM, LM Studio):
+                # best-effort fetch its own credgoo key if one exists (e.g. a
+                # bearer-protected ollama), else proceed with None. base_url is
+                # resolved inside get_embeddings via the instance overlay.
                 from credgoo import get_api_key as _get_credgoo_key
 
-                ollama_extra = provider_configs.get("ollama", {}).get(
-                    "extra_params", {}
-                )
-                provider_api_key = _get_credgoo_key("ollama")
-                base_url = ollama_extra.get("base_url")
+                try:
+                    provider_api_key = _get_credgoo_key(
+                        _resolve_credgoo_service(provider_name)
+                    )
+                except Exception:
+                    provider_api_key = None
+                base_url = None
             else:
                 provider_api_key = verify_provider_access(
                     api_bearer_token, provider_name
