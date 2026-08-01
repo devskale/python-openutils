@@ -294,6 +294,7 @@
 
     // ─── Search clear buttons ─────────────────────────────────────────
     $$(".search-clear").forEach(btn => {
+      if (!btn.dataset.target) return; // skip clear buttons not tied to a search input (e.g. model-clear)
       const input = $("#" + btn.dataset.target);
       const update = () => { btn.style.display = input.value ? "flex" : "none"; };
       input.addEventListener("input", update);
