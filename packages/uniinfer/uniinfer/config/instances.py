@@ -68,12 +68,18 @@ class InstanceSpec:
 
 
 def _spec_from_class(alias: str, provider: str, is_builtin: bool) -> InstanceSpec:
-    """Build a spec by reading the underlying provider class's identity attrs."""
+    """Build a spec by reading the underlying provider class's identity attrs.
+
+    base_url is deliberately None: passing a class's own BASE_URL back to its
+    __init__/list_models breaks providers that reject base_url (mistral,
+    pollinations, openrouter, …). Only a *file-declared* base_url (custom alias
+    or built-in override) sets it; otherwise the provider self-defaults.
+    """
     cls = ProviderFactory.get_provider_class(provider)
     return InstanceSpec(
         alias=alias,
         provider=provider,
-        base_url=getattr(cls, "BASE_URL", None) or None,
+        base_url=None,
         credgoo_service=getattr(cls, "CREDGOO_SERVICE", None),
         requires_api_key=bool(getattr(cls, "REQUIRES_API_KEY", True)),
         default_model=getattr(cls, "DEFAULT_MODEL", None),
@@ -83,15 +89,10 @@ def _spec_from_class(alias: str, provider: str, is_builtin: bool) -> InstanceSpe
 
 def _builtin_spec(name: str) -> InstanceSpec:
     """A built-in's spec. Lazy providers (e.g. gemini) get safe defaults without
-    forcing their heavy SDK import just to enumerate the registry.
-
-    base_url is deliberately None: a built-in uses its own class default, and
-    Target only forwards a base_url when the file *overrides* it (forwarding the
-    class's own BASE_URL would break providers whose __init__ rejects base_url).
-    """
+    forcing their heavy SDK import just to enumerate the registry."""
     if ProviderFactory.is_lazy(name):
         return InstanceSpec(alias=name, provider=name, is_builtin=True)
-    return replace(_spec_from_class(name, name, is_builtin=True), base_url=None)
+    return _spec_from_class(name, name, is_builtin=True)
 
 
 def _apply_entry(spec: InstanceSpec, entry: Any) -> InstanceSpec:
