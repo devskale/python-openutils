@@ -73,19 +73,25 @@ External repos use git URLs — see README.md for the pattern.
 
 After changing credgoo or uniinfer:
 1. Commit and push to `main` on python-openutils
-2. In python-utils: `cd packages/THAT_PACKAGE && uv lock -P <pkg> --refresh`, then push to `dev`
-   (or `./k.sh deps bump <pkg>` from the metarepo, which does the same)
+2. From the metarepo: `./k.sh deps bump <pkg>`, then push `python-utils` to `dev`
 
-> **Why `--refresh`:** uv caches git deps **by commit hash**. `uv lock -P <pkg>` implies
-> `--refresh-package`, which revalidates a package's artifacts for its *current* pinned
-> commit but does **not** re-resolve the branch ref to discover a *new* commit — so the
-> bump silently no-ops on the stale cached commit. `--refresh` forces a real `git fetch`
-> of the branch, so `rev = "main"` sources advance to current HEAD. (`uv lock -U` also
-> works — it implies `--refresh` — but upgrades every package, not just the one.)
+> **Reliable bump internals** (grounded in uv 0.12.1's cache docs + verified empirically):
+> uv caches git deps **by commit hash** and unifies every subdirectory source from one
+> git repo to a **single commit**. So bumping one python-openutils package means
+> advancing that shared repo commit, which requires:
+>   - **`--refresh`** — `--upgrade-package` implies `--refresh-package`, which revalidates a
+>     package for its *current* pinned commit but does not re-resolve the branch ref to
+>     discover a *new* commit (silent no-op on stale cache). `--refresh` forces a `git fetch`.
+>   - **`-P` every python-openutils package in the lock** (direct *and* transitive) — `-P`-ing
+>     just one ignores only its pin; the siblings' pins hold the repo commit.
 >
-> Internal git sources MUST declare `rev = "main"` (a moving ref); rev-less sources
-> refreeze at a commit and, because uv unifies subdirectory sources from one repo to
-> a single commit, pin the whole repo and defeat targeted bumps.
+> `./k.sh deps bump <pkg>` does both (enumerates the lock, -P's all internal packages +
+> `--refresh`, across producer + every consumer). Manual equivalent:
+> `cd packages/THAT && uv lock -P <p1> -P <p2> … --refresh` for every python-openutils package.
+>
+> Internal git sources MUST declare `rev = "main"` (a moving ref); rev-less sources refreeze
+> at a commit and defeat targeted bumps. (`uv lock -U` also works — it implies `--refresh` —
+> but upgrades every package, not just the internal ones.)
 
 Version in `pyproject.toml`:
 - **Patch** (default): `0.1.5` → `0.1.6`
