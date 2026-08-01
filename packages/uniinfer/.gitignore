@@ -37,3 +37,7 @@ SETUP.md
 .env
 .env.local
 .env*
+
+# Provider-instance fleet config (local overlay — gitignored by design, Q3)
+provider_instances.json
+uniinfer/models/.catalog.lock
