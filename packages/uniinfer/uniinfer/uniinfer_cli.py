@@ -718,7 +718,29 @@ def main():
         ),
     )
 
+    # --- provider-instance fleet management (see docs/provider-instances-design.md) ---
+    parser.add_argument("--init", action="store_true",
+                        help="Write a commented provider_instances.json template (create-if-missing).")
+    parser.add_argument("--add-provider", metavar="ALIAS", help="Add/update a named instance (e.g. vllm-local).")
+    parser.add_argument("--remove-provider", metavar="ALIAS", help="Remove a custom instance (built-ins refuse; use --disable/--reset).")
+    parser.add_argument("--enable-provider", metavar="ALIAS", help="Enable an instance.")
+    parser.add_argument("--disable-provider", metavar="ALIAS", help="Disable an instance (hide from listing/dispatch).")
+    parser.add_argument("--reset-provider", metavar="ALIAS", help="Drop overrides on an instance (revert built-in to defaults).")
+    parser.add_argument("--show-provider", metavar="ALIAS", help="Show an instance's resolved spec.")
+    parser.add_argument("--provider-class", metavar="CLASS", dest="provider_class", help="With --add-provider: underlying class key (openai-compat, ollama, tu, …).")
+    parser.add_argument("--base-url", metavar="URL", help="With --add-provider: endpoint base URL.")
+    parser.add_argument("--credgoo-service", metavar="NAME", help="With --add-provider: credgoo key service (defaults to the alias).")
+    parser.add_argument("--key", metavar="KEY", help="With --add-provider: store this key in credgoo under the alias's service (file never holds the raw key).")
+    parser.add_argument("--no-key", action="store_true", help="With --add-provider: mark the instance keyless (requires_api_key: false).")
+    parser.add_argument("--no-verify", action="store_true", help="With --add-provider: skip the reachability/model probe.")
+
     args = parser.parse_args()
+
+    if args.init or args.add_provider or args.remove_provider or args.enable_provider \
+            or args.disable_provider or args.reset_provider or args.show_provider:
+        from uniinfer.instance_cli import manage
+        manage(args)
+        return
 
     if args.speedtest:
         from pathlib import Path as _Path

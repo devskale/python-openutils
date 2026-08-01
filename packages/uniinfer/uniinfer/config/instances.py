@@ -233,3 +233,108 @@ def instance_requires_api_key(alias: str) -> bool:
         return resolve_instance(alias).requires_api_key
     except Exception:
         return True
+
+
+# --------------------------------------------------------------------------- #
+# Overlay management primitives (add / remove / enable / reset / show)
+# Pure file ops — the CLI flags and the smart add-probe are shells over these.
+# --------------------------------------------------------------------------- #
+def _overlay_path(path: Optional[str] = None) -> Path:
+    return Path(path) if path else Path(instance_file_path())
+
+
+def read_overlay(path: Optional[str] = None) -> dict[str, Any]:
+    """Read the raw overlay JSON (empty dict if the file is missing)."""
+    p = _overlay_path(path)
+    if not p.exists():
+        return {}
+    try:
+        raw = json.loads(p.read_text())
+    except json.JSONDecodeError as e:
+        raise ValueError(f"overlay file {p} is not valid JSON: {e}") from e
+    if not isinstance(raw, dict):
+        raise ValueError(f"overlay file {p} must be a JSON object")
+    return raw
+
+
+def write_overlay(data: dict[str, Any], path: Optional[str] = None) -> Path:
+    """Write the overlay JSON (creates parent dirs). Returns the path."""
+    p = _overlay_path(path)
+    p.parent.mkdir(parents=True, exist_ok=True)
+    p.write_text(json.dumps(data, indent=2, sort_keys=True) + "\n")
+    clear_instances_cache()
+    return p
+
+
+def upsert_instance(
+    alias: str,
+    provider: Optional[str] = None,
+    base_url: Optional[str] = None,
+    credgoo_service: Optional[str] = None,
+    requires_api_key: Optional[bool] = None,
+    enabled: Optional[bool] = None,
+    default_model: Optional[str] = None,
+    path: Optional[str] = None,
+) -> dict[str, Any]:
+    """Add or update an instance entry in the overlay; returns the written entry."""
+    registered = set(ProviderFactory.list_providers())
+    overlay = read_overlay(path)
+    entry = dict(overlay.get(alias, {}))
+    for k, v in (
+        ("provider", provider),
+        ("base_url", base_url),
+        ("credgoo_service", credgoo_service),
+        ("requires_api_key", requires_api_key),
+        ("enabled", enabled),
+        ("default_model", default_model),
+    ):
+        if v is not None:
+            entry[k] = v
+    is_builtin = alias in registered
+    if not is_builtin:
+        if "provider" not in entry:
+            raise ValueError(
+                f"custom instance '{alias}' must declare a 'provider'"
+            )
+        if entry["provider"] not in registered:
+            raise ValueError(
+                f"instance '{alias}' references unknown provider '{entry['provider']}'"
+            )
+    overlay[alias] = entry
+    write_overlay(overlay, path)
+    return entry
+
+
+def remove_instance(alias: str, path: Optional[str] = None) -> bool:
+    """Delete a custom alias. Built-ins refuse (route to disable/reset)."""
+    if alias in ProviderFactory.list_providers():
+        raise ValueError(
+            f"'{alias}' is a built-in provider — use --disable-provider {alias} "
+            f"(turn off) or --reset-provider {alias} (revert overrides)"
+        )
+    overlay = read_overlay(path)
+    if alias not in overlay:
+        raise ValueError(f"no custom instance '{alias}' to remove")
+    del overlay[alias]
+    write_overlay(overlay, path)
+    return True
+
+
+def set_instance_enabled(alias: str, enabled: bool, path: Optional[str] = None) -> dict[str, Any]:
+    """Toggle an instance (built-in or custom) on/off via the overlay."""
+    return upsert_instance(alias, enabled=enabled, path=path)
+
+
+def reset_instance(alias: str, path: Optional[str] = None) -> bool:
+    """Drop any overlay entry for *alias* (reverts a built-in to its registry default)."""
+    overlay = read_overlay(path)
+    if alias not in overlay:
+        return False
+    del overlay[alias]
+    write_overlay(overlay, path)
+    return True
+
+
+def show_instance(alias: str, path: Optional[str] = None) -> InstanceSpec:
+    """Return the resolved spec for *alias*."""
+    return resolve_instance(alias, path=path)
