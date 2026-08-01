@@ -4,6 +4,44 @@ All notable changes to **uniinfer** are documented in this file.
 Versions follow [Semantic Versioning](https://semver.org/); this file
 adheres to [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.6.30] - 2026-08-01
+
+### Added
+
+- **Named provider instances (fleet support).** A gitignored
+  `provider_instances.json` overlay (cwd, or `$UNIINFER_INSTANCES_FILE`)
+  declares named instances for any provider type — multiple Ollama endpoints,
+  a fleet of OpenAI-compatible/vLLM servers, combined Z.AI — addressable as
+  `<alias>@<model>`. The registry stays the source of truth (drift-free
+  upgrades); the file adds aliases, overrides built-ins, and toggles `enabled`.
+  See `docs/provider-instances-design.md`.
+  - `resolve_instance(alias)` — the one alias→spec seam (completion,
+    embeddings, models router, key resolution).
+  - Generic config-driven `OpenAICompatProvider` (`openai-compat`) for any
+    `/v1` endpoint (vLLM, Ollama-compat, LM Studio, local servers).
+  - Per-instance `credgoo_service` + `requires_api_key` (replaces the
+    hardcoded `provider_name == "ollama"` auth special-case).
+  - mtime-reload: config edits take effect with no proxy restart
+    (graceful-degrade to last-good on a botched reload).
+  - CLI: `--init`, smart `--add-provider` (probe + anonymous-detect +
+    `--key` stored via credgoo), `--remove-provider`,
+    `--enable/--disable/--reset/--show-provider`.
+  - Per-instance `/v1/models/{alias}` with stale-while-revalidate
+    (`UNIINFER_ALIAS_REFRESH_TTL`, default 300s).
+
+### Changed
+
+- `generate_models.py` preserves custom-alias catalog entries across the
+  daily rebuild (built-ins still win).
+- `OllamaProvider.REQUIRES_API_KEY = False` (localhost default); a
+  bearer-protected deployment declares `requires_api_key: true` on its
+  instance entry.
+
+### Fixed
+
+- Don't forward an inherited class `BASE_URL` to providers that reject it
+  (pollinations, mistral, openrouter, …).
+
 ## [0.6.26] - 2026-07-22
 
 ### Added
