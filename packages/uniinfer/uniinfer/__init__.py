@@ -22,6 +22,7 @@ from .providers import (
     PollinationsProvider, ZAIProvider, ZAICodeProvider, TUProvider, TUStagingProvider, TuAIEmbeddingProvider,
     TuAITTSProvider, TuAISTTProvider
 )
+from .providers.openai_compat import OpenAICompatProvider
 from .errors import (
     UniInferError, ProviderError, AuthenticationError,
     RateLimitError, TimeoutError, InvalidRequestError
@@ -72,6 +73,7 @@ ProviderFactory.register_provider("mistral", MistralProvider)
 ProviderFactory.register_provider("anthropic", AnthropicProvider)
 ProviderFactory.register_provider("minimax", MiniMaxProvider)
 ProviderFactory.register_provider("openai", OpenAIProvider)
+ProviderFactory.register_provider("openai-compat", OpenAICompatProvider)
 ProviderFactory.register_provider("ollama", OllamaProvider)
 ProviderFactory.register_provider("openrouter", OpenRouterProvider)
 ProviderFactory.register_provider("arli", ArliAIProvider)
@@ -147,6 +149,7 @@ __all__ = [
     'AnthropicProvider',
     'MiniMaxProvider',
     'OpenAIProvider',
+    'OpenAICompatProvider',
     'OpenAITTSProvider',
     'ChutesProvider',
     'OpenCodeProvider',

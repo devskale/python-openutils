@@ -28,6 +28,15 @@ class ProviderFactory:
         ProviderFactory._lazy_providers[name.lower()] = dotted_path
 
     @staticmethod
+    def is_lazy(name: str) -> bool:
+        """True if *name* is registered lazily (module imported on first use).
+
+        Lets the instances overlay read class attrs for eager providers without
+        forcing a heavy import (e.g. google-genai) just to enumerate built-ins.
+        """
+        return name.lower() in ProviderFactory._lazy_providers
+
+    @staticmethod
     def _resolve(name: str) -> Type[ChatProvider]:
         """Resolve a provider name to its class, importing lazy entries on demand."""
         key = name.lower()
