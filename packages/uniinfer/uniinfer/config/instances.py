@@ -83,10 +83,15 @@ def _spec_from_class(alias: str, provider: str, is_builtin: bool) -> InstanceSpe
 
 def _builtin_spec(name: str) -> InstanceSpec:
     """A built-in's spec. Lazy providers (e.g. gemini) get safe defaults without
-    forcing their heavy SDK import just to enumerate the registry."""
+    forcing their heavy SDK import just to enumerate the registry.
+
+    base_url is deliberately None: a built-in uses its own class default, and
+    Target only forwards a base_url when the file *overrides* it (forwarding the
+    class's own BASE_URL would break providers whose __init__ rejects base_url).
+    """
     if ProviderFactory.is_lazy(name):
         return InstanceSpec(alias=name, provider=name, is_builtin=True)
-    return _spec_from_class(name, name, is_builtin=True)
+    return replace(_spec_from_class(name, name, is_builtin=True), base_url=None)
 
 
 def _apply_entry(spec: InstanceSpec, entry: Any) -> InstanceSpec:
@@ -148,6 +153,49 @@ def load_instances(path: Optional[str] = None) -> dict[str, InstanceSpec]:
     return merged
 
 
+# --------------------------------------------------------------------------- #
+# Hot-path cached loader (mtime-check + graceful-degrade — Q12)
+# --------------------------------------------------------------------------- #
+_CACHE: dict[str, tuple[float, "dict[str, InstanceSpec]"]] = {}
+
+
+def clear_instances_cache() -> None:
+    """Drop the cached overlay (test helper / forced refresh)."""
+    _CACHE.clear()
+
+
+def get_instances(path: Optional[str] = None) -> dict[str, InstanceSpec]:
+    """Return the merged overlay, cached by file mtime.
+
+    Re-reads + re-validates only when the file's mtime changes. On a reload
+    failure (malformed edit mid-write) it serves the *last known-good* merge
+    and warns — never takes the caller down. A failure with nothing cached
+    (first boot) propagates, so misconfiguration is caught loudly at startup.
+    """
+    p = str(Path(path) if path else Path(instance_file_path()))
+    try:
+        mtime = os.path.getmtime(p) if Path(p).exists() else -1.0
+    except OSError:
+        mtime = -1.0
+
+    cached = _CACHE.get(p)
+    if cached and cached[0] == mtime:
+        return cached[1]
+
+    try:
+        merged = load_instances(path=p)
+    except ValueError:
+        if cached is not None:
+            logger.warning(
+                "instances overlay reload failed for %s; serving last-good", p
+            )
+            return cached[1]
+        raise  # nothing cached -> fail fast at boot
+
+    _CACHE[p] = (mtime, merged)
+    return merged
+
+
 def resolve_instance(
     alias: str,
     instances: Optional[dict[str, InstanceSpec]] = None,
@@ -163,7 +211,7 @@ def resolve_instance(
     Raises:
         ValueError: if the alias is unknown or disabled.
     """
-    table = instances if instances is not None else load_instances(path=path)
+    table = instances if instances is not None else get_instances(path=path)
     spec = table.get(alias)
     if spec is None:
         raise ValueError(

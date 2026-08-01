@@ -8,11 +8,18 @@ embeddings, the models router, and the CLI.
 No network. Uses pytest's tmp_path for a fake config file.
 """
 import json
+import os
 from pathlib import Path
 
 import pytest
 
-from uniinfer.config.instances import InstanceSpec, load_instances, resolve_instance
+from uniinfer.config.instances import (
+    InstanceSpec,
+    clear_instances_cache,
+    get_instances,
+    load_instances,
+    resolve_instance,
+)
 from uniinfer.factory import ProviderFactory
 
 
@@ -130,3 +137,40 @@ def test_resolve_instance_unknown_alias_raises(tmp_path):
     instances = load_instances(path=str(tmp_path / "nope.json"))
     with pytest.raises(ValueError):
         resolve_instance("never-registered", instances=instances)
+
+
+# --------------------------------------------------------------------------- #
+# get_instances — mtime-cached loader + graceful-degrade (Q12)
+# --------------------------------------------------------------------------- #
+def test_get_instances_caches_by_mtime(tmp_path):
+    clear_instances_cache()
+    f = _write(tmp_path / "provider_instances.json", {"vllm-local": {"provider": "openai-compat", "base_url": "http://x/v1"}})
+    os.utime(f, (1000, 1000))
+    first = get_instances(path=str(f))
+    second = get_instances(path=str(f))  # same mtime -> cache hit, same object
+    assert first is second
+
+
+def test_get_instances_graceful_degrade_keeps_last_good(tmp_path, caplog):
+    clear_instances_cache()
+    f = _write(tmp_path / "provider_instances.json", {"vllm-local": {"provider": "openai-compat", "base_url": "http://x/v1"}})
+    os.utime(f, (1000, 1000))
+    good = get_instances(path=str(f))
+    assert "vllm-local" in good
+
+    # Corrupt the file at a newer mtime -> reload fails -> keep last-good, no raise.
+    f.write_text("{ broken json")
+    os.utime(f, (2000, 2000))
+    with caplog.at_level("WARNING"):
+        again = get_instances(path=str(f))
+    assert again is good  # same cached object served
+    assert "vllm-local" in again
+
+
+def test_get_instances_raises_on_first_bad_load(tmp_path):
+    clear_instances_cache()
+    f = tmp_path / "provider_instances.json"
+    f.write_text("{ broken json")
+    os.utime(f, (1000, 1000))
+    with pytest.raises(ValueError):
+        get_instances(path=str(f))  # nothing cached yet -> fail at boot

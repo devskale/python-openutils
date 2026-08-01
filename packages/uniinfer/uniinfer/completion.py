@@ -13,6 +13,7 @@ import logging
 from typing import Any, AsyncIterator, Iterator, Optional
 
 from .config.providers import PROVIDER_CONFIGS
+from .config.instances import resolve_instance
 from .core import ChatCompletionRequest, ChatCompletionResponse, ChatMessage
 from .factory import ProviderFactory
 from .json_utils import update_model_accessed
@@ -80,14 +81,17 @@ class Target:
     ) -> None:
         self.provider_model = provider_model
         self.provider_name, self.model_name = parse_provider_model(provider_model)
+        spec = resolve_instance(self.provider_name)
         # Explicit caller kwargs win over config extra_params defaults.
         kwargs: dict[str, Any] = {}
-        kwargs.update(_extra_params(self.provider_name))
+        kwargs.update(_extra_params(spec.provider))
+        if spec.base_url:
+            kwargs["base_url"] = spec.base_url
         if api_key is not None:
             kwargs["api_key"] = api_key
         if base_url is not None:
             kwargs["base_url"] = base_url
-        self.provider = ProviderFactory.get_provider(self.provider_name, **kwargs)
+        self.provider = ProviderFactory.get_provider(spec.provider, **kwargs)
         self._record_access = record_access
 
     # ------------------------------------------------------------------ #

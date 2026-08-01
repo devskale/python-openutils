@@ -41,6 +41,13 @@ def _resolve_credgoo_service(provider_name: str) -> str:
     in uniinfer_cli._resolve_credgoo_service.
     """
     try:
+        from uniinfer.config.instances import resolve_instance
+        spec = resolve_instance(provider_name)
+        if spec.credgoo_service:
+            return spec.credgoo_service
+    except Exception:
+        pass
+    try:
         from uniinfer import ProviderFactory
         cls = ProviderFactory.get_provider_class(provider_name)
         credgoo_service = getattr(cls, "CREDGOO_SERVICE", None)
