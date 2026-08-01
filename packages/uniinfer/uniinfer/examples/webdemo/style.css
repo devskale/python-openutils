@@ -1367,3 +1367,35 @@ tr.tr-stale-danger:hover td { opacity: 0.85; background: #fef2f2; }
   .models-toolbar { gap: 8px; }
   .models-filters { overflow-x: auto; }
 }
+
+/* ── Phase 1: sidebar shell (overrides above; later in source wins) ── */
+.app-container { max-width: none; margin: 0; padding: 0; flex-direction: row; overflow: hidden; }
+.sidebar {
+  width: 248px; flex-shrink: 0; height: 100vh;
+  display: flex; flex-direction: column; gap: 4px;
+  background: var(--card); border-right: 1px solid var(--border);
+  padding: 14px 12px; overflow-y: auto;
+}
+.sidebar-head { display: flex; align-items: center; gap: 8px; padding: 4px 8px 12px; border-bottom: 1px solid var(--border); margin-bottom: 4px; }
+.sidebar-brand { font-size: 1.05rem; font-weight: 700; letter-spacing: -0.01em; }
+.sidebar-nav { display: flex; flex-direction: column; gap: 14px; flex: 1; }
+.nav-group { display: flex; flex-direction: column; gap: 2px; }
+.nav-label { font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted-foreground); padding: 4px 8px; }
+.nav-item {
+  display: flex; align-items: center; gap: 10px; width: 100%;
+  background: transparent; border: none; border-radius: var(--radius-md);
+  padding: 8px 10px; color: var(--foreground); cursor: pointer;
+  font: inherit; text-align: left; transition: background 0.12s, color 0.12s;
+}
+.nav-item:hover { background: var(--accent); }
+.nav-item.active { background: color-mix(in srgb, var(--brand) 16%, transparent); color: var(--brand); font-weight: 600; }
+.nav-item svg { width: 18px; height: 18px; flex-shrink: 0; }
+.sidebar-foot { display: flex; align-items: center; gap: 2px; padding-top: 10px; border-top: 1px solid var(--border); }
+.foot-spacer { flex: 1; }
+.main { flex: 1; min-width: 0; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
+.main > .section { flex: 1 1 auto; min-height: 0; }
+.topbar { display: flex; align-items: center; justify-content: flex-end; padding: 8px 16px; border-bottom: 1px solid var(--border); min-height: 44px; flex-shrink: 0; }
+.placeholder { margin: auto; text-align: center; color: var(--muted-foreground); display: flex; flex-direction: column; align-items: center; gap: 10px; padding: 48px; }
+.placeholder svg { width: 40px; height: 40px; }
+.placeholder h2 { margin: 0; color: var(--foreground); }
+.placeholder p { margin: 0; max-width: 360px; }

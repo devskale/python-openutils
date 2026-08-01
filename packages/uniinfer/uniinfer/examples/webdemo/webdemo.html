@@ -33,26 +33,45 @@
   </div>
 
   <div class="app-container">
-    <header>
-      <h1>UniInfer</h1>
-      <div id="app-version" class="version-badge">v...</div>
-      <div class="mode-switch">
-        <button id="mode-chat" class="mode-btn active">Chat</button>
-        <button id="mode-models" class="mode-btn">Models</button>
-        <button id="mode-image" class="mode-btn">Images</button>
-        <button id="mode-audio" class="mode-btn">Audio</button>
+    <aside class="sidebar">
+      <div class="sidebar-head">
+        <span class="sidebar-brand">UniInfer</span>
+        <span id="app-version" class="version-badge">v...</span>
       </div>
-      <div id="chat-stats" class="stats-bar">
-        <span id="stats-text">0 msgs</span>
-        <button id="clear-chat-btn" class="stats-clear-btn" title="Clear chat"><i data-lucide="x"></i></button>
+      <nav class="sidebar-nav" id="sidebar-nav">
+        <div class="nav-group">
+          <div class="nav-label">Playground</div>
+          <button class="nav-item active" data-mode="chat"><i data-lucide="message-square"></i><span>Chat</span></button>
+          <button class="nav-item" data-mode="image"><i data-lucide="image"></i><span>Images</span></button>
+          <button class="nav-item" data-mode="audio"><i data-lucide="audio-lines"></i><span>Audio</span></button>
+        </div>
+        <div class="nav-group">
+          <div class="nav-label">Models</div>
+          <button class="nav-item" data-mode="models"><i data-lucide="layout-grid"></i><span>Browse</span></button>
+          <button class="nav-item" data-mode="test"><i data-lucide="flask-conical"></i><span>Test</span></button>
+        </div>
+        <div class="nav-group">
+          <div class="nav-label">Ops</div>
+          <button class="nav-item" data-mode="dashboard"><i data-lucide="layout-dashboard"></i><span>Dashboard</span></button>
+        </div>
+      </nav>
+      <div class="sidebar-foot">
+        <a href="/capabilities" class="icon-btn-lg" title="Capability matrix" style="text-decoration:none"><i data-lucide="flask-conical"></i></a>
+        <a href="/perf" class="icon-btn-lg" title="Performance" style="text-decoration:none"><i data-lucide="zap"></i></a>
+        <a href="/guide" class="icon-btn-lg" title="Guide" style="text-decoration:none"><i data-lucide="book-open"></i></a>
+        <span class="foot-spacer"></span>
+        <button id="theme-toggle" class="icon-btn-lg" title="Toggle theme"><i data-lucide="moon"></i></button>
+        <button id="settings-button" class="icon-btn-lg" title="Settings"><i data-lucide="settings"></i></button>
+        <button id="logout-button" class="icon-btn-lg" title="Log out"><i data-lucide="log-out"></i></button>
       </div>
-      <a href="/capabilities" class="icon-btn-lg" title="Capability matrix" style="text-decoration:none"><i data-lucide="flask-conical"></i></a>
-      <a href="/perf" class="icon-btn-lg" title="Performance dashboard" style="text-decoration:none"><i data-lucide="zap"></i></a>
-      <a href="/guide" class="icon-btn-lg" title="Integration guide" style="text-decoration:none"><i data-lucide="book-open"></i></a>
-      <button id="theme-toggle" class="icon-btn-lg" title="Toggle theme"><i data-lucide="moon"></i></button>
-      <button id="logout-button" class="icon-btn-lg" title="Log out"><i data-lucide="log-out"></i></button>
-      <button id="settings-button" class="icon-btn-lg" title="Settings"><i data-lucide="settings"></i></button>
-    </header>
+    </aside>
+    <main class="main">
+      <div class="topbar">
+        <div id="chat-stats" class="stats-bar">
+          <span id="stats-text">0 msgs</span>
+          <button id="clear-chat-btn" class="stats-clear-btn" title="Clear chat"><i data-lucide="x"></i></button>
+        </div>
+      </div>
 
     <!-- Settings Modal -->
     <div id="settings-modal" class="modal-overlay">
@@ -260,6 +279,21 @@
         <div id="stt-result" class="stt-result"></div>
       </div>
     </div>
+    <div id="test-section" class="section" style="display:none">
+      <div class="placeholder">
+        <i data-lucide="flask-conical"></i>
+        <h2>Test Models</h2>
+        <p>Probe every model — alive/dead, latency, tok/s, capabilities. Coming in Phase 3.</p>
+      </div>
+    </div>
+    <div id="dashboard-section" class="section" style="display:none">
+      <div class="placeholder">
+        <i data-lucide="layout-dashboard"></i>
+        <h2>Dashboard</h2>
+        <p>Usage, provider limits, rate-limiter, fleet instances. Coming in Phase 2.</p>
+      </div>
+    </div>
+    </main>
   </div>
 
   <script src="/webdemo/config.js"></script>
@@ -481,18 +515,17 @@ ${js}`;
     }
 
     // ─── Mode Switch ────────────────────────────────────────────────
+    const SECTION_DISPLAY = { chat: "flex", models: "block", image: "block", audio: "block", test: "block", dashboard: "block" };
     function setMode(mode) {
-      $$(".mode-btn").forEach(b => b.classList.remove("active"));
+      $$(".nav-item").forEach(b => b.classList.toggle("active", b.dataset.mode === mode));
       $$(".section").forEach(s => s.style.display = "none");
-      if (mode === "chat") { $("#mode-chat").classList.add("active"); $("#chat-section").style.display = "flex"; }
-      else if (mode === "models") { $("#mode-models").classList.add("active"); $("#models-section").style.display = "block"; loadModelsBrowser(); }
-      else if (mode === "image") { $("#mode-image").classList.add("active"); $("#image-section").style.display = "block"; }
-      else if (mode === "audio") { $("#mode-audio").classList.add("active"); $("#audio-section").style.display = "block"; loadAudioModels(); }
+      const sec = $("#" + mode + "-section");
+      if (sec) sec.style.display = SECTION_DISPLAY[mode] || "block";
+      if (mode === "models") loadModelsBrowser();
+      else if (mode === "audio") loadAudioModels();
+      if (window.lucide) lucide.createIcons();
     }
-    $("#mode-chat").onclick = () => setMode("chat");
-    $("#mode-models").onclick = () => setMode("models");
-    $("#mode-image").onclick = () => setMode("image");
-    $("#mode-audio").onclick = () => setMode("audio");
+    $$(".nav-item").forEach(b => b.addEventListener("click", () => setMode(b.dataset.mode)));
 
     // ─── Load Providers ──────────────────────────────────────────────
     async function loadProviders() {
