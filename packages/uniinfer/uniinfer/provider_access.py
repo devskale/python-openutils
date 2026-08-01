@@ -227,16 +227,26 @@ def list_providers() -> list[str]:
 
 
 def list_models_for_provider(provider_name: str, api_bearer_token: str) -> list[str]:
-    """Return available model names for the given provider.
+    """Return available model names for the given provider (or custom alias).
 
-    Uses the bearer token to resolve the API key. Updates models.json cache for
-    subsequent /v1/models calls.
+    Resolves the alias via the instance overlay, so a custom fleet member
+    (vllm-local) lists through its underlying class with the instance's
+    base_url. Uses the bearer token to resolve the API key. Updates models.json
+    cache for subsequent /v1/models calls.
     """
+    spec = resolve_instance(provider_name)  # raises ValueError if unknown
     api_key = get_provider_api_key(api_bearer_token, provider_name)
     extra: dict[str, Any] = {}
-    if provider_name in ["cloudflare", "ollama"]:
-        extra = PROVIDER_CONFIGS.get(provider_name, {}).get("extra_params", {})
-    provider_cls = ProviderFactory.get_provider_class(provider_name)
+    if spec.base_url:
+        extra["base_url"] = spec.base_url
+    else:
+        # legacy built-in defaults (ollama/cloudflare)
+        ep = PROVIDER_CONFIGS.get(spec.provider, {}).get("extra_params", {})
+        if spec.provider == "cloudflare":
+            extra.update(ep)  # account_id + base_url
+        elif "base_url" in ep:
+            extra["base_url"] = ep["base_url"]
+    provider_cls = ProviderFactory.get_provider_class(spec.provider)
     modellist = provider_cls.list_models(api_key=api_key, **extra)
     update_models(modellist, provider_name)
     from uniinfer.proxy_services.models_registry import Catalog
