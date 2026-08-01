@@ -1399,3 +1399,23 @@ tr.tr-stale-danger:hover td { opacity: 0.85; background: #fef2f2; }
 .placeholder svg { width: 40px; height: 40px; }
 .placeholder h2 { margin: 0; color: var(--foreground); }
 .placeholder p { margin: 0; max-width: 360px; }
+
+/* ── Phase 1: spacing rhythm (gap scale + content gutter) ── */
+:root {
+  --space-1: 4px;  --space-2: 8px;  --space-3: 12px; --space-4: 16px;
+  --space-5: 20px; --space-6: 24px; --space-8: 32px;
+  --gutter: var(--space-6);            /* content gutter from the sidebar/edges */
+}
+/* sidebar internal rhythm */
+.sidebar { padding: var(--space-4) var(--space-3); gap: var(--space-1); }
+.sidebar-head { padding: var(--space-1) var(--space-2) var(--space-4); margin-bottom: var(--space-2); }
+.sidebar-nav { gap: var(--space-5); }
+.nav-group { gap: var(--space-1); }
+.nav-label { padding: var(--space-3) var(--space-2) var(--space-1); }
+.nav-item { padding: var(--space-2) var(--space-3); gap: var(--space-3); border-radius: var(--space-2); }
+.sidebar-foot { padding-top: var(--space-3); gap: var(--space-1); }
+/* main content gutter — no longer flush against the sidebar */
+.topbar { padding: var(--space-3) var(--gutter); }
+.main > .section { padding: var(--space-5) var(--gutter) var(--space-6); }
+/* chat keeps its compose bar flush at the very bottom; only side + top gutter */
+#chat-section { padding: var(--space-4) var(--gutter) 0; }
