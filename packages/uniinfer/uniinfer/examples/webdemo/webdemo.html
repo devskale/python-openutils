@@ -11,7 +11,7 @@
   <script src="https://cdn.jsdelivr.net/npm/dompurify@3.2.6/dist/purify.min.js"></script>
   <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
   <script>(function(){var t=localStorage.getItem('uniinfer_theme');if(!t)t=(window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light';if(t==='dark')document.documentElement.classList.add('dark');})();</script>
-  <link rel="stylesheet" href="/webdemo/style.css?v=p1b" />
+  <link rel="stylesheet" href="/webdemo/style.css?v=p2" />
 </head>
 <body>
   <!-- Login gate -->
@@ -286,17 +286,19 @@
         <p>Probe every model — alive/dead, latency, tok/s, capabilities. Coming in Phase 3.</p>
       </div>
     </div>
-    <div id="dashboard-section" class="section" style="display:none">
-      <div class="placeholder">
-        <i data-lucide="layout-dashboard"></i>
-        <h2>Dashboard</h2>
-        <p>Usage, provider limits, rate-limiter, fleet instances. Coming in Phase 2.</p>
+    <div id="dashboard-section" class="section dash" style="display:none">
+      <div class="dash-cols">
+        <div class="card"><h3 class="card-h">Usage (24h)</h3><div id="dash-usage" class="muted">loading…</div></div>
+        <div class="card"><h3 class="card-h">Provider limits <span class="muted">— free tier vs live</span></h3><div id="dash-limits" class="muted">loading…</div></div>
+        <div class="card"><h3 class="card-h">Rate limiter <span class="muted">— adaptive AIMD</span></h3><div id="dash-rates" class="muted">loading…</div></div>
+        <div class="card"><h3 class="card-h">Fleet instances</h3><div id="dash-fleet" class="muted">loading…</div></div>
+        <div class="card"><h3 class="card-h">Catalog changes <span class="muted">— new / deprecated / stale</span></h3><div id="dash-catalog" class="muted">loading…</div></div>
       </div>
     </div>
     </main>
   </div>
 
-  <script src="/webdemo/config.js?v=p1b"></script>
+  <script src="/webdemo/config.js?v=p2"></script>
   <script>
   (() => {
     "use strict";
@@ -515,6 +517,46 @@ ${js}`;
     }
 
     // ─── Mode Switch ────────────────────────────────────────────────
+    // ── Dashboard (Phase 2) ──────────────────────
+    const dGet = (p) => fetch(window.uniinferConfig.apiBaseUrl + p, { headers: window.uniinferConfig.apiKey ? { Authorization: "Bearer " + window.uniinferConfig.apiKey } : {} }).then(r => { if (!r.ok) throw new Error(r.status); return r.json(); });
+    const dSet = (id, h) => { const e = $("#" + id); if (e) e.innerHTML = h; };
+    const dErr = (e) => `<div class="d-fail">failed (${escapeHtml(e.message)})</div>`;
+    const fmtK = (n) => { n = +n || 0; return n >= 1000 ? (n / 1000).toFixed(n >= 10000 ? 0 : 1) + "k" : "" + n; };
+    const dTable = (head, rows) => `<table class="d-tbl"><thead><tr>${head.map(h => `<th>${h}</th>`).join("")}</tr></thead><tbody>${rows.map(r => `<tr>${r.map((c,i) => `<td${i?" class=\"num\"":""}>${c}</td>`).join("")}</tr>`).join("")}</tbody></table>`;
+    const dBar = (pct) => `<div class="d-bar"><span style="width:${Math.min(100, pct)}%"></span></div>`;
+    async function loadDashboard() {
+      dSet("dash-usage", "loading…"); dSet("dash-limits", "loading…"); dSet("dash-rates", "loading…"); dSet("dash-fleet", "loading…"); dSet("dash-catalog", "loading…");
+      // Usage
+      dGet("/v1/system/stats").then(d => {
+        const pm = (d.last_24h && d.last_24h.per_model) || [];
+        const tot = pm.reduce((a, m) => a + (m.requests || 0), 0);
+        const errs = pm.reduce((a, m) => a + (m.errors || 0), 0);
+        const toks = pm.reduce((a, m) => a + (m.total_tokens || (m.prompt_tokens + m.completion_tokens) || 0), 0);
+        const top = [...pm].sort((a, b) => (b.requests || 0) - (a.requests || 0)).slice(0, 8);
+        dSet("dash-usage", `<div class="d-kpi"><b>${tot}</b> req · <span class="muted">${errs} err</span> · <span class="muted">${fmtK(toks)} tok (24h)</span></div>` + (top.length ? dTable(["model", "req", "err", "tok"], top.map(m => [escapeHtml(m.model), m.requests || 0, m.errors || 0, fmtK(m.total_tokens || (m.prompt_tokens + m.completion_tokens) || 0)])) : `<div class="muted">no usage yet</div>`));
+      }).catch(e => dSet("dash-usage", dErr(e)));
+      // Provider limits
+      dGet("/v1/system/provider-limits").then(d => {
+        const rows = Object.entries(d.providers || {}).slice(0, 14).flatMap(([pid, v]) => (v.utilization || []).slice(0, 2).map(u => [escapeHtml(pid), u.metric, `${u.used}/${u.limit}`, dBar(u.pct || 0), `${Math.round(u.pct || 0)}%`]));
+        dSet("dash-limits", rows.length ? dTable(["provider", "metric", "used/limit", "", "%"], rows) : `<div class="muted">no limits data</div>`);
+      }).catch(e => dSet("dash-limits", dErr(e)));
+      // Rate limiter
+      dGet("/v1/system/rate-limits").then(d => {
+        const rows = Object.entries(d || {}).slice(0, 14).flatMap(([pid, models]) => Object.entries(models || {}).slice(0, 1).map(([m, s]) => [escapeHtml(pid + "@" + m), s.rpm || "?", s.ceiling || "?", s.cooldown ? "cooling" : "ok", s["429_streak"] || 0]));
+        dSet("dash-rates", rows.length ? dTable(["model", "rpm", "ceiling", "state", "429✗"], rows) : `<div class="muted">no rate-limit data (none tracked yet)</div>`);
+      }).catch(e => dSet("dash-rates", dErr(e)));
+      // Fleet instances
+      dGet("/v1/system/instances").then(d => {
+        const rows = Object.values(d || {}).slice(0, 30).map(s => [escapeHtml(s.alias), escapeHtml(s.provider), s.base_url ? escapeHtml(s.base_url) : `<span class="muted">default</span>`, s.enabled ? `<span class="d-ok">on</span>` : `<span class="d-bad">off</span>`, s.requires_api_key ? "key" : "anon", s.is_builtin ? "builtin" : "custom"]);
+        dSet("dash-fleet", rows.length ? dTable(["alias", "provider", "base_url", "state", "auth", "kind"], rows) : `<div class="muted">no instances</div>`);
+      }).catch(e => dSet("dash-fleet", dErr(e)));
+      // Catalog
+      Promise.all(["/v1/models/new", "/v1/models/deprecated", "/v1/models/stale"].map(u => dGet(u).then(r => r.models || r.data || r).catch(() => []))).then(([nw, dep, stale]) => {
+        const cell = (label, list, cls) => `<div class="d-cat"><div class="d-cat-h ${cls}">${label} <span class="muted">(${(list || []).length})</span></div><div class="d-cat-list">${(list || []).slice(0, 8).map(m => `<span class="d-chip">${escapeHtml(typeof m === "string" ? m : (m.id || m.model || "?"))}</span>`).join("") || `<span class="muted">none</span>`}</div></div>`;
+        dSet("dash-catalog", cell("New", nw, "d-ok") + cell("Deprecated", dep, "d-bad") + cell("Stale", stale, "d-warn"));
+      });
+    }
+
     const SECTION_DISPLAY = { chat: "flex", models: "block", image: "block", audio: "block", test: "block", dashboard: "block" };
     function setMode(mode) {
       $$(".nav-item").forEach(b => b.classList.toggle("active", b.dataset.mode === mode));
@@ -523,6 +565,7 @@ ${js}`;
       if (sec) sec.style.display = SECTION_DISPLAY[mode] || "block";
       if (mode === "models") loadModelsBrowser();
       else if (mode === "audio") loadAudioModels();
+      else if (mode === "dashboard") loadDashboard();
       if (window.lucide) lucide.createIcons();
     }
     $$(".nav-item").forEach(b => b.addEventListener("click", () => setMode(b.dataset.mode)));

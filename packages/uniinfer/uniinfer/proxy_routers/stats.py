@@ -112,4 +112,15 @@ def create_stats_router() -> APIRouter:
             return FileResponse(path, media_type="text/html")
         return HTMLResponse("<h1>provider_limits_dashboard.html not found</h1>", status_code=404)
 
+    @router.get("/v1/system/instances")
+    async def instances_json():
+        """Named provider instances (the fleet overlay): alias -> spec.
+
+        Read-only observability; contains NO secrets (API keys stay in credgoo).
+        Powers the dashboard's fleet panel.
+        """
+        from dataclasses import asdict
+        from uniinfer.config.instances import get_instances
+        return JSONResponse({a: asdict(s) for a, s in get_instances().items()})
+
     return router

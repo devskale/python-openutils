@@ -1419,3 +1419,25 @@ tr.tr-stale-danger:hover td { opacity: 0.85; background: #fef2f2; }
 .main > .section { padding: var(--space-5) var(--gutter) var(--space-6); }
 /* chat keeps its compose bar flush at the very bottom; only side + top gutter */
 #chat-section { padding: var(--space-4) var(--gutter) 0; }
+
+/* ── Phase 2: dashboard ── */
+.dash { overflow-y: auto; }
+.dash-cols { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-4); align-content: start; }
+@media (max-width: 1100px) { .dash-cols { grid-template-columns: 1fr; } }
+.card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: var(--space-4); min-width: 0; }
+.card-h { margin: 0 0 var(--space-3); font-size: 0.95rem; font-weight: 600; }
+.card-h .muted { font-weight: 400; font-size: 0.8rem; }
+.muted { color: var(--muted-foreground); }
+.d-kpi { margin-bottom: var(--space-3); font-size: 0.85rem; }
+.d-tbl { width: 100%; border-collapse: collapse; font-size: 0.8rem; }
+.d-tbl th { text-align: left; font-weight: 500; color: var(--muted-foreground); padding: 4px 8px 4px 0; border-bottom: 1px solid var(--border); }
+.d-tbl td { padding: 4px 8px 4px 0; border-bottom: 1px solid var(--border); max-width: 240px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.d-tbl td.num { text-align: right; font-variant-numeric: tabular-nums; color: var(--muted-foreground); }
+.d-bar { width: 60px; height: 6px; background: var(--muted); border-radius: 999px; overflow: hidden; display: inline-block; vertical-align: middle; }
+.d-bar span { display: block; height: 100%; background: var(--brand); }
+.d-cat { margin-bottom: var(--space-3); }
+.d-cat-h { font-size: 0.8rem; font-weight: 600; margin-bottom: 4px; }
+.d-cat-list { display: flex; flex-wrap: wrap; gap: 4px; }
+.d-chip { font-size: 0.72rem; background: var(--muted); border: 1px solid var(--border); padding: 2px 8px; border-radius: 999px; max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.d-ok { color: var(--ok, #16a34a); } .d-bad { color: var(--destructive); } .d-warn { color: var(--warn, #d97706); }
+.d-fail { color: var(--destructive); font-size: 0.8rem; }
