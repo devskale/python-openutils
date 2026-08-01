@@ -93,7 +93,7 @@
         <div class="select-group select-group--model">
           <label>Model</label>
           <div class="model-select-wrapper">
-            <div class="search-input-wrap"><input type="text" id="model-search" placeholder="Search models..." autocomplete="off" /><button class="search-clear" data-target="model-search" style="display:none">×</button></div>
+            <div class="search-input-wrap"><input type="text" id="model-search" placeholder="Search models..." autocomplete="off" /><button id="model-clear-btn" class="search-clear" title="Clear selected model" style="display:none">×</button><button class="search-clear" data-target="model-search" style="display:none">×</button></div>
             <div id="model-dropdown" class="model-dropdown"></div>
           </div>
           <button id="selected-model-info" class="model-info-btn" title="Model details" style="display:none">ⓘ</button>
@@ -554,12 +554,22 @@ ${js}`;
       updateModelInfoBar();
     }
 
+    function clearModel() {
+      store.selectedModel = null;
+      modelSearch.value = "";
+      localStorage.removeItem("uniinfer_last_model");
+      updateModelInfoBar();
+      modelSearch.focus();
+    }
+    $("#model-clear-btn").addEventListener("click", clearModel);
+
     function updateModelInfoBar() {
       const models = store.modelsByProvider[store.selectedProvider] || [];
       const m = models.find(x => x.id === store.selectedModel);
-      if (!m) { modelInfoBar.style.display = "none"; modelInfoBtn.style.display = "none"; return; }
+      if (!m) { modelInfoBar.style.display = "none"; modelInfoBtn.style.display = "none"; $("#model-clear-btn").style.display = "none"; return; }
       modelInfoBar.style.display = "flex";
       modelInfoBtn.style.display = "flex";
+      $("#model-clear-btn").style.display = "flex";
       const type = m.type || "chat";
       $("#model-info-type").textContent = typeIcon(type) + " " + type;
       $("#model-info-type").style.color = typeColor(type);
