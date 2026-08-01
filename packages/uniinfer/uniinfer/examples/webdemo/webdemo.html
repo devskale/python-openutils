@@ -10,6 +10,7 @@
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/dompurify@3.2.6/dist/purify.min.js"></script>
   <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+  <script>(function(){var t=localStorage.getItem('uniinfer_theme');if(!t)t=(window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light';if(t==='dark')document.documentElement.classList.add('dark');})();</script>
   <link rel="stylesheet" href="/webdemo/style.css" />
 </head>
 <body>
@@ -48,6 +49,7 @@
       <a href="/capabilities" class="icon-btn-lg" title="Capability matrix" style="text-decoration:none"><i data-lucide="flask-conical"></i></a>
       <a href="/perf" class="icon-btn-lg" title="Performance dashboard" style="text-decoration:none"><i data-lucide="zap"></i></a>
       <a href="/guide" class="icon-btn-lg" title="Integration guide" style="text-decoration:none"><i data-lucide="book-open"></i></a>
+      <button id="theme-toggle" class="icon-btn-lg" title="Toggle theme"><i data-lucide="moon"></i></button>
       <button id="logout-button" class="icon-btn-lg" title="Log out"><i data-lucide="log-out"></i></button>
       <button id="settings-button" class="icon-btn-lg" title="Settings"><i data-lucide="settings"></i></button>
     </header>
@@ -1384,6 +1386,22 @@ ${js}`;
       updateImageModels();
       setMode("chat");
     }
+    // ── Theme toggle ──────────────────────────────────────────────────
+    (function () {
+      var btn = $("#theme-toggle"); if (!btn) return;
+      var ic = btn.querySelector("i");
+      function syncIcon() {
+        if (ic) ic.setAttribute("data-lucide", document.documentElement.classList.contains("dark") ? "sun" : "moon");
+        if (window.lucide) lucide.createIcons();
+      }
+      syncIcon();
+      btn.addEventListener("click", function () {
+        var d = document.documentElement.classList.toggle("dark");
+        localStorage.setItem("uniinfer_theme", d ? "dark" : "light");
+        syncIcon();
+      });
+    })();
+
     init();
   })();
   </script>
