@@ -4,6 +4,38 @@ All notable changes to **uniinfer** are documented in this file.
 Versions follow [Semantic Versioning](https://semver.org/); this file
 adheres to [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.7.0] - 2026-08-01
+
+### Added
+
+- **Web app redesign** (served at `/`, live on `uniinfer.skale.dev`):
+  - **Login gate** (bearer token; validates via `/v1/providers`; remember /
+    logout) over the existing client-side auth.
+  - **Intent-grouped sidebar** shell — Playground (Chat/Images/Audio) · Models
+    (Browse/Test) · Ops (Dashboard) — klark0/shadcn pattern, with branding,
+    version, links + theme/settings/logout in the footer.
+  - **Design system** — shadcn-structure tokens (neutral monochrome + uniinfer
+    blue as `--ring`/`--brand`), **light/dark + toggle** (system default),
+    spacing scale + content gutter. Legacy token names bridged.
+  - **Dashboard mode** — Usage (24h per-model + totals), Provider limits
+    (free-tier vs live + utilization bars), Rate limiter (AIMD state), **Fleet
+    instances** (the named-instances overlay, now with a UI), Catalog
+    (new/deprecated/stale).
+  - **Test Models mode** — configurable probe (Alive/Performance/Capability ×
+    one provider / All), per-call timeout, Stop, live results table.
+  - Chat: quick-unselect **×** on the model bar.
+- **`GET /v1/system/instances`** — read-only overlay (alias → spec), no secrets
+  (keys stay in credgoo). Powers the dashboard fleet panel.
+
+### Fixed
+
+- **`init()` crashed on the model-clear button** — it reused the `.search-clear`
+  class without a `data-target`, so the generic clear-button loop did
+  `querySelector('#undefined').addEventListener` → `null` → the page stuck on
+  "Loading…" forever. Guarded the loop.
+- **Model-type icon leaked as literal text** — `updateModelInfoBar` set the icon
+  via `.textContent` on an HTML string; now `.innerHTML` + `lucide.createIcons()`.
+
 ## [0.6.30] - 2026-08-01
 
 ### Added
