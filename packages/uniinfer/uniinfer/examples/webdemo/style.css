@@ -1441,3 +1441,11 @@ tr.tr-stale-danger:hover td { opacity: 0.85; background: #fef2f2; }
 .d-chip { font-size: 0.72rem; background: var(--muted); border: 1px solid var(--border); padding: 2px 8px; border-radius: 999px; max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .d-ok { color: var(--ok, #16a34a); } .d-bad { color: var(--destructive); } .d-warn { color: var(--warn, #d97706); }
 .d-fail { color: var(--destructive); font-size: 0.8rem; }
+
+/* ── Phase 3: test models ── */
+.test { overflow-y: auto; }
+.test-controls { display: flex; align-items: flex-end; gap: var(--space-4); flex-wrap: wrap; }
+.test-controls .field { display: flex; flex-direction: column; gap: 4px; }
+.test-controls label { font-size: 0.72rem; color: var(--muted-foreground); }
+.test-controls select, .test-controls input { padding: 7px 10px; background: var(--muted); border: 1px solid var(--border); border-radius: var(--radius-md); color: var(--foreground); font: inherit; }
+.test-controls button { align-self: flex-end; }

@@ -11,7 +11,7 @@
   <script src="https://cdn.jsdelivr.net/npm/dompurify@3.2.6/dist/purify.min.js"></script>
   <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
   <script>(function(){var t=localStorage.getItem('uniinfer_theme');if(!t)t=(window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light';if(t==='dark')document.documentElement.classList.add('dark');})();</script>
-  <link rel="stylesheet" href="/webdemo/style.css?v=p2" />
+  <link rel="stylesheet" href="/webdemo/style.css?v=p3" />
 </head>
 <body>
   <!-- Login gate -->
@@ -279,12 +279,22 @@
         <div id="stt-result" class="stt-result"></div>
       </div>
     </div>
-    <div id="test-section" class="section" style="display:none">
-      <div class="placeholder">
-        <i data-lucide="flask-conical"></i>
-        <h2>Test Models</h2>
-        <p>Probe every model — alive/dead, latency, tok/s, capabilities. Coming in Phase 3.</p>
+    <div id="test-section" class="section test" style="display:none">
+      <div class="card test-controls">
+        <div class="field"><label>Provider</label><select id="test-provider"><option value="">Loading…</option></select></div>
+        <div class="field"><label>Depth</label>
+          <select id="test-depth">
+            <option value="alive">Alive (fast)</option>
+            <option value="perf">Performance (tok/s)</option>
+            <option value="capability">Capability (tools)</option>
+          </select>
+        </div>
+        <div class="field"><label>Per-call timeout</label><input id="test-timeout" type="number" min="3" max="60" value="15" style="width:72px" />s</div>
+        <button id="test-run" class="btn-primary">Run</button>
+        <button id="test-stop" class="btn-secondary" style="display:none">Stop</button>
+        <span id="test-progress" class="muted"></span>
       </div>
+      <div class="card"><div id="test-results" class="muted">Pick a provider and depth, then Run.</div></div>
     </div>
     <div id="dashboard-section" class="section dash" style="display:none">
       <div class="dash-cols">
@@ -298,7 +308,7 @@
     </main>
   </div>
 
-  <script src="/webdemo/config.js?v=p2"></script>
+  <script src="/webdemo/config.js?v=p3"></script>
   <script>
   (() => {
     "use strict";
@@ -557,6 +567,57 @@ ${js}`;
       });
     }
 
+    // ── Test Models (Phase 3) ──────────────────────
+    let testAbort = null;
+    async function loadTest() {
+      const sel = $("#test-provider");
+      if (sel.options.length && sel.options[0].value !== "") return;
+      try { const d = await dGet("/v1/providers"); const provs = d.data || d || []; sel.innerHTML = `<option value="__all__">All providers</option>` + provs.map(p => `<option value="${p}">${p}</option>`).join(""); }
+      catch (e) { sel.innerHTML = `<option value="">(failed to load providers)</option>`; }
+    }
+    async function probeOne(provider, model, depth, timeoutS) {
+      const t0 = performance.now(); const ctrl = new AbortController(); const timer = setTimeout(() => ctrl.abort(), (timeoutS || 15) * 1000);
+      try {
+        const body = { model: provider + "@" + model, messages: [{ role: "user", content: "Reply with exactly: OK" }], max_tokens: depth === "perf" ? 256 : 5, reasoning_effort: "none" };
+        if (depth === "capability") { body.tools = [{ type: "function", function: { name: "ping", parameters: { type: "object", properties: { x: { type: "string" } } } } }]; body.tool_choice = "auto"; }
+        const r = await fetch(window.uniinferConfig.apiBaseUrl + "/v1/chat/completions", { method: "POST", headers: Object.assign({ "Content-Type": "application/json" }, window.uniinferConfig.apiKey ? { Authorization: "Bearer " + window.uniinferConfig.apiKey } : {}), body: JSON.stringify(body), signal: ctrl.signal });
+        const ms = Math.round(performance.now() - t0);
+        if (!r.ok) return { status: "dead", ms, err: r.status };
+        const d = await r.json(); const msg = (d.choices && d.choices[0] && d.choices[0].message) || {};
+        const ok = msg.content || (msg.tool_calls && msg.tool_calls.length);
+        if (depth === "perf") { const toks = (d.usage && d.usage.completion_tokens) || 0; return { status: ok ? "alive" : "empty", ms, tps: toks > 0 ? (toks / ((performance.now() - t0) / 1000)).toFixed(1) : "-" }; }
+        if (depth === "capability") return { status: ok ? "alive" : "empty", ms, tools: !!(msg.tool_calls && msg.tool_calls.length) };
+        return { status: ok ? "alive" : "empty", ms };
+      } catch (e) { return { status: "dead", ms: Math.round(performance.now() - t0), err: e.name === "AbortError" ? "timeout" : "err" }; }
+      finally { clearTimeout(timer); }
+    }
+    function statusCell(s) { return s === "alive" ? `<span class="d-ok">alive</span>` : s === "empty" ? `<span class="d-warn">empty</span>` : `<span class="d-bad">dead</span>`; }
+    async function runTest() {
+      const prov = $("#test-provider").value, depth = $("#test-depth").value, timeoutS = parseInt($("#test-timeout").value) || 15;
+      if (!prov || prov === "") return;
+      $("#test-run").style.display = "none"; $("#test-stop").style.display = ""; testAbort = new AbortController();
+      const tb2clear = $("#test-results"); tb2clear.innerHTML = `<table class="d-tbl"><thead><tr>${["#","model","status","ms"].concat(depth==="perf"?["tok/s"]:depth==="capability"?["tools"]:[]).map(c=>`<th>${c}</th>`).join("")}</tr></thead><tbody id="test-tbody"></tbody></table>`;
+      const tb = $("#test-tbody"), prog = $("#test-progress");
+      let targets = [];
+      const provs = prov === "__all__" ? (await dGet("/v1/providers").then(r => r.data || r || []).catch(() => [])) : [prov];
+      for (const p of provs) { try { const d = await dGet("/v1/models/" + encodeURIComponent(p)); const arr = (d.data || d.models || d).map(x => typeof x === "string" ? x : x.id).filter(Boolean); targets = targets.concat(arr.slice(0, 50).map(m => ({ p, m }))); } catch (e) {} if (testAbort.signal.aborted) break; }
+      let done = 0, alive = 0;
+      for (const t of targets) {
+        if (testAbort.signal.aborted) { prog.textContent = `stopped (${done}/${targets.length})`; break; }
+        const r = await probeOne(t.p, t.m, depth, timeoutS);
+        if (r.status === "alive") alive++;
+        let row = `<td class="num">${done + 1}</td><td>${escapeHtml(t.p + "@" + t.m)}</td><td>${statusCell(r.status)}</td><td class="num">${r.ms || "-"}</td>`;
+        if (depth === "perf") row += `<td class="num">${r.tps || "-"}</td>`;
+        if (depth === "capability") row += `<td class="num">${r.tools ? "✓" : "—"}</td>`;
+        tb.insertAdjacentHTML("beforeend", "<tr>" + row + "</tr>");
+        done++; prog.textContent = `${done}/${targets.length} · ${alive} alive`;
+      }
+      if (!testAbort.signal.aborted) prog.textContent = `done — ${alive}/${targets.length} alive`;
+      $("#test-run").style.display = ""; $("#test-stop").style.display = "none"; testAbort = null;
+    }
+    $("#test-run").addEventListener("click", runTest);
+    $("#test-stop").addEventListener("click", () => { if (testAbort) testAbort.abort(); });
+
     const SECTION_DISPLAY = { chat: "flex", models: "block", image: "block", audio: "block", test: "block", dashboard: "block" };
     function setMode(mode) {
       $$(".nav-item").forEach(b => b.classList.toggle("active", b.dataset.mode === mode));
@@ -566,6 +627,7 @@ ${js}`;
       if (mode === "models") loadModelsBrowser();
       else if (mode === "audio") loadAudioModels();
       else if (mode === "dashboard") loadDashboard();
+      else if (mode === "test") loadTest();
       if (window.lucide) lucide.createIcons();
     }
     $$(".nav-item").forEach(b => b.addEventListener("click", () => setMode(b.dataset.mode)));
