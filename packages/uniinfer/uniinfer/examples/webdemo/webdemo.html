@@ -13,6 +13,24 @@
   <link rel="stylesheet" href="/webdemo/style.css" />
 </head>
 <body>
+  <!-- Login gate -->
+  <div id="login-overlay" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(8,12,22,0.97);backdrop-filter:blur(6px);align-items:center;justify-content:center">
+    <form id="login-form" style="width:min(420px,92vw);background:#111c2e;border:1px solid #243049;border-radius:16px;padding:28px">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px">
+        <span style="font-size:22px;font-weight:700;color:#e5edf7">UniInfer</span>
+        <span id="login-version" class="version-badge"></span>
+      </div>
+      <p style="color:#93a4bd;margin:0 0 20px;font-size:13px;line-height:1.5">Sign in with your proxy bearer token — a credgoo combo (<code>bearer@encryption</code>) or a direct provider key.</p>
+      <label style="font-size:12px;color:#93a4bd">Bearer token</label>
+      <input id="login-token" type="password" autocomplete="current-password" placeholder="bearer@encryption or sk-…" style="width:100%;box-sizing:border-box;margin:4px 0 14px;padding:10px 12px;background:#0b1220;border:1px solid #243049;border-radius:8px;color:#e5edf7" />
+      <label style="font-size:12px;color:#93a4bd">Proxy base URL <span style="color:#64748b">(optional — defaults to this site)</span></label>
+      <input id="login-base-url" type="text" placeholder="https://uniinfer.skale.dev" style="width:100%;box-sizing:border-box;margin:4px 0 14px;padding:10px 12px;background:#0b1220;border:1px solid #243049;border-radius:8px;color:#e5edf7" />
+      <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:#93a4bd;margin-bottom:16px"><input id="login-remember" type="checkbox" /> Remember on this device</label>
+      <div id="login-error" style="color:#ef4444;font-size:12px;min-height:16px;margin-bottom:8px"></div>
+      <button id="login-submit" type="submit" style="width:100%;padding:11px;background:#38bdf8;color:#06121f;border:none;border-radius:8px;font-weight:600">Sign in</button>
+    </form>
+  </div>
+
   <div class="app-container">
     <header>
       <h1>UniInfer</h1>
@@ -30,6 +48,7 @@
       <a href="/capabilities" class="icon-btn-lg" title="Capability matrix" style="text-decoration:none"><i data-lucide="flask-conical"></i></a>
       <a href="/perf" class="icon-btn-lg" title="Performance dashboard" style="text-decoration:none"><i data-lucide="zap"></i></a>
       <a href="/guide" class="icon-btn-lg" title="Integration guide" style="text-decoration:none"><i data-lucide="book-open"></i></a>
+      <button id="logout-button" class="icon-btn-lg" title="Log out"><i data-lucide="log-out"></i></button>
       <button id="settings-button" class="icon-btn-lg" title="Settings"><i data-lucide="settings"></i></button>
     </header>
 
@@ -1289,12 +1308,65 @@ ${js}`;
     const lastRefresh = localStorage.getItem("uniinfer_models_last_refreshed");
     if (lastRefresh) $("#update-models-status").textContent = `Last refreshed: ${new Date(parseInt(lastRefresh)).toLocaleString()}`;
 
+    // ─── Login gate ─────────────────────────────────────────────────
+    function showLogin() {
+      $("#login-overlay").style.display = "flex";
+      const app = document.querySelector(".app-container");
+      if (app) { app.style.filter = "blur(3px) saturate(0.7)"; app.style.pointerEvents = "none"; }
+      const b = $("#login-base-url");
+      if (b && !b.value) b.value = window.uniinferConfig.apiBaseUrl || window.location.origin;
+      const k = $("#login-token");
+      if (window.uniinferConfig.apiKey && k && !k.value) k.value = window.uniinferConfig.apiKey;
+      try { $("#login-version").textContent = $("#app-version").textContent; } catch {}
+      setTimeout(() => { if (k && !k.value) k.focus(); }, 60);
+    }
+    function hideLogin() {
+      $("#login-overlay").style.display = "none";
+      const app = document.querySelector(".app-container");
+      if (app) { app.style.filter = ""; app.style.pointerEvents = ""; }
+    }
+    async function doLogin(e) {
+      if (e) e.preventDefault();
+      const token = $("#login-token").value.trim();
+      const base = ($("#login-base-url").value.trim() || window.location.origin).replace(/\/+$/, "");
+      const remember = $("#login-remember").checked;
+      const err = $("#login-error");
+      const btn = $("#login-submit");
+      err.textContent = "";
+      if (!token) { err.textContent = "Enter a bearer token."; return; }
+      btn.disabled = true; btn.textContent = "Checking…";
+      try {
+        const r = await fetch(base + "/v1/providers", { headers: { Authorization: "Bearer " + token } });
+        if (r.status === 401 || r.status === 403) { err.textContent = "Token rejected (401)."; btn.disabled = false; btn.textContent = "Sign in"; return; }
+      } catch (ex) {
+        err.textContent = "Can't reach " + base + " — " + ex.message;
+        btn.disabled = false; btn.textContent = "Sign in"; return;
+      }
+      window.uniinferConfig.apiKey = token;
+      window.uniinferConfig.apiBaseUrl = base;
+      localStorage.setItem("uniinfer_remember_api_key", remember ? "1" : "0");
+      if (remember) { localStorage.setItem("uniinfer_api_key", token); setCookie("uniinfer_api_key", token, 48); }
+      else { localStorage.removeItem("uniinfer_api_key"); setCookie("uniinfer_api_key", "", -1); }
+      btn.disabled = false; btn.textContent = "Sign in";
+      hideLogin();
+      loadProviders(); loadAudioModels(); updateImageModels(); setMode("chat");
+    }
+    function logout() {
+      window.uniinferConfig.apiKey = "";
+      localStorage.removeItem("uniinfer_api_key");
+      localStorage.setItem("uniinfer_remember_api_key", "0");
+      setCookie("uniinfer_api_key", "", -1);
+      showLogin();
+    }
+    $("#login-form").addEventListener("submit", doLogin);
+    { const _lo = $("#logout-button"); if (_lo) _lo.addEventListener("click", logout); }
+
     // ─── Init ───────────────────────────────────────────────────────
     async function init() {
       if (window.lucide) lucide.createIcons();
       try { const { version } = await apiJson("/v1/system/info"); $("#app-version").textContent = `v${version||"?"}`; } catch { $("#app-version").textContent = "v?"; }
       loadHistory(); renderHistory();
-      if (!window.uniinferConfig.apiKey) { openSettings(); $("#chat-container").innerHTML = '<div class="system-message">Enter your API key in Settings to get started.</div>'; return; }
+      if (!window.uniinferConfig.apiKey) { showLogin(); return; }
       loadProviders();
       loadAudioModels();
       updateImageModels();

@@ -357,10 +357,10 @@ app.include_router(
 
 @app.get("/", include_in_schema=False)
 async def root():
-    """Serve the unified app (Chat / Dashboard / Settings)."""
-    html = os.path.join(script_dir, "examples", "webdemo", "index.html")
+    """Serve the unified web app (login-gated Chat / Models / Images / Audio)."""
+    html = os.path.join(script_dir, "examples", "webdemo", "webdemo.html")
     if not os.path.exists(html):
-        raise HTTPException(status_code=404, detail="index.html not found")
+        raise HTTPException(status_code=404, detail="webdemo.html not found")
     return FileResponse(html)
 
 
