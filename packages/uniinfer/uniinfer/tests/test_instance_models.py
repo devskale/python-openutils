@@ -60,3 +60,33 @@ def test_list_models_custom_alias_uses_instance_base_url(fake_provider, instance
 def test_list_models_unknown_alias_raises(instances_env):
     with pytest.raises(ValueError):
         list_models_for_provider("never-registered", None)
+
+
+# --------------------------------------------------------------------------- #
+# merge_custom_aliases — daily regenerate must not wipe fleet entries
+# --------------------------------------------------------------------------- #
+def test_merge_custom_aliases_preserves_custom_entry():
+    from uniinfer.config.instances import InstanceSpec, merge_custom_aliases
+
+    builtins = {"ollama": {"models": []}, "mistral": {"models": []}}
+    existing = {
+        "vllm-local": {"models": [{"id": "x"}]},  # a custom fleet member
+        "ollama": {"models": ["STALE"]},           # stale built-in copy
+    }
+    aliases = {
+        "vllm-local": InstanceSpec(alias="vllm-local", provider="openai-compat", is_builtin=False),
+        "ollama": InstanceSpec(alias="ollama", provider="ollama", is_builtin=True),
+    }
+    merged = merge_custom_aliases(builtins, existing, aliases)
+    assert "vllm-local" in merged              # custom alias preserved
+    assert merged["ollama"] == builtins["ollama"]  # built-in NOT overwritten by stale existing
+
+
+def test_merge_custom_aliases_skips_unknown():
+    from uniinfer.config.instances import InstanceSpec, merge_custom_aliases
+
+    # an existing catalog key that is NOT a declared instance is dropped (no orphan)
+    builtins = {"ollama": {"models": []}}
+    existing = {"orphan": {"models": []}}
+    merged = merge_custom_aliases(builtins, existing, {})
+    assert "orphan" not in merged

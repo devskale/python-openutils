@@ -685,6 +685,29 @@ def main():
     save_model_history(model_history)
     log.info("Saved model history (%d entries)", len(model_history))
 
+    OUTPUT_PATH.parent.mkdir(parents=True, exist_ok=True)
+    # Preserve custom-alias (fleet) catalog entries across the daily rebuild —
+    # they're refreshed lazily via /v1/models/{alias}, not by this built-in sweep.
+    # Without this, generate_models.py would wipe every fleet member's models
+    # from the catalog once a day.
+    try:
+        from uniinfer.config.instances import get_instances, merge_custom_aliases
+
+        existing_providers = {}
+        if OUTPUT_PATH.exists():
+            try:
+                existing_providers = json.loads(OUTPUT_PATH.read_text()).get("providers", {})
+            except Exception:
+                existing_providers = {}
+        before = len(result)
+        result = merge_custom_aliases(result, existing_providers, get_instances())
+        preserved = len(result) - before
+        if preserved:
+            log.info("Preserved %d custom-alias catalog entries", preserved)
+        total_models = sum(len(v.get("models", [])) for v in result.values())
+    except Exception as e:
+        log.warning("Could not preserve custom-alias entries: %s", e)
+
     output = {
         "_meta": {
             "version": "1.0.0",

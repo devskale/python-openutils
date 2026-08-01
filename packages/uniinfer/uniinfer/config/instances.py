@@ -338,3 +338,25 @@ def reset_instance(alias: str, path: Optional[str] = None) -> bool:
 def show_instance(alias: str, path: Optional[str] = None) -> InstanceSpec:
     """Return the resolved spec for *alias*."""
     return resolve_instance(alias, path=path)
+
+
+def merge_custom_aliases(
+    builtins_result: dict[str, Any],
+    existing_providers: dict[str, Any],
+    aliases: dict[str, InstanceSpec],
+) -> dict[str, Any]:
+    """Merge custom-alias catalog entries into a fresh built-in regenerate.
+
+    The daily ``generate_models.py`` rebuilds the catalog from built-ins only;
+    without this, custom fleet members would be wiped every refresh. Custom
+    aliases (``is_builtin`` False) are carried over from the existing catalog
+    so they persist until refreshed lazily via ``/v1/models/{alias}``. Built-in
+    keys are never overwritten by stale existing copies (the fresh fetch wins).
+    """
+    merged = dict(builtins_result)
+    for alias, spec in aliases.items():
+        if spec.is_builtin:
+            continue
+        if alias in existing_providers and alias not in merged:
+            merged[alias] = existing_providers[alias]
+    return merged
