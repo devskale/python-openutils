@@ -135,14 +135,20 @@ Providers expose trial-accessible models under a **naming convention** — not b
 cost:
 - **Arli**: `(TRIAL) …` prefix
 - **OpenCode/Zen**: `-free` / `big-pickle` / `mimo-v2.5-free` suffixes
-- **Kilo / OpenRouter**: `:free` suffix (redundant within the Kilo gateway —
-  coincides with `isFree=true`; the public site's `:free`/`-free` listings are
-  stale, see above)
+- **Kilo / OpenRouter**: `:free` suffix — Kilo's is redundant within the gateway
+  (coincides with `isFree=true`; the public site's `:free`/`-free` listings are
+  stale, see above); OpenRouter's `:free` (+ the `openrouter/free` virtual tier) is
+  the reliable signal (cost-zero is a trap there too — `google/lyria-3-*`).
 
 So `access == "free"` won’t reliably list “what my trial key reaches.” Declare a
-key’s real reachable set with the **instance `access.models` selective list**
-(see [provider-instances-design.md §Key management](provider-instances-design.md));
-filter-by-`access` is a coarse hint, not a routing key.
+key’s real reachable set on the instance:
+- **`access.only: "free"`** — auto-filter to the provider’s current free-access
+  models (tracks the catalog as it changes; no stale list). Best when the key
+  reaches exactly the free tier (openrouter no-budget, opencode/zenfg free keys).
+- **`access.models`** — explicit selective id list/dict, for irregular subsets a
+  tag can’t express (e.g. arli’s `(TRIAL)`-prefixed set).
+
+See [provider-instances-design.md §Key management](provider-instances-design.md).
 
 ### Takeaways
 - `context_window` / `max_output`: upper bounds — verify empirically, override
