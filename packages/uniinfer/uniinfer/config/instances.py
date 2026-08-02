@@ -407,6 +407,31 @@ def selective_ids(spec: InstanceSpec) -> Optional[set]:
     return None
 
 
+def instance_allows(spec: InstanceSpec, model) -> bool:
+    """True if an instance's access rules permit this model.
+
+    Two independent filters (both must pass when set):
+    - ``access.models`` selective list/dict (see :func:`selective_ids`) — explicit ids.
+    - ``access.only`` — an access tag (``"free"`` / ``"paid"``) to keep; auto-tracks
+      the provider's current free/paid set, so a no-budget/free key instance stays
+      correct as the catalog changes (no stale enumeration).
+
+    ``model`` may be a ModelInfo or a plain dict.
+    """
+    acc = spec.access or {}
+    allowed = selective_ids(spec)
+    if allowed is not None:
+        mid = model.get("id") if isinstance(model, dict) else getattr(model, "id", None)
+        if mid not in allowed:
+            return False
+    only = acc.get("only")
+    if only:
+        macc = model.get("access") if isinstance(model, dict) else getattr(model, "access", None)
+        if macc != only:
+            return False
+    return True
+
+
 def apply_model_overrides(spec: InstanceSpec, model: dict) -> dict:
     """Return a copy of ``model`` with this instance's access overrides applied.
 

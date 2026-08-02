@@ -126,13 +126,21 @@ class OpenRouterProvider(OpenAICompatibleChatProvider):
                 if knowledge_cutoff:
                     capabilities["knowledge_cutoff"] = knowledge_cutoff
 
+                mid = model["id"]
+                # access from the :free convention — openrouter's reliable free signal
+                # (cost-zero is a TRAP: google/lyria-3-* has pricing 0/0 but is paid,
+                # verified via a no-budget key returning 'Insufficient credits').
+                # openrouter/free is the virtual free tier.
+                access = "free" if (mid.endswith(":free") or mid == "openrouter/free") else "paid"
+
                 results.append(ModelInfo(
-                    id=model["id"],
+                    id=mid,
                     name=model.get("name"),
                     type="chat",
                     context_window=model.get("context_length"),
                     max_output=max_output,
                     cost=cost,
+                    access=access,
                     modalities=modalities,
                     capabilities=capabilities or None,
                     owned_by=model.get("owned_by"),

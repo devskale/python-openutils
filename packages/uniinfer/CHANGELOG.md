@@ -22,6 +22,12 @@ adheres to [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   `type_overrides.json`). Carries curated served realities. Applied in
   `Catalog.list_resolved` (curated < runtime `_providers` < per-model) and the
   live path via `Catalog.apply_overrides`.
+- **`access.only` instance filter** — restrict an instance to a given access tag
+  (`"free"`/`"paid"`), auto-tracking the provider's current free/paid set so a
+  no-budget or free-key instance stays correct as the catalog changes (no stale
+  enumerated list). Unified helper `instance_allows(spec, model)` (selective ids
+  + `only` tag) wired into both the live fetch and the SWR cache. Powers
+  openrouter (no-budget key), opencode + zenfg (free keys).
 
 ### Changed
 
@@ -30,6 +36,11 @@ adheres to [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   translate: `reasoning:true` → `capabilities.reasoning`, `input:['image']` →
   `capabilities.vision`. Access is **cost-driven** (`cost.input == 0` → `free`),
   retiring the `-free`/`big-pickle` name heuristic (per-provider code → data).
+- **kilo + openrouter access from the reliable signal, not cost** — cost-zero is
+  a trap (`google/lyria-3-*` reports pricing `0/0` but serves paid, verified via
+  a no-budget/no-credits key). Kilo access now from the gateway `isFree` flag;
+  openrouter from the `:free` suffix / `openrouter/free` virtual tier. Both
+  verified against actual serving.
 
 ### Fixed
 
