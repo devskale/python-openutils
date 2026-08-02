@@ -4,6 +4,7 @@ ArliAI provider implementation.
 """
 from typing import Optional
 
+from ..core import ModelInfo
 from .openai_compatible import OpenAICompatibleChatProvider
 
 
@@ -14,6 +15,7 @@ class ArliAIProvider(OpenAICompatibleChatProvider):
 
     BASE_URL = "https://api.arliai.com/v1"
     PROVIDER_ID = "arli"
+    CREDGOO_SERVICE = "arli"
     ERROR_PROVIDER_NAME = "ArliAI"
     DEFAULT_MODEL = "Mistral-Nemo-12B-Instruct-2407"
 
@@ -39,70 +41,19 @@ class ArliAIProvider(OpenAICompatibleChatProvider):
         return params
 
     @classmethod
-    def list_models(cls, api_key: Optional[str] = None) -> list[ModelInfo]:
-        """
-        List available models from ArliAI.
-
-        Args:
-            api_key (Optional[str]): The ArliAI API key.
-
-        Returns:
-            list[ModelInfo]: A list of model info objects.
-        """
-        from ..core import ModelInfo
-        if not api_key:
-            raise ValueError("API key is required to list models")
-
-        headers = {
-            "Content-Type": "application/json",
-            "Authorization": f"Bearer {api_key}"
-        }
-
-        try:
-            import requests
-            endpoints = [
-                "https://api.arliai.com/v1/models/textgen-models",
-                "https://api.arliai.com/v1/models",
-            ]
-            for endpoint in endpoints:
-                try:
-                    response = requests.get(endpoint, headers=headers, timeout=30)
-                    if response.status_code == 200:
-                        models_data = response.json()
-                        data = models_data
-                        if isinstance(models_data, dict):
-                            data = models_data.get("data", [])
-                        if not isinstance(data, list):
-                            continue
-                        results = []
-                        for m in data:
-                            if not isinstance(m, dict):
-                                continue
-                            mid = m.get("id") or m.get("name")
-                            if not mid:
-                                continue
-                            capabilities = {}
-                            if m.get("reasoning"):
-                                capabilities["reasoning"] = True
-                            if m.get("vlm"):
-                                capabilities["vision"] = True
-                            input_mods = ["text"]
-                            if capabilities.get("vision"):
-                                input_mods.append("image")
-                            results.append(ModelInfo(
-                                id=mid,
-                                type="chat",
-                                context_window=m.get("max_context"),
-                                modalities={"input": input_mods, "output": ["text"]},
-                                capabilities=capabilities or None,
-                                owned_by=m.get("owned_by"),
-                                access="paid" if mid.startswith("(TRIAL)") else "free",
-                                raw=m,
-                            ))
-                        if results:
-                            return results
-                except Exception:
-                    continue
-            return []
-        except Exception:
-            return []
+    def _model_info(cls, raw: dict) -> ModelInfo:
+        mid = raw.get("id") or raw.get("name")
+        caps: dict = {}
+        if raw.get("reasoning"):
+            caps["reasoning"] = True
+        if raw.get("vlm"):
+            caps["vision"] = True
+        input_mods = ["text"] + (["image"] if caps.get("vision") else [])
+        # (TRIAL)-prefixed = what a trial key reaches (tagged paid); bare = dead trials (free)
+        return ModelInfo(
+            id=mid, type="chat",
+            access="paid" if mid.startswith("(TRIAL)") else "free",
+            context_window=raw.get("max_context"),
+            modalities={"input": input_mods, "output": ["text"]},
+            capabilities=caps or None, owned_by=raw.get("owned_by"), raw=raw,
+        )

@@ -22,10 +22,10 @@ Caveats:
 - ``openrouter/free`` and ``openrouter/auto-beta`` report ``pricing.prompt = "-1"``
   (sentinel for "varies") — mapped to ``cost=None``.
 """
-import requests
 from typing import Any, Optional
 
-from ..errors import map_provider_error
+from ..core import ModelInfo
+
 from .openai_compatible import OpenAICompatibleChatProvider, openrouter_reasoning_payload
 
 
@@ -59,101 +59,46 @@ class KiloProvider(OpenAICompatibleChatProvider):
         return openrouter_reasoning_payload(reasoning_effort)
 
     @classmethod
-    def list_models(cls, api_key: Optional[str] = None) -> list["ModelInfo"]:
-        """List models from the Kilo Gateway.
-
-        The ``/models`` endpoint is public (no auth required). When no key is
-        passed, one is resolved from credgoo (``kilocode`` service) so the
-        request is authenticated (higher rate limits than the anonymous tier);
-        free models work either way. Free models (``isFree=true`` or id ending
-        ``:free``) are marked cost 0/0 so the catalog surfaces them as free.
-        """
-        from ..core import ModelInfo
-        if not api_key:
-            try:
-                from credgoo import get_api_key
-                api_key = get_api_key(cls.CREDGOO_SERVICE)
-            except Exception:
-                api_key = None
-        try:
-            headers = {"accept": "application/json"}
-            if api_key:
-                headers["Authorization"] = f"Bearer {api_key}"
-            r = requests.get(
-                "https://api.kilo.ai/api/gateway/models",
-                headers=headers,
-                timeout=30,
-            )
-            r.raise_for_status()
-        except Exception as e:
-            raise map_provider_error("Kilo", e)
-
-        out: list[ModelInfo] = []
-        for model in r.json().get("data", []):
-            mid = model.get("id")
-            if not mid:
-                continue
-
-            pricing = model.get("pricing", {}) or {}
-            prompt_price = _parse_price(pricing.get("prompt"))
-            completion_price = _parse_price(pricing.get("completion"))
-            is_free = bool(model.get("isFree"))  # gateway flag = the ONLY reliable free signal. ':free' suffix dropped (redundant within the gateway — all such ids are isFree=true). NOTE: cost-zero is a TRAP (google/lyria-3-* has pricing 0/0 but is paid); the public website lists expired-free models. Verified by serving.
-
-            if is_free:
-                cost = {"input": 0.0, "output": 0.0}
-            elif prompt_price is not None or completion_price is not None:
-                cost = {}
-                if prompt_price is not None:
-                    cost["input"] = prompt_price * 1_000_000
-                if completion_price is not None:
-                    cost["output"] = completion_price * 1_000_000
-            else:
-                cost = None
-
-            arch = model.get("architecture", {}) or {}
-            modalities = None
-            if arch.get("input_modalities") or arch.get("output_modalities"):
-                modalities = {
-                    "input": arch.get("input_modalities", ["text"]),
-                    "output": arch.get("output_modalities", ["text"]),
-                }
-
-            supported_params = model.get("supported_parameters", []) or []
-            capabilities: dict = {}
-            if "tools" in supported_params or "tool_choice" in supported_params:
-                capabilities["tool_call"] = True
-            if "structured_outputs" in supported_params:
-                capabilities["structured_outputs"] = True
-            if "reasoning" in supported_params or "include_reasoning" in supported_params:
-                capabilities["reasoning"] = True
-
-            top_provider = model.get("top_provider", {}) or {}
-            max_output = top_provider.get("max_completion_tokens")
-            context_window = (
-                top_provider.get("context_length")
-                or model.get("context_length")
-            )
-
-            # access from the gateway's isFree flag — the only signal verified to match
-            # actual free servability. (cost-zero is unreliable: google/lyria-3-* has
-            # pricing 0/0 but returns 'Add credits' / is paid.)
-            access = "free" if is_free else "paid"
-
-            out.append(ModelInfo(
-                id=mid,
-                name=model.get("name"),
-                type="chat",
-                context_window=context_window,
-                max_output=max_output,
-                cost=cost,
-                access=access,
-                modalities=modalities,
-                capabilities=capabilities or None,
-                owned_by=model.get("owned_by") or (mid.split("/")[0] if "/" in mid else "kilo"),
-                created=model.get("created"),
-                raw=model,
-            ))
-        return out
+    def _model_info(cls, raw: dict) -> ModelInfo:
+        mid = raw.get("id")
+        pricing = raw.get("pricing", {}) or {}
+        prompt_price = _parse_price(pricing.get("prompt"))
+        completion_price = _parse_price(pricing.get("completion"))
+        # gateway isFree flag = the ONLY reliable free signal (cost-zero is a trap:
+        # google/lyria-3-* has pricing 0/0 but is paid; the public site lists expired-free models)
+        is_free = bool(raw.get("isFree"))
+        if is_free:
+            cost = {"input": 0.0, "output": 0.0}
+        elif prompt_price is not None or completion_price is not None:
+            cost = {}
+            if prompt_price is not None:
+                cost["input"] = prompt_price * 1_000_000
+            if completion_price is not None:
+                cost["output"] = completion_price * 1_000_000
+        else:
+            cost = None
+        arch = raw.get("architecture", {}) or {}
+        modalities = None
+        if arch.get("input_modalities") or arch.get("output_modalities"):
+            modalities = {"input": arch.get("input_modalities", ["text"]), "output": arch.get("output_modalities", ["text"])}
+        sp = raw.get("supported_parameters", []) or []
+        caps: dict = {}
+        if "tools" in sp or "tool_choice" in sp:
+            caps["tool_call"] = True
+        if "structured_outputs" in sp:
+            caps["structured_outputs"] = True
+        if "reasoning" in sp or "include_reasoning" in sp:
+            caps["reasoning"] = True
+        top_provider = raw.get("top_provider", {}) or {}
+        return ModelInfo(
+            id=mid, name=raw.get("name"), type="chat",
+            context_window=top_provider.get("context_length") or raw.get("context_length"),
+            max_output=top_provider.get("max_completion_tokens"),
+            cost=cost, access="free" if is_free else "paid",
+            modalities=modalities, capabilities=caps or None,
+            owned_by=raw.get("owned_by") or (mid.split("/")[0] if "/" in mid else "kilo"),
+            created=raw.get("created"), raw=raw,
+        )
 
 
 def _parse_price(value) -> Optional[float]:

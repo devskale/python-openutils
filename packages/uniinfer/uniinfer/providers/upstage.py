@@ -2,10 +2,9 @@ from __future__ import annotations
 """
 Upstage provider implementation.
 """
-from typing import Optional, List
+from typing import Optional
 
-import requests
-
+from ..core import ModelInfo
 from .openai_compatible import OpenAICompatibleChatProvider
 
 
@@ -14,9 +13,9 @@ class UpstageProvider(OpenAICompatibleChatProvider):
     Provider for Upstage AI Solar API.
     """
 
-    ACCESS_TIER = "paid"  # per-token billing
     BASE_URL = "https://api.upstage.ai/v1/solar"
     PROVIDER_ID = "upstage"
+    CREDGOO_SERVICE = "upstage"
     ERROR_PROVIDER_NAME = "upstage"
     DEFAULT_MODEL = "solar-pro"
 
@@ -24,24 +23,11 @@ class UpstageProvider(OpenAICompatibleChatProvider):
         super().__init__(api_key=api_key, base_url=base_url, **kwargs)
 
     @classmethod
-    def list_models(cls, api_key: Optional[str] = None, base_url: str = BASE_URL) -> list[ModelInfo]:
-        from ..core import ModelInfo
-        """List available models from Upstage."""
-        if api_key is None:
-            try:
-                from credgoo import get_api_key
-                api_key = get_api_key("upstage")
-            except ImportError:
-                return []
+    def _models_url(cls, base_url: str) -> str:
+        # BASE_URL is /v1/solar (completions); the models endpoint is /v1/models
+        return "https://api.upstage.ai/v1/models"
 
-        if not api_key:
-            return []
-
-        try:
-            headers = {"Authorization": f"Bearer {api_key}"}
-            response = requests.get(f"https://api.upstage.ai/v1/models", headers=headers)
-            response.raise_for_status()
-            models_data = response.json()
-            return [ModelInfo(id=model["id"], owned_by=model.get("owned_by"), created=model.get("created"), raw=model) for model in models_data.get("data", [])]
-        except Exception:
-            return []
+    @classmethod
+    def _model_info(cls, raw: dict) -> ModelInfo:
+        # paid per-token
+        return ModelInfo(id=raw["id"], owned_by=raw.get("owned_by"), created=raw.get("created"), access="paid", raw=raw)

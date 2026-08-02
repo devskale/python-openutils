@@ -4,8 +4,6 @@ InternLM provider implementation.
 """
 from typing import Optional
 
-import requests
-
 from .openai_compatible import OpenAICompatibleChatProvider
 
 
@@ -16,6 +14,7 @@ class InternLMProvider(OpenAICompatibleChatProvider):
 
     BASE_URL = "https://chat.intern-ai.org.cn/api/v1"
     PROVIDER_ID = "internlm"
+    CREDGOO_SERVICE = "internlm"
     ERROR_PROVIDER_NAME = "InternLM"
     DEFAULT_MODEL = "internlm3-latest"
 
@@ -28,20 +27,5 @@ class InternLMProvider(OpenAICompatibleChatProvider):
             "top_p": 0.9,
         }
 
-    @classmethod
-    def list_models(cls, api_key: Optional[str] = None) -> list[ModelInfo]:
-        from ..core import ModelInfo
-        """List available models from InternLM."""
-        if not api_key:
-            from credgoo import get_api_key
-            api_key = get_api_key("internlm")
-            if not api_key:
-                return []
-
-        try:
-            headers = {"Authorization": f"Bearer {api_key}"}
-            response = requests.get("https://chat.intern-ai.org.cn/api/v1/models", headers=headers)
-            response.raise_for_status()
-            return [ModelInfo(id=model["id"], owned_by=model.get("owned_by"), raw=model) for model in response.json().get("data", [])]
-        except Exception:
-            return []
+    # list_models + _model_info inherited from OpenAICompatibleChatProvider
+    # (base _model_info = id + owned_by, which is InternLM's whole dialect).
