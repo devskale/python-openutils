@@ -1,6 +1,12 @@
 from __future__ import annotations
 """
 Mistral AI provider implementation.
+
+Access: universally free — La Plateforme's free Experiment tier gives
+rate-limited access to ALL models (incl. Mistral Large, Codestral) at $0
+(~1B tokens/month); pay-as-you-go unlocks higher limits (mistral.ai/news,
+pricepertoken, costbench). The /models API carries no pricing field, so all
+models are tagged access='free'.
 """
 import requests
 from typing import Optional
@@ -113,6 +119,7 @@ class MistralProvider(OpenAICompatibleChatProvider):
                 name=model.get("name"),
                 type=mtype,
                 status=status,
+                access="free",  # free Experiment tier: rate-limited access to ALL models at $0 (~1B tok/mo)
                 deprecation_date=deprecation,
                 deprecation_replacement=model.get("deprecation_replacement_model"),
                 context_window=model.get("max_context_length"),
