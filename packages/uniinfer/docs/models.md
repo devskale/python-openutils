@@ -115,6 +115,19 @@ can reach the model. The two can be **inverted**:
 > (`Fastest` has `context_window: 0`), and the `(TRIAL)`-prefixed (tagged `paid`)
 > are what a trial key actually reaches. A “free” tag here ≈ *unusable*; a “paid”
 > tag ≈ *trial-accessible*. **Do not filter “free” to mean “my key works.”**
+>
+> **Kilo** — cost can be **actively wrong**, not just heuristic. `google/lyria-3-*`
+> reports `pricing.prompt='0'` + `pricing.completion='0'` yet serves **paid**
+> (“Add credits to continue”). The gateway's explicit **`isFree` flag** is the
+> only reliable signal — all 11 `isFree=true` models serve free (verified by
+> actual completions; `cohere/north-mini-code:free` rate-limits but is free), and
+> Kilo's `access` is now derived from `isFree`, **not** cost. The `:free` id
+> suffix is redundant within the gateway (all such ids are `isFree=true`).
+> **The public site (kilo.ai/models) is stale** — it still lists expired-free
+> models (`tencent/hy3:free`, `inclusionai/ling-2.6-flash:free`,
+> `google/gemma-4-26b-a4b-it:free`, `nex-agi/nex-n2-pro:free`, `baidu/cobuddy:free`)
+> whose free periods ended; the gateway rejects them with *“free period ended /
+> transitioned to paid.”* **Trust the gateway, not the site.**
 
 ### 3. Trial/free-tier reachability is an *irregular named subset*, not “all free-cost models”
 
@@ -122,7 +135,9 @@ Providers expose trial-accessible models under a **naming convention** — not b
 cost:
 - **Arli**: `(TRIAL) …` prefix
 - **OpenCode/Zen**: `-free` / `big-pickle` / `mimo-v2.5-free` suffixes
-- **Kilo / OpenRouter**: `:free` suffix
+- **Kilo / OpenRouter**: `:free` suffix (redundant within the Kilo gateway —
+  coincides with `isFree=true`; the public site's `:free`/`-free` listings are
+  stale, see above)
 
 So `access == "free"` won’t reliably list “what my trial key reaches.” Declare a
 key’s real reachable set with the **instance `access.models` selective list**
