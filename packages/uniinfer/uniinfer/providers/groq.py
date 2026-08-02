@@ -246,13 +246,22 @@ class GroqProvider(ChatProvider):
         try:
             client = Groq(api_key=api_key)
             models = client.models.list()
-            return [ModelInfo(
-                id=model.id,
-                owned_by=getattr(model, "owned_by", None),
-                created=getattr(model, "created", None),
-                context_window=getattr(model, "context_window", None),
-                status="active" if getattr(model, "active", True) else "deprecated",
-            ) for model in models.data]
+            out = []
+            for model in models.data:
+                in_mods = getattr(model, "input_modalities", None) or ["text"]
+                out_mods = getattr(model, "output_modalities", None) or ["text"]
+                caps = {"vision": True} if "image" in in_mods else None
+                out.append(ModelInfo(
+                    id=model.id,
+                    owned_by=getattr(model, "owned_by", None),
+                    created=getattr(model, "created", None),
+                    context_window=getattr(model, "context_window", None),
+                    access="free",  # universally free (forever-free tier, no CC; API carries no pricing)
+                    status="active" if getattr(model, "active", True) else "deprecated",
+                    modalities={"input": in_mods, "output": out_mods},
+                    capabilities=caps,
+                ))
+            return out
         except Exception as e:
             import logging
             logging.warning("Failed to fetch Groq models: %s", str(e))
