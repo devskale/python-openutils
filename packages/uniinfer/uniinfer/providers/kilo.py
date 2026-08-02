@@ -97,7 +97,7 @@ class KiloProvider(OpenAICompatibleChatProvider):
             pricing = model.get("pricing", {}) or {}
             prompt_price = _parse_price(pricing.get("prompt"))
             completion_price = _parse_price(pricing.get("completion"))
-            is_free = bool(model.get("isFree")) or mid.endswith(":free")
+            is_free = bool(model.get("isFree"))  # gateway flag = the ONLY reliable free signal. ':free' suffix dropped (redundant within the gateway — all such ids are isFree=true). NOTE: cost-zero is a TRAP (google/lyria-3-* has pricing 0/0 but is paid); the public website lists expired-free models. Verified by serving.
 
             if is_free:
                 cost = {"input": 0.0, "output": 0.0}
@@ -134,6 +134,11 @@ class KiloProvider(OpenAICompatibleChatProvider):
                 or model.get("context_length")
             )
 
+            # access from the gateway's isFree flag — the only signal verified to match
+            # actual free servability. (cost-zero is unreliable: google/lyria-3-* has
+            # pricing 0/0 but returns 'Add credits' / is paid.)
+            access = "free" if is_free else "paid"
+
             out.append(ModelInfo(
                 id=mid,
                 name=model.get("name"),
@@ -141,6 +146,7 @@ class KiloProvider(OpenAICompatibleChatProvider):
                 context_window=context_window,
                 max_output=max_output,
                 cost=cost,
+                access=access,
                 modalities=modalities,
                 capabilities=capabilities or None,
                 owned_by=model.get("owned_by") or (mid.split("/")[0] if "/" in mid else "kilo"),
