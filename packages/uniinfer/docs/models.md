@@ -84,6 +84,58 @@ Sources for the `dimensions` field:
 | **Ollama** | — | — | — | — | — | ✅ dimensions via `/api/show` |
 | OpenAI, NGC, StepFun, Upstage, InternLM, Chutes, Cloudflare, HuggingFace, TU | bare (id only) | | | | | |
 
+## Metadata reliability & access truth
+
+Catalog metadata is **enriched, not verified**. Three caveats (generalized from the
+Arli case, web-grounded) — treat the catalog as a hint, not ground truth:
+
+### 1. Advertised context/output ≠ served reality
+
+Providers report the **model's native maximum**, which the served endpoint often
+caps lower (quantization, fewer GPUs, per-key/trial limits). The catalog carries
+the advertised figure → `context_window` / `max_output` are **upper bounds, not
+guarantees**.
+
+> **Arli / Qwen3.5-27B-Derestricted** — Arli's page and the HF model card both
+> state *“Context Length: 262,144 natively, extensible to 1,010,000”* (256k, on
+> 8-GPU tensor-parallel). Arli **advertises 262,144**, so the catalog reports
+> 262,144 — but Arli *serves* it quantized on fewer GPUs, and trial/limited keys
+> hit a lower effective cap. The advertised 256k overstates what a real request
+> gets. Fix known cases via `model_overrides.json` (e.g. set the real served ctx).
+
+### 2. `access` (free/paid) is a *cost/naming heuristic*, not key reachability
+
+`ModelInfo.access` is derived from **cost** (`cost.input == 0` → free) or a
+provider **naming heuristic** — it describes *pricing*, not whether **your key**
+can reach the model. The two can be **inverted**:
+
+> **Arli** — `access="paid" if id.startswith("(TRIAL)") else "free"` (see
+> `providers/arli.py`). So the `(TRIAL) …`-prefixed models are tagged `paid`, the
+> bare ones `free` — yet the bare `free` models are the dead/crippled trials
+> (`Fastest` has `context_window: 0`), and the `(TRIAL)`-prefixed (tagged `paid`)
+> are what a trial key actually reaches. A “free” tag here ≈ *unusable*; a “paid”
+> tag ≈ *trial-accessible*. **Do not filter “free” to mean “my key works.”**
+
+### 3. Trial/free-tier reachability is an *irregular named subset*, not “all free-cost models”
+
+Providers expose trial-accessible models under a **naming convention** — not by
+cost:
+- **Arli**: `(TRIAL) …` prefix
+- **OpenCode/Zen**: `-free` / `big-pickle` / `mimo-v2.5-free` suffixes
+- **Kilo / OpenRouter**: `:free` suffix
+
+So `access == "free"` won’t reliably list “what my trial key reaches.” Declare a
+key’s real reachable set with the **instance `access.models` selective list**
+(see [provider-instances-design.md §Key management](provider-instances-design.md));
+filter-by-`access` is a coarse hint, not a routing key.
+
+### Takeaways
+- `context_window` / `max_output`: upper bounds — verify empirically, override
+  (`model_overrides.json`) where you know the served figure.
+- `access`: cost-flavored hint, **never** a reachability guarantee.
+- Trial reachability: an irregular named subset → model it per-instance
+  (`access.models`), not via a global free/paid filter.
+
 ## Generation Pipeline
 
 ```bash

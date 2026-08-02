@@ -60,6 +60,7 @@ OpenAI-compatible "derestricted" (uncensored) fine-tunes. · 🧠 ✅ · 👁️
 
 - **Docs**: [arliai.com](https://www.arliai.com) · [pricing](https://www.arliai.com/pricing?lang=en)
 - **Free**: `Qwen-3.5-27B-Derestricted` — 12K ctx, 1 concurrent req. 5 trial requests / 2 days for other models
+- **Catalog caveat**: the catalog reports the *advertised* 262,144 ctx (the model's native max — see the [HF card](https://huggingface.co/ArliAI/Qwen3.5-27B-Derestricted)), but Arli **serves 12K** on the free tier → `context_window` is overstated; override via `model_overrides.json`. Also: `(TRIAL) …`-prefixed models are tagged `paid` but are the **trial-accessible** ones (5 req / 2 days); the bare `free`-tagged models (`Fastest` ctx 0, `Qwen3.5-27B-Derestricted` 12K/1-concurrent) are the crippled trials. See [models.md §Metadata reliability & access truth](models.md#metadata-reliability--access-truth).
 - **Implementation**: `OpenAICompatibleChatProvider`
 
 ### openrouter — OpenRouter
