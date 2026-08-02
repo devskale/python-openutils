@@ -38,15 +38,18 @@ class OpenCodeProvider(OpenAICompatibleChatProvider):
         """List models from OpenCode/Zen via pi.dev catalog.
 
         The native ``/v1/models`` endpoint returns bare IDs with no metadata.
-        pi.dev maintains an enriched catalog with context windows, max tokens,
-        capabilities, and cost data — pull from there instead.
+        pi.dev maintains an enriched catalog (context windows, max tokens,
+        reasoning flag, input modalities, cost) — pull from there instead.
 
-        Free models (id ends in ``-free``, plus ``big-pickle``) are marked
-        cost 0 so the catalog surfaces them as free.
+        pi.dev uses flat top-level fields (``reasoning``, ``input``, ``cost``)
+        rather than a ``capabilities`` dict, so we translate:
+        - ``reasoning: true``  -> capabilities.reasoning
+        - ``input: [...'image']`` -> capabilities.vision (+ modalities)
+        - ``cost.input == 0``   -> access 'free' (data-driven, not a name
+          heuristic; removes the old ``-free``/``big-pickle`` special-case).
         """
         from ..core import ModelInfo
         try:
-            # pi.dev has the enriched OpenCode catalog with context sizes
             r = requests.get("https://pi.dev/api/models/providers/opencode", timeout=30)
             r.raise_for_status()
             data = r.json()
@@ -54,7 +57,14 @@ class OpenCodeProvider(OpenAICompatibleChatProvider):
             return []
         out = []
         for mid, m in data.items():
-            free = mid.endswith("-free") or mid == "big-pickle"
+            cost = m.get("cost") or {}
+            free = cost.get("input", 0) == 0
+            inputs = m.get("input") or []
+            caps = {}
+            if m.get("reasoning"):
+                caps["reasoning"] = True
+            if "image" in inputs:
+                caps["vision"] = True
             out.append(
                 ModelInfo(
                     id=mid,
@@ -62,10 +72,10 @@ class OpenCodeProvider(OpenAICompatibleChatProvider):
                     owned_by="opencode",
                     context_window=m.get("contextWindow"),
                     max_output=m.get("maxTokens"),
-                    cost={"input": 0, "output": 0} if free else m.get("cost"),
-                    access="free" if free else m.get("access", "paid"),
-                    capabilities=m.get("capabilities"),
-                    modalities=m.get("input"),
+                    cost=cost,
+                    access="free" if free else "paid",
+                    capabilities=caps or None,
+                    modalities=inputs or None,
                     raw=m,
                 )
             )

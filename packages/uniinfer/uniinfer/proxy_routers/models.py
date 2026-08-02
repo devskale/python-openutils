@@ -71,6 +71,8 @@ def _model_info_to_dict(m) -> dict:
             d["modalities"] = m.modalities
         if m.cost:
             d["cost"] = m.cost
+        if m.access:
+            d["access"] = m.access
         return d
     return {"id": str(m), "object": "model", "owned_by": "skaledev"}
 
