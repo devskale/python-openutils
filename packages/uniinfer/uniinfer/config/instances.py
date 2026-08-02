@@ -14,7 +14,7 @@ from __future__ import annotations
 import json
 import logging
 import os
-from dataclasses import dataclass, replace
+from dataclasses import dataclass, field, replace
 from pathlib import Path
 from typing import Any, Optional
 
@@ -65,6 +65,10 @@ class InstanceSpec:
     enabled: bool = True
     default_model: Optional[str] = None
     is_builtin: bool = False
+    # Open, forward-adoptable access metadata: {keytype, models, budget, …}.
+    # keytype = free-form label; models = optional selective spec (list today,
+    # filter object later). Code reads what it knows; the rest is preserved.
+    access: dict = field(default_factory=dict)
 
 
 def _spec_from_class(alias: str, provider: str, is_builtin: bool) -> InstanceSpec:
@@ -100,6 +104,8 @@ def _apply_entry(spec: InstanceSpec, entry: Any) -> InstanceSpec:
     if not isinstance(entry, dict):
         raise ValueError(f"instance entry must be an object, got {type(entry).__name__}")
     overrides = {k: entry[k] for k in _ENTRY_FIELDS if k in entry}
+    if isinstance(entry.get("access"), dict):
+        overrides["access"] = entry["access"]
     return replace(spec, **overrides)
 
 

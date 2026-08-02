@@ -127,3 +127,51 @@ loader wraps `load_instances()` and is independently unit-testable.
 - **L3 CLI:** `init` + smart add/remove + enable/disable/reset/show.
 - First slice: L1 + minimal CLI (add/list/remove with probe+write), end-to-end
   testable live; then layer L2 + rest of L3. Tests first at each step.
+
+## Key management & accessibility (Phase 2.5 — visibility)
+
+Each instance carries an **open `access` dict** (forward-adoptable — new access
+semantics are new keys, no schema migration):
+
+```jsonc
+"access": {
+  "keytype": "GLM Coding Pro",     // free-form label (any name)
+  "models": ["glm-4.5-flash"]      // OPTIONAL — present = selective access
+}
+```
+
+- **`keytype`** — free-form display label ("GLM Coding Pro", "Trial", "Free
+  tier", "anonymous"…). Not an enum.
+- **`models`** — *optional* selective spec. Present (a list) → the instance can
+  only reach those models. Absent → all of the provider's models. (Filter
+  objects like `{"match":"free"}` / `{"access":"free"}` are reserved for later —
+  the open dict absorbs them without a migration.)
+- **free / paid** — stays **per-model** (`ModelInfo.access`), surfaced per
+  instance as a `free/all/paid` count on the Dashboard fleet panel.
+
+### First-cut tags (the "few important ones")
+
+```jsonc
+"zai-code":  { "provider": "zai-code", "credgoo_service": "zai-code",
+               "access": { "keytype": "GLM Coding Pro" } },
+"zai-trial": { "provider": "zai", "credgoo_service": "zai-trial",
+               "access": { "keytype": "Trial", "models": ["glm-4.5-flash"] } },
+"opencode":  { "provider": "opencode", "access": { "keytype": "Paid + free models" } },
+"arli":      { "provider": "arli",     "access": { "keytype": "Free tier" } },
+"kilo":      { "provider": "kilo",     "access": { "keytype": "Free access" } },
+"pollinations": { "provider": "pollinations", "access": { "keytype": "anonymous" } }
+```
+
+Each provider's `free/all/paid` split is computed from the catalog
+(`ModelInfo.access`), gated by the instance's selective `models` list when set.
+
+### What this is NOT (yet)
+
+- **No routing / auto-selection** — addressing `zai@model` still resolves one
+  instance explicitly. Free-preference routing + fallback are a later layer.
+- **No budgets / per-period metering** — `access` can already *store*
+  `budget`/`period`/`ratelimit` (forward-adoptable), but nothing acts on them
+  yet. Budget tracking is a future layer.
+
+The dashboard fleet panel is the first place this surfaces: `keytype` +
+`free/all/paid` + `scope` per instance.

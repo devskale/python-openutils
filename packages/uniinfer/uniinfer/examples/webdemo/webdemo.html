@@ -11,7 +11,7 @@
   <script src="https://cdn.jsdelivr.net/npm/dompurify@3.2.6/dist/purify.min.js"></script>
   <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
   <script>(function(){var t=localStorage.getItem('uniinfer_theme');if(!t)t=(window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light';if(t==='dark')document.documentElement.classList.add('dark');})();</script>
-  <link rel="stylesheet" href="/webdemo/style.css?v=p3" />
+  <link rel="stylesheet" href="/webdemo/style.css?v=p4" />
 </head>
 <body>
   <!-- Login gate -->
@@ -308,7 +308,7 @@
     </main>
   </div>
 
-  <script src="/webdemo/config.js?v=p3"></script>
+  <script src="/webdemo/config.js?v=p4"></script>
   <script>
   (() => {
     "use strict";
@@ -555,10 +555,19 @@ ${js}`;
         const rows = Object.entries(d || {}).slice(0, 14).flatMap(([pid, models]) => Object.entries(models || {}).slice(0, 1).map(([m, s]) => [escapeHtml(pid + "@" + m), s.rpm || "?", s.ceiling || "?", s.cooldown ? "cooling" : "ok", s["429_streak"] || 0]));
         dSet("dash-rates", rows.length ? dTable(["model", "rpm", "ceiling", "state", "429✗"], rows) : `<div class="muted">no rate-limit data (none tracked yet)</div>`);
       }).catch(e => dSet("dash-rates", dErr(e)));
-      // Fleet instances
-      dGet("/v1/system/instances").then(d => {
-        const rows = Object.values(d || {}).slice(0, 30).map(s => [escapeHtml(s.alias), escapeHtml(s.provider), s.base_url ? escapeHtml(s.base_url) : `<span class="muted">default</span>`, s.enabled ? `<span class="d-ok">on</span>` : `<span class="d-bad">off</span>`, s.requires_api_key ? "key" : "anon", s.is_builtin ? "builtin" : "custom"]);
-        dSet("dash-fleet", rows.length ? dTable(["alias", "provider", "base_url", "state", "auth", "kind"], rows) : `<div class="muted">no instances</div>`);
+      // Fleet instances — keytype + free/all/paid split (from the catalog)
+      Promise.all([dGet("/v1/system/instances"), dGet("/v1/catalog").catch(() => ({}))]).then(([inst, cat]) => {
+        const provModels = {};
+        for (const [pid, pd] of Object.entries((cat && cat.providers) || {})) provModels[pid] = (pd.models || []).map(m => m && m.access == null ? Object.assign({}, m, { access: "" }) : m);
+        const rows = Object.values(inst || {}).slice(0, 40).map(s => {
+          const keytype = (s.access && s.access.keytype) || (s.is_builtin ? "builtin" : "custom");
+          let ms = provModels[s.provider] || [];
+          const sel = s.access && Array.isArray(s.access.models) ? s.access.models : null;
+          if (sel) { const set = new Set(sel); ms = ms.filter(m => set.has(m.id)); }
+          const free = ms.filter(m => m.access === "free").length, paid = ms.filter(m => m.access === "paid").length;
+          return [escapeHtml(s.alias), escapeHtml(keytype), `${free}/${ms.length || "?"}/${paid}`, sel ? "selective" : "all", s.enabled ? `<span class="d-ok">on</span>` : `<span class="d-bad">off</span>`];
+        });
+        dSet("dash-fleet", rows.length ? dTable(["alias", "keytype", "free/all/paid", "scope", "state"], rows) : `<div class="muted">no instances</div>`);
       }).catch(e => dSet("dash-fleet", dErr(e)));
       // Catalog
       Promise.all(["/v1/models/new", "/v1/models/deprecated", "/v1/models/stale"].map(u => dGet(u).then(r => r.models || r.data || r).catch(() => []))).then(([nw, dep, stale]) => {

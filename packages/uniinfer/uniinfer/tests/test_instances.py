@@ -174,3 +174,26 @@ def test_get_instances_raises_on_first_bad_load(tmp_path):
     os.utime(f, (1000, 1000))
     with pytest.raises(ValueError):
         get_instances(path=str(f))  # nothing cached yet -> fail at boot
+
+
+def test_access_field_keytype_and_selective(tmp_path):
+    # free-form keytype label + selective models list, both in the open access dict
+    f = tmp_path / "pi.json"
+    f.write_text(json.dumps({
+        "zai-code": {"provider": "zai-code", "access": {"keytype": "GLM Coding Pro"}},
+        "zai-trial": {"provider": "zai", "access": {"keytype": "Trial", "models": ["glm-4.5-flash"]}},
+    }))
+    m = load_instances(path=str(f))
+    assert m["zai-code"].access["keytype"] == "GLM Coding Pro"
+    assert m["zai-trial"].access["models"] == ["glm-4.5-flash"]
+    assert m["zai"].access == {}  # builtin untouched
+
+
+def test_access_field_forward_compatible_unknown_keys(tmp_path):
+    # unknown future access keys are preserved (forward-adoptable), not dropped
+    f = tmp_path / "pi.json"
+    f.write_text(json.dumps({
+        "opencode": {"provider": "opencode", "access": {"keytype": "Paid", "budget": 10, "period": "month", "ratelimit": 25}},
+    }))
+    a = load_instances(path=str(f))["opencode"].access
+    assert a["budget"] == 10 and a["period"] == "month" and a["ratelimit"] == 25
