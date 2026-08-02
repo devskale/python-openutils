@@ -578,7 +578,7 @@ class TUProvider(ChatProvider):
                 results = []
                 for model in data.get("data", []):
                     mid = model["id"]
-                    m = ModelInfo(id=mid, owned_by=model.get("owned_by"), created=model.get("created"), raw=model)
+                    m = ModelInfo(id=mid, owned_by=model.get("owned_by"), created=model.get("created"), access="free", raw=model)
                     m.type = m.derive_type()
                     results.append(m)
                 return results
