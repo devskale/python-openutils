@@ -139,6 +139,12 @@ cost:
   (coincides with `isFree=true`; the public site's `:free`/`-free` listings are
   stale, see above); OpenRouter's `:free` (+ the `openrouter/free` virtual tier) is
   the reliable signal (cost-zero is a trap there too — `google/lyria-3-*`).
+- **Pollinations**: no signal in the serving `/v1/models` — use the rich
+  `gen.pollinations.ai/models` endpoint, whose `pricing` (pollen currency)
+  encodes it: **free = no positive cost field** (`promptTextTokens` /
+  `completionTextTokens` / `completionImageTokens` all absent-or-0; the `∞`
+  tier on the site). Probing spends pollen, so derive from pricing, not by
+  calling.
 
 So `access == "free"` won’t reliably list “what my trial key reaches.” Declare a
 key’s real reachable set on the instance:
