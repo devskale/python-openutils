@@ -60,7 +60,7 @@ class OpenAIProvider(OpenAICompatibleChatProvider):
                 )
 
             data = response.json()
-            return [ModelInfo(id=model["id"], owned_by=model.get("owned_by"), created=model.get("created"), raw=model) for model in data.get("data", [])]
+            return [ModelInfo(id=model["id"], owned_by=model.get("owned_by"), created=model.get("created"), access="paid", raw=model) for model in data.get("data", [])]
         except Exception as e:
             status_code = getattr(e.response, "status_code", None) if hasattr(e, "response") else None
             response_body = getattr(e.response, "text", None) if hasattr(e, "response") else str(e)
