@@ -88,7 +88,7 @@ class TUProvider(ChatProvider):
     """TU (Tencent Unbounded) LLM Provider implementation."""
 
     _DEFAULT_MAX_TOKENS = 8192
-    ACCESS_TIER = None  # key-gated: TU Wien Aqueduct (university-hosted, access via key — NOT a public free tier)
+    ACCESS_TIER = "granted"  # key-granted: TU Wien Aqueduct (university-hosted, access via key — not a public free tier, not paid-$)
     _CREDGOO_SERVICE = "tu"
     _DEFAULT_BASE_URL = TU_BASE_URL
     # OpenAI passthrough params to NEVER forward to vLLM even if a client sends
@@ -578,7 +578,7 @@ class TUProvider(ChatProvider):
                 results = []
                 for model in data.get("data", []):
                     mid = model["id"]
-                    m = ModelInfo(id=mid, owned_by=model.get("owned_by"), created=model.get("created"), raw=model)
+                    m = ModelInfo(id=mid, owned_by=model.get("owned_by"), created=model.get("created"), access="granted", raw=model)
                     m.type = m.derive_type()
                     results.append(m)
                 return results

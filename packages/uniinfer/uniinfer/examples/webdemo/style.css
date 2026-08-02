@@ -904,6 +904,7 @@ select:disabled { color: var(--text-muted); opacity: 0.5; cursor: not-allowed; }
   border-radius: 50%; font-size: 0.65rem; font-weight: 700; text-align: center;
 }
 .access-free { background: #dcfce7; color: #16a34a; }
+.access-granted { background: #dbeafe; color: #2563eb; }  /* key-granted (distinct from free/paid) */
 .access-paid { background: var(--muted); color: var(--text-muted); }
 
 .td-provider {
