@@ -2,7 +2,9 @@ import json
 from pathlib import Path
 from typing import Any, AsyncIterator, Optional
 
-from ..core import REASONING_OFF, ChatCompletionRequest, ChatCompletionResponse, ChatMessage, ChatProvider
+import requests
+
+from ..core import REASONING_OFF, ChatCompletionRequest, ChatCompletionResponse, ChatMessage, ChatProvider, ModelInfo
 from ..errors import UniInferError, map_provider_error
 
 _MODEL_DEFAULTS: dict[str, dict[str, Any]] | None = None
@@ -67,6 +69,65 @@ class OpenAICompatibleChatProvider(ChatProvider):
     def __init__(self, api_key: Optional[str] = None, base_url: Optional[str] = None, **kwargs):
         super().__init__(api_key, **kwargs)
         self.base_url = base_url or self.BASE_URL
+
+    # ------------------------------------------------------------------ #
+    # model listing — a template method. The mechanics (credgoo key,
+    # GET {base_url}/models, JSON parse, error-map) live here; each subclass
+    # declares its dialect by overriding _model_info(raw). Override
+    # _models_url / _resolve_api_key only when a provider deviates.
+    # ------------------------------------------------------------------ #
+    @classmethod
+    def _resolve_api_key(cls, api_key: Optional[str]) -> Optional[str]:
+        if api_key:
+            return api_key
+        service = getattr(cls, "CREDGOO_SERVICE", None)
+        if not service:
+            return None
+        try:
+            from credgoo import get_api_key
+            return get_api_key(service)
+        except Exception:
+            return None
+
+    @classmethod
+    def _models_url(cls, base_url: str) -> str:
+        return f"{base_url.rstrip('/')}/models"
+
+    @classmethod
+    def _extra_request_headers(cls) -> dict:
+        """Extra headers for the /models GET (e.g. app attribution). Default none."""
+        return {}
+
+    @classmethod
+    def _fetch_entries(cls, api_key: Optional[str], url: str) -> list[dict]:
+        headers = {**cls._extra_request_headers()}
+        if api_key:
+            headers["Authorization"] = f"Bearer {api_key}"
+        r = requests.get(url, headers=headers, timeout=30)
+        if r.status_code != 200:
+            raise map_provider_error(
+                cls.ERROR_PROVIDER_NAME or cls.PROVIDER_ID,
+                Exception(f"{cls.ERROR_PROVIDER_NAME} API error: {r.status_code} - {r.text}"),
+                status_code=r.status_code, response_body=r.text,
+            )
+        data = r.json()
+        if isinstance(data, dict) and "data" in data:
+            return data["data"]
+        return data if isinstance(data, list) else []
+
+    @classmethod
+    def _model_info(cls, raw: dict) -> ModelInfo:
+        """Dialect hook: turn one raw entry into a ModelInfo. Default is bare
+        (id + owned_by); subclasses override to add access/cost/capabilities
+        from their raw fields."""
+        return ModelInfo(id=raw.get("id") or raw.get("name"), owned_by=raw.get("owned_by"), raw=raw)
+
+    @classmethod
+    def list_models(cls, api_key: Optional[str] = None, base_url: Optional[str] = None) -> list[ModelInfo]:
+        key = cls._resolve_api_key(api_key)
+        url = cls._models_url(base_url or cls.BASE_URL)
+        entries = cls._fetch_entries(key, url)
+        return [cls._model_info(e) for e in entries if isinstance(e, dict)]
 
     def _flatten_messages(self, messages: list[ChatMessage]) -> list[dict[str, Any]]:
         flattened_messages = []
