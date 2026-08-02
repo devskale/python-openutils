@@ -1,6 +1,12 @@
 from __future__ import annotations
 """
 SambaNova provider implementation.
+
+Access: free-tier-reachable — SambaNova Cloud's free tier reaches all models
+on a balance_units budget (rate-limited: ~20 RPM/20 RPD/200K TPD, no CC), like
+HF/pollinations (depletes, then 402 'balance_units: 0'). The API's `pricing`
+field is the PAID tier (per-token $), NOT an access signal — so all models are
+tagged access='free'. Grounded in ayautomate/toolfreebie; verified by probe.
 """
 from typing import List, Optional
 
@@ -56,19 +62,15 @@ class SambanovaProvider(OpenAICompatibleChatProvider):
                 if not isinstance(model, dict) or not model.get("id"):
                     continue
                 pricing = model.get("pricing", {})
-                cost = None
-                if pricing.get("prompt") or pricing.get("completion"):
-                    cost = {}
-                    if pricing.get("prompt"):
-                        cost["input"] = float(pricing["prompt"]) * 1_000_000
-                    if pricing.get("completion"):
-                        cost["output"] = float(pricing["completion"]) * 1_000_000
+                # SambaNova's free tier reaches all models (rate-limited: 20 RPM/20 RPD/200K
+                # TPD) on a balance_units budget; the API `pricing` is the PAID tier (per-
+                # token $), irrelevant to free access. So access='free', cost=None (free).
                 results.append(ModelInfo(
                     id=model["id"],
                     type="chat",
                     context_window=model.get("context_length"),
                     max_output=model.get("max_completion_tokens"),
-                    cost=cost,
+                    access="free",
                     owned_by=model.get("owned_by"),
                     raw=model,
                 ))
