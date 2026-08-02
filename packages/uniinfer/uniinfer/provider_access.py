@@ -17,7 +17,7 @@ from uniinfer import EmbeddingProviderFactory, EmbeddingRequest, EmbeddingRespon
 from uniinfer import ProviderFactory
 from uniinfer.completion import parse_provider_model
 from uniinfer.config.providers import PROVIDER_CONFIGS
-from uniinfer.config.instances import instance_requires_api_key, resolve_instance
+from uniinfer.config.instances import instance_requires_api_key, resolve_instance, selective_ids
 from uniinfer.errors import AuthenticationError, UniInferError
 from uniinfer.json_utils import update_models
 
@@ -250,8 +250,10 @@ def list_models_for_provider(provider_name: str, api_bearer_token: str) -> list[
     modellist = provider_cls.list_models(api_key=api_key, **extra)
     from uniinfer.proxy_services.models_registry import Catalog
     modellist = Catalog().apply_overrides(provider_name, modellist)
+    allowed = selective_ids(spec)
+    if allowed is not None:
+        modellist = [m for m in modellist if (m.get("id") if isinstance(m, dict) else getattr(m, "id", None)) in allowed]
     update_models(modellist, provider_name)
-    from uniinfer.proxy_services.models_registry import Catalog
 
     Catalog().upsert_provider(provider_name, modellist)
     return modellist

@@ -21,7 +21,7 @@ import logging
 import os
 from starlette.concurrency import run_in_threadpool
 
-from uniinfer.config.instances import alias_serve_decision, resolve_instance
+from uniinfer.config.instances import alias_serve_decision, resolve_instance, selective_ids
 
 _logger = logging.getLogger("uniioai_proxy")
 _ALIAS_REFRESH_TTL_DEFAULT = 300.0
@@ -48,6 +48,12 @@ async def _bg_refresh_alias(alias: str, token: str | None) -> None:
 def _cached_alias_response(provider_name: str) -> dict:
     entry = Catalog().read_nested(provider_name)["providers"].get(provider_name, {})
     data = [dict(m, object="model") for m in entry.get("models", [])]
+    try:
+        allowed = selective_ids(resolve_instance(provider_name))
+    except Exception:
+        allowed = None
+    if allowed is not None:
+        data = [m for m in data if m.get("id") in allowed]
     return {"object": "list", "data": data}
 
 
