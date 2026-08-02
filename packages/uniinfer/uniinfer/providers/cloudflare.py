@@ -1,6 +1,12 @@
 from __future__ import annotations
 """
 Cloudflare Workers AI provider implementation.
+
+Access: universally free — 10,000 Neurons/day free allocation, all models
+accessible within the shared daily quota (per-model rates are Neuron costs,
+not a paywall); $0.011/1K Neurons above. Grounded in developers.cloudflare.com/
+workers-ai/platform/pricing. The /ai/models/search API carries no pricing,
+so all models are tagged access='free'.
 """
 import json
 from typing import Optional, List, AsyncIterator
@@ -94,12 +100,27 @@ class CloudflareProvider(ChatProvider):
 
             models_data = response.json()
             model_list = []
+            _TASK_TYPE = {
+                "Text Generation": "chat", "Text-to-Image": "image",
+                "Text Embeddings": "embedding", "Automatic Speech Recognition": "stt",
+                "Text-to-Speech": "tts", "Image-to-Text": "chat",  # vision (image to text)
+                "Image Classification": "image", "Text Classification": "classification",
+                "Translation": "chat", "Dumb Pipe": "chat",
+            }
             if models_data.get("success", False) and "result" in models_data:
                 for model in models_data["result"]:
                     if isinstance(model, dict) and "name" in model:
                         model_name = model.get("name")
                         if model_name:
-                            model_list.append(ModelInfo(id=model_name, owned_by=model.get("author"), raw=model))
+                            task = model.get("task") or {}
+                            task_name = task.get("name") if isinstance(task, dict) else None
+                            model_list.append(ModelInfo(
+                                id=model_name,
+                                owned_by=model.get("author"),
+                                type=_TASK_TYPE.get(task_name, "chat"),
+                                access="free",  # 10K Neurons/day free, all models within quota
+                                raw=model,
+                            ))
 
             return model_list
         except Exception as e:
