@@ -163,6 +163,45 @@ See [provider-instances-design.md §Key management](provider-instances-design.md
 - Trial reachability: an irregular named subset → model it per-instance
   (`access.models`), not via a global free/paid filter.
 
+## Access tiers & per-provider signals
+
+`ModelInfo.access` takes one of **three tiers** (each provider's models are
+stamped at the source via the signal below; verified by web-grounding + a
+real-life probe with a representative key):
+
+| Tier | Meaning |
+|------|---------|
+| `free` | public free tier / no per-token cost (rate-limited, or a shared budget that depletes). Usable without payment. |
+| `granted` | accessible via **your key** (you hold one → access granted). Not a public free tier, not paid-$. |
+| `paid` | per-token $ cost; needs payment / credits. |
+
+| Provider | Tier(s) | Reliable signal (NOT cost-zero) | Verified |
+|----------|---------|---------------------------------|----------|
+| arli | free / paid(trial) | name prefix `(TRIAL)`; served-ctx capped via `provider_overrides.json` (12K) | serving probe |
+| opencode | free | pi.dev `cost.input == 0` | no-budget-key probe |
+| kilo | free / paid | gateway **`isFree` flag** | serving probe |
+| openrouter | free / paid | `:free` suffix + `openrouter/free` virtual tier | no-budget-key probe |
+| pollinations | free / paid | `gen.pollinations.ai/models` `pricing` field — **free = no positive cost field** (the `∞` tier); probing spends pollen | page + probe |
+| groq | free (all) | universally free; API has no pricing | FAQ + serving |
+| ngc | free (all) | universally free (build.nvidia.com FAQ: 40 RPM, no per-token billing) | FAQ + serving |
+| mistral | free (all) | free Experiment tier (all models, ~1B tok/mo) | docs + serving |
+| cloudflare | free (all) | 10K Neurons/day, all models within quota | cross-task probe + pricing docs |
+| huggingface | free (within ~$0.10/mo budget) | Router `/v1/models` (129 deployed); old `api-inference` endpoint is **dead** (DNS removed) | budget probe |
+| sambanova | free (balance_units budget) | free tier (API `pricing` is the paid tier — ignore for access) | balance probe |
+| chutes | paid (PAYG) | `price.usd > 0` (per-token, no free tier) | $0-balance probe |
+| moonshot | paid (trial credits) | per-token, no persistent free tier (Kimi K2's free tier is on Groq) | trial-credit probe |
+| stepfun | paid (trial credits) | per-token; trial quota depletes | quota probe |
+| zai / zai-code | free(flash) / paid | hidden `_HIDDEN_MODELS` flash (`glm-4.5/4.7-flash`, unlisted); two base URLs (paas / coding) | serving probe |
+| ollama | free (self-hosted) | your own hardware | n/a |
+| tu | **granted** | TU Wien Aqueduct — university-hosted, access via key (not public-free, not paid-$) | serving probe |
+| openai | paid | per-token, key-required, no free tier | — |
+
+**Rules of thumb:** cost-zero is a **trap** (kilo/openrouter `lyria-3-*`, pollinations);
+the provider's own free-flag / id-convention / pricing-field is the truth, **not**
+the marketing site (kilo/hf sites are stale); probing may **spend** the key's
+budget (pollinations pollen, HF credits) — prefer the catalog endpoint. Manage
+per-instance reach with `access.only` / `access.models` (CLI: `--keytype` / `--only`).
+
 ## Generation Pipeline
 
 ```bash
