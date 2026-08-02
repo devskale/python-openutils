@@ -733,11 +733,14 @@ def main():
     parser.add_argument("--key", metavar="KEY", help="With --add-provider: store this key in credgoo under the alias's service (file never holds the raw key).")
     parser.add_argument("--no-key", action="store_true", help="With --add-provider: mark the instance keyless (requires_api_key: false).")
     parser.add_argument("--no-verify", action="store_true", help="With --add-provider: skip the reachability/model probe.")
+    parser.add_argument("--keytype", metavar="LABEL", help="Set instance access.keytype (e.g. 'Free key', 'Paid plan', 'Low-pollen key'). Use with --add-provider or --tag.")
+    parser.add_argument("--only", metavar="TIER", help="Restrict an instance to an access tier (free/granted/paid). Use with --add-provider or --tag.")
+    parser.add_argument("--tag", metavar="ALIAS", help="Tag an existing instance's access (--keytype / --only).")
 
     args = parser.parse_args()
 
     if args.init or args.add_provider or args.remove_provider or args.enable_provider \
-            or args.disable_provider or args.reset_provider or args.show_provider:
+            or args.disable_provider or args.reset_provider or args.show_provider or getattr(args, "tag", None):
         from uniinfer.instance_cli import manage
         manage(args)
         return

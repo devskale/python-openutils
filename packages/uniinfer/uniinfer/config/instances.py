@@ -281,6 +281,7 @@ def upsert_instance(
     requires_api_key: Optional[bool] = None,
     enabled: Optional[bool] = None,
     default_model: Optional[str] = None,
+    access: Optional[dict] = None,
     path: Optional[str] = None,
 ) -> dict[str, Any]:
     """Add or update an instance entry in the overlay; returns the written entry."""
@@ -297,6 +298,8 @@ def upsert_instance(
     ):
         if v is not None:
             entry[k] = v
+    if access:
+        entry["access"] = {**(entry.get("access") or {}), **access}
     is_builtin = alias in registered
     if not is_builtin:
         if "provider" not in entry:

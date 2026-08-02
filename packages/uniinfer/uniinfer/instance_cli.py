@@ -111,9 +111,30 @@ def _do_add(args: Any) -> None:
         base_url=base_url,
         credgoo_service=credgoo_service,
         requires_api_key=requires_api_key,
+        access=_access_from_args(args),
     )
     print(f"Saved instance '{alias}': {json.dumps(entry)}")
     print(f"Use it as: {alias}@<model>")
+
+
+def _access_from_args(args: Any) -> Optional[dict]:
+    """Build an access dict from --keytype/--only (None if neither set)."""
+    access: dict = {}
+    if getattr(args, "keytype", None):
+        access["keytype"] = args.keytype
+    if getattr(args, "only", None):
+        access["only"] = args.only
+    return access or None
+
+
+def _do_tag(args: Any) -> None:
+    """Tag an existing instance's access (--keytype / --only)."""
+    alias = args.tag
+    access = _access_from_args(args)
+    if not access:
+        raise SystemExit("error: --tag requires --keytype and/or --only")
+    entry = upsert_instance(alias, access=access)
+    print(f"Tagged '{alias}' access: {json.dumps(entry.get('access'))}")
 
 
 def _infer_provider(base_url: str) -> str:
@@ -151,6 +172,7 @@ def _do_show(args: Any) -> None:
     print(f"  requires_api_key: {spec.requires_api_key}")
     print(f"  enabled:          {spec.enabled}")
     print(f"  default_model:    {spec.default_model}")
+    print(f"  access:           {spec.access or '-'}")
 
 
 def manage(args: Any) -> None:
@@ -170,6 +192,8 @@ def manage(args: Any) -> None:
             _do_enable(args, False)
         elif args.reset_provider:
             _do_reset(args)
+        elif getattr(args, "tag", None):
+            _do_tag(args)
         elif args.show_provider:
             _do_show(args)
     except (ValueError, SystemExit) as e:
