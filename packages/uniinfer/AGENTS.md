@@ -110,7 +110,7 @@ Proxy requires a **credgoo combined token** (`bearer@encryption`) as Bearer auth
 1. Create `uniinfer/providers/<name>.py`
 2. Inherit from `ChatProvider`, `OpenAICompatibleChatProvider`, or `AnthropicCompatibleProvider`
 3. Set constants: `BASE_URL`, `PROVIDER_ID`, `ERROR_PROVIDER_NAME`, `DEFAULT_MODEL`, `CREDGOO_SERVICE`
-4. Implement: `complete()`, `stream_complete()`, `list_models()` (+ async variants)
+4. Implement: `complete()`, `stream_complete()` (+ async variants). For model listing, see the flow below.
 5. Export in `uniinfer/providers/__init__.py`
 6. Register in `uniinfer/__init__.py` via `ProviderFactory.register_provider()`
 7. Add conditional import for optional deps
@@ -118,7 +118,7 @@ Proxy requires a **credgoo combined token** (`bearer@encryption`) as Bearer auth
 
 ### OpenAI-Compatible Flow
 
-Inherit `OpenAICompatibleChatProvider` → override only `list_models()` and header hooks if non-standard.
+Inherit `OpenAICompatibleChatProvider` → set `BASE_URL` + `CREDGOO_SERVICE` and override **`_model_info(raw)`** (the dialect hook: turn one `/models` entry into a `ModelInfo`, parsing that provider's access/cost/capabilities/modalities from its raw fields). The base owns the mechanics — credgoo-key resolution, `GET {base_url}/models`, JSON parse, error-map — via a template-method `list_models()`. Override `_models_url` only if the endpoint isn't `{base_url}/models`, and `_extra_request_headers` for app attribution etc. You no longer write `list_models()` yourself.
 
 ### Anthropic-Compatible Flow
 

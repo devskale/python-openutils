@@ -42,6 +42,16 @@ reviews. Keep this current when concepts are named or sharpened.
   dict in → same out). The single home for "what models does this instance show,
   with what overrides"; both the live `/v1/models/{provider}` path and the
   SWR-cached alias response route through it so they cannot drift.
+- **Model-listing dialect hook (`_model_info`)** — the per-provider dialect on
+  `OpenAICompatibleChatProvider`. The base owns `list_models()` as a template
+  method (credgoo-key resolution → `GET {base_url}/models` → JSON parse →
+  error-map → build); each OpenAI-compat provider declares only its dialect by
+  overriding `_model_info(raw) -> ModelInfo` (parsing access/cost/capabilities/
+  modalities from its raw fields), plus optional `_models_url` /
+  `_extra_request_headers` when it deviates. Per *Provider* (above), the dialect
+  stays with the provider; only the mechanics consolidate. SDK / non-`data[]`
+  providers (groq, cloudflare, ollama, tu, zai, opencode, pollinations) keep a
+  custom `list_models`.
 
 ## Contract
 

@@ -4,6 +4,41 @@ All notable changes to **uniinfer** are documented in this file.
 Versions follow [Semantic Versioning](https://semver.org/); this file
 adheres to [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.8.2] - 2026-08-02
+
+### Changed — architecture deepening (review candidates A + B)
+
+- **`Catalog.resolve_for_instance`** — the per-instance model-resolution
+  pipeline (provider+model overrides → selective/only access filter)
+  consolidated into one module. Both the live `/v1/models/{provider}` path and
+  the SWR-cached alias response route through it; `list_resolved` (global)
+  stays on `apply_overrides`. Provider overrides are keyed by the instance's
+  *underlying provider*, so a custom alias inherits its provider's curated
+  override.
+- **Template-method `list_models` on `OpenAICompatibleChatProvider`** — the
+  credgoo-key / GET / parse / error-map mechanics consolidated onto the base;
+  11 OpenAI-compat providers (ngc, chutes, openrouter, internlm, stepfun,
+  upstage, sambanova, moonshot, mistral, kilo, arli) now declare only their
+  dialect via a `_model_info(raw)` hook (plus optional `_models_url` /
+  `_extra_request_headers`). SDK / non-`data[]` providers (groq, cloudflare,
+  ollama, tu, zai, opencode, pollinations) keep a custom `list_models`.
+
+### Fixed
+
+- SWR-cached alias responses now apply provider-level overrides (previously
+  filtered but skipped `apply_overrides` — e.g. arli's served-ctx cap vanished
+  from the cached path).
+- internlm: a 401 (invalid key) previously masked by silent `except: return []`
+  is now surfaced.
+
+### Docs
+
+- `CONTEXT.md`: *Model resolution* + *Model-listing dialect hook* terms.
+- `AGENTS.md`: "Adding a New Provider" — OpenAI-compat providers override
+  `_model_info`, not `list_models`.
+- `docs/provider-instances-design.md`: `resolve_for_instance` + CLI tagging
+  flags (`--keytype`/`--only`/`--tag`).
+
 ## [0.8.1] - 2026-08-02
 
 ### Added

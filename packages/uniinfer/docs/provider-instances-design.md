@@ -78,6 +78,11 @@ Field defaults (when omitted): inherit the underlying class attrs
 - Catalog keyed by **alias** (`models.json["ollama-home"]` ≠ `["ollama-amp"]`).
 - `/v1/models/{alias}` resolves via the shared `resolve_instance()` and lists
   through the underlying class's `list_models` with the instance's base_url/key.
+  The raw list then passes through **`Catalog.resolve_for_instance(alias, models)`**
+  — provider-level + per-model overrides (keyed by the instance's *underlying
+  provider*, not the alias), then the instance's selective/only access filter.
+  Both the live path and the SWR-cached alias response route through it, so they
+  cannot drift (the cached path previously filtered but skipped overrides).
 - Disabled aliases skipped everywhere.
 - **Hybrid refresh:** built-ins on the daily timer (unchanged); custom aliases
   lazy + stale-while-revalidate (reuse `ensure_fresh_models_file` machinery),
@@ -86,18 +91,22 @@ Field defaults (when omitted): inherit the underlying class attrs
 ## CLI (flat-flag CRUD family, consistent with existing `--list-providers`)
 
 - `uniinfer init` — write a commented full-registry template (create-if-missing).
-- `--add-provider <alias> --provider <class> --base-url … [--key sk-…] [--credgoo-service …] [--no-key] [--no-verify]`
+- `--add-provider <alias> --provider <class> --base-url … [--key sk-…] [--credgoo-service …] [--no-key] [--no-verify] [--keytype LABEL] [--only TIER]`
   - **Probe by default**: `{base_url}/models` → infer type, verify reachability,
     auto-detect anonymous (`requires_api_key: false`), pre-fetch model list.
     Warn-not-block on failure; `--no-verify` for headless/CI.
   - `--key` stores via credgoo under the alias (overridable); explicit `--key`
     bypasses credgoo's interactive `_confirm`. Prompt-fallback honors it.
+  - `--keytype` / `--only` stamp the instance's `access` (keytype label + tier
+    filter free/granted/paid) at creation.
 - `--remove-provider <alias>` — **smart safe-remove**: custom aliases delete
   (confirm + `--force`); built-in names refuse and steer to `--disable-provider`
   / `--reset-provider` (never a half-registered state).
 - `--enable-provider` / `--disable-provider <alias>` — toggle.
 - `--reset-provider <alias>` — drop overrides, revert to registry defaults.
-- `--show-provider <alias>`.
+- `--tag <alias> --keytype LABEL --only TIER` — tag an existing instance's
+  access (incl. built-ins via overlay); merges, so partial updates don't clobber.
+- `--show-provider <alias>` (prints the resolved access tags too).
 - TUI deferred.
 
 ## Embeddings
