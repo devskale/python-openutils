@@ -2,6 +2,11 @@ from __future__ import annotations
 """
 NVIDIA GPU Cloud (NGC) provider implementation.
 Uses OpenAI-compatible API.
+
+Access: universally free — per build.nvidia.com FAQ, "All models are free to
+prototype with": the free tier runs on rate limits (~40 RPM, most models), no
+per-token billing. The /models API carries no pricing (id/owned_by/created
+only), so all models are tagged access='free'.
 """
 from typing import Optional, List
 
@@ -43,6 +48,6 @@ class NGCProvider(OpenAICompatibleChatProvider):
             response = requests.get(f"{base_url}/models", headers=headers)
             response.raise_for_status()
             models_data = response.json()
-            return [ModelInfo(id=model["id"], owned_by=model.get("owned_by"), raw=model) for model in models_data.get("data", [])]
+            return [ModelInfo(id=model["id"], owned_by=model.get("owned_by"), access="free", created=model.get("created"), raw=model) for model in models_data.get("data", [])]
         except Exception:
             return []
