@@ -4,6 +4,41 @@ All notable changes to **uniinfer** are documented in this file.
 Versions follow [Semantic Versioning](https://semver.org/); this file
 adheres to [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.8.0] - 2026-08-02
+
+### Added
+
+- **Per-instance access surfacing** — `InstanceSpec.access` (open dict:
+  `keytype` label + selective `models` list) now actually *restricts* what an
+  instance lists, not just decorates it. `selective_ids()` is wired into both
+  the live `/v1/models/{provider}` fetch (`list_models_for_provider`) and the
+  SWR-cached alias response (`_cached_alias_response`), so a free-key instance
+  shows only its reachable models. **Use case:** multiple same-tier keys as
+  *separate* instances (no pooling/bending into each other) — e.g. `opencode` +
+  `zenfg`, both free opencode keys, each tagged `keytype: "Free key"` + the
+  selective 7-model list.
+- **Provider-level catalog overrides** — shipped `provider_overrides.json`
+  (`{pid: {field: val}}` applies to all of a provider's models; mirrors
+  `type_overrides.json`). Carries curated served realities. Applied in
+  `Catalog.list_resolved` (curated < runtime `_providers` < per-model) and the
+  live path via `Catalog.apply_overrides`.
+
+### Changed
+
+- **opencode enrichment from pi.dev** — pi.dev exposes flat fields
+  (`reasoning`, `input`, `cost`) rather than a `capabilities` dict, so we now
+  translate: `reasoning:true` → `capabilities.reasoning`, `input:['image']` →
+  `capabilities.vision`. Access is **cost-driven** (`cost.input == 0` → `free`),
+  retiring the `-free`/`big-pickle` name heuristic (per-provider code → data).
+
+### Fixed
+
+- `_model_info_to_dict` dropped `access` on serialization, so the live
+  `/v1/models/{provider}` path reported `null` (the catalog path kept it via
+  `read_nested`). Now included.
+- arli served-context corrected to 12K (catalog was reporting the model's
+  native advertised 262144; arli serves 12K per providers.md).
+
 ## [0.7.0] - 2026-08-01
 
 ### Added
