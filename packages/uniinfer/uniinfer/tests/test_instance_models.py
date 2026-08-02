@@ -90,3 +90,36 @@ def test_merge_custom_aliases_skips_unknown():
     existing = {"orphan": {"models": []}}
     merged = merge_custom_aliases(builtins, existing, {})
     assert "orphan" not in merged
+
+
+# --------------------------------------------------------------------------- #
+# Catalog.resolve_for_instance — the unified per-instance override→filter pipe
+# --------------------------------------------------------------------------- #
+def test_resolve_for_instance_applies_overrides_then_filter(fake_provider, instances_env, monkeypatch):
+    """resolve_for_instance applies provider+model overrides (keyed by the
+    instance's UNDERLYING provider), then the instance's selective/only filter.
+
+    Regression: the cached-alias path (_cached_alias_response) used to filter but
+    skip apply_overrides, so provider-level overrides (e.g. served-ctx caps)
+    vanished from cache. Both paths now route here."""
+    instances_env.write_text(json.dumps({
+        "myfake": {"provider": "fakecompat", "requires_api_key": False,
+                  "access": {"only": "free"}}
+    }))
+    # provider-level override keyed by the underlying provider ('fakecompat'),
+    # NOT the alias ('myfake') — so spec.provider keying is exercised.
+    monkeypatch.setattr(
+        "uniinfer.proxy_services.models_registry.Catalog._load_provider_overrides",
+        lambda self: {"fakecompat": {"context_window": 999}},
+    )
+    monkeypatch.setattr(
+        "uniinfer.proxy_services.models_registry.Catalog._load_overrides",
+        lambda self: {"models": {}},
+    )
+    from uniinfer.proxy_services.models_registry import Catalog
+    models = [ModelInfo(id="fake-1", access="free"), ModelInfo(id="fake-2", access="paid")]
+    out = Catalog().resolve_for_instance("myfake", models)
+    # filter: only 'free' survives
+    assert [m.id for m in out] == ["fake-1"]
+    # override: applied (the bug was the cached path dropping this)
+    assert out[0].context_window == 999

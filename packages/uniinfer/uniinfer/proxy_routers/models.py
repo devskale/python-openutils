@@ -21,7 +21,7 @@ import logging
 import os
 from starlette.concurrency import run_in_threadpool
 
-from uniinfer.config.instances import alias_serve_decision, resolve_instance, selective_ids, instance_allows
+from uniinfer.config.instances import alias_serve_decision, resolve_instance
 
 _logger = logging.getLogger("uniioai_proxy")
 _ALIAS_REFRESH_TTL_DEFAULT = 300.0
@@ -49,9 +49,9 @@ def _cached_alias_response(provider_name: str) -> dict:
     entry = Catalog().read_nested(provider_name)["providers"].get(provider_name, {})
     data = [dict(m, object="model") for m in entry.get("models", [])]
     try:
-        spec = resolve_instance(provider_name)
-        if selective_ids(spec) is not None or (spec.access or {}).get("only"):
-            data = [m for m in data if instance_allows(spec, m)]
+        # full pipeline (overrides + access filter) — cached aliases used to
+        # filter but skip overrides, dropping e.g. arli's served-ctx cap.
+        data = Catalog().resolve_for_instance(provider_name, data)
     except Exception:
         pass
     return {"object": "list", "data": data}

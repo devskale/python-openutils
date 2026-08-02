@@ -35,6 +35,13 @@ reviews. Keep this current when concepts are named or sharpened.
   paths). `record_access` (default True) controls model-access tracking;
   diagnostic callers pass False. The single home for "reach a model and
   complete" — formerly six duplicated copies across provider_access.py + capabilities.
+- **Model resolution** — the per-instance listing pipeline (`Catalog.resolve_for_instance`).
+  Given a raw model list + an alias, applies provider-level + per-model overrides
+  (keyed by the instance's **underlying provider**, not the alias), then the
+  instance's selective/only access filter. Element-type-agnostic (ModelInfo or
+  dict in → same out). The single home for "what models does this instance show,
+  with what overrides"; both the live `/v1/models/{provider}` path and the
+  SWR-cached alias response route through it so they cannot drift.
 
 ## Contract
 

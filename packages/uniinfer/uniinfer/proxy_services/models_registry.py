@@ -543,6 +543,22 @@ class Catalog:
                     setattr(m, k, v)
         return models
 
+    def resolve_for_instance(self, alias: str, models: list) -> list:
+        """Resolve a raw model list for a named instance: apply provider+model
+        overrides (keyed by the instance's UNDERLYING provider, not the alias),
+        then the instance's selective/only access filter.
+
+        The single home for the per-instance override→filter pipeline; both the
+        live /v1/models/{provider} path and the SWR-cached alias response route
+        through it so they cannot drift (the cached path previously filtered
+        but skipped overrides). Elements may be ModelInfo or dict; the same type
+        comes back.
+        """
+        from uniinfer.config.instances import resolve_instance, instance_allows
+        spec = resolve_instance(alias)
+        models = self.apply_overrides(spec.provider, models)
+        return [m for m in models if instance_allows(spec, m)]
+
     # ------------------------------------------------------------------ #
     # history                                                            #
     # ------------------------------------------------------------------ #

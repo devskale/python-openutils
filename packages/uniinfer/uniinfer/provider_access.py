@@ -17,9 +17,10 @@ from uniinfer import EmbeddingProviderFactory, EmbeddingRequest, EmbeddingRespon
 from uniinfer import ProviderFactory
 from uniinfer.completion import parse_provider_model
 from uniinfer.config.providers import PROVIDER_CONFIGS
-from uniinfer.config.instances import instance_requires_api_key, resolve_instance, selective_ids, instance_allows
+from uniinfer.config.instances import instance_requires_api_key, resolve_instance
 from uniinfer.errors import AuthenticationError, UniInferError
 from uniinfer.json_utils import update_models
+from uniinfer.proxy_services.models_registry import Catalog
 
 from credgoo import get_api_key
 from dotenv import load_dotenv
@@ -248,10 +249,7 @@ def list_models_for_provider(provider_name: str, api_bearer_token: str) -> list[
             extra["base_url"] = ep["base_url"]
     provider_cls = ProviderFactory.get_provider_class(spec.provider)
     modellist = provider_cls.list_models(api_key=api_key, **extra)
-    from uniinfer.proxy_services.models_registry import Catalog
-    modellist = Catalog().apply_overrides(provider_name, modellist)
-    if selective_ids(spec) is not None or (spec.access or {}).get("only"):
-        modellist = [m for m in modellist if instance_allows(spec, m)]
+    modellist = Catalog().resolve_for_instance(provider_name, modellist)
     update_models(modellist, provider_name)
 
     Catalog().upsert_provider(provider_name, modellist)
