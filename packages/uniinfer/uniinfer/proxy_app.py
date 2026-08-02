@@ -8,7 +8,7 @@ import sys
 from fastapi.security import HTTPBearer  # Import HTTPBearer
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
 from fastapi import FastAPI, HTTPException, Request, status
 from fastapi.exceptions import RequestValidationError
 from fastapi.encoders import jsonable_encoder
@@ -229,13 +229,23 @@ def parse_provider_model(provider_model: str, allowed_providers: list[str] | Non
 # --- Add Endpoint to Serve Web Demo HTML ---
 @app.get("/webdemo", include_in_schema=False)
 async def get_web_demo():
-    """Serves the web demo HTML file."""
-    # Serve webdemo.html as the default file for /webdemo/
+    """Serves the web demo HTML file.
+
+    Cache-busts the bundled CSS/JS by stamping the webdemo dir's newest mtime
+    into the `?v=__BUILD__` query params in webdemo.html — so any asset change
+    gets a fresh URL automatically (no manual ?v= bumping)."""
     html_file_path = os.path.join(
         script_dir, "examples", "webdemo", "webdemo.html")
     if not os.path.exists(html_file_path):
         raise HTTPException(status_code=404, detail="webdemo.html not found")
-    return FileResponse(html_file_path)
+    with open(html_file_path, encoding="utf-8") as f:
+        html = f.read()
+    build = str(int(max(
+        os.path.getmtime(os.path.join(webdemo_dir, fn))
+        for fn in os.listdir(webdemo_dir)
+        if os.path.isfile(os.path.join(webdemo_dir, fn))
+    )))
+    return HTMLResponse(html.replace("__BUILD__", build))
 
 
 # --- Performance Dashboard (TTFT / tok/s / caching) ---
