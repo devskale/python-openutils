@@ -388,3 +388,49 @@ def merge_custom_aliases(
         if alias in existing_providers and alias not in merged:
             merged[alias] = existing_providers[alias]
     return merged
+
+
+# --------------------------------------------------------------------------- #
+# Per-instance model overrides (layered rules: defaults < pattern < per-model)
+# --------------------------------------------------------------------------- #
+def selective_ids(spec: InstanceSpec) -> Optional[set]:
+    """The restrictive model-id set for an instance, or None (= all models).
+
+    A string-list (selective ids) or a dict (keys = ids) restricts; a list of
+    match/set pattern rules, or an absent ``access.models``, does not.
+    """
+    models = (spec.access or {}).get("models")
+    if isinstance(models, list) and all(isinstance(x, str) for x in models):
+        return set(models)
+    if isinstance(models, dict):
+        return set(models.keys())
+    return None
+
+
+def apply_model_overrides(spec: InstanceSpec, model: dict) -> dict:
+    """Return a copy of ``model`` with this instance's access overrides applied.
+
+    Precedence (most-specific wins): per-model dict > ``match``/``set`` pattern
+    rules > ``models_defaults`` > the catalog entry as-is.
+
+    ``match`` matches if it's a substring of the model id OR equals the model's
+    ``access`` tag (e.g. ``"(TRIAL)"`` or ``"free"``).
+    """
+    acc = spec.access or {}
+    out = dict(model)
+    for k, v in (acc.get("models_defaults") or {}).items():
+        out[k] = v
+    models = acc.get("models")
+    if isinstance(models, dict):
+        ov = models.get(out.get("id"))
+        if isinstance(ov, dict):
+            out.update(ov)
+    elif isinstance(models, list):
+        for rule in models:
+            if not (isinstance(rule, dict) and "match" in rule and "set" in rule):
+                continue
+            m = rule["match"]
+            mid = out.get("id") or ""
+            if (isinstance(m, str) and (m in mid or out.get("access") == m)):
+                out.update(rule["set"] or {})
+    return out

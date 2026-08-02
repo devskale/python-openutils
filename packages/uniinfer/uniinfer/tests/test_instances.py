@@ -197,3 +197,52 @@ def test_access_field_forward_compatible_unknown_keys(tmp_path):
     }))
     a = load_instances(path=str(f))["opencode"].access
     assert a["budget"] == 10 and a["period"] == "month" and a["ratelimit"] == 25
+
+
+# --------------------------------------------------------------------------- #
+# Per-instance model overrides (layered rules)
+# --------------------------------------------------------------------------- #
+from uniinfer.config.instances import InstanceSpec, selective_ids, apply_model_overrides
+
+
+def _spec(access):
+    return InstanceSpec(alias="x", provider="x", access=access)
+
+
+def test_selective_ids_variants():
+    assert selective_ids(_spec({"models": ["a", "b"]})) == {"a", "b"}        # string-list
+    assert selective_ids(_spec({"models": {"a": {"ctx": 1}}})) == {"a"}      # dict -> keys
+    assert selective_ids(_spec({"models": [{"match": "(TRIAL)", "set": {}}]})) is None  # rules -> all
+    assert selective_ids(_spec({})) is None                                  # absent -> all
+
+
+def test_apply_overrides_defaults_then_pattern_then_permodel():
+    m = {"id": "(TRIAL) Foo", "access": "paid", "context_window": 262144}
+    # defaults only
+    assert apply_model_overrides(_spec({"models_defaults": {"context_window": 12000}}), m)["context_window"] == 12000
+    # pattern beats defaults
+    out = apply_model_overrides(_spec({
+        "models_defaults": {"context_window": 12000},
+        "models": [{"match": "(TRIAL)", "set": {"access": "trial"}}],
+    }), m)
+    assert out["context_window"] == 12000 and out["access"] == "trial"
+    # per-model dict beats pattern + defaults
+    out2 = apply_model_overrides(_spec({
+        "models_defaults": {"context_window": 12000},
+        "models": {"(TRIAL) Foo": {"context_window": 8000, "access": "full"}},
+    }), m)
+    assert out2["context_window"] == 8000 and out2["access"] == "full"
+
+
+def test_apply_overrides_match_by_access_tag():
+    m = {"id": "free-model", "access": "free", "context_window": 0}
+    out = apply_model_overrides(_spec({"models": [{"match": "free", "set": {"access": "trial"}}]}), m)
+    assert out["access"] == "trial"  # match == access tag "free"
+
+
+def test_arli_trial_shape():
+    # the documented arli-trial example: cap ctx, tag (TRIAL) models, selective dict
+    spec = _spec({"keytype": "Trial", "models_defaults": {"context_window": 12000},
+                  "models": [{"match": "(TRIAL)", "set": {"access": "trial"}}]})
+    trial_m = apply_model_overrides(spec, {"id": "(TRIAL) Qwen3.5-27B-Anko", "access": "paid", "context_window": 262144})
+    assert trial_m["context_window"] == 12000 and trial_m["access"] == "trial"
