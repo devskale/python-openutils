@@ -248,6 +248,8 @@ def list_models_for_provider(provider_name: str, api_bearer_token: str) -> list[
             extra["base_url"] = ep["base_url"]
     provider_cls = ProviderFactory.get_provider_class(spec.provider)
     modellist = provider_cls.list_models(api_key=api_key, **extra)
+    from uniinfer.proxy_services.models_registry import Catalog
+    modellist = Catalog().apply_overrides(provider_name, modellist)
     update_models(modellist, provider_name)
     from uniinfer.proxy_services.models_registry import Catalog
 

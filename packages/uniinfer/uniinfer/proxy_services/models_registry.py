@@ -142,6 +142,10 @@ class Catalog:
         return os.path.join(self._dir, "type_overrides.json")
 
     @property
+    def _provider_overrides_path(self) -> str:
+        return os.path.join(self._dir, "provider_overrides.json")
+
+    @property
     def _history_path(self) -> str:
         return os.path.join(self._dir, "_model_history.json")
 
@@ -173,6 +177,19 @@ class Catalog:
                 return json.load(f)
         except Exception:
             return {"models": {}}
+
+    def _load_provider_overrides(self) -> dict:
+        """Load shipped provider_overrides.json — curated per-provider field
+        overrides ({pid: {field: val}}), e.g. served-context caps. Ships with
+        the package (unlike runtime model_overrides.json)."""
+        if not os.path.exists(self._provider_overrides_path):
+            return {}
+        try:
+            with open(self._provider_overrides_path) as f:
+                d = json.load(f)
+            return {k: v for k, v in d.items() if not k.startswith("_")}
+        except Exception:
+            return {}
 
     def _load_type_overrides_doc(self) -> dict:
         """Load type_overrides.json as the full {_meta, models} document."""
@@ -453,12 +470,13 @@ class Catalog:
 
         type_overrides = self._load_type_overrides_doc().get("models", {})
         model_overrides = self._load_overrides().get("models", {})
+        provider_overrides = {**self._load_provider_overrides(), **model_overrides.get("_providers", {})}  # curated < runtime; per-model still wins
 
         generated_date = data.get("_meta", {}).get("generated", "")[:10]
         result: list[dict] = []
         for provider_id, provider_data in data.get("providers", {}).items():
             for model in provider_data.get("models", []):
-                override = model_overrides.get(model["id"], {})
+                override = {**provider_overrides.get(provider_id, {}), **model_overrides.get(model["id"], {})}
                 entry = {
                     "id": model["id"],
                     "object": "model",
@@ -506,6 +524,24 @@ class Catalog:
                     entry["days_since_seen"] = days
                 result.append(entry)
         return result
+
+    def apply_overrides(self, provider_id: str, models: list) -> list:
+        """Apply curated provider_overrides + runtime model_overrides to a list of
+        models (ModelInfo objects OR dicts) — used by the LIVE
+        /v1/models/{provider} path so served-context caps etc. show even on a
+        fresh fetch. Precedence: per-model > provider-level (curated < runtime).
+        """
+        model_overrides = self._load_overrides().get("models", {})
+        pov = {**self._load_provider_overrides(), **model_overrides.get("_providers", {})}.get(provider_id, {})
+        for m in models:
+            mid = m.get("id") if isinstance(m, dict) else getattr(m, "id", None)
+            ov = {**pov, **model_overrides.get(mid, {})}
+            for k, v in ov.items():
+                if isinstance(m, dict):
+                    m[k] = v
+                else:
+                    setattr(m, k, v)
+        return models
 
     # ------------------------------------------------------------------ #
     # history                                                            #

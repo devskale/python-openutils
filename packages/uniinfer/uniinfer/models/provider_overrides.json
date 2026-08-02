@@ -1,0 +1,4 @@
+{
+  "_doc": "Curated per-provider catalog overrides (SHIPPED, unlike runtime model_overrides.json). Shape: {pid: {field: val}} — applies to all of a provider's models. Runtime model_overrides.json '_providers' + per-model ids still win (most-specific). Sourced from providers.md served realities.",
+  "arli": { "context_window": 12000 }
+}
