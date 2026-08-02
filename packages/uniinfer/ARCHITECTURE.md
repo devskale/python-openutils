@@ -2,6 +2,18 @@
 
 This document describes the current `proxy_app` layout and where to add changes.
 
+## Architecture diagram
+
+![architecture](docs/architecture.svg)
+
+Source: [`docs/architecture.d2`](docs/architecture.d2) — re-render with
+`d2 docs/architecture.d2 docs/architecture.svg`. It shows the layered request
+flow (client → proxy_app → routers → services/providers → backends), the
+**model-resolution pipeline** (`Catalog.resolve_for_instance`: overrides →
+access filter, candidate A), and the **provider `list_models` template method**
+(`OpenAICompatibleChatProvider` owns the mechanics; each provider declares its
+dialect via `_model_info`, candidate B).
+
 ## Naming (read this first — `uniioai_proxy` ≠ the module anymore)
 
 `uniioai` is the **product**; `proxy_app` is the **module**. The app module was

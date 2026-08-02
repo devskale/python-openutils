@@ -1,0 +1,69 @@
+# UniInfer architecture — render with:  d2 docs/architecture.d2 docs/architecture.svg
+# Covers the proxy layers + the model-resolution pipeline (A: resolve_for_instance)
+# and the provider list_models template method (B: _model_info dialect hook).
+
+direction: right
+
+client: "Client\nOpenAI-compatible HTTP\n(chat / models / media)" { shape: person }
+
+proxy_app: "proxy_app.py\nFastAPI app + main()\nmiddleware · router registration · parse_provider_model" {
+  style.fill: "#dbeafe"
+  style.stroke: "#2563eb"
+}
+
+routers: "proxy_routers" {
+  style.fill: "#f1f5f9"
+  models_router: "models.py\n/v1/models · /v1/models/:alias\n/v1/catalog · /v1/system/instances"
+  chat_router: "chat.py\n/v1/chat/completions · /v1/embeddings\n(role normalization)"
+  media_router: "media.py\nimages · TTS · STT"
+}
+
+services: "proxy_services" {
+  style.fill: "#fef3c7"
+  catalog: "models_registry.py · Catalog\nmodels.json · provider_overrides.json\nresolve_for_instance(alias, models):\n  apply_overrides(spec.provider)\n  → instance_allows (selective / only)\nlist_resolved (global; overrides only)" {
+    style.fill: "#fde68a"
+  }
+  streaming: "streaming.py\nSSE shaping · thinking → reasoning_content"
+}
+
+config: "config" {
+  style.fill: "#fce7f3"
+  instances: "instances.py\nfleet overlay · resolve_instance\ninstance_allows · selective_ids\nInstanceSpec.access (keytype · models · only)"
+  providers_cfg: "providers.py\nPROVIDER_CONFIGS"
+}
+
+providers: "providers" {
+  style.fill: "#dcfce7"
+  base: "OpenAICompatibleChatProvider\nlist_models() — TEMPLATE METHOD\nmechanics: credgoo key → GET {base_url}/models → parse → error-map\nhooks: _resolve_api_key · _models_url · _extra_request_headers · _model_info" {
+    style.fill: "#86efac"
+  }
+  dialect: "_model_info(raw) — the dialect\n(access / cost / caps / modalities)\nngc · chutes · openrouter · internlm · stepfun\nupstage · sambanova · moonshot · mistral · kilo · arli"
+  custom: "custom list_models (SDK / non-data[])\ngroq · cloudflare · ollama · tu · zai\nopencode (pi.dev) · pollinations (multi-endpoint)"
+}
+
+backends: "Backends\nollama · openai · anthropic · gemini · tu/vLLM · zai\nngc · groq · cloudflare · moonshot · mistral · kilo · openrouter · …" { shape: cylinder }
+
+# ─────────────────────────── flow ───────────────────────────
+client -> proxy_app
+proxy_app -> routers
+routers.models_router -> services.catalog: "/v1/models/:alias · resolve_for_instance"
+routers.chat_router  -> providers: "provider@model dispatch"
+services.catalog -> config.instances: "resolve_instance + access filter"
+services.catalog -> providers.base: "list_models (live fetch)"
+
+# the seam: base mechanics call the per-provider dialect hook (B)
+providers.base -> providers.dialect: "_model_info(raw)" {
+  style.stroke: "#16a34a"
+  style.bold: true
+}
+providers.dialect -> backends: "GET /models"
+providers.custom  -> backends: "GET / SDK"
+providers         -> backends: "complete / stream_complete"
+
+legend: "legend" {
+  shape: callout
+  style.fill: "#ffffff"
+  solid: "─── request / dispatch (solid)"
+  dashed: "model listing: resolve_for_instance (A)"
+  green: "green edge = _model_info dialect seam (B)"
+}
