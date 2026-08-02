@@ -4,6 +4,50 @@ All notable changes to **uniinfer** are documented in this file.
 Versions follow [Semantic Versioning](https://semver.org/); this file
 adheres to [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.8.1] - 2026-08-02
+
+### Added
+
+- **`granted` access tier** — a third access value (free / **granted** / paid) for
+  key-accessible providers (you hold a key → access granted; not a public free
+  tier, not paid-$). TU Wien Aqueduct (`tu`) tagged `granted`; webapp shows a blue
+  badge + treats it as accessible.
+- **CLI instance tagging** — `--keytype` / `--only` / `--tag` flags (create+tag
+  or update an existing instance, incl. built-ins via overlay); `--show-provider`
+  prints the resolved access tags.
+
+### Changed — provider accessibility sweep (web-grounded + real-life probed)
+
+Each provider's models now carry a verified `access` tag derived from its
+*reliable* signal (not cost-zero — a trap). See `docs/models.md` §Access tiers.
+
+- **kilo**: gateway `isFree` flag (cost-zero is a trap — `google/lyria-3-*`).
+- **openrouter**: `:free` suffix + `openrouter/free` virtual tier.
+- **pollinations**: switched to the rich `gen.pollinations.ai/models` endpoint;
+  access from the `pricing` field (free = no positive cost field; the `∞` tier).
+- **groq, ngc, mistral, cloudflare**: universally free → `access="free"` (was
+  `None`); cloudflare also enriched `type` from the API `task.name`.
+- **sambanova**: corrected `paid` → `free` (free tier, balance-unit-budgeted;
+  the API `pricing` is the paid tier, not an access signal).
+- **chutes**: `access="paid"` + cost from `price.usd` (PAYG, no free tier).
+- **stepfun, openai**: `access="paid"`.
+- **ollama**: `access="free"` (self-hosted).
+- **tu**: `access="granted"` (university-hosted, key-accessible).
+
+### Fixed
+
+- **huggingface**: documented — old `api-inference.huggingface.co` endpoint is
+  dead (DNS removed); use the Router (`router.huggingface.co`), 129 deployed
+  models usable within a ~$0.10/mo credit budget. No code change.
+- `_model_info_to_dict` dropped `access` on serialization (live
+  `/v1/models/{provider}` reported null) — now included.
+
+### Docs
+
+- `docs/models.md`: consolidated *Access tiers & per-provider signals* section —
+  3-tier taxonomy (free/granted/paid) + an 18-provider signal table + rules of
+  thumb.
+
 ## [0.8.0] - 2026-08-02
 
 ### Added
