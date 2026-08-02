@@ -1,6 +1,10 @@
 from __future__ import annotations
 """
 StepFun provider implementation.
+
+Access: paid — per-token billing (signup/trial credits only; no persistent
+free tier). Grounded in yangmao.ai/models.dev; verified by probe (key returns
+402 'exceeded your current quota' once trial credits are exhausted).
 """
 from typing import Optional, List
 
@@ -42,6 +46,6 @@ class StepFunProvider(OpenAICompatibleChatProvider):
             response = requests.get(f"{base_url}/models", headers=headers)
             response.raise_for_status()
             models_data = response.json()
-            return [ModelInfo(id=model["id"], owned_by=model.get("owned_by"), created=model.get("created"), raw=model) for model in models_data.get("data", [])]
+            return [ModelInfo(id=model["id"], owned_by=model.get("owned_by"), created=model.get("created"), access="paid", raw=model) for model in models_data.get("data", [])]
         except Exception:
             return []
