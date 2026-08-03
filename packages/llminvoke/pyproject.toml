@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "llminvoke"
-version = "0.1.2"
+version = "0.2.0"
 description = "Shared LLM invocation layer — bridges uniinfer + credgoo (call_llm + invoke_llm + stream_llm)"
 readme = "README.md"
 requires-python = ">=3.9"
