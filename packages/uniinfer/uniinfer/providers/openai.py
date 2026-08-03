@@ -20,10 +20,13 @@ class OpenAIProvider(OpenAICompatibleChatProvider):
     ERROR_PROVIDER_NAME = "OpenAI"
     DEFAULT_MODEL = "gpt-3.5-turbo"
 
-    def __init__(self, api_key: Optional[str] = None, organization: Optional[str] = None):
-        # OPENAI_BASE_URL override → point the OpenAI-compat path at any
-        # OpenAI-compliant endpoint (e.g. a local vLLM) without code/config elsewhere.
-        super().__init__(api_key=api_key, base_url=os.getenv("OPENAI_BASE_URL") or self.BASE_URL)
+    def __init__(self, api_key: Optional[str] = None, organization: Optional[str] = None,
+                 base_url: Optional[str] = None):
+        # base_url param → point the OpenAI-compat path at any OpenAI-compliant
+        # endpoint (the llm-gateway). Falls back to OPENAI_BASE_URL env, then the
+        # OpenAI default. (Honoring the param lets llminvoke inject a per-call
+        # base_url instead of mutating process env.)
+        super().__init__(api_key=api_key, base_url=base_url or os.getenv("OPENAI_BASE_URL") or self.BASE_URL)
         self.organization = organization
 
     def _get_extra_headers(self) -> dict[str, str]:

@@ -69,11 +69,18 @@ __all__ = [
 # Provider + message helpers
 # ════════════════════════════════════════════════════════════════════════
 
-def create_provider(provider: str):
+def create_provider(provider: str, *, base_url: str | None = None, api_key: str | None = None):
     """credgoo key → ProviderFactory.get_provider. Public for consumers that
-    need the raw provider (e.g. custom streaming with chunk inspection)."""
-    api_key = get_api_key(provider)
-    return ProviderFactory.get_provider(provider, api_key=api_key)
+    need the raw provider (e.g. custom streaming with chunk inspection).
+
+    ``base_url`` (the llm-gateway endpoint) + ``api_key`` override the provider's
+    own — used by the gateway path (invoke_llm with a resolved base_url+bearer).
+    """
+    key = api_key if api_key is not None else get_api_key(provider)
+    kwargs: dict = {"api_key": key}
+    if base_url:
+        kwargs["base_url"] = base_url
+    return ProviderFactory.get_provider(provider, **kwargs)
 
 
 def _build_messages(
@@ -152,6 +159,8 @@ def invoke_llm(
     messages: list[ChatMessage],
     temperature: float = 0.7,
     max_tokens: int = 4096,
+    base_url: str | None = None,
+    bearer: str | None = None,
     **request_kwargs,
 ):
     """One-shot invocation: credgoo → provider → request → .complete().
@@ -159,11 +168,21 @@ def invoke_llm(
     Returns the raw ChatCompletionResponse (for consumers that need
     usage data, error classification, or custom extraction). No retry, no
     backup — agentos uses this inside its own chain/breaker loop.
+
+    ``base_url`` (the llm-gateway endpoint) routes via the OpenAI-compatible
+    transport to that endpoint (with ``bearer``); the model id sent is the FULL
+    ``provider@model`` (the proxy routes by the prefix). Without ``base_url``,
+    the named provider + bare model are used (legacy direct path).
     """
-    prov = create_provider(provider)
+    if base_url:
+        prov = create_provider("openai", base_url=base_url, api_key=bearer)
+        model_id = f"{provider}@{model}"
+    else:
+        prov = create_provider(provider)
+        model_id = model
     request = ChatCompletionRequest(
         messages=messages,
-        model=model,
+        model=model_id,
         temperature=temperature,
         max_tokens=max_tokens,
         streaming=False,
@@ -205,6 +224,8 @@ def _try_model(
                 messages=msgs,
                 temperature=cfg.temperature,
                 max_tokens=cfg.max_tokens,
+                base_url=cfg.base_url,
+                bearer=cfg.bearer,
                 **merged_kwargs,
             )
             text = extract_response_text(response)

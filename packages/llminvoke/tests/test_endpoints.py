@@ -85,3 +85,57 @@ def test_inline_bearer_passthrough(monkeypatch, tmp_path):
     _clients(monkeypatch, tmp_path, {"default": {"bearer": "sk-raw"}})
     r = config.resolve_model()
     assert r.bearer == "sk-raw"
+
+
+# ── slice 3: gateway routing (invoke_llm) ──────────────────────────────
+
+def test_invoke_llm_gateway_routes_via_openai_with_full_model_id(monkeypatch):
+    """base_url set → OpenAI-compatible transport; model id = full provider@model."""
+    import llminvoke
+    from uniinfer import ChatMessage
+    seen = {}
+
+    class _FakeProv:
+        def complete(self, request):
+            seen["model_id"] = request.model
+            return "RAW"
+
+    def _fake_create(provider, *, base_url=None, api_key=None):
+        seen["provider"], seen["base_url"], seen["api_key"] = provider, base_url, api_key
+        return _FakeProv()
+
+    monkeypatch.setattr(llminvoke, "create_provider", _fake_create)
+    llminvoke.invoke_llm(
+        model="qwen-3.6-35b", provider="tu",
+        messages=[ChatMessage(role="user", content="hi")],
+        base_url="https://uniinfer.skale.dev/v1", bearer="sk-test",
+    )
+    assert seen["provider"] == "openai"                       # gateway transport
+    assert seen["base_url"] == "https://uniinfer.skale.dev/v1"
+    assert seen["api_key"] == "sk-test"                        # bearer → api_key
+    assert seen["model_id"] == "tu@qwen-3.6-35b"               # full provider@model (gotcha)
+
+
+def test_invoke_llm_legacy_path_without_base_url(monkeypatch):
+    """No base_url → named provider + bare model (unchanged legacy path)."""
+    import llminvoke
+    from uniinfer import ChatMessage
+    seen = {}
+
+    class _FakeProv:
+        def complete(self, request):
+            seen["model_id"] = request.model
+            return "RAW"
+
+    def _fake_create(provider, *, base_url=None, api_key=None):
+        seen["provider"], seen["base_url"] = provider, base_url
+        return _FakeProv()
+
+    monkeypatch.setattr(llminvoke, "create_provider", _fake_create)
+    llminvoke.invoke_llm(
+        model="qwen", provider="tu",
+        messages=[ChatMessage(role="user", content="hi")],
+    )
+    assert seen["provider"] == "tu"                            # named provider
+    assert seen["base_url"] is None
+    assert seen["model_id"] == "qwen"                          # bare model
