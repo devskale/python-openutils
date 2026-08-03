@@ -308,6 +308,7 @@ def resolve_model(
     # ── endpoint triple: base_url + bearer (env fallback; clients.yml overrides) ─
     base_url = os.environ.get("OPENAI_BASE_URL", "").strip() or None
     bearer_ref: str | None = os.environ.get("OPENAI_API_KEY", "").strip() or None
+    thinking: str | bool | None = None     # off|on|none|low|medium|high (mapped per model at return)
 
     # ── layer 1: package defaults (engineering tuning) ──
     task_kwargs: dict = {}
@@ -339,6 +340,7 @@ def resolve_model(
         dsgvo_required = bool(client_cfg.get("dsgvo_required", dsgvo_required))
         base_url = client_cfg.get("base_url", base_url)
         bearer_ref = client_cfg.get("bearer", bearer_ref)
+        thinking = client_cfg.get("thinking", thinking)
 
     # ── layer 2.5: runtime package/task tier overrides (clients.yml packages:) ─
     # The operator's per-tier switch — editable without redeploy. Layers above the
@@ -353,6 +355,7 @@ def resolve_model(
             retry = _parse_retry(cpkg.get("retry"), retry)
             base_url = cpkg.get("base_url", base_url)
             bearer_ref = cpkg.get("bearer", bearer_ref)
+            thinking = cpkg.get("thinking", thinking)
             if task:
                 ctask = cpkg.get("tasks", {}).get(task, {})
                 primary_spec = ctask.get("model", primary_spec)
@@ -360,6 +363,7 @@ def resolve_model(
                 max_tokens = int(ctask.get("max_tokens", max_tokens))
                 base_url = ctask.get("base_url", base_url)
                 bearer_ref = ctask.get("bearer", bearer_ref)
+                thinking = ctask.get("thinking", thinking)
                 task_kwargs = {**task_kwargs, **ctask.get("request_kwargs", {})}
 
     # ── build refs + DSGVO-filter backups ──
@@ -375,6 +379,19 @@ def resolve_model(
         em = os.environ.get(f"{env_prefix}_MODEL", "").strip()
         if ep and em:
             primary = ModelRef(provider=ep, model=em)
+
+    # ── map `thinking` → the provider's reasoning knob (per model) ──
+    # qwen-3.x: chat_template_kwargs.enable_thinking (off=False). reasoning_effort
+    # models (o-series-style): none/minimal/low/medium/high. 'on'/None = default.
+    if thinking is not None:
+        thinking = "on" if isinstance(thinking, bool) and thinking else \
+                   "off" if isinstance(thinking, bool) else str(thinking).strip().lower()
+        if thinking == "off":
+            ctk = dict(task_kwargs.get("chat_template_kwargs") or {})
+            ctk.setdefault("enable_thinking", False)
+            task_kwargs["chat_template_kwargs"] = ctk
+        elif thinking in ("none", "minimal", "low", "medium", "high"):
+            task_kwargs["reasoning_effort"] = thinking
 
     return ResolvedConfig(
         primary=primary,

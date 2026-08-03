@@ -139,3 +139,36 @@ def test_invoke_llm_legacy_path_without_base_url(monkeypatch):
     assert seen["provider"] == "tu"                            # named provider
     assert seen["base_url"] is None
     assert seen["model_id"] == "qwen"                          # bare model
+
+
+# ── slice 4: thinking knob ────────────────────────────────────────────
+
+def test_thinking_off_maps_to_enable_thinking_false(monkeypatch, tmp_path):
+    _clients(monkeypatch, tmp_path, {"default": {"model": "tu@qwen-3.6-35b", "thinking": "off"}})
+    r = config.resolve_model()
+    assert r.request_kwargs.get("chat_template_kwargs") == {"enable_thinking": False}
+
+
+def test_thinking_high_maps_to_reasoning_effort(monkeypatch, tmp_path):
+    _clients(monkeypatch, tmp_path, {"default": {"model": "tu@qwen-3.6-35b", "thinking": "high"}})
+    r = config.resolve_model()
+    assert r.request_kwargs.get("reasoning_effort") == "high"
+
+
+def test_thinking_cascade_task_overrides_package(monkeypatch, tmp_path):
+    _clients(monkeypatch, tmp_path, {
+        "default": {"model": "tu@qwen-3.6-35b", "thinking": "on"},
+        "packages": {"agentos": {"tasks": {"retriever": {"thinking": "off"}}}},
+    })
+    r = config.resolve_model(package="agentos", task="retriever")
+    assert r.request_kwargs.get("chat_template_kwargs") == {"enable_thinking": False}
+
+
+def test_thinking_yaml_bool_off_coerced(monkeypatch, tmp_path):
+    """YAML parses unquoted `off` as False — coerce to the off mapping."""
+    p = tmp_path / "c.yml"
+    p.write_text("default:\n  model: tu@qwen-3.6-35b\n  thinking: off\n")
+    monkeypatch.setenv("KONTEXT_CLIENTS_YML", str(p))
+    config.reload_config()
+    r = config.resolve_model()
+    assert r.request_kwargs.get("chat_template_kwargs") == {"enable_thinking": False}

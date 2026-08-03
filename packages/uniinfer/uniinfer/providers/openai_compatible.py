@@ -199,6 +199,9 @@ class OpenAICompatibleChatProvider(ChatProvider):
 
         if request.reasoning_effort is not None:
             payload.update(self._reasoning_payload(request.reasoning_effort))
+        if getattr(request, "chat_template_kwargs", None):
+            # qwen-3.x nothink + other chat-template params (e.g. enable_thinking=False)
+            payload["chat_template_kwargs"] = request.chat_template_kwargs
 
         default_params = self._get_default_payload_params(stream)
         for key, value in default_params.items():
