@@ -28,6 +28,11 @@ try:
 except ImportError:  # pragma: no cover — pyyaml is a declared dep
     yaml = None
 
+try:  # credgoo resolves `credgoo:<service>` bearer refs (a declared dep)
+    from credgoo import get_api_key as _credgoo_get_api_key
+except ImportError:  # pragma: no cover
+    _credgoo_get_api_key = None
+
 __all__ = [
     "ModelRef",
     "RetryPolicy",
@@ -106,6 +111,9 @@ class ResolvedConfig:
     retry: RetryPolicy = field(default_factory=RetryPolicy)
     dsgvo_required: bool = False
     request_kwargs: dict = field(default_factory=dict)  # e.g. chat_template_kwargs
+    # OpenAI-compatible endpoint (the gateway). None = use the provider's own endpoint.
+    base_url: str | None = None
+    bearer: str | None = None          # resolved key (credgoo/env/inline), not the ref
 
     @property
     def chain(self) -> list[ModelRef]:
@@ -240,6 +248,34 @@ def _filter_dsgvo(refs: list[ModelRef], dsgvo_required: bool) -> list[ModelRef]:
     return kept
 
 
+# bearer ref forms: credgoo:<service> | ${ENV}/$ENV | inline string
+_ENV_REF_RE = re.compile(r"^\$\{?([A-Z_][A-Z0-9_]*)\}?$")
+
+
+def _resolve_bearer(ref: str | None) -> str | None:
+    """Resolve a bearer ref to the actual key: credgoo:svc / ${ENV} / inline.
+
+    None/empty → None. credgoo caches lookups internally. A `credgoo:` ref when
+    credgoo isn't installed, or a missing key, raises (fail loud — no silent
+    anonymous calls).
+    """
+    if not ref:
+        return None
+    ref = ref.strip()
+    if ref.startswith("credgoo:"):
+        svc = ref[len("credgoo:"):].strip()
+        if not _credgoo_get_api_key:
+            raise RuntimeError(f"bearer ref {ref!r} needs credgoo, which isn't installed")
+        key = _credgoo_get_api_key(svc)
+        if not key:
+            raise RuntimeError(f"credgoo returned no key for service {svc!r}")
+        return key
+    m = _ENV_REF_RE.match(ref)
+    if m:
+        return os.environ.get(m.group(1))
+    return ref  # inline literal
+
+
 def resolve_model(
     package: str | None = None,
     client: str | None = None,
@@ -269,6 +305,11 @@ def resolve_model(
     backups_raw: list[str] = list(default.get("backups", []))
     dsgvo_required = False
 
+    # ── endpoint triple: base_url + bearer (env fallback; clients.yml overrides) ─
+    base_url = os.environ.get("OPENAI_BASE_URL", "").strip() or None
+    bearer_ref: str | None = os.environ.get("OPENAI_API_KEY", "").strip() or None
+    thinking: str | bool | None = None     # off|on|none|low|medium|high (mapped per model at return)
+
     # ── layer 1: package defaults (engineering tuning) ──
     task_kwargs: dict = {}
     pkg_cfg = packages.get(package or "", {})
@@ -297,6 +338,9 @@ def resolve_model(
         backups_raw = list(client_cfg.get("backups", backups_raw))
         retry = _parse_retry(client_cfg.get("retry"), retry)
         dsgvo_required = bool(client_cfg.get("dsgvo_required", dsgvo_required))
+        base_url = client_cfg.get("base_url", base_url)
+        bearer_ref = client_cfg.get("bearer", bearer_ref)
+        thinking = client_cfg.get("thinking", thinking)
 
     # ── layer 2.5: runtime package/task tier overrides (clients.yml packages:) ─
     # The operator's per-tier switch — editable without redeploy. Layers above the
@@ -309,11 +353,17 @@ def resolve_model(
             max_tokens = int(cpkg.get("max_tokens", max_tokens))
             backups_raw = list(cpkg.get("backups", backups_raw))
             retry = _parse_retry(cpkg.get("retry"), retry)
+            base_url = cpkg.get("base_url", base_url)
+            bearer_ref = cpkg.get("bearer", bearer_ref)
+            thinking = cpkg.get("thinking", thinking)
             if task:
                 ctask = cpkg.get("tasks", {}).get(task, {})
                 primary_spec = ctask.get("model", primary_spec)
                 temperature = float(ctask.get("temperature", temperature))
                 max_tokens = int(ctask.get("max_tokens", max_tokens))
+                base_url = ctask.get("base_url", base_url)
+                bearer_ref = ctask.get("bearer", bearer_ref)
+                thinking = ctask.get("thinking", thinking)
                 task_kwargs = {**task_kwargs, **ctask.get("request_kwargs", {})}
 
     # ── build refs + DSGVO-filter backups ──
@@ -330,6 +380,19 @@ def resolve_model(
         if ep and em:
             primary = ModelRef(provider=ep, model=em)
 
+    # ── map `thinking` → the provider's reasoning knob (per model) ──
+    # qwen-3.x: chat_template_kwargs.enable_thinking (off=False). reasoning_effort
+    # models (o-series-style): none/minimal/low/medium/high. 'on'/None = default.
+    if thinking is not None:
+        thinking = "on" if isinstance(thinking, bool) and thinking else \
+                   "off" if isinstance(thinking, bool) else str(thinking).strip().lower()
+        if thinking == "off":
+            ctk = dict(task_kwargs.get("chat_template_kwargs") or {})
+            ctk.setdefault("enable_thinking", False)
+            task_kwargs["chat_template_kwargs"] = ctk
+        elif thinking in ("none", "minimal", "low", "medium", "high"):
+            task_kwargs["reasoning_effort"] = thinking
+
     return ResolvedConfig(
         primary=primary,
         backups=backup_refs,
@@ -338,6 +401,8 @@ def resolve_model(
         retry=retry,
         dsgvo_required=dsgvo_required,
         request_kwargs=task_kwargs,
+        base_url=base_url,
+        bearer=_resolve_bearer(bearer_ref),
     )
 
 
