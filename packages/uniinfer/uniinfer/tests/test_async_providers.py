@@ -1,8 +1,21 @@
 """
 Unit tests for async provider methods.
 """
+import importlib.util
+
+import pytest
+
 from uniinfer.providers.openai import OpenAIProvider
 from uniinfer.providers.anthropic import AnthropicProvider
+
+# anthropic is an optional extra ([project.optional-dependencies]); a bare
+# `uv sync` legitimately lacks it, so skip Anthropic-backed assertions rather
+# than fail on the provider's construction-time ImportError.
+_anthropic_available = importlib.util.find_spec("anthropic") is not None
+_skip_no_anthropic = pytest.mark.skipif(
+    not _anthropic_available,
+    reason="optional 'anthropic' extra not installed (uv sync --extra anthropic)",
+)
 from uniinfer.providers.mistral import MistralProvider
 from uniinfer.providers.ollama import OllamaProvider
 from uniinfer.providers.gemini import GeminiProvider
@@ -39,6 +52,8 @@ class TestOpenAIAsync:
 
 class TestAnthropicAsync:
     """Test async methods for Anthropic provider."""
+
+    pytestmark = _skip_no_anthropic
 
     def test_acomplete_method_exists(self):
         """Test that acomplete method exists."""
@@ -186,6 +201,7 @@ class TestSyncWrappers:
         assert hasattr(provider, 'complete')
         assert callable(provider.complete)
 
+    @_skip_no_anthropic
     def test_anthropic_complete_is_wrapper(self):
         """Test that sync complete method wraps async."""
         provider = AnthropicProvider(api_key="test-key")
@@ -216,6 +232,7 @@ class TestSyncWrappers:
         assert hasattr(provider, 'stream_complete')
         assert callable(provider.stream_complete)
 
+    @_skip_no_anthropic
     def test_anthropic_stream_complete_is_wrapper(self):
         """Test that sync stream_complete wraps async."""
         provider = AnthropicProvider(api_key="test-key")
