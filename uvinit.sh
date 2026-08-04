@@ -25,7 +25,7 @@ SERVICES_REPO=0
 # Machine-dependent setup extras (repos.yml setupoptions[machine][pkg]); best-effort,
 # no-op outside the metarepo layout (no scripts/lib/repos + repos.yml found upwards).
 # Machine identity is self-declared in repos.yml (per-machine) — not guessed from env.
-REPOS_LIB="" REPOS_YAML_PATH=""
+REPOS_LIB="" REPOS_YAML_PATH="" MACHINE=""
 __d="$ROOT_DIR"
 while [ "$__d" != "/" ]; do
   if [ -x "$__d/scripts/lib/repos" ] && [ -f "$__d/repos.yml" ]; then
