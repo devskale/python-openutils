@@ -16,7 +16,7 @@ ROOT_DIR="$(cd "$(dirname "$0")" && pwd)"
 LOG_FILE="$ROOT_DIR/uvinit.log"
 # This repo backs runnable services (worker) iff it ships install-services.sh.
 # openutils (shared LLM infra, consumed by python-utils via git) does not — its
-# one service (uniioai-proxy) is restarted by deploy_exec, not here. Wheel-build
+# one service (uniioai-proxy) is restarted by run_exec, not here. Wheel-build
 # + service install are gated on SERVICES_REPO; timeout/setupoptions are always on.
 # (This file is the CANONICAL uvinit — byte-identical in python-utils &
 #  python-openutils via scripts/lib/uvinit-sync; edit here, re-sync.)
