@@ -478,7 +478,7 @@ class Catalog:
             for model in provider_data.get("models", []):
                 override = {**provider_overrides.get(provider_id, {}), **model_overrides.get(model["id"], {})}
                 entry = {
-                    "id": model["id"],
+                    "id": f"{provider_id}@{model['id']}",
                     "object": "model",
                     "owned_by": model.get("owned_by", "skaledev"),
                     "provider": provider_id,
@@ -582,6 +582,18 @@ class Catalog:
         """Load model_overrides.json (full doc: {_meta?, models})."""
         return self._load_overrides()
 
+    @staticmethod
+    def _bare_override_key(model_id: str) -> str:
+        """Collapse a ``provider@model`` id to its bare model id for override keying.
+
+        Model-level overrides are global (applied to every provider offering the
+        id), so a namespaced id served by /v1/models (``openai@gpt-5.4``) must
+        resolve to ``gpt-5.4`` to match the catalog key. Bare ids pass through.
+        """
+        if "@" in model_id:
+            return model_id.split("@", 1)[1]
+        return model_id
+
     def save_override(self, model_id: str, fields: dict) -> None:
         """Save fields for a model into model_overrides.json.
 
@@ -589,6 +601,7 @@ class Catalog:
         """
         from datetime import datetime, timezone
 
+        model_id = self._bare_override_key(model_id)
         with self._write_lock():
             data = self._load_overrides()
             data.setdefault("models", {}).setdefault(model_id, {}).update(fields)
@@ -606,6 +619,7 @@ class Catalog:
 
     def delete_override(self, model_id: str) -> bool:
         """Delete all overrides for a model. Returns True if anything was deleted."""
+        model_id = self._bare_override_key(model_id)
         with self._write_lock():
             data = self._load_overrides()
             if model_id not in data.get("models", {}):
