@@ -34,7 +34,14 @@ git pull
 
 echo "Syncing dependencies...${EXTRAS:+ ($EXTRAS)}"
 cd "$UNIINFER"
-uv sync $EXTRAS
+# Frozen: install from the committed uv.lock, never mutate it on the server
+# (a bare `uv sync` rewrites a stale uv.lock → blocks the next `git pull`).
+if ! uv lock --check; then
+    echo "❌ uv.lock is stale — pyproject.toml changed without 'uv lock'."
+    echo "   Fix: (cd packages/uniinfer && uv lock) then commit+push uv.lock, and re-run."
+    exit 1
+fi
+uv sync --frozen $EXTRAS
 
 echo "Restarting uniioai-proxy service..."
 sudo systemctl restart uniioai-proxy

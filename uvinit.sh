@@ -14,7 +14,9 @@ declare -a SUCCESS_LIST=()
 declare -a FAIL_LIST=()
 declare -a SKIP_LIST=()
 UV_EXTRAS=""
+UV_EXTRAS_RAW=""
 UV_MIN_VERSION="0.7.0"
+PROD=0
 
 usage() {
   echo "Usage: $0 [-x|-u|-c|-h] [package] [-s]"
@@ -25,6 +27,7 @@ usage() {
   echo "  [package]     Optional substring to filter packages by directory name"
   echo "  -s            Silent mode (no prompts, concise output)"
   echo "  --extra NAME  Pass --extra NAME to uv sync (repeatable)"
+  echo "  --prod        PROD: install frozen from uv.lock, never mutates it"
   echo ""
   echo "Packages are auto-discovered from subdirectories containing pyproject.toml."
   echo ""
@@ -139,6 +142,29 @@ get_installed_version() {
   fi
 }
 
+defined_extras() {  # $1 = package dir → prints space-sep defined extra names
+  local f="$1/pyproject.toml"
+  [ -f "$f" ] || return
+  awk '
+    /^\[project\.optional-dependencies\]/ { inopt = 1; next }
+    /^\[/ { inopt = 0 }
+    inopt && /^[A-Za-z0-9_.-]+[[:space:]]*=/ { sub(/[[:space:]]*=.*/, ""); printf "%s ", $0 }
+  ' "$f"
+}
+
+extras_for() {  # $1 = package dir → "--extra X --extra Y" (requested ∩ defined)
+  local pkgdir="$1" defined e out=""
+  defined="$(defined_extras "$pkgdir")"
+  for e in $UV_EXTRAS_RAW; do
+    [ -z "$e" ] && continue
+    case " $defined " in
+      *" $e "*) out="$out --extra $e" ;;
+      *) log_info "skip extra '$e' — not defined in $pkgdir" ;;
+    esac
+  done
+  printf '%s' "$out"
+}
+
 process_dirs() {
   local discovered
   discovered="$(discover_projects "$ROOT_DIR")"
@@ -150,10 +176,30 @@ process_dirs() {
   IFS=' ' read -r -a dirs <<< "$discovered"
 
   for d in "${dirs[@]}"; do
+    UV_EXTRAS="$(extras_for "$d")"   # CLI extras filtered to those defined by $d
     case "$MODE" in
       init)
         log_info "Init: $d"
-        if [ -n "$UV_EXTRAS" ]; then
+        if [ "$PROD" = 1 ]; then
+          # PROD: install frozen from uv.lock — never mutate the lock. A bare
+          # `uv sync` rewrites a stale uv.lock on the server, which then blocks
+          # the next deploy's `git pull` (the #1 deploy-failure cause). Fail
+          # fast on a stale lock with an actionable message instead.
+          # (`uv lock --check` is read-only — it never mutates the lock.)
+          if ! (cd "$d" && uv lock --check >>"$LOG_FILE" 2>&1); then
+            log_error "LOCK STALE: $d — pyproject.toml changed without 'uv lock'."
+            log_error "  Fix: (cd $d && uv lock) then commit+push uv.lock, and redeploy."
+            FAIL_COUNT=$((FAIL_COUNT+1)); FAIL_LIST+=("$d")
+            continue
+          fi
+          if (cd "$d" && uv sync --frozen $UV_EXTRAS >>"$LOG_FILE" 2>&1); then
+            log_info "Synced (prod, frozen): $d"
+            SUCCESS_COUNT=$((SUCCESS_COUNT+1)); SUCCESS_LIST+=("$d")
+          else
+            log_error "prod sync failed: $d"
+            FAIL_COUNT=$((FAIL_COUNT+1)); FAIL_LIST+=("$d")
+          fi
+        elif [ -n "$UV_EXTRAS" ]; then
           if (cd "$d" && uv sync $UV_EXTRAS >>"$LOG_FILE" 2>&1); then
             log_info "Synced: $d"
             SUCCESS_COUNT=$((SUCCESS_COUNT+1)); SUCCESS_LIST+=("$d")
@@ -278,7 +324,8 @@ parse_args() {
   while [ $_i -lt ${#_args[@]} ]; do
     case "${_args[$_i]}" in
       --extra)
-        [ $((_i+1)) -lt ${#_args[@]} ] && { UV_EXTRAS="$UV_EXTRAS --extra ${_args[$((_i+1))]}"; _i=$((_i+2)); continue; } ;;
+        [ $((_i+1)) -lt ${#_args[@]} ] && { UV_EXTRAS_RAW="$UV_EXTRAS_RAW ${_args[$((_i+1))]}"; _i=$((_i+2)); continue; } ;;
+      --prod) PROD=1; _i=$((_i+1)); continue ;;
     esac
     _final+=("${_args[$_i]}")
     _i=$((_i+1))
