@@ -143,10 +143,14 @@ packages:
       precheck: {temperature: 0, request_kwargs: {chat_template_kwargs: {enable_thinking: false}}}
       stepDateExtract: {temperature: 0, request_kwargs: {chat_template_kwargs: {enable_thinking: false}}}
       stepLoopFactsheet: {temperature: 0, request_kwargs: {chat_template_kwargs: {enable_thinking: false}}}
-      # thinking-enabled steps (deep analysis) — model default is thinking on,
-      # so no explicit request_kwargs needed; listed for documentation.
-      # temperature stays at package default (0.7) — judgment steps; a lower/multi-
-      # run policy is a separate decision (see auditflow-nondeterminism issue).
-      stepAssess: {}
-      stepSynthesis: {}
+      # thinking-enabled steps (deep analysis) — judgment steps.
+      # Hybrid nondeterminism policy: temperature 0.2 (low) as the DEFAULT —
+      # reproducible verdicts, keeps most of the reasoning flexibility vs 0.
+      # Remaining variance on ambiguous verdicts is handled by worker-side
+      # majority-vote escalation on low-confidence results (see
+      # auditflow-nondeterminism issue). Covers both paths:
+      stepAssess: {temperature: 0.2}        # standard-path assessor
+      stepSynthesis: {temperature: 0.2}     # standard-path synthesis
+      stepFapArmAudit: {temperature: 0.2}   # FAP per-doc audit arm
+      stepFapSynthesis: {temperature: 0.2}  # FAP synthesis
       stepFirmenstruktur: {}
