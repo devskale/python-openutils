@@ -132,16 +132,21 @@ packages:
     temperature: 0.7
     max_tokens: 10000
     tasks:
-      # nothink steps — fast classification/routing/extraction (thinking wastes latency)
-      stepRoute: {request_kwargs: {chat_template_kwargs: {enable_thinking: false}}}
-      stepPasRoute: {request_kwargs: {chat_template_kwargs: {enable_thinking: false}}}
-      stepNeedsContext: {request_kwargs: {chat_template_kwargs: {enable_thinking: false}}}
-      stepRetrieve: {request_kwargs: {chat_template_kwargs: {enable_thinking: false}}}
-      precheck: {request_kwargs: {chat_template_kwargs: {enable_thinking: false}}}
-      stepDateExtract: {request_kwargs: {chat_template_kwargs: {enable_thinking: false}}}
-      stepLoopFactsheet: {request_kwargs: {chat_template_kwargs: {enable_thinking: false}}}
+      # nothink steps — fast classification/routing/extraction (thinking wastes latency).
+      # temperature: 0 → these are deterministic classifications/extractions;
+      # variance there is pure noise (e.g. retrieval returning a phantom filename
+      # on one run but not another). Pinning 0 makes routing/retrieval/date stable.
+      stepRoute: {temperature: 0, request_kwargs: {chat_template_kwargs: {enable_thinking: false}}}
+      stepPasRoute: {temperature: 0, request_kwargs: {chat_template_kwargs: {enable_thinking: false}}}
+      stepNeedsContext: {temperature: 0, request_kwargs: {chat_template_kwargs: {enable_thinking: false}}}
+      stepRetrieve: {temperature: 0, request_kwargs: {chat_template_kwargs: {enable_thinking: false}}}
+      precheck: {temperature: 0, request_kwargs: {chat_template_kwargs: {enable_thinking: false}}}
+      stepDateExtract: {temperature: 0, request_kwargs: {chat_template_kwargs: {enable_thinking: false}}}
+      stepLoopFactsheet: {temperature: 0, request_kwargs: {chat_template_kwargs: {enable_thinking: false}}}
       # thinking-enabled steps (deep analysis) — model default is thinking on,
-      # so no explicit request_kwargs needed; listed for documentation
+      # so no explicit request_kwargs needed; listed for documentation.
+      # temperature stays at package default (0.7) — judgment steps; a lower/multi-
+      # run policy is a separate decision (see auditflow-nondeterminism issue).
       stepAssess: {}
       stepSynthesis: {}
       stepFirmenstruktur: {}
