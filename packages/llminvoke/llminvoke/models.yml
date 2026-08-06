@@ -139,7 +139,7 @@ packages:
       stepRoute: {temperature: 0, request_kwargs: {chat_template_kwargs: {enable_thinking: false}}}
       stepPasRoute: {temperature: 0, request_kwargs: {chat_template_kwargs: {enable_thinking: false}}}
       stepNeedsContext: {temperature: 0, request_kwargs: {chat_template_kwargs: {enable_thinking: false}}}
-      stepRetrieve: {temperature: 0, request_kwargs: {chat_template_kwargs: {enable_thinking: false}}}
+      stepRetrieve: {temperature: 0.2, request_kwargs: {chat_template_kwargs: {enable_thinking: false}}}
       precheck: {temperature: 0, request_kwargs: {chat_template_kwargs: {enable_thinking: false}}}
       stepDateExtract: {temperature: 0, request_kwargs: {chat_template_kwargs: {enable_thinking: false}}}
       stepLoopFactsheet: {temperature: 0, request_kwargs: {chat_template_kwargs: {enable_thinking: false}}}
