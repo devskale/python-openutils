@@ -29,14 +29,17 @@ def normalize_nonstream_content(content: Any, tool_calls: Any) -> str | None:
     return content
 
 
-def format_chunk_to_openai(response, provider_model: str) -> dict[str, Any]:
+def format_chunk_to_openai(response, provider_model: str, completion_id: str) -> dict[str, Any]:
     """Format a raw ChatCompletionResponse chunk into an OpenAI-compatible dict.
 
     The proxy SSE layer consumes OpenAI-shaped chunks; Target yields raw
-    ChatCompletionResponse, so this conversion sits at the proxy seam.
+    ChatCompletionResponse, so this conversion sits at the proxy seam. The
+    completion_id is reused across every chunk of one completion (OpenAI's id
+    is stable per completion) — a fresh uuid per chunk was needless allocation
+    at high chunk rates.
     """
     chunk_data = {
-        "id": f"chatcmpl-{uuid.uuid4()}",
+        "id": completion_id,
         "object": "chat.completion.chunk",
         "created": int(time.time()),
         "model": provider_model,
@@ -94,13 +97,14 @@ async def astream_response_generator(
         os.getenv("UNIINFER_STREAM_IDLE_TIMEOUT", "300")
     )  # Increased for reasoning models
 
-    first_chunk_data = StreamingChatCompletionChunk(
-        id=completion_id,
-        created=created_time,
-        model=model_name,
-        choices=[StreamingChoice(delta=ChoiceDelta(role="assistant"))],
-    )
-    yield f"data: {first_chunk_data.model_dump_json(exclude_none=True)}\n\n"
+    first_chunk = {
+        "id": completion_id,
+        "object": "chat.completion.chunk",
+        "created": created_time,
+        "model": model_name,
+        "choices": [{"index": 0, "delta": {"role": "assistant"}}],
+    }
+    yield f"data: {json.dumps(first_chunk)}\n\n"
 
     seen_tool_calls = False
     sent_finish_reason = False
@@ -140,7 +144,7 @@ async def astream_response_generator(
                     _stats_usage = _raw["usage"]
                 # Target yields raw ChatCompletionResponse; convert to the
                 # OpenAI-dict shape the chunk-shaping logic below consumes.
-                chunk = format_chunk_to_openai(raw_chunk, model_name)
+                chunk = format_chunk_to_openai(raw_chunk, model_name, completion_id)
             except asyncio.TimeoutError:
                 now = time.monotonic()
                 idle_for = now - last_yield_time
@@ -408,15 +412,14 @@ async def astream_response_generator(
             finish_reason = (
                 "tool_calls" if (seen_tool_calls or leak_repair.has_leak()) else "stop"
             )
-            final_chunk_data = StreamingChatCompletionChunk(
-                id=completion_id,
-                created=created_time,
-                model=model_name,
-                choices=[
-                    StreamingChoice(delta=ChoiceDelta(), finish_reason=finish_reason)
-                ],
-            )
-            yield f"data: {final_chunk_data.model_dump_json(exclude_none=True)}\n\n"
+            final_chunk = {
+                "id": completion_id,
+                "object": "chat.completion.chunk",
+                "created": created_time,
+                "model": model_name,
+                "choices": [{"index": 0, "delta": {}, "finish_reason": finish_reason}],
+            }
+            yield f"data: {json.dumps(final_chunk)}\n\n"
 
         # OpenAI streaming contract: when the client requested
         # stream_options.include_usage, emit a terminal chunk with empty

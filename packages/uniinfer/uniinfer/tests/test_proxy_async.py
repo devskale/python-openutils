@@ -29,7 +29,8 @@ def test_format_chunk_to_openai_basic():
         raw_response={}
     )
 
-    result = format_chunk_to_openai(response, "openai@gpt-3.5-turbo")
+    result = format_chunk_to_openai(response, "openai@gpt-3.5-turbo", "chatcmpl-test")
+    assert result["id"] == "chatcmpl-test"
     assert result["object"] == "chat.completion.chunk"
     assert result["model"] == "openai@gpt-3.5-turbo"
 
@@ -47,7 +48,7 @@ def test_format_chunk_to_openai_with_finish_reason():
         finish_reason="stop"
     )
 
-    result = format_chunk_to_openai(response, "openai@gpt-3.5-turbo")
+    result = format_chunk_to_openai(response, "openai@gpt-3.5-turbo", "chatcmpl-test")
     assert result["choices"][0]["finish_reason"] == "stop"
 
 
@@ -64,7 +65,7 @@ def test_format_chunk_to_openai_with_tool_calls():
         raw_response={}
     )
 
-    result = format_chunk_to_openai(response, "openai@gpt-3.5-turbo")
+    result = format_chunk_to_openai(response, "openai@gpt-3.5-turbo", "chatcmpl-test")
     assert "tool_calls" in result["choices"][0]["delta"]
 
 
