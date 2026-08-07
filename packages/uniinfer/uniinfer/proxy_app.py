@@ -21,6 +21,7 @@ from contextlib import asynccontextmanager
 import httpx
 from dotenv import load_dotenv
 import gc
+import tracemalloc
 from collections import Counter
 from sys import getsizeof
 from uniinfer.auth import validate_proxy_token
@@ -105,6 +106,7 @@ async def lifespan(app: FastAPI):
     destroyed a pool on every call — the main source of malloc churn that bloats
     a long-running process's RSS (on amd this accumulated to ~400 MB over 3
     days vs a ~50 MB baseline)."""
+    tracemalloc.start(10)  # diagnostic: trace all allocs (incl str/bytes) for /debug/mem
     app.state.http = httpx.AsyncClient(
         timeout=httpx.Timeout(120.0, connect=10.0),
         limits=httpx.Limits(max_connections=50, max_keepalive_connections=20),
@@ -410,26 +412,22 @@ async def root():
 
 @app.get("/debug/mem", include_in_schema=False)
 async def debug_mem(api_bearer_token: str = Depends(validate_proxy_token)):
-    """Live object census (gc.get_objects by type) — diagnostic for the
-    streaming RSS leak. Diff the counts between two calls (before vs after a
-    burst) to find the accumulating type. Shallow getsizeof; COUNT is exact and
-    the telling signal."""
+    """tracemalloc snapshot — diagnostic for the streaming RSS leak. Traces
+    ALL allocations (incl str/bytes, which gc.get_objects misses). Diff traced
+    memory + top allocations between two calls to pin the leak."""
     gc.collect()
-    by_count: Counter = Counter()
-    by_size: Counter = Counter()
-    total = 0
-    for o in gc.get_objects():
-        t = type(o).__name__
-        by_count[t] += 1
-        try:
-            by_size[t] += getsizeof(o)
-        except Exception:
-            pass
-        total += 1
+    cur, peak = tracemalloc.get_traced_memory()
+    snap = tracemalloc.take_snapshot()
+    stats = snap.statistics("lineno")
     return {
-        "total_objects": total,
-        "top_by_count": by_count.most_common(20),
-        "top_by_size_kb": [(t, round(s / 1024)) for t, s in by_size.most_common(20)],
+        "traced_current_mb": round(cur / 1048576, 1),
+        "traced_peak_mb": round(peak / 1048576, 1),
+        "gc_objects": len(gc.get_objects()),
+        "top_allocations": [
+            {"kb": round(s.size / 1024), "n": s.count,
+             "at": f"{s.traceback[0].filename.split('/')[-1]}:{s.traceback[0].lineno}"}
+            for s in stats[:20]
+        ],
     }
 
 
