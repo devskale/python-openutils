@@ -9,7 +9,7 @@ from fastapi.security import HTTPBearer  # Import HTTPBearer
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
-from fastapi import FastAPI, HTTPException, Request, status
+from fastapi import FastAPI, HTTPException, Request, status, Depends
 from fastapi.exceptions import RequestValidationError
 from fastapi.encoders import jsonable_encoder
 from slowapi import Limiter, _rate_limit_exceeded_handler
@@ -20,6 +20,10 @@ import os
 from contextlib import asynccontextmanager
 import httpx
 from dotenv import load_dotenv
+import gc
+from collections import Counter
+from sys import getsizeof
+from uniinfer.auth import validate_proxy_token
 
 from uniinfer.proxy_routers.models import create_models_router
 from uniinfer.proxy_routers.media import create_media_router
@@ -402,6 +406,31 @@ async def root():
     if not os.path.exists(html):
         raise HTTPException(status_code=404, detail="webdemo.html not found")
     return FileResponse(html)
+
+
+@app.get("/debug/mem", include_in_schema=False)
+async def debug_mem(api_bearer_token: str = Depends(validate_proxy_token)):
+    """Live object census (gc.get_objects by type) — diagnostic for the
+    streaming RSS leak. Diff the counts between two calls (before vs after a
+    burst) to find the accumulating type. Shallow getsizeof; COUNT is exact and
+    the telling signal."""
+    gc.collect()
+    by_count: Counter = Counter()
+    by_size: Counter = Counter()
+    total = 0
+    for o in gc.get_objects():
+        t = type(o).__name__
+        by_count[t] += 1
+        try:
+            by_size[t] += getsizeof(o)
+        except Exception:
+            pass
+        total += 1
+    return {
+        "total_objects": total,
+        "top_by_count": by_count.most_common(20),
+        "top_by_size_kb": [(t, round(s / 1024)) for t, s in by_size.most_common(20)],
+    }
 
 
 # --- Run the API (for local development) ---
