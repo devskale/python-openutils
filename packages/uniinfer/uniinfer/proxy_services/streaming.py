@@ -477,6 +477,12 @@ async def astream_response_generator(
             )
         except Exception:
             pass
+        # Release the per-request provider + its httpx client (Target owns one;
+        # without this every stream leaks a connection pool).
+        try:
+            await target.aclose()
+        except Exception:
+            pass
 
     logger.debug(
         "%sAsync stream end for %s (chunks=%s, heartbeats=%s)",

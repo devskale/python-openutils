@@ -94,6 +94,17 @@ class Target:
         self.provider = ProviderFactory.get_provider(spec.provider, **kwargs)
         self._record_access = record_access
 
+    async def aclose(self) -> None:
+        """Close the HTTP client/resources held by the provider.
+
+        A Target owns a provider that lazily opens an httpx.AsyncClient; without
+        closing it, every request leaks a client + connection pool (the
+        monotonic RSS growth seen under load). Callers MUST close after use.
+        """
+        aclose = getattr(self.provider, "aclose", None)
+        if aclose is not None:
+            await aclose()
+
     # ------------------------------------------------------------------ #
     # internals
     # ------------------------------------------------------------------ #

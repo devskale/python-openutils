@@ -62,6 +62,7 @@ def create_chat_router(
         base_url = request_input.base_url
         provider_model = request_input.model
         _req_t0 = time.monotonic()
+        target: Target | None = None
 
         try:
             provider_name, _ = parse_provider_model(provider_model)
@@ -224,6 +225,16 @@ def create_chat_router(
             raise HTTPException(
                 status_code=500, detail=f"Internal Server Error: {type(e).__name__}"
             )
+        finally:
+            # Release the per-request provider + its httpx client. A Target owns
+            # a provider that opens an httpx.AsyncClient; without this every
+            # request leaks a connection pool. The streaming path is exempt —
+            # the generator closes the target itself once the stream ends.
+            if target is not None and not request_input.stream:
+                try:
+                    await target.aclose()
+                except Exception:
+                    logger.debug("target.aclose() failed", exc_info=True)
 
     @router.post("/v1/embeddings", response_model=EmbeddingResponse)
     @limiter.limit(get_embeddings_rate_limit)
