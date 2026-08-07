@@ -38,6 +38,14 @@ load_dotenv()
 root_logger = logging.getLogger()
 root_logger.setLevel(logging.INFO)
 
+# Lean logging at throughput: silence per-call / per-stream chatty loggers so a
+# high request rate doesn't emit a log record (string format + disk write +
+# journald ingest) for every upstream call, every cached-key lookup, and every
+# stream start/end. Errors/warnings still surface in full. We keep one concise
+# END line per request (see log_requests middleware) plus full ERROR detail.
+for _noisy in ("httpx", "credgoo", "uniinfer.completion"):
+    logging.getLogger(_noisy).setLevel(logging.WARNING)
+
 # Create rotating file handler (2MB max, 5 backup files)
 # Guard against duplicate handlers on reload/import.
 if not root_logger.handlers:
@@ -188,7 +196,7 @@ async def log_requests(request: Request, call_next):
     # Store request_id in request state for access in endpoints
     request.state.request_id = request_id
 
-    logger.info(f"[{request_id}] START {request.method} {request.url}")
+    logger.debug(f"[{request_id}] START {request.method} {request.url}")
 
     try:
         response = await call_next(request)
@@ -421,7 +429,8 @@ def main():
         host="0.0.0.0",
         port=args.port,
         workers=1,
-        reload=args.reload
+        reload=args.reload,
+        access_log=False,
     )
 
 

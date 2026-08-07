@@ -79,7 +79,7 @@ async def astream_response_generator(
     model_name = target.provider_model
 
     stream_label = f"[{request_id}] " if request_id else ""
-    logger.info("%sAsync stream start for %s", stream_label, model_name)
+    logger.debug("%sAsync stream start for %s", stream_label, model_name)
     _stats_t0 = time.monotonic()
     _stats_usage: dict = {}
     _stats_status = 200
@@ -475,7 +475,7 @@ async def astream_response_generator(
         except Exception:
             pass
 
-    logger.info(
+    logger.debug(
         "%sAsync stream end for %s (chunks=%s, heartbeats=%s)",
         stream_label,
         model_name,
