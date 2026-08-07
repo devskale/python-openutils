@@ -17,6 +17,8 @@ from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware
 import os
+from contextlib import asynccontextmanager
+import httpx
 from dotenv import load_dotenv
 
 from uniinfer.proxy_routers.models import create_models_router
@@ -82,10 +84,30 @@ try:
 except PackageNotFoundError:
     UNIINFER_VERSION = "unknown"
 
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """App-lifetime shared httpx client.
+
+    One connection pool / TLS context reused across all requests, instead of a
+    brand-new AsyncClient per request. The per-request pattern created and
+    destroyed a pool on every call — the main source of malloc churn that bloats
+    a long-running process's RSS (on amd this accumulated to ~400 MB over 3
+    days vs a ~50 MB baseline)."""
+    app.state.http = httpx.AsyncClient(
+        timeout=httpx.Timeout(120.0, connect=10.0),
+        limits=httpx.Limits(max_connections=50, max_keepalive_connections=20),
+    )
+    try:
+        yield
+    finally:
+        await app.state.http.aclose()
+
+
 app = FastAPI(
     title="UniIOAI API",
     description="OpenAI-compatible API wrapper using UniInfer",
     version=UNIINFER_VERSION,
+    lifespan=lifespan,
 )
 
 

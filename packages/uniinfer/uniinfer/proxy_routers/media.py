@@ -1,8 +1,10 @@
+import asyncio
 import base64
 import os
 import time
 import urllib.parse
 import logging
+from contextlib import asynccontextmanager
 from typing import Optional, List, Dict, Callable, Any
 
 import httpx
@@ -15,6 +17,20 @@ from uniinfer.provider_access import get_provider_api_key, list_model_names_for_
 
 
 logger = logging.getLogger("uniioai_proxy")
+
+
+@asynccontextmanager
+async def _http_client(request: Request):
+    """Yield the app-lifetime shared httpx client when present (prod), else a
+    short-lived fallback (tests / standalone). Sharing one client reuses the
+    connection pool + TLS and avoids the per-request allocation churn that
+    bloats a long-running process's RSS."""
+    shared = getattr(request.app.state, "http", None)
+    if shared is not None:
+        yield shared
+    else:
+        async with httpx.AsyncClient(timeout=120.0) as client:
+            yield client
 
 
 class ImageGenerationRequest(BaseModel):
@@ -62,9 +78,16 @@ def create_media_router(
     get_media_rate_limit: Callable[[], str],
 ) -> APIRouter:
     router = APIRouter()
+    # Bound concurrent image generation. Each in-flight gen buffers whole images
+    # (raw bytes -> base64 -> JSON, several MB each, multiple live copies);
+    # without a cap, N parallel requests allocate N x that simultaneously and
+    # thrash a small box. Excess requests queue here (backpressure) instead of
+    # all churning at once.
+    image_sem = asyncio.Semaphore(int(os.getenv("UNIINFER_IMAGE_CONCURRENCY", "2")))
 
     @router.get("/v1/image/models/{provider_name}")
     async def list_image_models(
+        request: Request,
         provider_name: str,
         api_bearer_token: Optional[str] = Depends(get_optional_proxy_token),
     ):
@@ -79,7 +102,7 @@ def create_media_router(
                             api_key_for_list = get_provider_api_key(api_bearer_token, "pollinations")
                         except Exception:
                             pass
-                    async with httpx.AsyncClient() as client:
+                    async with _http_client(request) as client:
                         headers = {"User-Agent": "UniIOAI/0.1"}
                         if api_key_for_list:
                             headers["Authorization"] = f"Bearer {api_key_for_list}"
@@ -124,85 +147,88 @@ def create_media_router(
         request_input: ImageGenerationRequest,
         api_bearer_token: Optional[str] = Depends(get_optional_proxy_token),
     ):
-        try:
-            provider_model = request_input.model
-            prompt = request_input.prompt
-            n = request_input.n or 1
-            size = request_input.size or "512x512"
-            seed = request_input.seed
-
-            provider_name, model_name = parse_provider_model(
-                provider_model, allowed_providers=["pollinations", "tu"], task_name="images"
-            )
-
-            api_key = None
-            if api_bearer_token:
-                try:
-                    api_key = get_provider_api_key(api_bearer_token, provider_name)
-                except Exception:
-                    api_key = None
-
-            width, height = 512, 512
+        async with image_sem:
             try:
-                if isinstance(size, str) and "x" in size:
-                    w_str, h_str = size.split("x", 1)
-                    width = int(w_str)
-                    height = int(h_str)
-            except Exception:
+                provider_model = request_input.model
+                prompt = request_input.prompt
+                n = request_input.n or 1
+                size = request_input.size or "512x512"
+                seed = request_input.seed
+
+                provider_name, model_name = parse_provider_model(
+                    provider_model, allowed_providers=["pollinations", "tu"], task_name="images"
+                )
+
+                api_key = None
+                if api_bearer_token:
+                    try:
+                        api_key = get_provider_api_key(api_bearer_token, provider_name)
+                    except Exception:
+                        api_key = None
+
                 width, height = 512, 512
+                try:
+                    if isinstance(size, str) and "x" in size:
+                        w_str, h_str = size.split("x", 1)
+                        width = int(w_str)
+                        height = int(h_str)
+                except Exception:
+                    width, height = 512, 512
 
-            data_items: List[ImageData] = []
+                data_items: List[dict] = []
 
-            async with httpx.AsyncClient() as client:
-                if provider_name == "tu":
-                    if not api_key:
-                        raise HTTPException(status_code=401, detail="API key required for TU provider")
+                async with _http_client(request) as client:
+                    if provider_name == "tu":
+                        if not api_key:
+                            raise HTTPException(status_code=401, detail="API key required for TU provider")
 
-                    resp = await client.post(
-                        "https://aqueduct.ai.datalab.tuwien.ac.at/v1/images/generations",
-                        headers={"Content-Type": "application/json", "Authorization": f"Bearer {api_key}"},
-                        json={"model": model_name, "prompt": prompt, "n": n, "size": size},
-                        timeout=120,
-                    )
-                    resp.raise_for_status()
-                    tu_data = resp.json()
-                    for item in tu_data.get("data", []):
-                        b64_json = item.get("b64_json")
-                        url = item.get("url")
-                        if b64_json:
-                            data_items.append(ImageData(b64_json=b64_json, url=url))
-                        elif url:
-                            img_resp = await client.get(url, timeout=60)
-                            img_resp.raise_for_status()
-                            b64 = base64.b64encode(img_resp.content).decode("utf-8")
-                            data_items.append(ImageData(b64_json=b64, url=url))
-                else:
-                    encoded_prompt = urllib.parse.quote(prompt)
-                    base_url = "https://gen.pollinations.ai/image"
-                    for i in range(n):
-                        this_seed = seed if seed is not None else int(time.time()) + i
-                        url = f"{base_url}/{encoded_prompt}?model={model_name}&width={width}&height={height}&seed={this_seed}"
+                        resp = await client.post(
+                            "https://aqueduct.ai.datalab.tuwien.ac.at/v1/images/generations",
+                            headers={"Content-Type": "application/json", "Authorization": f"Bearer {api_key}"},
+                            json={"model": model_name, "prompt": prompt, "n": n, "size": size},
+                            timeout=120,
+                        )
+                        resp.raise_for_status()
+                        tu_data = resp.json()
+                        for item in tu_data.get("data", []):
+                            b64_json = item.get("b64_json")
+                            url = item.get("url")
+                            if b64_json:
+                                data_items.append({"b64_json": b64_json, **({"url": url} if url else {})})
+                            elif url:
+                                img_resp = await client.get(url, timeout=60)
+                                img_resp.raise_for_status()
+                                b64 = base64.b64encode(img_resp.content).decode("utf-8")
+                                data_items.append({"b64_json": b64, "url": url})
+                    else:
+                        encoded_prompt = urllib.parse.quote(prompt)
+                        base_url = "https://gen.pollinations.ai/image"
+                        for i in range(n):
+                            this_seed = seed if seed is not None else int(time.time()) + i
+                            url = f"{base_url}/{encoded_prompt}?model={model_name}&width={width}&height={height}&seed={this_seed}"
 
-                        headers = {"Accept": "image/jpeg", "User-Agent": "UniIOAI/0.1"}
-                        if api_key:
-                            headers["Authorization"] = f"Bearer {api_key}"
+                            headers = {"Accept": "image/jpeg", "User-Agent": "UniIOAI/0.1"}
+                            if api_key:
+                                headers["Authorization"] = f"Bearer {api_key}"
 
-                        resp = await client.get(url, headers=headers, timeout=60)
-                        if resp.status_code != 200:
-                            detail = resp.text if resp.text else "Failed to generate image from Pollinations"
-                            raise HTTPException(status_code=resp.status_code, detail=detail)
+                            resp = await client.get(url, headers=headers, timeout=60)
+                            if resp.status_code != 200:
+                                detail = resp.text if resp.text else "Failed to generate image from Pollinations"
+                                raise HTTPException(status_code=resp.status_code, detail=detail)
 
-                        b64 = base64.b64encode(resp.content).decode("utf-8")
-                        data_items.append(ImageData(b64_json=b64, url=url))
+                            b64 = base64.b64encode(resp.content).decode("utf-8")
+                            data_items.append({"b64_json": b64, "url": url})
 
-            response_data = ImageGenerationResponse(data=data_items, model=provider_model)
-            return JSONResponse(content=response_data.model_dump())
+                # Build the OpenAI-shaped response directly: skip the pydantic
+                # ImageData / ImageGenerationResponse round-trip so every base64
+                # image lives in memory one fewer time.
+                return JSONResponse(content={"created": int(time.time()), "data": data_items, "model": provider_model})
 
-        except HTTPException:
-            raise
-        except Exception as e:
-            logger.exception("Unexpected error in generate_images endpoint: %s", e)
-            raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
+            except HTTPException:
+                raise
+            except Exception as e:
+                logger.exception("Unexpected error in generate_images endpoint: %s", e)
+                raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
 
     @router.post("/v1/audio/speech")
     @limiter.limit(get_media_rate_limit)
