@@ -6,7 +6,7 @@ import time
 import uuid
 from typing import Any, AsyncGenerator
 
-from uniinfer.errors import ProviderError, UniInferError
+from uniinfer.errors import ProviderError, RateLimitError, UniInferError
 from uniinfer.proxy_schemas.chat import (
     ChoiceDelta,
     StreamingChatCompletionChunk,
@@ -104,6 +104,36 @@ async def astream_response_generator(
         "model": model_name,
         "choices": [{"index": 0, "delta": {"role": "assistant"}}],
     }
+
+    # PRIME the upstream stream BEFORE committing the SSE 200: pull the first
+    # upstream chunk (or its open-time error) so that an upstream 429
+    # (RateLimitError) propagates to the caller as a real HTTP 429 (transparent
+    # rate-limit transport) instead of a 200-with-error-chunk. Non-429 open
+    # errors fall through to the normal error-chunk path after commit. The
+    # first upstream chunk is held in _pending and fed to the relay loop below.
+    _pending: list = []
+    _prime_error: BaseException | None = None
+    try:
+        _async_iter = target.astream_complete(
+            messages,
+            temperature=temp,
+            max_tokens=max_tok,
+            tools=tools,
+            tool_choice=tool_choice,
+            reasoning_effort=reasoning_effort,
+            chat_template_kwargs=chat_template_kwargs,
+            extra=extra,
+        ).__aiter__()
+        _pending.append(
+            await asyncio.wait_for(_async_iter.__anext__(), timeout=heartbeat_interval)
+        )
+    except RateLimitError:
+        raise  # no SSE committed — caller returns HTTP 429
+    except StopAsyncIteration:
+        pass  # empty upstream: loop sees StopAsyncIteration next and finishes cleanly
+    except BaseException as e:  # noqa: BLE001
+        _prime_error = e  # non-429 open error — error chunk after commit
+
     yield f"data: {json.dumps(first_chunk)}\n\n"
 
     seen_tool_calls = False
@@ -120,20 +150,16 @@ async def astream_response_generator(
     reasoning_leak_repair = GlmLeakInterceptor(tools=tools, model=model_name)
 
     try:
-        async_iter = target.astream_complete(
-            messages,
-            temperature=temp,
-            max_tokens=max_tok,
-            tools=tools,
-            tool_choice=tool_choice,
-            reasoning_effort=reasoning_effort,
-            chat_template_kwargs=chat_template_kwargs,
-            extra=extra,
-        ).__aiter__()
+        if _prime_error is not None:
+            raise _prime_error
         while True:
             try:
-                raw_chunk = await asyncio.wait_for(
-                    async_iter.__anext__(), timeout=heartbeat_interval
+                raw_chunk = (
+                    _pending.pop(0)
+                    if _pending
+                    else await asyncio.wait_for(
+                        _async_iter.__anext__(), timeout=heartbeat_interval
+                    )
                 )
                 # Capture usage if the backend emits it (often on the final chunk).
                 _raw = getattr(raw_chunk, "raw_response", None)

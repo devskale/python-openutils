@@ -192,16 +192,16 @@ class TUProvider(ChatProvider):
                     continue
                 raise map_provider_error(self._CREDGOO_SERVICE, e)
             if response.status_code == 429:
-                retry_after = _parse_retry_after(response.headers)
-                lim = self._rate_limiter()
-                backoff = lim.on_429(model=model, retry_after_s=retry_after)
+                # Transparent rate-limit transport: record the 429 so FUTURE
+                # requests are paced down (the limiter applies its cooldown to
+                # subsequent acquire() calls), but do NOT retry/stall THIS one —
+                # surface the 429 to the caller immediately so the client can
+                # handle its own backoff instead of hanging on a silent replay.
+                self._rate_limiter().on_429(model=model, retry_after_s=_parse_retry_after(response.headers))
                 logger.warning(
-                    "[%s] 429 on model %s — backing off %.1fs; current estimate %.2f/min",
-                    self._CREDGOO_SERVICE, model, backoff, lim.status().get(model, {}).get("rpm", 0),
+                    "[%s] 429 on model %s — relaying 429 to caller (no internal retry); estimate %.2f/min",
+                    self._CREDGOO_SERVICE, model, self._rate_limiter().status().get(model, {}).get("rpm", 0),
                 )
-                if attempt < max_retries:
-                    await asyncio.sleep(backoff)
-                    continue
                 raise map_provider_error(
                     self._CREDGOO_SERVICE,
                     Exception(f"TU API error: 429 - {response.text}"),
@@ -236,21 +236,19 @@ class TUProvider(ChatProvider):
                     continue
                 raise map_provider_error(self._CREDGOO_SERVICE, e)
             if response.status_code == 429:
-                retry_after = _parse_retry_after(response.headers)
-                lim = self._rate_limiter()
-                backoff = lim.on_429(model=model, retry_after_s=retry_after)
+                # Transparent 429 transport (see _post_with_ratelimit_retry):
+                # record for future pacing, but surface to the caller at once —
+                # no internal replay/backoff that would stall the stream.
+                self._rate_limiter().on_429(model=model, retry_after_s=_parse_retry_after(response.headers))
                 logger.warning(
-                    "[%s] 429 on model %s stream — backing off %.1fs; current estimate %.2f/min",
-                    self._CREDGOO_SERVICE, model, backoff, lim.status().get(model, {}).get("rpm", 0),
+                    "[%s] 429 on model %s stream — relaying 429 to caller (no internal retry); estimate %.2f/min",
+                    self._CREDGOO_SERVICE, model, self._rate_limiter().status().get(model, {}).get("rpm", 0),
                 )
+                error_body = await response.aread()
                 try:
                     await cm.__aexit__(None, None, None)
                 except Exception:
                     pass
-                if attempt < max_retries:
-                    await asyncio.sleep(backoff)
-                    continue
-                error_body = await response.aread()
                 raise map_provider_error(
                     self._CREDGOO_SERVICE,
                     Exception(f"TU API error: 429 - {error_body}"),

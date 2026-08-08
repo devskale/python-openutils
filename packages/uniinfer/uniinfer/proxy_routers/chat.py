@@ -1,6 +1,6 @@
 import logging
 import time
-from typing import Any, Callable
+from typing import Any, AsyncGenerator, Callable
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import JSONResponse, StreamingResponse
@@ -103,19 +103,52 @@ def create_chat_router(
             target = Target(provider_model, provider_api_key, base_url)
 
             if request_input.stream:
+                _stream_gen = astream_response_generator(
+                    target=target,
+                    messages=messages_dict,
+                    temp=request_input.temperature,
+                    max_tok=request_input.get_effective_max_tokens(),
+                    tools=request_input.tools,
+                    tool_choice=request_input.tool_choice,
+                    request_id=getattr(request.state, "request_id", None),
+                    reasoning_effort=reasoning_effort,
+                    chat_template_kwargs=request_input.chat_template_kwargs,
+                    extra=extras,
+                )
+                # Prime the stream: an open-time upstream 429 (RateLimitError)
+                # surfaces here as a real HTTP 429 (transparent rate-limit
+                # transport) instead of a 200 SSE with a body error chunk.
+                try:
+                    _first = await _stream_gen.__anext__()
+                except RateLimitError as e:
+                    _detail = (
+                        f"{e} | Response: {e.response_body}" if e.response_body else str(e)
+                    )
+                    get_stats().record(
+                        provider_model,
+                        status=429,
+                        latency_ms=(time.monotonic() - _req_t0) * 1000,
+                        usage=None,
+                    )
+                    return JSONResponse(
+                        status_code=429,
+                        content={
+                            "error": {
+                                "message": _detail,
+                                "type": "rate_limit",
+                                "code": 429,
+                            },
+                            "model": provider_model,
+                        },
+                    )
+
+                async def _relay() -> AsyncGenerator[str, None]:
+                    yield _first  # the primed (welcome) chunk
+                    async for _item in _stream_gen:
+                        yield _item
+
                 return StreamingResponse(
-                    astream_response_generator(
-                        target=target,
-                        messages=messages_dict,
-                        temp=request_input.temperature,
-                        max_tok=request_input.get_effective_max_tokens(),
-                        tools=request_input.tools,
-                        tool_choice=request_input.tool_choice,
-                        request_id=getattr(request.state, "request_id", None),
-                        reasoning_effort=reasoning_effort,
-                        chat_template_kwargs=request_input.chat_template_kwargs,
-                        extra=extras,
-                    ),
+                    _relay(),
                     media_type="text/event-stream",
                     headers={
                         "Cache-Control": "no-cache",
