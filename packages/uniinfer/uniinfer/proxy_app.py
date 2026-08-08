@@ -455,6 +455,36 @@ def _cgroup_mem():
     return out
 
 
+def _jemalloc_stats() -> dict:
+    """Best-effort live jemalloc allocator stats via mallctl (only meaningful
+    when jemalloc is LD_PRELOADed). Distinguishes a live native leak
+    (stats.allocated grows) from allocator retention (allocated flat but
+    resident/RSS grows — decayed pages not yet returned). Returns {} if
+    jemalloc/mallctl is unavailable (e.g. mac, or a non-jemalloc allocator)."""
+    try:
+        import ctypes
+        lib = ctypes.CDLL("libjemalloc.so.2")
+        lib.mallctl.argtypes = [ctypes.c_char_p, ctypes.c_void_p,
+                                ctypes.POINTER(ctypes.c_size_t), ctypes.c_void_p,
+                                ctypes.c_size_t]
+
+        def read_u64(key: str):
+            buf = ctypes.c_uint64(0)
+            sz = ctypes.c_size_t(8)
+            if lib.mallctl(key.encode(), ctypes.byref(buf), ctypes.byref(sz), None, 0) == 0:
+                return buf.value
+            return None
+
+        out = {}
+        for k in ("stats.allocated", "stats.active", "stats.resident", "stats.retained"):
+            v = read_u64(k)
+            if v is not None:
+                out[k.rsplit(".", 1)[1]] = round(v / (1024 * 1024), 1)  # MB
+        return out
+    except Exception:
+        return {}
+
+
 @app.get("/health", include_in_schema=False)
 async def health(request: Request):
     """Lightweight health probe (no auth, no upstream cost). Surfaces the
@@ -505,6 +535,17 @@ async def health(request: Request):
         "malloc_arena_max": os.environ.get("MALLOC_ARENA_MAX"),
         "malloc_mmap_threshold": os.environ.get("MALLOC_MMAP_THRESHOLD_"),
     }
+    # live jemalloc split — the key diagnostic for WHICH kind of native growth:
+    #  live_mb  grows   = real in-use native allocations (leak to hunt)
+    #  retained_mb grows = decayed pages jemalloc hasn't returned (allocator)
+    jstats = _jemalloc_stats()
+    if jstats.get("allocated") is not None:
+        allocator["live_allocated_mb"] = jstats.get("allocated")
+        allocator["active_mb"] = jstats.get("active")
+        allocator["resident_mb"] = jstats.get("resident")
+        allocator["retained_mb"] = jstats.get("retained")
+        allocator["unreturned_mb"] = round(max(0.0, (jstats.get("resident") or 0)
+                                               - (jstats.get("allocated") or 0)), 1)
 
     # status thresholds tuned to the unit's 200M soft / 300M hard caps
     status = "ok"
