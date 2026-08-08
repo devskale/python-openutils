@@ -253,6 +253,24 @@ class ChatCompletionResponse:
         self.thinking = thinking
 
 
+# Process-wide shared transport used by base ChatProvider for bare-transport
+# chat providers (OpenAI-compatible, etc.). Because these providers pass
+# absolute endpoints + per-request auth headers to the client (never baking
+# base_url/headers into it), ONE shared AsyncClient safely serves every host
+# and every concurrent request — reusing its TLS sessions + connection pool
+# instead of minting a fresh client (new SSL handshake + native buffer set)
+# per request. This is the documented httpx pattern (share one AsyncClient) and
+# the same approach TU already uses per base_url, applied globally.
+_SHARED_CLIENT: "httpx.AsyncClient | None" = None
+
+
+def _shared_async_client() -> httpx.AsyncClient:
+    global _SHARED_CLIENT
+    if _SHARED_CLIENT is None or _SHARED_CLIENT.is_closed:
+        _SHARED_CLIENT = httpx.AsyncClient(timeout=60.0)
+    return _SHARED_CLIENT
+
+
 class ChatProvider:
     """
     Abstract base class for chat providers.
@@ -276,17 +294,29 @@ class ChatProvider:
         """
         self.api_key = api_key
         self._async_client: Optional[httpx.AsyncClient] = None
+        self._owns_client = True  # False once _get_async_client returns the shared client
         # Additional provider-specific configuration can be handled by subclasses
 
     async def _get_async_client(self) -> httpx.AsyncClient:
-        """Get or create the internal httpx.AsyncClient."""
-        if self._async_client is None or self._async_client.is_closed:
-            self._async_client = httpx.AsyncClient(timeout=60.0)
-        return self._async_client
+        """Return the process-wide shared AsyncClient (see _shared_async_client).
+
+        Pooled for both throughput and lean footprint: the shared client's
+        connection pool + TLS sessions are reused across all requests and
+        hosts, so a fresh httpx.AsyncClient (new SSL handshake + native buffer
+        set) is NOT allocated per request. The client is not owned by this
+        instance; aclose() skips it."""
+        client = _shared_async_client()
+        self._async_client = client
+        self._owns_client = False
+        return client
 
     async def aclose(self):
-        """Close the internal httpx.AsyncClient if it exists."""
-        if self._async_client and not self._async_client.is_closed:
+        """Close the internal httpx.AsyncClient *only* when this instance owns it.
+
+        The base _get_async_client returns a process-wide shared client (see
+        _shared_async_client) that must survive per-request closes; subclasses
+        that build their own client keep ownership and close normally."""
+        if getattr(self, "_owns_client", True) and self._async_client and not self._async_client.is_closed:
             await self._async_client.aclose()
 
     @classmethod
