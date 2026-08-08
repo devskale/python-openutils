@@ -1,5 +1,6 @@
 import asyncio
 import base64
+import json
 import os
 import time
 import urllib.parse
@@ -182,14 +183,23 @@ def create_media_router(
                         if not api_key:
                             raise HTTPException(status_code=401, detail="API key required for TU provider")
 
-                        resp = await client.post(
+                        # Stream the upstream response (httpx best practice
+                        # for bounded memory) instead of one-shot client.post()
+                        # + json(), which buffers the full body in httpcore and
+                        # retained native buffer per request (the image RSS creep).
+                        # The async-with deterministically aclose()s the response.
+                        async with client.stream(
+                            "POST",
                             "https://aqueduct.ai.datalab.tuwien.ac.at/v1/images/generations",
                             headers={"Content-Type": "application/json", "Authorization": f"Bearer {api_key}"},
                             json={"model": model_name, "prompt": prompt, "n": n, "size": size},
-                            timeout=120,
-                        )
-                        resp.raise_for_status()
-                        tu_data = resp.json()
+                        ) as resp:
+                            if resp.status_code != 200:
+                                err = (await resp.aread()).decode("utf-8", "replace")[:500]
+                                raise HTTPException(status_code=resp.status_code, detail=err)
+                            raw = await resp.aread()
+                        tu_data = json.loads(raw)
+                        del raw
                         for item in tu_data.get("data", []):
                             b64_json = item.get("b64_json")
                             url = item.get("url")

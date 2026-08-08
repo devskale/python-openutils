@@ -78,7 +78,6 @@ class Target:
         api_key: Optional[str] = None,
         base_url: Optional[str] = None,
         record_access: bool = True,
-        client: Optional[Any] = None,  # shared httpx.AsyncClient (see below)
     ) -> None:
         self.provider_model = provider_model
         self.provider_name, self.model_name = parse_provider_model(provider_model)
@@ -93,25 +92,12 @@ class Target:
         if base_url is not None:
             kwargs["base_url"] = base_url
         self.provider = ProviderFactory.get_provider(spec.provider, **kwargs)
-        # Inject a shared httpx.AsyncClient if given: the provider reuses it
-        # instead of creating (and leaking native TLS/buffer memory for) its own
-        # client every request. We do NOT own it — the caller (the app lifespan)
-        # manages its lifetime, so aclose() must skip it (see below).
-        self._shared_client = client is not None
-        if client is not None:
-            self.provider._async_client = client
         self._record_access = record_access
 
     async def aclose(self) -> None:
-        """Release the provider's httpx client — but ONLY if Target created it.
-
-        A shared/injected client is owned by the caller (the app lifespan) and
-        must NOT be closed per request (closing it would kill connection pooling
-        for everyone). When no client was injected, Target owns the provider's
-        lazily-created client and closes it here to avoid a per-request leak.
-        """
-        if self._shared_client:
-            return
+        """Close the provider's httpx client if the provider owns one. Providers
+        that pool their client per base_url (e.g. TU) override aclose to a
+        no-op, so this is a no-op for them."""
         aclose = getattr(self.provider, "aclose", None)
         if aclose is not None:
             await aclose()

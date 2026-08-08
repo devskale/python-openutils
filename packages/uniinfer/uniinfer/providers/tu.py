@@ -84,6 +84,12 @@ def _parse_retry_after(headers: Any) -> float | None:
     return None
 
 
+# Process-wide pool of httpx clients keyed by base_url — one client per
+# upstream, reused across all requests (no per-request client creation → no
+# native TLS/buffer leak under streaming load). See _get_async_client.
+_TU_CLIENT_CACHE: dict[str, httpx.AsyncClient] = {}
+
+
 class TUProvider(ChatProvider):
     """TU (Tencent Unbounded) LLM Provider implementation."""
 
@@ -114,11 +120,21 @@ class TUProvider(ChatProvider):
         self.base_url = base_url or self._DEFAULT_BASE_URL
         self.supports_reasoning_effort = supports_reasoning_effort
         self._async_client: httpx.AsyncClient | None = None
+        self._owns_client = True  # False once _get_async_client returns a pooled client
         
     async def _get_async_client(self) -> httpx.AsyncClient:
-        """Get or create the internal httpx.AsyncClient with TU configuration."""
-        if self._async_client is None or self._async_client.is_closed:
-            self._async_client = httpx.AsyncClient(
+        """Get the shared (per-base_url) httpx.AsyncClient for TU.
+
+        Pooled per base_url so every request reuses ONE client (and its
+        connection pool) instead of minting one per Target — per-request
+        creation leaked native TLS/buffer memory under streaming load. The
+        client is cached process-wide; aclose() skips it (see _owns_client)."""
+        # Respect a caller/test-injected client before consulting the pool.
+        if self._async_client is not None and not self._async_client.is_closed:
+            return self._async_client
+        client = _TU_CLIENT_CACHE.get(self.base_url)
+        if client is None or client.is_closed:
+            client = httpx.AsyncClient(
                 base_url=self.base_url,
                 headers={
                     "Authorization": f"Bearer {self.api_key}",
@@ -126,7 +142,15 @@ class TUProvider(ChatProvider):
                 },
                 timeout=httpx.Timeout(300.0, connect=30.0)  # 5 min timeout for large models
             )
-        return self._async_client
+            _TU_CLIENT_CACHE[self.base_url] = client
+        self._async_client = client
+        self._owns_client = False
+        return client
+
+    async def aclose(self) -> None:
+        """TU's httpx client is process-pooled per base_url (see
+        _get_async_client) — never close it per request."""
+        return
 
     async def _throttle(self, model: str | None = None) -> dict[str, Any]:
         """Wait for a send slot from the adaptive per-model rate limiter.

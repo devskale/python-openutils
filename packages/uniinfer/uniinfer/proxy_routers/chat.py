@@ -100,10 +100,7 @@ def create_chat_router(
                 if not request_input.think:
                     reasoning_effort = "none"
 
-            target = Target(
-                provider_model, provider_api_key, base_url,
-                client=getattr(request.app.state, "http", None),
-            )
+            target = Target(provider_model, provider_api_key, base_url)
 
             if request_input.stream:
                 return StreamingResponse(
