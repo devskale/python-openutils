@@ -75,23 +75,36 @@ def update_model_accessed(model_name, provider_name, json_file='models.json'):
     if json_path is None:
         return
 
-    # ensure top-level structure
-    providers = existing_models.get("providers", {})
-    provider_data = providers.get(provider_name, {})
-    modellist = provider_data.get("modellist", [])
+    # ensure top-level structure (setdefault so a new provider/model persists)
+    providers = existing_models.setdefault("providers", {})
+    provider_data = providers.setdefault(provider_name, {})
+    # Catalog key is 'models' (current); read 'modellist' as a legacy fallback,
+    # then normalize onto 'models' so any append below persists.
+    modellist = provider_data.get("models") or provider_data.get("modellist") or []
+    provider_data["models"] = modellist
 
-    found = False
+    now = datetime.datetime.now().isoformat()
     for model_entry in modellist:
-        if model_entry.get("name") == model_name:
-            model_entry["accessed"] = datetime.datetime.now().isoformat()
-            model_entry["accessed_count"] = model_entry.get(
-                "accessed_count", 0) + 1
-            found = True
+        # Match on 'id' (the model identifier, e.g. "deepseek-v4-flash-284b"),
+        # with 'name' (display name) as a fallback.
+        if model_entry.get("id") == model_name or model_entry.get("name") == model_name:
+            model_entry["accessed"] = now
+            model_entry["accessed_count"] = model_entry.get("accessed_count", 0) + 1
             break
-
-    if not found:
-        logger.warning(
-            f"Model '{model_name}' not found for provider '{provider_name}'.")
+    else:
+        # The model was served successfully but isn't in the catalog yet (e.g. a
+        # newly added upstream model). Register it so the catalog stays current
+        # and access is tracked from here on — instead of warning every request.
+        modellist.append({
+            "id": model_name,
+            "type": "chat",
+            "status": "active",
+            "owned_by": provider_name,
+            "first_seen": now,
+            "accessed": now,
+            "accessed_count": 1,
+        })
+        logger.info("Registered new model '%s' (provider '%s') into the catalog.", model_name, provider_name)
 
     # Persist back
     try:

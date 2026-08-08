@@ -204,10 +204,16 @@ async def log_requests(request: Request, call_next):
 
     try:
         response = await call_next(request)
-        process_time = (time.time() - start_time) * 1000
-        logger.info(
-            f"[{request_id}] END {request.method} {request.url} - Status: {response.status_code} - Duration: {process_time:.2f}ms")
         response.headers["X-Request-ID"] = request_id
+        # For streaming (SSE) responses the body hasn't flowed yet at this point,
+        # so process_time would be just the response *setup* time (misleadingly
+        # tiny). Skip the END line for those; non-streaming + errors still log.
+        # BaseHTTPMiddleware wraps the response, so isinstance/media_type are
+        # unreliable here — the content-type header is preserved and reliable.
+        if "text/event-stream" not in response.headers.get("content-type", ""):
+            process_time = (time.time() - start_time) * 1000
+            logger.info(
+                f"[{request_id}] END {request.method} {request.url} - Status: {response.status_code} - Duration: {process_time:.2f}ms")
         return response
     except Exception as e:
         process_time = (time.time() - start_time) * 1000
