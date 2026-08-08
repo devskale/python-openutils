@@ -121,15 +121,29 @@ class TestTUProviderAsync:
         assert payload["model"] == "test-model"
 
     @pytest.mark.asyncio
-    async def test_throttle(self, provider):
-        """_throttle now delegates to the shared adaptive per-model limiter."""
-        from uniinfer.providers.tu import _TU_LIMITER
-        _TU_LIMITER.reset("test-model")
-        info = await provider._throttle("test-model")
-        assert isinstance(info, dict)
-        assert "rpm" in info
-        assert "waited" in info
-        assert info["rpm"] >= 0.5
+    async def test_relays_upstream_429_transparently(self, provider, monkeypatch):
+        """TU no longer throttles internally: an upstream 429 is relayed at once
+        as RateLimitError(429) instead of being paced/retried by the provider."""
+        import httpx
+        from uniinfer import ChatCompletionRequest, ChatMessage
+        from uniinfer.errors import RateLimitError
+
+        class FakeClient:
+            async def post(self, url, json=None):
+                return httpx.Response(429, json={"error": {"message": "limit"}})
+
+        async def _fake_client():
+            return FakeClient()
+
+        monkeypatch.setattr(provider, "_get_async_client", _fake_client)
+        req = ChatCompletionRequest(
+            model="m",
+            messages=[ChatMessage(role="user", content="hi")],
+            temperature=0.0, max_tokens=10,
+        )
+        with pytest.raises(RateLimitError) as ei:
+            await provider.acomplete(req)
+        assert (ei.value.status_code or 0) == 429
 
     def test_flatten_messages(self, provider):
         """Test message flattening logic (deprecated in TUProvider, but checking core compatibility)."""

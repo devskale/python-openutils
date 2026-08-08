@@ -137,17 +137,6 @@ def test_parse_retry_after():
     assert _parse_retry_after({}) is None
 
 
-def test_staging_provider_uses_separate_limiter():
-    """TUStagingProvider must not share production TU's learned rate limit."""
-    from uniinfer.providers.tu import TUProvider, TUStagingProvider
-
-    prod = TUProvider(api_key="k")
-    staging = TUStagingProvider(api_key="k")
-    assert prod._rate_limiter() is not staging._rate_limiter()
-    assert prod._rate_limiter().provider_id == "tu"
-    assert staging._rate_limiter().provider_id == "tu-staging"
-
-
 def test_from_dict_tolerates_bad_values(tmp_path):
     """A corrupt/partial state file must not crash the load path."""
     import json

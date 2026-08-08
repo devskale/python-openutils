@@ -93,4 +93,6 @@ def test_rate_limits_endpoint(client):
     assert resp.status_code == 200
     data = resp.json()
     assert isinstance(data, dict)
-    assert "tu" in data
+    # TU's adaptive limiter was removed (429s are now relayed transparently),
+    # so this endpoint may return an empty/other-provider map. Just verify the
+    # observability endpoint itself is healthy and structured.

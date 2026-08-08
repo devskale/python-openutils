@@ -14,32 +14,11 @@ from ..core import ChatProvider, ChatCompletionRequest, ChatCompletionResponse, 
 
 from ..errors import map_provider_error, UniInferError
 from ..logging_utils import log_raw_response
-from ..ratelimit import get_rate_limiter
 
 logger = logging.getLogger(__name__)
 
 TU_BASE_URL = "https://aqueduct.ai.datalab.tuwien.ac.at/v1"
 TU_STAGING_BASE_URL = "https://aqueduct-staging.ai.datalab.tuwien.ac.at/v1"
-
-# Default backend rate limit (requests/minute) for the TU/Aqueduct API.
-# Configurable via the ``tu_rate_limit_per_minute`` key in the JSON config file
-# at the path given by the ``UNIINFER_CONFIG`` env var (defaults to
-# config.json in the provider's working directory). Falls back to 25 on any error.
-
-
-def _load_tu_rate_limit() -> int:
-    """Read tu_rate_limit_per_minute from the JSON config file, default 25."""
-    config_path = os.getenv("UNIINFER_CONFIG", "config.json")
-    try:
-        with open(config_path) as f:
-            value = int(json.load(f).get("tu_rate_limit_per_minute", 25))
-        return value if value > 0 else 25
-    except (FileNotFoundError, json.JSONDecodeError, TypeError, ValueError):
-        return 25
-
-
-_DEFAULT_TU_RATE_LIMIT = _load_tu_rate_limit()
-
 
 # Raw per-request/chunk logging to logs/tu_raw_chat.log is extremely verbose
 # (every SSE line) and was filling disk (196 MB+). It is now gated behind
@@ -48,15 +27,6 @@ _DEFAULT_TU_RATE_LIMIT = _load_tu_rate_limit()
 def _raw_logging_enabled() -> bool:
     return os.getenv("UNIINFER_DEBUG_RAW", "").lower() in {"1", "true", "yes"}
 
-
-_TU_LIMITER = get_rate_limiter(
-    "tu",
-    default_rpm=float(_DEFAULT_TU_RATE_LIMIT),
-    on_rechallenge=lambda pid, st: logger.info(
-        "[tu] daily rate-limit re-challenge: probing higher limit (rpm=%.2f, ceiling=%.2f)",
-        st.rpm, st.ceiling,
-    ),
-)
 
 
 def _parse_retry_after(headers: Any) -> float | None:
@@ -152,36 +122,17 @@ class TUProvider(ChatProvider):
         _get_async_client) — never close it per request."""
         return
 
-    async def _throttle(self, model: str | None = None) -> dict[str, Any]:
-        """Wait for a send slot from the adaptive per-model rate limiter.
-
-        The limiter enforces the currently estimated safe requests/minute for
-        ``model`` (seeded from the configured TU limit and self-tuning from
-        real 429 responses). Returns the limiter info dict.
-        """
-        return await self._rate_limiter().acquire(model or "")
-
-    def _rate_limiter(self):
-        """Return this provider's adaptive limiter (cached per backend service).
-
-        Production TU and TU Staging are distinct backends with independent
-        rate limits, so each resolves its own limiter via ``_CREDGOO_SERVICE``
-        rather than sharing the module-level TU limiter.
-        """
-        return get_rate_limiter(self._CREDGOO_SERVICE, default_rpm=float(_DEFAULT_TU_RATE_LIMIT))
-
     async def _post_with_ratelimit_retry(
         self, client: httpx.AsyncClient, url: str, payload: dict[str, Any], model: str, max_retries: int = 4
     ) -> httpx.Response:
-        """POST with adaptive 429 backoff and retries.
+        """POST with transparent 429 + transport-error retries.
 
-        On HTTP 429 the limiter is told about the failure (which lowers the
-        estimated rate and applies a cooldown); the call is then retried after
-        the computed backoff. Non-429 errors are returned to the caller.
+        Upstream HTTP 429 is NOT throttled or internally retried — it is relayed
+        to the caller as a RateLimitError immediately (the client does its own
+        backoff). Only transient transport errors are retried a few times.
         """
         last_exc: Exception | None = None
         for attempt in range(max_retries + 1):
-            await self._throttle(model)
             try:
                 response = await client.post(url, json=payload)
             except (httpx.TimeoutException, httpx.TransportError) as e:
@@ -192,16 +143,10 @@ class TUProvider(ChatProvider):
                     continue
                 raise map_provider_error(self._CREDGOO_SERVICE, e)
             if response.status_code == 429:
-                # Transparent rate-limit transport: record the 429 so FUTURE
-                # requests are paced down (the limiter applies its cooldown to
-                # subsequent acquire() calls), but do NOT retry/stall THIS one —
-                # surface the 429 to the caller immediately so the client can
-                # handle its own backoff instead of hanging on a silent replay.
-                self._rate_limiter().on_429(model=model, retry_after_s=_parse_retry_after(response.headers))
-                logger.warning(
-                    "[%s] 429 on model %s — relaying 429 to caller (no internal retry); estimate %.2f/min",
-                    self._CREDGOO_SERVICE, model, self._rate_limiter().status().get(model, {}).get("rpm", 0),
-                )
+                # Transparent rate-limit transport: no proxy-side throttle — just
+                # relay the upstream 429 to the caller; the client does its own
+                # backoff instead of hanging on an internal replay.
+                logger.warning("[%s] 429 on model %s — relaying 429 to caller", self._CREDGOO_SERVICE, model)
                 raise map_provider_error(
                     self._CREDGOO_SERVICE,
                     Exception(f"TU API error: 429 - {response.text}"),
@@ -216,15 +161,15 @@ class TUProvider(ChatProvider):
     async def _open_stream_with_ratelimit_retry(
         self, client: httpx.AsyncClient, url: str, payload: dict[str, Any], model: str, max_retries: int = 4
     ):
-        """Open a streaming POST with adaptive 429 backoff and retries.
+        """Open a streaming POST with transparent 429 + transport-error retries.
 
         Returns the ``(context_manager, response)`` pair; the caller must exit
-        the context manager (e.g. via ``finally``). 429s are retried after the
-        computed backoff; other non-200 statuses raise immediately.
+        the context manager (e.g. via ``finally``). Upstream 429 is relayed to
+        the caller as a RateLimitError immediately (no throttle/retry); only
+        transient transport errors are retried a few times.
         """
         last_exc: Exception | None = None
         for attempt in range(max_retries + 1):
-            await self._throttle(model)
             try:
                 cm = client.stream("POST", url, json=payload)
                 response = await cm.__aenter__()
@@ -236,14 +181,9 @@ class TUProvider(ChatProvider):
                     continue
                 raise map_provider_error(self._CREDGOO_SERVICE, e)
             if response.status_code == 429:
-                # Transparent 429 transport (see _post_with_ratelimit_retry):
-                # record for future pacing, but surface to the caller at once —
-                # no internal replay/backoff that would stall the stream.
-                self._rate_limiter().on_429(model=model, retry_after_s=_parse_retry_after(response.headers))
-                logger.warning(
-                    "[%s] 429 on model %s stream — relaying 429 to caller (no internal retry); estimate %.2f/min",
-                    self._CREDGOO_SERVICE, model, self._rate_limiter().status().get(model, {}).get("rpm", 0),
-                )
+                # Transparent rate-limit transport (see _post_with_ratelimit_retry):
+                # no proxy-side throttle — surface the upstream 429 to the caller.
+                logger.warning("[%s] 429 on model %s stream — relaying 429 to caller", self._CREDGOO_SERVICE, model)
                 error_body = await response.aread()
                 try:
                     await cm.__aexit__(None, None, None)
@@ -276,7 +216,6 @@ class TUProvider(ChatProvider):
                     status_code=response.status_code,
                     response_body=error_body,
                 )
-            self._rate_limiter().on_success(model)
             return cm, response
         if last_exc is not None:
             raise map_provider_error(self._CREDGOO_SERVICE, last_exc)
@@ -370,7 +309,6 @@ class TUProvider(ChatProvider):
 
     async def acomplete(self, request: ChatCompletionRequest) -> ChatCompletionResponse:
         """Async completion implementation for TU."""
-        await self._throttle(request.model)
         client = await self._get_async_client()
         payload = self._prepare_payload(request)
 
@@ -392,8 +330,7 @@ class TUProvider(ChatProvider):
             
             if response.status_code != 200:
                 raise map_provider_error(self._CREDGOO_SERVICE, Exception(f"TU API error: {response.status_code} - {raw_text}"), status_code=response.status_code, response_body=raw_text)
-            
-            self._rate_limiter().on_success(request.model)
+
             if not raw_text or not raw_text.strip():
                 raise map_provider_error(self._CREDGOO_SERVICE, Exception("TU API returned empty response"), status_code=500, response_body="(empty)")
             
@@ -431,7 +368,6 @@ class TUProvider(ChatProvider):
     async def astream_complete(self, request: ChatCompletionRequest) -> AsyncIterator[ChatCompletionResponse]:
         """Async streaming completion implementation for TU."""
         request.streaming = True
-        await self._throttle(request.model)
         client = await self._get_async_client()
         payload = self._prepare_payload(request)
 
