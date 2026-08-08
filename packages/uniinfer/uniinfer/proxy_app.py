@@ -5,6 +5,8 @@ from importlib.metadata import PackageNotFoundError, version
 import uuid
 import time
 import sys
+import asyncio
+import resource
 from fastapi.security import HTTPBearer  # Import HTTPBearer
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
@@ -412,6 +414,122 @@ async def root():
     if not os.path.exists(html):
         raise HTTPException(status_code=404, detail="webdemo.html not found")
     return FileResponse(html)
+
+
+_HEALTH_START = time.time()
+
+
+def _read_proc_status():
+    """Return (rss_kb, peak_kb, swap_kb) from /proc/self/status (Linux), else None."""
+    try:
+        rss = peak = swap = None
+        with open("/proc/self/status") as f:
+            for line in f:
+                if line.startswith("VmRSS:"):
+                    rss = int(line.split()[1])
+                elif line.startswith("VmPeak:"):
+                    peak = int(line.split()[1])
+                elif line.startswith("VmSwap:"):
+                    swap = int(line.split()[1])
+        return rss, peak, swap
+    except FileNotFoundError:
+        return None
+
+
+def _cgroup_mem():
+    """Best-effort cgroup v2 memory.current/high/max in bytes (None if unavailable)."""
+    try:
+        with open("/proc/self/cgroup") as f:
+            path = f.read().strip().splitlines()[0].split(":", 2)[2]
+        base = f"/sys/fs/cgroup{path}"
+    except Exception:
+        return {}
+    out = {}
+    for key in ("memory.current", "memory.high", "memory.max"):
+        try:
+            with open(f"{base}/{key}") as f:
+                v = f.read().strip()
+            out[key] = None if v == "max" else int(v)
+        except Exception:
+            out[key] = None
+    return out
+
+
+@app.get("/health", include_in_schema=False)
+async def health(request: Request):
+    """Lightweight health probe (no auth, no upstream cost). Surfaces the
+    signals that matter for this memory-constrained proxy — memory vs the
+    cgroup cap, swap, page-fault rate, allocator, and event-loop lag — with a
+    computed ok/warn/crit status.  curl http://host:port/health"""
+    # event-loop responsiveness (elevated when the loop is blocked/thrashing)
+    _t0 = time.monotonic()
+    await asyncio.sleep(0)
+    loop_ms = (time.monotonic() - _t0) * 1000
+
+    # memory
+    rss_kb = peak_kb = swap_kb = None
+    proc = _read_proc_status()
+    if proc and proc[0] is not None:
+        rss_kb, peak_kb, swap_kb = proc
+    else:
+        # non-Linux fallback (mac): ru_maxrss is bytes on Darwin, KB on Linux
+        _ru = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
+        peak_kb = _ru // 1024 if sys.platform == "darwin" else _ru
+        rss_kb = peak_kb
+    rss_mb = rss_kb // 1024 if rss_kb else None
+
+    cg = _cgroup_mem()
+    high_mb = (cg["memory.high"] // (1024 * 1024)) if cg.get("memory.high") else None
+    max_mb = (cg["memory.max"] // (1024 * 1024)) if cg.get("memory.max") else None
+    cur_mb = (cg["memory.current"] // (1024 * 1024)) if cg.get("memory.current") else None
+    headroom_mb = (high_mb - rss_mb) if (high_mb and rss_mb) else None
+
+    # page-fault rate since the previous /health call
+    majflt_now = None
+    try:
+        with open("/proc/self/stat") as f:
+            majflt_now = int(f.read().split()[11])  # field 12 = majflt
+    except Exception:
+        pass
+    last = getattr(request.app.state, "_health_last", None)
+    majflt_per_s = None
+    if majflt_now is not None and last and last.get("majflt") is not None:
+        dt = time.monotonic() - last["t"]
+        if dt > 0:
+            majflt_per_s = (majflt_now - last["majflt"]) / dt
+    request.app.state._health_last = {"majflt": majflt_now, "t": time.monotonic()}
+
+    ld = os.environ.get("LD_PRELOAD", "")
+    allocator = {
+        "jemalloc": "jemalloc" in ld,
+        "malloc_arena_max": os.environ.get("MALLOC_ARENA_MAX"),
+        "malloc_mmap_threshold": os.environ.get("MALLOC_MMAP_THRESHOLD_"),
+    }
+
+    # status thresholds tuned to the unit's 200M soft / 300M hard caps
+    status = "ok"
+    if (swap_kb and swap_kb > 0) or (majflt_per_s and majflt_per_s > 50) \
+            or loop_ms > 1000 or (max_mb and rss_mb and rss_mb >= 0.95 * max_mb):
+        status = "crit"
+    elif (rss_mb and high_mb and rss_mb >= 0.85 * high_mb) \
+            or (majflt_per_s and majflt_per_s > 10) or loop_ms > 100:
+        status = "warn"
+
+    return {
+        "status": status,
+        "version": UNIINFER_VERSION,
+        "uptime_seconds": int(time.time() - _HEALTH_START),
+        "event_loop_latency_ms": round(loop_ms, 2),
+        "memory": {
+            "rss_mb": rss_mb,
+            "peak_mb": (peak_kb // 1024) if peak_kb else None,
+            "swap_kb": swap_kb,
+            "cgroup_mb": {"current": cur_mb, "high": high_mb, "max": max_mb},
+            "headroom_mb": headroom_mb,
+            "majflt_per_s": round(majflt_per_s, 1) if majflt_per_s is not None else None,
+        },
+        "allocator": allocator,
+    }
 
 
 @app.get("/debug/mem", include_in_schema=False)
