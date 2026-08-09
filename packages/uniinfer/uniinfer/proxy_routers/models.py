@@ -87,13 +87,21 @@ def create_models_router(version: str) -> APIRouter:
     router = APIRouter()
 
     @router.get("/v1/models")
-    async def list_models():
-        # Serve the cached catalog directly — no on-request refresh. The daily
-        # systemd timer (uniioai-models-refresh) regenerates models.json; the
-        # Catalog mtime-cache picks up the new file lazily. Spawning the heavy
-        # generate_models.py subprocess on a /v1/models request starved the
-        # event loop on the small box (15-30s stalls).
+    async def list_models(
+        show_all: bool = Query(False, alias="all", description="Include all models (default: only free/granted)."),
+        provider: str | None = Query(None, description="Filter by provider (e.g. 'openai')."),
+        type: str | None = Query(None, description="Filter by type (chat, image, tts, stt, embed)."),
+    ):
+        """List models. Defaults to accessible (free/granted) only — ~300 models
+        instead of ~1500. Use ?all=true for everything, ?provider=X / ?type=X
+        to narrow further. Catalog is mtime-cached (instant after first call)."""
         models = Catalog().list_resolved()
+        if not show_all:
+            models = [m for m in models if m.get("access") in ("free", "granted", "")]
+        if provider:
+            models = [m for m in models if m.get("provider") == provider]
+        if type:
+            models = [m for m in models if m.get("type") == type]
         return {
             "object": "list",
             "data": models,
