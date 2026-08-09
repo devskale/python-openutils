@@ -166,7 +166,7 @@ async def _mem_trace_loop(_app: FastAPI) -> None:
                 for stat in snap.compare_to(prev_snap, "lineno")[:6]:
                     if stat.size_diff:
                         fr = stat.traceback[0]
-                        lg.info(f"  diff {stat.size_diff//1024:+d}KB {fr.filename}:{fr.lineno} {fr.function}")
+                        lg.info(f"  diff {stat.size_diff//1024:+d}KB {fr.filename}:{fr.lineno} {fr.name}")
                 prev_snap = snap
         except Exception as e:
             lg.info(f"trace error: {e!r}")
