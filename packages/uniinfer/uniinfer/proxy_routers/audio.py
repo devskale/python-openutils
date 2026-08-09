@@ -1,7 +1,7 @@
-"""Audio (TTS + STT) HTTP routes.
+"""Audio (TTS + STT) HTTP routes — thin adapter over TTSTarget / STTTarget.
 
-Split from the former media.py for locality: audio work lives here, images
-live in images.py. Currently only the TU provider is supported for audio.
+The dispatch logic (provider resolution, request building, dispatch, response
+extraction) lives in ``uniinfer.audio``; this module is the HTTP layer.
 """
 import logging
 from typing import Optional, Callable
@@ -11,6 +11,8 @@ from fastapi.responses import Response
 from pydantic import BaseModel
 
 from uniinfer.auth import get_optional_proxy_token, verify_provider_access
+from uniinfer.completion import parse_provider_model
+from uniinfer.audio import TTSTarget, STTTarget
 
 logger = logging.getLogger("uniioai_proxy")
 
@@ -36,7 +38,7 @@ class STTVerboseResponseModel(BaseModel):
 
 
 def create_audio_router(
-    parse_provider_model: Callable[..., tuple[str, str]],
+    parse_model: Callable[..., tuple[str, str]],
 ) -> APIRouter:
     router = APIRouter()
 
@@ -47,27 +49,24 @@ def create_audio_router(
         api_bearer_token: Optional[str] = Depends(get_optional_proxy_token),
     ):
         try:
-            provider_name, model_name = parse_provider_model(
-                request_input.model, allowed_providers=["tu"], task_name="TTS"
-            )
+            provider_name, _ = parse_model(request_input.model)
             api_key = verify_provider_access(api_bearer_token, provider_name)
             if not api_key:
-                raise HTTPException(status_code=401, detail="API key required for TU provider")
+                raise HTTPException(status_code=401, detail=f"API key required for {provider_name}")
 
-            from uniinfer import TTSRequest
-            from uniinfer.providers.tu_tts import TuAITTSProvider
+            try:
+                target = TTSTarget(request_input.model, api_key=api_key)
+            except ValueError as e:
+                raise HTTPException(status_code=400, detail=str(e))
 
-            tts_provider = TuAITTSProvider(api_key=api_key)
-            tts_request = TTSRequest(
-                input=request_input.input,
-                model=model_name,
+            result = await target.asynthesize(
+                request_input.input,
                 voice=request_input.voice,
                 response_format=request_input.response_format or "mp3",
                 speed=request_input.speed or 1.0,
                 instructions=request_input.instructions,
             )
-            response = await tts_provider.agenerate_speech(tts_request)
-            return Response(content=response.audio_content, media_type=response.content_type)
+            return Response(content=result.audio_content, media_type=result.content_type)
         except HTTPException:
             raise
         except Exception as e:
@@ -86,37 +85,34 @@ def create_audio_router(
         api_bearer_token: Optional[str] = Depends(get_optional_proxy_token),
     ):
         try:
-            provider_name, model_name = parse_provider_model(
-                model, allowed_providers=["tu"], task_name="STT"
-            )
+            provider_name, _ = parse_model(model)
             api_key = verify_provider_access(api_bearer_token, provider_name)
             if not api_key:
-                raise HTTPException(status_code=401, detail="API key required for TU provider")
+                raise HTTPException(status_code=401, detail=f"API key required for {provider_name}")
 
             audio_content = await file.read()
 
-            from uniinfer import STTRequest
-            from uniinfer.providers.tu_stt import TuAISTTProvider
+            try:
+                target = STTTarget(model, api_key=api_key)
+            except ValueError as e:
+                raise HTTPException(status_code=400, detail=str(e))
 
-            stt_provider = TuAISTTProvider(api_key=api_key)
-            stt_request = STTRequest(
-                file=audio_content,
-                model=model_name,
+            result = await target.atranscribe(
+                audio_content,
                 language=language,
                 prompt=prompt,
                 response_format=response_format or "json",
                 temperature=temperature if temperature is not None else 0.0,
             )
-            response = await stt_provider.atranscribe(stt_request)
 
             if response_format == "verbose_json":
                 return STTVerboseResponseModel(
-                    text=response.text,
-                    language=response.language,
-                    duration=response.duration,
-                    segments=response.segments,
+                    text=result.text,
+                    language=result.language,
+                    duration=result.duration,
+                    segments=result.segments,
                 )
-            return STTResponseModel(text=response.text)
+            return STTResponseModel(text=result.text)
         except HTTPException:
             raise
         except Exception as e:
