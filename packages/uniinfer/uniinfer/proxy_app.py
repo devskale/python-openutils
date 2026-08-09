@@ -589,9 +589,15 @@ async def health(request: Request):
     rss_mb = rss_kb // 1024 if rss_kb else None
 
     cg = _cgroup_mem()
-    high_mb = (cg["memory.high"] // (1024 * 1024)) if cg.get("memory.high") else None
-    max_mb = (cg["memory.max"] // (1024 * 1024)) if cg.get("memory.max") else None
-    cur_mb = (cg["memory.current"] // (1024 * 1024)) if cg.get("memory.current") else None
+    # Caps: cgroup memory.high/max if present, else env overrides (lets non-cgroup
+    # hosts — e.g. macOS, or a parity stand-in — report the same limits / headroom
+    # as the constrained deployment). UNIINFER_MEM_HIGH_MB / UNIINFER_MEM_MAX_MB.
+    def _env_mb(name: str) -> int | None:
+        v = os.getenv(name)
+        return int(v) if v else None
+    high_mb = ((cg["memory.high"] // (1024 * 1024)) if cg.get("memory.high") else None) or _env_mb("UNIINFER_MEM_HIGH_MB")
+    max_mb = ((cg["memory.max"] // (1024 * 1024)) if cg.get("memory.max") else None) or _env_mb("UNIINFER_MEM_MAX_MB")
+    cur_mb = ((cg["memory.current"] // (1024 * 1024)) if cg.get("memory.current") else None) or rss_mb
     headroom_mb = (high_mb - rss_mb) if (high_mb and rss_mb) else None
 
     # page-fault rate since the previous /health call
