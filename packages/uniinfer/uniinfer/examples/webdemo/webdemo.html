@@ -269,6 +269,7 @@
         </div>
         <div class="audio-controls-row">
           <select id="stt-model" style="min-width:200px"><option value="">Loading...</option></select>
+          <button id="stt-record-btn" class="btn-secondary" title="Record from microphone">🎙️ Record</button>
           <button id="stt-transcribe-btn" class="btn-primary">Transcribe</button>
           <span id="stt-status"></span>
         </div>
@@ -1402,6 +1403,35 @@ ${js}`;
         ok = true;
       } catch (e) { status.innerHTML = `<span style="color:#ef4444">${escapeHtml(e.detail || e.message)}</span>`; }
       finally { btn.disabled = false; if (ok) status.innerHTML = ""; }
+    });
+
+    // ─── Record from microphone (live STT) ────────────────────────
+    let mediaRecorder = null, recordStream = null;
+    $("#stt-record-btn").addEventListener("click", async () => {
+      const btn = $("#stt-record-btn");
+      if (mediaRecorder && mediaRecorder.state === "recording") { mediaRecorder.stop(); return; }
+      try {
+        recordStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        const chunks = [];
+        mediaRecorder = new MediaRecorder(recordStream);
+        mediaRecorder.ondataavailable = (e) => { if (e.data.size > 0) chunks.push(e.data); };
+        mediaRecorder.onstop = async () => {
+          btn.textContent = "🎙️ Record"; btn.classList.remove("recording");
+          recordStream.getTracks().forEach(t => t.stop());
+          const blob = new Blob(chunks, { type: "audio/webm" });
+          if (!blob.size) return;
+          const status = $("#stt-status"); status.innerHTML = '<span class="spinner"></span> Transcribing...';
+          try {
+            const fd = new FormData(); fd.append("file", blob, "recording.webm"); fd.append("model", $("#stt-model").value);
+            const resp = await apiFetch("/v1/audio/transcriptions", { method:"POST", headers:{Authorization:`Bearer ${window.uniinferConfig.apiKey}`}, body:fd });
+            const data = await resp.json();
+            $("#stt-result").innerHTML = `<div class="stt-label">Transcription:</div>${escapeHtml(data.text || "No text found")}`;
+            status.innerHTML = "";
+          } catch (e) { status.innerHTML = `<span style="color:#ef4444">${escapeHtml(e.detail || e.message)}</span>`; }
+        };
+        mediaRecorder.start();
+        btn.textContent = "⏹ Stop"; btn.classList.add("recording");
+      } catch (e) { alert("Microphone access denied: " + e.message); }
     });
 
     // ─── Settings ────────────────────────────────────────────────────

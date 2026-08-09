@@ -1450,3 +1450,8 @@ tr.tr-stale-danger:hover td { opacity: 0.85; background: #fef2f2; }
 .test-controls label { font-size: 0.72rem; color: var(--muted-foreground); }
 .test-controls select, .test-controls input { padding: 7px 10px; background: var(--muted); border: 1px solid var(--border); border-radius: var(--radius-md); color: var(--foreground); font: inherit; }
 .test-controls button { align-self: flex-end; }
+
+/* Recording button state */
+.recording { background:#ef4444 !important; color:#fff !important; animation:rec-pulse 1.5s infinite; }
+@keyframes rec-pulse { 0%,100%{opacity:1;} 50%{opacity:.55;} }
+
