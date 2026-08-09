@@ -222,9 +222,15 @@ app = FastAPI(
 MAX_REQUEST_SIZE = 10 * 1024 * 1024  # used by _LeanHTTPMiddleware (pure-ASGI size limit)
 
 limiter = Limiter(key_func=get_remote_address, headers_enabled=True)
+# A/B / kill-switch: UNIINFER_SLOWAPI_ENABLED=0 fully disables the limiter
+# (middleware short-circuits on limiter.enabled=False; decorators no-op), so we
+# can prove whether slowapi is a leak source without ripping out the decorators.
+if os.getenv("UNIINFER_SLOWAPI_ENABLED", "1") not in {"1", "true", "yes"}:
+    limiter.enabled = False
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
-app.add_middleware(SlowAPIASGIMiddleware)  # pure-ASGI rate limiter (no BaseHTTPMiddleware leak)
+if limiter.enabled:
+    app.add_middleware(SlowAPIASGIMiddleware)  # pure-ASGI rate limiter (no BaseHTTPMiddleware leak)
 
 
 class _LeanHTTPMiddleware:
