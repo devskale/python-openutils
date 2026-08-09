@@ -104,13 +104,21 @@ class TUProvider(ChatProvider):
             return self._async_client
         client = _TU_CLIENT_CACHE.get(self.base_url)
         if client is None or client.is_closed:
+            # UNIINFER_TU_KEEPALIVE=0 disables connection keepalive (A/B for the
+            # retained-per-request-buffer leak hypothesis: httpcore can hold
+            # read/write buffers on kept-alive connections under streaming load).
+            _keepalive = int(os.getenv("UNIINFER_TU_KEEPALIVE", "20"))
+            limits = httpx.Limits(max_connections=100,
+                                 max_keepalive_connections=_keepalive,
+                                 keepalive_expiry=5.0)
             client = httpx.AsyncClient(
                 base_url=self.base_url,
                 headers={
                     "Authorization": f"Bearer {self.api_key}",
                     "Content-Type": "application/json"
                 },
-                timeout=httpx.Timeout(300.0, connect=30.0)  # 5 min timeout for large models
+                timeout=httpx.Timeout(300.0, connect=30.0),  # 5 min timeout for large models
+                limits=limits,
             )
             _TU_CLIENT_CACHE[self.base_url] = client
         self._async_client = client
