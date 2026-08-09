@@ -52,7 +52,7 @@ class TestTTSEndpoint:
         mock_instance.agenerate_speech = AsyncMock(side_effect=ValueError("API key is required"))
         mock_cls.return_value = mock_instance
 
-        with patch("uniinfer.proxy_routers.media.verify_provider_access", return_value="fake-key"):
+        with patch("uniinfer.proxy_routers.audio.verify_provider_access", return_value="fake-key"):
             response = client.post("/v1/audio/speech", json={
                 "model": "tu@kokoro", "input": "Test"
             })
@@ -97,7 +97,7 @@ class TestSTTEndpoint:
         mock_instance.atranscribe = AsyncMock(side_effect=ValueError("API key is required"))
         mock_cls.return_value = mock_instance
 
-        with patch("uniinfer.proxy_routers.media.verify_provider_access", return_value="fake-key"):
+        with patch("uniinfer.proxy_routers.audio.verify_provider_access", return_value="fake-key"):
             response = client.post(
                 "/v1/audio/transcriptions",
                 files={"file": ("test.mp3", BytesIO(b"audio"), "audio/mpeg")},
