@@ -46,7 +46,17 @@ def get_api_key(service, cache_dir=None, no_cache=False, backend_name=None,
             "get_api_key() called with legacy params (bearer_token, encryption_key, api_url). "
             "These are ignored; credentials are resolved from the configured backend.")
     store = CredentialStore(_resolve_cache_dir(cache_dir), backend_name)
-    return store.get(service, no_cache=no_cache)
+    key = store.get(service, no_cache=no_cache)
+    if not key:
+        # Loud-but-quiet-by-default. Emitted at DEBUG: Python's logging.lastResort
+        # fires on WARNING+ even with no handler configured, so a warning here would
+        # spam stderr for consumers that probe for a key's presence (e.g. the uniinfer
+        # tier classifier calls get_api_key in a loop). DEBUG is truly silent until a
+        # consumer attaches a handler — tools that want a visible "missing key" message
+        # configure a DEBUG handler on the "credgoo" logger. Nothing is printed to
+        # stdout here, ever.
+        logger.debug("No API key found for service %r (configure it via `credgoo --setup-backend` or `credgoo --add`).", service)
+    return key
 
 
 # ---- Setup ----

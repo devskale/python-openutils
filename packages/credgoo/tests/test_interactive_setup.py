@@ -1,4 +1,5 @@
 import json
+import logging
 import tempfile
 import unittest
 from pathlib import Path
@@ -237,6 +238,47 @@ class TestGetApiKeyDispatches(unittest.TestCase):
                 result = mod.get_api_key("openai", cache_dir=cache_dir, no_cache=True, backend_name="airtable")
             self.assertEqual(result, "sk-at")
             mock.assert_called_once()
+
+
+class TestGetApiKeyMissingLogging(unittest.TestCase):
+    """A missing key warns through `logging` — silent unless a handler is configured."""
+
+    def _no_key(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            cache_dir = Path(tmpdir)
+            store_credentials(
+                {"default_backend": "gdrive", "gdrive": {"url": "u", "token": "t", "encryption_key": "k"}},
+                cache_dir / "credgoo.txt",
+            )
+            with patch.object(GdriveBackend, "fetch_key", return_value=None):
+                return mod.get_api_key("openai", cache_dir=cache_dir, no_cache=True)
+
+    def test_returns_none_when_missing(self):
+        self.assertIsNone(self._no_key())
+
+    def test_warns_through_logging(self):
+        # The missing-key message is surfaced through `logging` at DEBUG. It is silent
+        # by default (lastResort only fires on WARNING+), so a consumer opts into
+        # loudness by attaching a DEBUG handler — verified here via assertLogs(DEBUG).
+        with self.assertLogs("credgoo", level="DEBUG") as cm:
+            self._no_key()
+        self.assertTrue(any("No API key found for service" in m for m in cm.output))
+
+    def test_silent_without_handler(self):
+        # With no handler attached AND no lastResort trigger (DEBUG level), the library
+        # writes nothing to stdout/stderr on a missing key.
+        import io
+        import contextlib
+        root = logging.getLogger("credgoo")
+        had = root.handlers[:]
+        root.handlers = []
+        buf = io.StringIO()
+        try:
+            with contextlib.redirect_stderr(buf), contextlib.redirect_stdout(buf):
+                self._no_key()
+            self.assertEqual(buf.getvalue(), "")
+        finally:
+            root.handlers = had
 
 
 class TestCacheNamespacing(unittest.TestCase):
