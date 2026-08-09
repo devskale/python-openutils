@@ -13,6 +13,13 @@ from uniinfer import TTSRequest, STTRequest
 from uniinfer.providers.tu_tts import TuAITTSProvider
 from uniinfer.providers.tu_stt import TuAISTTProvider
 
+# These tests call the REAL TU API (live TTS/STT). Skip by default to keep the
+# unit suite deterministic; run explicitly with RUN_INTEGRATION_TESTS=1.
+pytestmark = pytest.mark.skipif(
+    not os.getenv("RUN_INTEGRATION_TESTS"),
+    reason="Live API integration test — set RUN_INTEGRATION_TESTS=1 to run",
+)
+
 
 def get_api_key_cached(service: str) -> str | None:
     """Get API key from credgoo or env var."""
