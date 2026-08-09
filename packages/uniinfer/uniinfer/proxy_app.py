@@ -168,10 +168,17 @@ async def _mem_trace_loop(_app: FastAPI) -> None:
             lg.info(json.dumps(line))
             if use_malloc:
                 snap = tracemalloc.take_snapshot()
-                for stat in snap.compare_to(prev_snap, "lineno")[:6]:
+                stats = snap.compare_to(prev_snap, "lineno")
+                for stat in sorted(stats, key=lambda s: abs(s.size_diff), reverse=True)[:6]:
                     if stat.size_diff:
                         fr = stat.traceback[0]
                         lg.info(f"  diff {stat.size_diff//1024:+d}KB {fr.filename}:{fr.lineno}")
+                # top by COUNT diff — surfaces many SMALL allocations (e.g. tuples)
+                # that don't show in the size-diff but drive gc.get_objects() growth.
+                for stat in sorted(stats, key=lambda s: abs(s.count_diff), reverse=True)[:6]:
+                    if stat.count_diff:
+                        fr = stat.traceback[0]
+                        lg.info(f"  cnt {stat.count_diff:+d}x {fr.filename}:{fr.lineno}")
                 prev_snap = snap
         except Exception as e:
             lg.info(f"trace error: {e!r}")
