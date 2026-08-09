@@ -129,6 +129,11 @@ class Catalog:
     use the default (PACKAGE_ROOT/models/models.json).
     """
 
+    # Class-level mtime-keyed cache for list_resolved — survives across
+    # Catalog() instances so /v1/models is O(1) after the first call. Tuple of
+    # (models.json mtime, resolved list); invalidated automatically on mtime change.
+    _resolved_cache: tuple[float | None, list[dict]] | None = None
+
     def __init__(self, path: str | None = None) -> None:
         self._path = path or os.path.join(PACKAGE_ROOT, "models", "models.json")
         self._dir = os.path.dirname(self._path)
@@ -451,22 +456,35 @@ class Catalog:
         return {"_meta": meta, "providers": providers}
 
     def list_resolved(self) -> list[dict]:
-        """Build a flat OpenAI-compatible model list from models.json.
+        """Build a flat OpenAI-compatible model list from models.json (mtime-cached).
 
         Each model gets a resolved ``type`` (override > type_overrides > stored >
         derive) and a ``freshness`` field ('fresh' if last_seen == generated
-        date, else 'stale' with days_since_seen).
+        date, else 'stale' with days_since_seen). The result is cached keyed on
+        models.json's mtime, so repeated /v1/models calls are O(1) — no file
+        parse/resolve per request. Cache is class-level so it survives across
+        Catalog() instances; it auto-invalidates when the daily timer rewrites
+        models.json (mtime change).
         """
+        try:
+            mtime = os.path.getmtime(self._path)
+        except OSError:
+            mtime = None
+        if Catalog._resolved_cache is not None and Catalog._resolved_cache[0] == mtime:
+            return Catalog._resolved_cache[1]
+
         from datetime import datetime
 
         from uniinfer.core import ModelInfo
 
         data = self._load()
         if data is None:
-            return [
+            result = [
                 {"id": m, "object": "model", "owned_by": "skaledev"}
                 for m in PREDEFINED_MODELS
             ]
+            Catalog._resolved_cache = (mtime, result)
+            return result
 
         type_overrides = self._load_type_overrides_doc().get("models", {})
         model_overrides = self._load_overrides().get("models", {})
@@ -523,6 +541,7 @@ class Catalog:
                     entry["freshness"] = "stale"
                     entry["days_since_seen"] = days
                 result.append(entry)
+        Catalog._resolved_cache = (mtime, result)
         return result
 
     def apply_overrides(self, provider_id: str, models: list) -> list:

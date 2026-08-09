@@ -88,7 +88,11 @@ def create_models_router(version: str) -> APIRouter:
 
     @router.get("/v1/models")
     async def list_models():
-        await ensure_fresh_models_file()
+        # Serve the cached catalog directly — no on-request refresh. The daily
+        # systemd timer (uniioai-models-refresh) regenerates models.json; the
+        # Catalog mtime-cache picks up the new file lazily. Spawning the heavy
+        # generate_models.py subprocess on a /v1/models request starved the
+        # event loop on the small box (15-30s stalls).
         models = Catalog().list_resolved()
         return {
             "object": "list",
