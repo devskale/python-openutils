@@ -10,7 +10,7 @@ from typing import Optional, List, Dict, Callable, Any
 
 import httpx
 from fastapi import APIRouter, Depends, HTTPException, Request, File, Form, UploadFile
-from fastapi.responses import JSONResponse, Response
+from fastapi.responses import JSONResponse, Response, StreamingResponse
 from pydantic import BaseModel, Field
 
 from uniinfer.auth import get_optional_proxy_token, verify_provider_access
@@ -209,7 +209,9 @@ def create_media_router(
                                 img_resp = await client.get(url, timeout=60)
                                 img_resp.raise_for_status()
                                 b64 = base64.b64encode(img_resp.content).decode("utf-8")
+                                del img_resp
                                 data_items.append({"b64_json": b64, "url": url})
+                        del tu_data  # drop the parsed tree early; b64 strings are aliased into data_items
                     else:
                         encoded_prompt = urllib.parse.quote(prompt)
                         base_url = "https://gen.pollinations.ai/image"
@@ -227,12 +229,26 @@ def create_media_router(
                                 raise HTTPException(status_code=resp.status_code, detail=detail)
 
                             b64 = base64.b64encode(resp.content).decode("utf-8")
+                            del resp
                             data_items.append({"b64_json": b64, "url": url})
 
-                # Build the OpenAI-shaped response directly: skip the pydantic
-                # ImageData / ImageGenerationResponse round-trip so every base64
-                # image lives in memory one fewer time.
-                return JSONResponse(content={"created": int(time.time()), "data": data_items, "model": provider_model})
+                # Stream the OpenAI-shaped JSON response instead of building one
+                # big JSONResponse body. Each base64 image is then serialized
+                # chunk-by-chunk straight to the socket, so we never hold the
+                # full serialized body in memory on top of data_items (~halves
+                # the peak RSS of an image request on a memory-constrained box).
+                created = int(time.time())
+                model_for_resp = provider_model
+
+                async def _image_json_stream():
+                    yield ('{"created":%d,"data":[' % created).encode()
+                    first = True
+                    for item in data_items:
+                        yield (b"" if first else b",") + json.dumps(item).encode()
+                        first = False
+                    yield b'],"model":' + json.dumps(model_for_resp).encode() + b'}'
+
+                return StreamingResponse(_image_json_stream(), media_type="application/json")
 
             except HTTPException:
                 raise
