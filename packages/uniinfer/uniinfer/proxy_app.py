@@ -23,6 +23,7 @@ from contextlib import asynccontextmanager
 import httpx
 from dotenv import load_dotenv
 import gc
+import tracemalloc
 from collections import Counter
 from sys import getsizeof
 from uniinfer.auth import validate_proxy_token
@@ -98,6 +99,79 @@ try:
 except PackageNotFoundError:
     UNIINFER_VERSION = "unknown"
 
+# ---------------------------------------------------------------------------
+# Opt-in memory/object tracer — diagnostic for the slow long-run RSS growth.
+# OFF by default (zero overhead in production). Enable with UNIINFER_MEM_TRACE=1
+# and it appends a JSON line every UNIINFER_MEM_TRACE_INTERVAL s (default 300) to
+# logs/mem_trace.log: RSS/VmData, gc object census by type, active asyncio
+# tasks. Set UNIINFER_MEM_TRACE_MALLOC=1 to also run tracemalloc and log the top
+# growing allocation sites (locates *where* the bytes come from; more overhead).
+# Goal: over a long real run, reveal WHICH dimension grows — objects-by-type
+# (a real leak to hunt at the source), or flat-objects-rising-RSS (native).
+# ---------------------------------------------------------------------------
+_MEM_TRACE_PATH = os.path.join(os.getcwd(), "logs", "mem_trace.log")
+
+
+def _mem_trace_logger() -> logging.Logger:
+    lg = logging.getLogger("uniinfer.memtrace")
+    if not lg.handlers:
+        try:
+            os.makedirs(os.path.dirname(_MEM_TRACE_PATH), exist_ok=True)
+            h = RotatingFileHandler(_MEM_TRACE_PATH, maxBytes=2_000_000, backupCount=2)
+            h.setFormatter(logging.Formatter("%(message)s"))
+            lg.addHandler(h)
+            lg.setLevel(logging.INFO)
+            lg.propagate = False
+        except Exception:
+            pass
+    return lg
+
+
+async def _mem_trace_loop(_app: FastAPI) -> None:
+    """Periodically log the memory growth dimensions. See module comment."""
+    lg = _mem_trace_logger()
+    interval = float(os.getenv("UNIINFER_MEM_TRACE_INTERVAL", "300"))
+    use_malloc = os.getenv("UNIINFER_MEM_TRACE_MALLOC", "") in {"1", "true", "yes"}
+    if use_malloc:
+        tracemalloc.start(25)
+    prev_snap = tracemalloc.take_snapshot() if use_malloc else None
+    t0 = time.time()
+    lg.info(f"# mem-tracer start malloc={use_malloc} interval={interval}s pid={os.getpid()}")
+    while True:
+        await asyncio.sleep(interval)
+        try:
+            data_kb = None
+            proc = _read_proc_status()
+            rss_kb = proc[0] if (proc and proc[0] is not None) else None
+            try:
+                with open("/proc/self/status") as f:
+                    for line in f:
+                        if line.startswith("VmData:"):
+                            data_kb = int(line.split()[1]); break
+            except Exception:
+                pass
+            gc.collect()
+            by = Counter(type(o).__name__ for o in gc.get_objects())
+            total = sum(by.values())
+            try:
+                tasks = len(asyncio.all_tasks())
+            except Exception:
+                tasks = None
+            line = {"t": time.strftime("%H:%M:%S"), "up_s": int(time.time() - t0),
+                    "rss_kb": rss_kb, "data_kb": data_kb, "objs": total,
+                    "tasks": tasks, "top": dict(by.most_common(10))}
+            lg.info(json.dumps(line))
+            if use_malloc:
+                snap = tracemalloc.take_snapshot()
+                for stat in snap.compare_to(prev_snap, "lineno")[:6]:
+                    if stat.size_diff:
+                        fr = stat.traceback[0]
+                        lg.info(f"  diff {stat.size_diff//1024:+d}KB {fr.filename}:{fr.lineno} {fr.function}")
+                prev_snap = snap
+        except Exception as e:
+            lg.info(f"trace error: {e!r}")
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """App-lifetime shared httpx client.
@@ -111,9 +185,15 @@ async def lifespan(app: FastAPI):
         timeout=httpx.Timeout(120.0, connect=10.0),
         limits=httpx.Limits(max_connections=50, max_keepalive_connections=20),
     )
+    trace_task = None
+    if os.getenv("UNIINFER_MEM_TRACE", "") in {"1", "true", "yes"}:
+        trace_task = asyncio.create_task(_mem_trace_loop(app))
+        logger.info("memory tracer enabled -> logs/mem_trace.log (UNIINFER_MEM_TRACE)")
     try:
         yield
     finally:
+        if trace_task is not None:
+            trace_task.cancel()
         await app.state.http.aclose()
 
 
