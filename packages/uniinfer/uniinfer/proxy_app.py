@@ -318,16 +318,6 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
 # --- Rate Limit Helpers ---
 
 
-def get_chat_rate_limit():
-    return os.getenv("UNIINFER_RATE_LIMIT_CHAT", "100/minute")
-
-
-def get_embeddings_rate_limit():
-    return os.getenv("UNIINFER_RATE_LIMIT_EMBEDDINGS", "200/minute")
-
-
-def get_media_rate_limit():
-    return os.getenv("UNIINFER_RATE_LIMIT_MEDIA", "50/minute")
 
 
 # --- Add CORS Middleware ---
@@ -520,8 +510,6 @@ app.include_router(
     create_chat_router(
         parse_provider_model=parse_provider_model,
         provider_configs=PROVIDER_CONFIGS,
-        get_chat_rate_limit=get_chat_rate_limit,
-        get_embeddings_rate_limit=get_embeddings_rate_limit,
     )
 )
 

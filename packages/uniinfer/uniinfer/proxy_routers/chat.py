@@ -46,8 +46,6 @@ def create_chat_router(
     *,
     parse_provider_model: Callable[..., tuple[str, str]],
     provider_configs: dict[str, Any],
-    get_chat_rate_limit: Callable[[], str],
-    get_embeddings_rate_limit: Callable[[], str],
 ) -> APIRouter:
     router = APIRouter()
 
