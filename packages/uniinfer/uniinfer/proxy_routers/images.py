@@ -18,10 +18,17 @@ from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
 from uniinfer.auth import get_optional_proxy_token
-from uniinfer.provider_access import get_provider_api_key, list_model_names_for_provider
+from uniinfer.provider_access import get_provider_api_key
 from uniinfer.images import ImageTarget, ImageData, ImageGenerationError
 
 logger = logging.getLogger("uniioai_proxy")
+
+# One unified marker list for image-model name detection (fallback when the
+# catalog's structured type is missing/wrong). Used by list_image_models only.
+_IMAGE_MARKERS = (
+    "image", "gpt-image", "dall-e", "stable-diffusion", "sdxl",
+    "flux", "z-image", "imagen", "step-image", "search-image",
+)
 
 
 @asynccontextmanager
@@ -79,24 +86,22 @@ def create_images_router(
                     logger.error("Failed to fetch Pollinations image models: %s, using fallback list", e)
                     models = ["flux", "kontext", "gptimage", "gptimage-large", "zimage", "klein"]
 
-            elif provider_name == "tu":
-                token_for_tu = api_bearer_token or os.getenv("TU_API_KEY")
-                if not token_for_tu:
-                    raise HTTPException(status_code=401, detail="Authentication required for provider 'tu'")
-
-                raw_models = list_model_names_for_provider("tu", token_for_tu)
-                image_markers = ("image", "z-image", "dall-e", "stable-diffusion", "sdxl", "flux")
-                models = sorted(set(m for m in raw_models if any(marker in m.lower() for marker in image_markers)))
             else:
+                # All non-pollinations providers (tu, openai, openrouter, kilo,
+                # cloudflare, stepfun, ...) route through the catalog: one code path,
+                # one marker list, catalog type as primary signal.
                 from uniinfer.proxy_services.models_registry import Catalog
                 try:
-                    prov = (Catalog().read_nested(provider_name)
-                            .get("providers", {}).get(provider_name, {}))
-                    raw_models = [m.get("id") for m in prov.get("models", []) if m.get("id")]
+                    all_models = Catalog().list_resolved()
+                    models = sorted(set(
+                        m["id"].split("@", 1)[-1]
+                        for m in all_models
+                        if m.get("provider") == provider_name
+                        and (m.get("type") == "image"
+                             or any(k in m["id"].lower() for k in _IMAGE_MARKERS))
+                    ))
                 except Exception:
-                    raw_models = []
-                image_markers = ("image", "gpt-image", "dall-e", "flux", "sdxl", "imagen", "step-image", "search-image")
-                models = sorted(set(m for m in raw_models if any(k in m.lower() for k in image_markers)))
+                    models = []
 
             return {
                 "object": "list",
