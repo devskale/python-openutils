@@ -15,20 +15,7 @@ from pydantic import BaseModel, Field
 
 from uniinfer.auth import get_optional_proxy_token, verify_provider_access
 from uniinfer.provider_access import get_provider_api_key, list_model_names_for_provider
-from uniinfer.factory import ProviderFactory
-
-
-def _provider_image_base_url(provider_name: str) -> str | None:
-    """Best-effort: the provider's image-API base URL (class-level BASE_URL /
-    _DEFAULT_BASE_URL). Used by the generic OpenAI-compatible image relay so any
-    provider that exposes POST {base_url}/images/generations works (tu/aqueduct,
-    openai, openrouter, kilo, stepfun, …). Returns None if not resolvable
-    (e.g. cloudflare, which needs an account-id instance URL)."""
-    try:
-        cls = ProviderFactory._resolve(provider_name)
-        return getattr(cls, "BASE_URL", None) or getattr(cls, "_DEFAULT_BASE_URL", None)
-    except Exception:
-        return None
+from uniinfer.images import ImageTarget, ImageData, ImageGenerationError
 
 
 logger = logging.getLogger("uniioai_proxy")
@@ -173,102 +160,37 @@ def create_media_router(
                 prompt = request_input.prompt
                 n = request_input.n or 1
                 size = request_input.size or "512x512"
-                seed = request_input.seed
 
-                provider_name, model_name = parse_provider_model(
-                    provider_model, task_name="images"
-                )
-
+                # Resolve API key (None for anonymous providers like pollinations)
                 api_key = None
                 if api_bearer_token:
                     try:
-                        api_key = get_provider_api_key(api_bearer_token, provider_name)
+                        # parse provider name for key resolution
+                        pname, _ = parse_provider_model(provider_model)
+                        api_key = get_provider_api_key(api_bearer_token, pname)
                     except Exception:
                         api_key = None
 
-                width, height = 512, 512
+                # Build the dispatch target — it owns provider resolution +
+                # dialect + fetch + shaping. The router is a thin HTTP adapter.
                 try:
-                    if isinstance(size, str) and "x" in size:
-                        w_str, h_str = size.split("x", 1)
-                        width = int(w_str)
-                        height = int(h_str)
-                except Exception:
-                    width, height = 512, 512
-
-                data_items: List[dict] = []
+                    target = ImageTarget(provider_model, api_key=api_key)
+                except ValueError as e:
+                    raise HTTPException(status_code=400, detail=str(e))
 
                 async with _http_client(request) as client:
-                    if provider_name == "pollinations":
-                        # Pollinations uses a GET-by-URL image API (raw image
-                        # bytes), not an OpenAI-style /images/generations endpoint.
-                        encoded_prompt = urllib.parse.quote(prompt)
-                        base_url = "https://gen.pollinations.ai/image"
-                        for i in range(n):
-                            this_seed = seed if seed is not None else int(time.time()) + i
-                            url = f"{base_url}/{encoded_prompt}?model={model_name}&width={width}&height={height}&seed={this_seed}"
+                    try:
+                        items: list[ImageData] = await target.agenerate(
+                            prompt, n=n, size=size, client=client,
+                        )
+                    except PermissionError as e:
+                        raise HTTPException(status_code=401, detail=str(e))
+                    except ImageGenerationError as e:
+                        raise HTTPException(status_code=e.status_code, detail=e.body)
 
-                            headers = {"Accept": "image/jpeg", "User-Agent": "UniIOAI/0.1"}
-                            if api_key:
-                                headers["Authorization"] = f"Bearer {api_key}"
+                data_items = [item.to_dict() for item in items]
 
-                            resp = await client.get(url, headers=headers, timeout=60)
-                            if resp.status_code != 200:
-                                detail = resp.text if resp.text else "Failed to generate image from Pollinations"
-                                raise HTTPException(status_code=resp.status_code, detail=detail)
-
-                            b64 = base64.b64encode(resp.content).decode("utf-8")
-                            del resp
-                            data_items.append({"b64_json": b64, "url": url})
-                    else:
-                        # Generic OpenAI-compatible image relay: any provider whose
-                        # class exposes a BASE_URL and accepts POST
-                        # {base_url}/images/generations with {model,prompt,n,size}
-                        # returning {data:[{b64_json|url}]}. Covers tu/aqueduct,
-                        # openai, openrouter, kilo, stepfun, … (tu collapses into
-                        # this — its base_url resolves to the aqueduct endpoint).
-                        img_base = _provider_image_base_url(provider_name)
-                        if not img_base:
-                            raise HTTPException(
-                                status_code=400,
-                                detail=f"Image generation not supported for provider '{provider_name}'",
-                            )
-                        if not api_key:
-                            raise HTTPException(
-                                status_code=401, detail=f"API key required for {provider_name}"
-                            )
-                        endpoint = img_base.rstrip("/") + "/images/generations"
-                        # Stream the upstream response (bounded memory; deterministic
-                        # aclose via async-with) instead of one-shot post()+json().
-                        async with client.stream(
-                            "POST",
-                            endpoint,
-                            headers={"Content-Type": "application/json", "Authorization": f"Bearer {api_key}"},
-                            json={"model": model_name, "prompt": prompt, "n": n, "size": size},
-                        ) as resp:
-                            if resp.status_code != 200:
-                                err = (await resp.aread()).decode("utf-8", "replace")[:500]
-                                raise HTTPException(status_code=resp.status_code, detail=err)
-                            raw = await resp.aread()
-                        gen_data = json.loads(raw)
-                        del raw
-                        for item in gen_data.get("data", []):
-                            b64_json = item.get("b64_json")
-                            url = item.get("url")
-                            if b64_json:
-                                data_items.append({"b64_json": b64_json, **({"url": url} if url else {})})
-                            elif url:
-                                img_resp = await client.get(url, timeout=60)
-                                img_resp.raise_for_status()
-                                b64 = base64.b64encode(img_resp.content).decode("utf-8")
-                                del img_resp
-                                data_items.append({"b64_json": b64, "url": url})
-                        del gen_data  # drop the parsed tree early; b64 strings are aliased into data_items
-
-                # Stream the OpenAI-shaped JSON response instead of building one
-                # big JSONResponse body. Each base64 image is then serialized
-                # chunk-by-chunk straight to the socket, so we never hold the
-                # full serialized body in memory on top of data_items (~halves
-                # the peak RSS of an image request on a memory-constrained box).
+                # Stream the OpenAI-shaped JSON response.
                 created = int(time.time())
                 model_for_resp = provider_model
 

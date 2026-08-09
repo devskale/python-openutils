@@ -17,6 +17,7 @@ reviews. Keep this current when concepts are named or sharpened.
   ollama `think` (bool), vLLM `chat_template_kwargs.enable_thinking`,
   Z.AI `thinking` object. Each reasoning-capable provider maps reasoning effort
   to its own dialect.
+- **ImageTarget** — the image-generation dispatch module (`uniinfer.images.ImageTarget`). The image analog of `Target`: binds a `provider@model` + API key, owns provider resolution + the per-provider image dialect + the upstream fetch + response shaping behind one small interface (`agenerate(prompt, n, size, client)`). The dialect seam (pollinations GET vs generic OpenAI-compatible POST `/images/generations`) is private to the module — two adapters behind one interface. Returns shaped `ImageData[]` (`b64_json` always populated; url→b64 resolved internally). The single home for "generate an image" — formerly inline in the media router.
 - **ProbeTarget** — the capability suite's probe-config dataclass
   (`capabilities.Target` is a back-compat alias). Carries `provider_model,
   api_key, base_url, max_tokens, timeout, heavy_perf`. Builds a non-recording
