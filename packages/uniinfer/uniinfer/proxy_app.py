@@ -196,6 +196,7 @@ async def lifespan(app: FastAPI):
     app.state.http = httpx.AsyncClient(
         timeout=httpx.Timeout(120.0, connect=10.0),
         limits=httpx.Limits(max_connections=50, max_keepalive_connections=20),
+        http2=True,  # HTTP/2 multiplexing avoids the httpcore #1091 pool leak
     )
     trace_task = None
     if os.getenv("UNIINFER_MEM_TRACE", "") in {"1", "true", "yes"}:

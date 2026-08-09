@@ -104,13 +104,11 @@ class TUProvider(ChatProvider):
             return self._async_client
         client = _TU_CLIENT_CACHE.get(self.base_url)
         if client is None or client.is_closed:
-            # UNIINFER_TU_KEEPALIVE=0 disables connection keepalive (A/B for the
-            # retained-per-request-buffer leak hypothesis: httpcore can hold
-            # read/write buffers on kept-alive connections under streaming load).
-            _keepalive = int(os.getenv("UNIINFER_TU_KEEPALIVE", "20"))
-            limits = httpx.Limits(max_connections=100,
-                                 max_keepalive_connections=_keepalive,
-                                 keepalive_expiry=5.0)
+            # HTTP/2 multiplexing: one connection per host serves all concurrent
+            # streams, so the pool never reaches the contention that triggers the
+            # httpcore #1093 connection-slot leak (HTTP/1.1-specific). ALPN falls
+            # back to HTTP/1.1 for hosts that don't speak h2. Replaces the earlier
+            # keepalive=0 workaround (which cost a TLS handshake per request).
             client = httpx.AsyncClient(
                 base_url=self.base_url,
                 headers={
@@ -118,7 +116,7 @@ class TUProvider(ChatProvider):
                     "Content-Type": "application/json"
                 },
                 timeout=httpx.Timeout(300.0, connect=30.0),  # 5 min timeout for large models
-                limits=limits,
+                http2=True,
             )
             _TU_CLIENT_CACHE[self.base_url] = client
         self._async_client = client

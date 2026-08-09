@@ -267,7 +267,7 @@ _SHARED_CLIENT: "httpx.AsyncClient | None" = None
 def _shared_async_client() -> httpx.AsyncClient:
     global _SHARED_CLIENT
     if _SHARED_CLIENT is None or _SHARED_CLIENT.is_closed:
-        _SHARED_CLIENT = httpx.AsyncClient(timeout=60.0)
+        _SHARED_CLIENT = httpx.AsyncClient(http2=True, timeout=60.0)
     return _SHARED_CLIENT
 
 
@@ -503,7 +503,7 @@ class EmbeddingProvider:
     async def _get_async_client(self) -> httpx.AsyncClient:
         """Get or create the internal httpx.AsyncClient."""
         if self._async_client is None or self._async_client.is_closed:
-            self._async_client = httpx.AsyncClient(timeout=60.0)
+            self._async_client = httpx.AsyncClient(http2=True, timeout=60.0)
         return self._async_client
 
     async def aclose(self):
@@ -652,7 +652,7 @@ class TTSProvider:
     async def _get_async_client(self) -> httpx.AsyncClient:
         """Get or create the internal httpx.AsyncClient."""
         if not hasattr(self, '_async_client') or self._async_client is None or self._async_client.is_closed:
-            self._async_client = httpx.AsyncClient(timeout=300.0)
+            self._async_client = httpx.AsyncClient(http2=True, timeout=300.0)
         return self._async_client
 
     async def aclose(self):
@@ -799,7 +799,7 @@ class STTProvider:
     async def _get_async_client(self) -> httpx.AsyncClient:
         """Get or create the internal httpx.AsyncClient."""
         if not hasattr(self, '_async_client') or self._async_client is None or self._async_client.is_closed:
-            self._async_client = httpx.AsyncClient(timeout=300.0)
+            self._async_client = httpx.AsyncClient(http2=True, timeout=300.0)
         return self._async_client
 
     async def aclose(self):
