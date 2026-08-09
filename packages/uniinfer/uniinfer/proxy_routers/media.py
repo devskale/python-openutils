@@ -15,6 +15,20 @@ from pydantic import BaseModel, Field
 
 from uniinfer.auth import get_optional_proxy_token, verify_provider_access
 from uniinfer.provider_access import get_provider_api_key, list_model_names_for_provider
+from uniinfer.factory import ProviderFactory
+
+
+def _provider_image_base_url(provider_name: str) -> str | None:
+    """Best-effort: the provider's image-API base URL (class-level BASE_URL /
+    _DEFAULT_BASE_URL). Used by the generic OpenAI-compatible image relay so any
+    provider that exposes POST {base_url}/images/generations works (tu/aqueduct,
+    openai, openrouter, kilo, stepfun, …). Returns None if not resolvable
+    (e.g. cloudflare, which needs an account-id instance URL)."""
+    try:
+        cls = ProviderFactory._resolve(provider_name)
+        return getattr(cls, "BASE_URL", None) or getattr(cls, "_DEFAULT_BASE_URL", None)
+    except Exception:
+        return None
 
 
 logger = logging.getLogger("uniioai_proxy")
@@ -124,10 +138,17 @@ def create_media_router(
                 image_markers = ("image", "z-image", "dall-e", "stable-diffusion", "sdxl", "flux")
                 models = sorted(set(m for m in raw_models if any(marker in m.lower() for marker in image_markers)))
             else:
-                raise HTTPException(
-                    status_code=400,
-                    detail=f"Image generation not supported for provider '{provider_name}'. Supported providers: pollinations, tu",
-                )
+                # Generic: image-capable models from the catalog for this provider
+                # (openai, openrouter, kilo, stepfun, …). Local read, no token/network.
+                from uniinfer.proxy_services.models_registry import Catalog
+                try:
+                    prov = (Catalog().read_nested(provider_name)
+                            .get("providers", {}).get(provider_name, {}))
+                    raw_models = [m.get("id") for m in prov.get("models", []) if m.get("id")]
+                except Exception:
+                    raw_models = []
+                image_markers = ("image", "gpt-image", "dall-e", "flux", "sdxl", "imagen", "step-image", "search-image")
+                models = sorted(set(m for m in raw_models if any(k in m.lower() for k in image_markers)))
 
             return {
                 "object": "list",
@@ -155,7 +176,7 @@ def create_media_router(
                 seed = request_input.seed
 
                 provider_name, model_name = parse_provider_model(
-                    provider_model, allowed_providers=["pollinations", "tu"], task_name="images"
+                    provider_model, task_name="images"
                 )
 
                 api_key = None
@@ -177,40 +198,9 @@ def create_media_router(
                 data_items: List[dict] = []
 
                 async with _http_client(request) as client:
-                    if provider_name == "tu":
-                        if not api_key:
-                            raise HTTPException(status_code=401, detail="API key required for TU provider")
-
-                        # Stream the upstream response (httpx best practice
-                        # for bounded memory) instead of one-shot client.post()
-                        # + json(), which buffers the full body in httpcore and
-                        # retained native buffer per request (the image RSS creep).
-                        # The async-with deterministically aclose()s the response.
-                        async with client.stream(
-                            "POST",
-                            "https://aqueduct.ai.datalab.tuwien.ac.at/v1/images/generations",
-                            headers={"Content-Type": "application/json", "Authorization": f"Bearer {api_key}"},
-                            json={"model": model_name, "prompt": prompt, "n": n, "size": size},
-                        ) as resp:
-                            if resp.status_code != 200:
-                                err = (await resp.aread()).decode("utf-8", "replace")[:500]
-                                raise HTTPException(status_code=resp.status_code, detail=err)
-                            raw = await resp.aread()
-                        tu_data = json.loads(raw)
-                        del raw
-                        for item in tu_data.get("data", []):
-                            b64_json = item.get("b64_json")
-                            url = item.get("url")
-                            if b64_json:
-                                data_items.append({"b64_json": b64_json, **({"url": url} if url else {})})
-                            elif url:
-                                img_resp = await client.get(url, timeout=60)
-                                img_resp.raise_for_status()
-                                b64 = base64.b64encode(img_resp.content).decode("utf-8")
-                                del img_resp
-                                data_items.append({"b64_json": b64, "url": url})
-                        del tu_data  # drop the parsed tree early; b64 strings are aliased into data_items
-                    else:
+                    if provider_name == "pollinations":
+                        # Pollinations uses a GET-by-URL image API (raw image
+                        # bytes), not an OpenAI-style /images/generations endpoint.
                         encoded_prompt = urllib.parse.quote(prompt)
                         base_url = "https://gen.pollinations.ai/image"
                         for i in range(n):
@@ -229,6 +219,50 @@ def create_media_router(
                             b64 = base64.b64encode(resp.content).decode("utf-8")
                             del resp
                             data_items.append({"b64_json": b64, "url": url})
+                    else:
+                        # Generic OpenAI-compatible image relay: any provider whose
+                        # class exposes a BASE_URL and accepts POST
+                        # {base_url}/images/generations with {model,prompt,n,size}
+                        # returning {data:[{b64_json|url}]}. Covers tu/aqueduct,
+                        # openai, openrouter, kilo, stepfun, … (tu collapses into
+                        # this — its base_url resolves to the aqueduct endpoint).
+                        img_base = _provider_image_base_url(provider_name)
+                        if not img_base:
+                            raise HTTPException(
+                                status_code=400,
+                                detail=f"Image generation not supported for provider '{provider_name}'",
+                            )
+                        if not api_key:
+                            raise HTTPException(
+                                status_code=401, detail=f"API key required for {provider_name}"
+                            )
+                        endpoint = img_base.rstrip("/") + "/images/generations"
+                        # Stream the upstream response (bounded memory; deterministic
+                        # aclose via async-with) instead of one-shot post()+json().
+                        async with client.stream(
+                            "POST",
+                            endpoint,
+                            headers={"Content-Type": "application/json", "Authorization": f"Bearer {api_key}"},
+                            json={"model": model_name, "prompt": prompt, "n": n, "size": size},
+                        ) as resp:
+                            if resp.status_code != 200:
+                                err = (await resp.aread()).decode("utf-8", "replace")[:500]
+                                raise HTTPException(status_code=resp.status_code, detail=err)
+                            raw = await resp.aread()
+                        gen_data = json.loads(raw)
+                        del raw
+                        for item in gen_data.get("data", []):
+                            b64_json = item.get("b64_json")
+                            url = item.get("url")
+                            if b64_json:
+                                data_items.append({"b64_json": b64_json, **({"url": url} if url else {})})
+                            elif url:
+                                img_resp = await client.get(url, timeout=60)
+                                img_resp.raise_for_status()
+                                b64 = base64.b64encode(img_resp.content).decode("utf-8")
+                                del img_resp
+                                data_items.append({"b64_json": b64, "url": url})
+                        del gen_data  # drop the parsed tree early; b64 strings are aliased into data_items
 
                 # Stream the OpenAI-shaped JSON response instead of building one
                 # big JSONResponse body. Each base64 image is then serialized
