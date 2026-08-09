@@ -1,107 +1,98 @@
-# Allocator & rate-limit decisions (uniioai-proxy)
+# Memory & stability decisions (uniioai-proxy)
 
-Operational/config record of the decisions made after the 2026-08 memory and
-429-stall investigation on the `amd` uniioai-proxy (0.8.14 → 0.8.16). These are
-conclusions grounded in measurement + web research; keep them if you revisit the
-proxy's memory story.
+Definitive record of the 2026-08 memory/stability investigation and fix on the
+`amd` uniioai-proxy (0.8.3 → 0.8.40). Every decision is grounded in measurement
++ web research.
 
 ## TL;DR
 
-- The proxy runs the **plain glibc allocator** — **no jemalloc**, no
-  `PYTHONMALLOC`. Only glibc `mallopt` tuning is set.
-- **TU no longer throttles internally** — upstream `429`s are relayed to the
-  client transparently instead of being absorbed by an up-to-120s backoff-retry.
-- **No restart watchdog / bounded-worker-lifecycle** was added, and none is
-  warranted by the current measurements.
-- `/health` is kept as the lightweight, permanent guard.
+- **Root cause found and fixed**: httpcore #1093 — HTTP/1.1 connection-pool
+  slots orphaned under request cancellation; the pool degraded monotonically
+  to wedge. **Fix: HTTP/2 on all clients** (`http2=True`, `h2>=4.1.0`).
+- **Allocator: plain glibc** (jemalloc evaluated, dropped — neutral).
+- **Rate limiting: transparent 429** (adaptive limiter + slowapi both removed).
+- **Middleware: pure-ASGI** (BaseHTTPMiddleware replaced — it leaked under SSE).
+- **Monitoring: `/health`** + opt-in tracer (off by default, zero overhead).
 
 ---
 
-## 1. Allocator stack (systemd unit on `amd`)
+## 1. The root cause — httpcore #1093 (HTTP/1.1 pool leak)
 
-**Current env on `/etc/systemd/system/uniioai-proxy.service`:**
+The proxy **wedged** (D-state, `/health` timeout) after ~12h of sustained
+chat/image load, RSS climbing monotonically to the 200M cgroup cap.
 
-```
-Environment=MALLOC_ARENA_MAX=2
-Environment=MALLOC_MMAP_THRESHOLD_=65536
-Environment=MALLOC_TRIM_THRESHOLD_=65536
-Environment=PYTHONUNBUFFERED=1
-```
+**Tracemalloc pinpointed it**: `json/decoder.py:361` + `starlette/requests.py:259`
++ `httpx/_content.py:179` grew every 5-min interval; `tuple` count climbed
+monotonically (24k→42k→65k→74k, never dropped). The retained growth was
+per-request objects (pydantic `model_dump`, httpx request-body encode) held by
+**orphaned connection-pool slots**.
 
-**Removed:**
-- `LD_PRELOAD=/usr/lib/x86_64-linux-gnu/libjemalloc.so.2`
-- `MALLOC_CONF=dirty_decay_ms:1000,muzzy_decay_ms:1000`
-- (experimental) `PYTHONMALLOC=malloc` — tested, no benefit, reverted.
+**Grounded in** [encode/httpcore#1093](https://github.com/encode/httpcore/issues/1093)
+(opened Jul 2026, httpcore 1.0.9 — our exact version): *"cancelled requests
+under pool contention permanently leak connection slots… only recreating the
+pool (process restart) recovers… HTTP/1.1-specific; HTTP/2 multiplexes, rarely
+reaches contention."*
 
-**Why:** the A/B allocator evaluation (jemalloc vs glibc, both on amd) showed
-jemalloc governs only ~25% of RSS (`live_allocated` ~24MB of ~96MB); the other
-~70MB is CPython `pymalloc` small-object arenas, which are mmap'd directly and
-**bypass `malloc` entirely** — no C-allocator setting touches them. On the slice
-jemalloc does control it was neutral-to-slightly-worse, and its 1s
-`dirty_decay_ms` introduced a purge-storm failure mode under bursty large
-allocations. The glibc `mallopt` vars above are the ones that matter (large
-allocations ≥64KB go to mmap → returned to the OS on free; heap trims eagerly).
+Our SSE path **cancels pooled requests constantly** (streaming heartbeat
+timeouts via `asyncio.wait_for` + client aborts on 429) under concurrent load —
+the exact trigger.
 
-Backups on amd: `~/uniioai-proxy.service.bak.jemalloc-removed`.
+## 2. The fix — HTTP/2 standard (0.8.26)
 
-## 2. Rate limiting — removed, 429 passed through
+`http2=True` on all 6 `httpx.AsyncClient` sites + `h2>=4.1.0` dep. HTTP/2
+multiplexes all streams over **one connection per host** → no pool contention
+→ no orphan slots. ALPN falls back to HTTP/1.1 for hosts that don't speak h2
+(1 of 18: internlm). Verified: 17/18 upstreams negotiate h2.
 
-Decision: **the TU adaptive throttle was removed entirely** (0.8.15). No
-`_throttle`/`acquire`/`on_429`/`on_success`, no module-level TU limiter.
-Requests go out immediately; an upstream `429` is relayed to the caller:
+**Post-fix**: `tuple` count plateaus (~48k, fluctuates with load, drops
+between bursts); `objs` stable; RSS bounded (105–145MB under stress vs
+monotonic climb before). Confirmed over sustained stress.
 
-- **non-streaming** → real `HTTP 429` (`RateLimitError` → `JSONResponse 429`).
-- **streaming** → the SSE is primed (first upstream chunk pulled) *before* the
-  welcome chunk is committed, so an open-time `429` is a real `HTTP 429`, not a
-  `200`-with-error-chunk. Mid-stream errors remain body error chunks.
+## 3. Allocator stack — glibc (0.8.13–0.8.18)
 
-Only short transport-fault retries (network errors) remain — not rate-limit
-retries.
+**Evaluated**: jemalloc (`LD_PRELOAD`) vs glibc on amd. jemalloc governs only
+~25% of RSS (`live_allocated` ~24MB of ~96MB); the other ~70MB is CPython
+`pymalloc` arenas that bypass malloc entirely. jemalloc was neutral-to-slightly-
+worse on the malloc'd slice. `PYTHONMALLOC=malloc` tested + reverted (no benefit).
 
-**Why:** the `120s` internal backoff-retry (5→10→20→…→120s per request, up to 4×)
-was the root of two symptoms at once — the *stalls* the astro/pi agent saw under
-fast deepseek + image load exceeding TU's shared ~25/min quota, and a chunk of
-the *memory* growth (many pending SSE generators/backing-off tasks held
-simultaneously). Relaying the 429 lets the client do its own backoff.
+**Final**: plain glibc with `MALLOC_ARENA_MAX=2`, `MALLOC_MMAP_THRESHOLD_=65536`,
+`MALLOC_TRIM_THRESHOLD_=65536`. No jemalloc.
 
-## 3. No restart watchdog (bounded-worker-lifecycle)
+## 4. Rate limiting — transparent 429 (0.8.14–0.8.15, 0.8.28, 0.8.38)
 
-Deliberately **not** implemented. Evaluated and rejected as a *workaround* (per
-the gunicorn maintainer: `max_requests` is "a temporary workaround for an
-application code leaking"; "mitigates memory leaks, doesn't fix them").
+- **TU adaptive throttle removed** (0.8.15): upstream 429s are relayed to the
+  caller as `RateLimitError` immediately (was: up-to-120s internal backoff-retry
+  that stalled streams). For streaming, the SSE is primed before committing so
+  an open-time 429 is a real `HTTP 429`.
+- **slowapi removed** (0.8.28): its `SlowAPIASGIMiddleware` re-sent
+  `http.response.start` on every body chunk, corrupting multi-chunk responses
+  (the webdemo truncated at 64KB). It also never fired (storage stayed empty;
+  real rate limiting is upstream TU + bearer auth).
+- **`ratelimit.py` deleted** (0.8.38): the `AdaptiveRateLimiter` (395 LOC) was
+  vestigial infrastructure — no provider registered a limiter after TU's removal.
 
-**Why it isn't needed:** the object-count-vs-RSS measurement (recorded below)
-shows a **flat live-object count** while RSS moves — the classic "leak that
-isn't a leak" signature. RSS is transient load memory (buffers/arenas) that
-returns after load under the glibc tuning. There is no real leak to recycle
-against, and the stall-driven accumulation that did grow RSS was removed by the
-429 pass-through (#2). The `/health` endpoint + the 200M/300M cgroup caps remain
-as the guard: if slow long-run build-up ever approaches the cap, `/health`
-status flips to `warn`/`crit` and a memory-signal recycle can be revisited as the
-*fallback* — not the answer.
+## 5. Middleware — pure-ASGI (0.8.21)
 
-## 4. `/health` endpoint (kept)
+`BaseHTTPMiddleware` (2 `@app.middleware("http")` + `SlowAPIMiddleware`) leaked
+under streaming/SSE (Starlette #1012 — buffers every response through an anyio
+memory stream). Replaced with **pure-ASGI** equivalents:
+`LeanHTTPMiddleware` (request-id logging + body-size limit, streams transparently)
++ CORS (already pure-ASGI).
 
-Added (0.8.13) as the lightweight, **unauthenticated, zero-cost** probe: returns
-`status` (ok/warn/crit), RSS/peak/swap vs the cgroup caps + headroom, page-fault
-rate, event-loop latency, version, uptime. It also exposes jemalloc
-live-vs-retained split (`live_allocated_mb`/`resident_mb`/`unreturned_mb`);
-without jemalloc loaded those fields degrade to `null` (as designed).
+## 6. Dispatch modules (0.8.30–0.8.34)
 
----
+Three deep modules following the `Target` (chat) pattern:
+- **`ImageTarget`** (`uniinfer/images.py`) — 3 dialect adapters (generic
+  OpenAI-compatible, cloudflare, pollinations) behind one interface.
+- **`TTSTarget` / `STTTarget`** (`uniinfer/audio.py`) — lazy provider registry.
 
-## Evidence (measurements on `amd`, 2026-08)
+## 7. Monitoring — `/health` + opt-in tracer
 
-| Check | Result |
-|---|---|
-| jemalloc A/B (provider-stream TLS under jemalloc) | flat; pools vs fresh identical — not the leak |
-| jemalloc vs glibc (small objects / pymalloc) | identical (+0.1MB) → allocator-independent |
-| jemalloc vs glibc (large buffers, tight loop) | glibc retained 6.1MB, jemalloc 8.0MB (worse) |
-| jemalloc vs glibc (spaced images, realistic) | identical (+9.7MB) |
-| object-count-vs-RSS under load (glibc) | objects ~197k→198.5k (flat) while RSS 88→99MB, then back to ~89 |
-| object-count-vs-RSS under `PYTHONMALLOC=malloc` | objects flat; RSS 104 peak / 92 residual — no benefit vs glibc |
-
-**Takeaway:** flat object count + self-recovering RSS = **allocator/arena
-transients, not a leak**; every allocator knob (jemalloc, glibc, pymalloc) is
-moot. The thing that actually accumulated memory ("stall pile-up") is already
-eliminated by the transparent-429 relay.
+- **`/health`** (always on): `status` (ok/warn/crit), RSS/peak/swap, cgroup
+  caps + headroom, page-fault rate, event-loop latency, version, uptime.
+  Env-configurable caps (`UNIINFER_MEM_HIGH_MB`/`UNIINFER_MEM_MAX_MB`) for
+  non-cgroup hosts.
+- **Tracer** (`UNIINFER_MEM_TRACE=1`, off by default): logs RSS + gc object
+  census + tracemalloc allocation-site diffs to `logs/mem_trace.log`.
+  `UNIINFER_MEM_TRACE_MALLOC=1` enables tracemalloc (expensive on large
+  responses — do NOT leave on in production).

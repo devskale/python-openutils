@@ -173,5 +173,5 @@ class TestProxyEndpoints:
         assert response.status_code == 200
 
     def test_webdemo_endpoint_exists(self, client):
-        from uniinfer.proxy_app import get_web_demo
-        assert hasattr(get_web_demo, "__call__")
+        response = client.get("/webdemo")
+        assert response.status_code == 200

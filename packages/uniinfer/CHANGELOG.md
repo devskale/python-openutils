@@ -4,6 +4,61 @@ All notable changes to **uniinfer** are documented in this file.
 Versions follow [Semantic Versioning](https://semver.org/); this file
 adheres to [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.8.40] - 2026-08-09
+
+### Fixed — memory stability (the wedge)
+
+- **HTTP/2 on all clients** (`http2=True`, `h2>=4.1.0`) — root cause of the
+  12h RSS wedge was httpcore #1093 (HTTP/1.1 connection-pool slots orphaned
+  under request cancellation). HTTP/2 multiplexes all streams over one
+  connection per host, eliminating pool contention. 17/18 upstreams speak h2.
+- **Pure-ASGI middleware** (`LeanHTTPMiddleware`) — replaced BaseHTTPMiddleware
+  (2 `@app.middleware` + SlowAPIMiddleware) which leaked under SSE (Starlette
+  #1012). Stack is now CORSMiddleware + LeanHTTPMiddleware, both pure-ASGI.
+- **Transparent 429 relay** — TU no longer throttles internally (was: up-to-120s
+  backoff-retry that stalled streams). Upstream 429s are relayed immediately as
+  real HTTP 429. Streaming SSE is primed before committing so open-time 429s
+  surface as HTTP 429.
+- **slowapi removed entirely** — its ASGI middleware corrupted multi-chunk
+  responses (webdemo truncated at 64KB). Never fired; real rate limiting is
+  upstream + bearer auth.
+- **`/v1/models` cached** (mtime-keyed Catalog) — was spawning
+  `generate_models.py` subprocess per request, stalling the event loop 15–30s.
+
+### Added — architecture deepening
+
+- **`ImageTarget`** (`uniinfer/images.py`) — deep image-dispatch module with 3
+  dialect adapters (generic OpenAI-compatible, cloudflare, pollinations) behind
+  one interface (`agenerate`). Analogous to `Target` (chat).
+- **`TTSTarget` / `STTTarget`** (`uniinfer/audio.py`) — audio dispatch modules
+  with lazy provider registries. Router is a thin HTTP adapter.
+- **`proxy_middleware.py`** — extracted ASGI plumbing (LeanHTTPMiddleware,
+  tracer, system readers) from proxy_app.py (756→419 LOC).
+- **`proxy_routers/system.py`** — extracted webdemo/perf/capabilities/guide/
+  root endpoints from proxy_app.py.
+- **`/health` endpoint** — status (ok/warn/crit), RSS/headroom, page-fault rate,
+  event-loop latency, jemalloc live-vs-retained split.
+- **`/v1/models` default = accessible only** (free/granted, ~314 models /
+  ~119KB). `?all=true` for everything; `?provider=X`, `?type=X` filters.
+
+### Changed — leanness
+
+- **~830 lines of dead code removed**: slowapi remnants, `ratelimit.py`
+  (395 LOC adaptive limiter), dead rate-limit functions + tests.
+- **`media.py` split** → `images.py` + `audio.py` (locality by modality).
+- **Image detection unified** — catalog `type` as primary signal + one shared
+  marker list (was: two drifting lists). Better coverage (cloudflare 5→13).
+- **Streaming image response** — halved peak RSS per image request.
+- **Image generation opened to all providers** (tu, openai, openrouter, kilo,
+  stepfun, cloudflare, pollinations) via generic relay + dedicated dialects.
+
+### Changed — deps + testing
+
+- `h2>=4.1.0` added (HTTP/2 support). `slowapi` removed.
+- Upgraded: starlette 1.6.0, openai 2.53.0, uvicorn 0.52.1.
+- Live-API TTS/STT integration tests env-gated (`RUN_INTEGRATION_TESTS=1`).
+- `CONTEXT.md` updated: `ImageTarget`, `TTSTarget`/`STTTarget`.
+
 ## [0.8.2] - 2026-08-02
 
 ### Changed — architecture deepening (review candidates A + B)
