@@ -125,9 +125,9 @@ class TestProxyMiddleware:
         Replaces the former @app.middleware('http') middlewares (which were
         BaseHTTPMiddleware — leaks under streaming/SSE, Starlette #1012).
         """
-        from uniinfer.proxy_app import app, _LeanHTTPMiddleware
-        has = any(m.cls is _LeanHTTPMiddleware for m in app.user_middleware)
-        assert has, "_LeanHTTPMiddleware missing from the ASGI stack"
+        from uniinfer.proxy_app import app, LeanHTTPMiddleware
+        has = any(m.cls is LeanHTTPMiddleware for m in app.user_middleware)
+        assert has, "LeanHTTPMiddleware missing from the ASGI stack"
 
     def test_no_base_http_middleware_in_stack(self):
         """Regression guard: no BaseHTTPMiddleware subclass may be in the stack
