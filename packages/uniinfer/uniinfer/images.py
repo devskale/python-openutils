@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import base64
 import json
+import os
 import time
 import urllib.parse
 from dataclasses import dataclass
@@ -22,6 +23,7 @@ from typing import Optional
 import httpx
 
 from uniinfer.completion import parse_provider_model
+from uniinfer.config.providers import PROVIDER_CONFIGS
 from uniinfer.factory import ProviderFactory
 
 
@@ -143,6 +145,38 @@ class _PollinationsDialect(_ImageDialect):
         return out
 
 
+class _CloudflareImageDialect(_ImageDialect):
+    """POST ``{accounts_base}/ai/run/{model}`` — Cloudflare Workers AI text-to-image
+    (flux, etc.). Returns raw image bytes (content-type image/*); one request per image.
+    The account_id is resolved from PROVIDER_CONFIGS (same source as chat)."""
+
+    def __init__(self, account_id: str):
+        self.base = f"https://api.cloudflare.com/client/v4/accounts/{account_id}/ai/run/"
+
+    async def fetch(self, client, model, prompt, n, size, api_key):
+        url = self.base + model
+        headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
+        out: list[ImageData] = []
+        for _ in range(n):
+            resp = await client.post(url, headers=headers, json={"prompt": prompt}, timeout=60)
+            if resp.status_code != 200:
+                raise ImageGenerationError(resp.status_code, resp.text[:500])
+            ct = resp.headers.get("content-type", "")
+            if "image/" in ct or not ct.startswith("application/json"):
+                b64 = base64.b64encode(resp.content).decode("utf-8")
+            else:
+                try:
+                    data = resp.json()
+                    b64 = data.get("image") or data.get("result", {}).get("image", "")
+                    if not b64:
+                        b64 = base64.b64encode(resp.content).decode("utf-8")
+                except Exception:
+                    b64 = base64.b64encode(resp.content).decode("utf-8")
+            out.append(ImageData(b64_json=b64))
+            del resp
+        return out
+
+
 def _provider_image_base_url(provider_name: str) -> Optional[str]:
     """The provider's image-API base URL from its class (BASE_URL / _DEFAULT_BASE_URL)."""
     try:
@@ -177,6 +211,17 @@ class ImageTarget:
     def _resolve_dialect(self) -> _ImageDialect:
         if self.provider_name == "pollinations":
             return _PollinationsDialect()
+        if self.provider_name == "cloudflare":
+            account_id = (
+                PROVIDER_CONFIGS.get("cloudflare", {}).get("extra_params", {}).get("account_id")
+                or os.getenv("CLOUDFLARE_ACCOUNT_ID")
+            )
+            if not account_id:
+                raise ValueError(
+                    "Cloudflare image generation requires an account_id "
+                    "(configure in PROVIDER_CONFIGS or set CLOUDFLARE_ACCOUNT_ID)"
+                )
+            return _CloudflareImageDialect(account_id)
         base = _provider_image_base_url(self.provider_name)
         if not base:
             raise ValueError(
