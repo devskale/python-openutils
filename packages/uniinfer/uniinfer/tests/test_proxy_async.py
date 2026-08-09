@@ -125,13 +125,24 @@ def test_chat_completion_request_input_validation():
 
 class TestProxyMiddleware:
 
-    def test_request_size_middleware_exists(self):
-        from uniinfer.proxy_app import limit_request_size
-        assert callable(limit_request_size)
+    def test_lean_http_middleware_configured(self):
+        """The pure-ASGI request-logging + size-limit middleware is in the stack.
 
-    def test_log_requests_middleware_exists(self):
-        from uniinfer.proxy_app import log_requests
-        assert callable(log_requests)
+        Replaces the former @app.middleware('http') middlewares (which were
+        BaseHTTPMiddleware — leaks under streaming/SSE, Starlette #1012).
+        """
+        from uniinfer.proxy_app import app, _LeanHTTPMiddleware
+        has = any(m.cls is _LeanHTTPMiddleware for m in app.user_middleware)
+        assert has, "_LeanHTTPMiddleware missing from the ASGI stack"
+
+    def test_no_base_http_middleware_in_stack(self):
+        """Regression guard: no BaseHTTPMiddleware subclass may be in the stack
+        (it leaks RSS under concurrent SSE). Covers slowapi too."""
+        from uniinfer.proxy_app import app
+        from starlette.middleware.base import BaseHTTPMiddleware
+        for m in app.user_middleware:
+            assert not (isinstance(m.cls, type) and issubclass(m.cls, BaseHTTPMiddleware)), \
+                f"{m.cls.__name__} is BaseHTTPMiddleware (leaks under SSE)"
 
     def test_cors_middleware_configured(self):
         from uniinfer.proxy_app import app

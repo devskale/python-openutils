@@ -17,7 +17,12 @@ from fastapi.encoders import jsonable_encoder
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
-from slowapi.middleware import SlowAPIMiddleware
+from slowapi.middleware import SlowAPIASGIMiddleware
+# NOTE: slowapi's SlowAPIMiddleware is a BaseHTTPMiddleware subclass, which
+# leaks under streaming/SSE load (Starlette #1012). We use SlowAPIASGIMiddleware
+# instead (pure ASGI, same route-level @limiter.limit behavior, no buffer leak).
+# _LeanHTTPMiddleware below (also pure ASGI) replaces the former @app.middleware
+# ("http") request-logging/size-limit middlewares for the same reason.
 import os
 from contextlib import asynccontextmanager
 import httpx
@@ -207,10 +212,85 @@ app = FastAPI(
 
 # --- Rate Limiting Setup ---
 # Enable headers to let clients know their limits
+MAX_REQUEST_SIZE = 10 * 1024 * 1024  # used by _LeanHTTPMiddleware (pure-ASGI size limit)
+
 limiter = Limiter(key_func=get_remote_address, headers_enabled=True)
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
-app.add_middleware(SlowAPIMiddleware)
+app.add_middleware(SlowAPIASGIMiddleware)  # pure-ASGI rate limiter (no BaseHTTPMiddleware leak)
+
+
+class _LeanHTTPMiddleware:
+    """Pure-ASGI request logging + body-size limit.
+
+    Replaces the two former @app.middleware("http") middlewares. Those (and
+    SlowAPIMiddleware) are BaseHTTPMiddleware, which buffers every streaming
+    response through an anyio memory stream + background task — under concurrent
+    SSE that retains request bodies/parsed JSON and leaks RSS (Starlette #1012).
+    This pure-ASGI version streams responses straight through with zero
+    buffering, so SSE/concurrent streams can't accumulate.
+    """
+
+    def __init__(self, app, max_request_size: int = MAX_REQUEST_SIZE):
+        self.app = app
+        self.max_request_size = max_request_size
+
+    async def __call__(self, scope, receive, send):
+        if scope.get("type") != "http":
+            await self.app(scope, receive, send)
+            return
+        # body-size limit via the content-length header (no body read)
+        for k, v in scope.get("headers", []):
+            if k == b"content-length":
+                try:
+                    if int(v) > self.max_request_size:
+                        await _asgi_send_json(send, 413, {"detail": "Request too large"})
+                        return
+                except ValueError:
+                    pass
+                break
+        request_id = str(uuid.uuid4())
+        st = scope.setdefault("state", {})
+        if isinstance(st, dict):
+            st["request_id"] = request_id
+        method, path = scope.get("method"), scope.get("path")
+        logger.debug("[%s] START %s %s", request_id, method, path)
+        started = time.time()
+        resp = {"status": None, "ctype": None}
+
+        async def send_wrap(message):
+            if message["type"] == "http.response.start":
+                resp["status"] = message["status"]
+                hs = list(message.get("headers", []))
+                hs.append((b"x-request-id", request_id.encode()))
+                for k, v in message.get("headers", []):
+                    if k == b"content-type":
+                        resp["ctype"] = v.decode("latin-1", "replace"); break
+                message["headers"] = hs
+            await send(message)
+
+        try:
+            await self.app(scope, receive, send_wrap)
+        except Exception as e:
+            logger.error("[%s] ERROR %s %s - %.2fms - %s", request_id, method, path,
+                         (time.time() - started) * 1000, e)
+            raise
+        # Skip the END line for SSE (stream duration would be misleading), as before.
+        ct = resp["ctype"] or ""
+        if "text/event-stream" not in ct:
+            logger.info("[%s] END %s %s - Status: %s - Duration: %.2fms",
+                        request_id, method, path, resp["status"], (time.time() - started) * 1000)
+
+
+async def _asgi_send_json(send, status_code: int, body: dict) -> None:
+    payload = json.dumps(body).encode()
+    await send({"type": "http.response.start", "status": status_code,
+                "headers": [(b"content-type", b"application/json"),
+                             (b"content-length", str(len(payload)).encode())]})
+    await send({"type": "http.response.body", "body": payload})
+
+
+app.add_middleware(_LeanHTTPMiddleware)
 
 @app.exception_handler(RequestValidationError)
 async def validation_exception_handler(request: Request, exc: RequestValidationError):
@@ -256,52 +336,6 @@ app.add_middleware(
 )
 
 # --- Middleware for Request Logging and ID ---
-
-MAX_REQUEST_SIZE = 10 * 1024 * 1024
-
-@app.middleware("http")
-async def limit_request_size(request: Request, call_next):
-    content_length = request.headers.get("content-length")
-    # print(f"DEBUG: Middleware Content-Length: {content_length}")
-    if content_length:
-        content_length = int(content_length)
-        if content_length > MAX_REQUEST_SIZE:
-            # print("DEBUG: Request too large")
-            return JSONResponse(
-                status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
-                content={"detail": "Request too large"}
-            )
-    return await call_next(request)
-
-
-@app.middleware("http")
-async def log_requests(request: Request, call_next):
-    request_id = str(uuid.uuid4())
-    start_time = time.time()
-
-    # Store request_id in request state for access in endpoints
-    request.state.request_id = request_id
-
-    logger.debug(f"[{request_id}] START {request.method} {request.url}")
-
-    try:
-        response = await call_next(request)
-        response.headers["X-Request-ID"] = request_id
-        # For streaming (SSE) responses the body hasn't flowed yet at this point,
-        # so process_time would be just the response *setup* time (misleadingly
-        # tiny). Skip the END line for those; non-streaming + errors still log.
-        # BaseHTTPMiddleware wraps the response, so isinstance/media_type are
-        # unreliable here — the content-type header is preserved and reliable.
-        if "text/event-stream" not in response.headers.get("content-type", ""):
-            process_time = (time.time() - start_time) * 1000
-            logger.info(
-                f"[{request_id}] END {request.method} {request.url} - Status: {response.status_code} - Duration: {process_time:.2f}ms")
-        return response
-    except Exception as e:
-        process_time = (time.time() - start_time) * 1000
-        logger.error(
-            f"[{request_id}] ERROR {request.method} {request.url} - Duration: {process_time:.2f}ms - Exception: {e}")
-        raise
 
 # --- Mount Static Files for Web Demo ---
 webdemo_dir = os.path.join(script_dir, "examples", "webdemo")
