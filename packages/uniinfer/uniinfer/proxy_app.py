@@ -14,13 +14,7 @@ from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
 from fastapi import FastAPI, HTTPException, Request, status, Depends
 from fastapi.exceptions import RequestValidationError
 from fastapi.encoders import jsonable_encoder
-from slowapi import Limiter, _rate_limit_exceeded_handler
-from slowapi.util import get_remote_address
-from slowapi.errors import RateLimitExceeded
-from slowapi.middleware import SlowAPIASGIMiddleware
-# NOTE: slowapi's SlowAPIMiddleware is a BaseHTTPMiddleware subclass, which
-# leaks under streaming/SSE load (Starlette #1012). We use SlowAPIASGIMiddleware
-# instead (pure ASGI, same route-level @limiter.limit behavior, no buffer leak).
+from fastapi.exceptions import RequestValidationError
 # _LeanHTTPMiddleware below (also pure ASGI) replaces the former @app.middleware
 # ("http") request-logging/size-limit middlewares for the same reason.
 import os
@@ -218,20 +212,16 @@ app = FastAPI(
 )
 
 
-# --- Rate Limiting Setup ---
-# Enable headers to let clients know their limits
+# Rate limiting via slowapi was removed: its SlowAPIASGIMiddleware re-sends
+# http.response.start on every response-body chunk, which corrupts multi-chunk
+# responses (FileResponse / StreamingResponse) — it truncated the webdemo at
+# 64KB. It also never fired (storage stayed empty; the real rate limit is
+# upstream TU via transparent 429 + bearer auth). Auth + upstream limiting remain.
+
+
 MAX_REQUEST_SIZE = 10 * 1024 * 1024  # used by _LeanHTTPMiddleware (pure-ASGI size limit)
 
-limiter = Limiter(key_func=get_remote_address, headers_enabled=True)
-# A/B / kill-switch: UNIINFER_SLOWAPI_ENABLED=0 fully disables the limiter
-# (middleware short-circuits on limiter.enabled=False; decorators no-op), so we
-# can prove whether slowapi is a leak source without ripping out the decorators.
-if os.getenv("UNIINFER_SLOWAPI_ENABLED", "1") not in {"1", "true", "yes"}:
-    limiter.enabled = False
-app.state.limiter = limiter
-app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
-if limiter.enabled:
-    app.add_middleware(SlowAPIASGIMiddleware)  # pure-ASGI rate limiter (no BaseHTTPMiddleware leak)
+
 
 
 class _LeanHTTPMiddleware:
@@ -521,14 +511,13 @@ app.include_router(create_models_router(UNIINFER_VERSION))
 app.include_router(create_smoke_router())
 app.include_router(create_capabilities_router(parse_provider_model=parse_provider_model, provider_configs=PROVIDER_CONFIGS))
 app.include_router(create_stats_router())
-app.include_router(create_media_router(parse_provider_model, limiter, get_media_rate_limit))
+app.include_router(create_media_router(parse_provider_model, get_media_rate_limit))
 
 
 app.include_router(
     create_chat_router(
         parse_provider_model=parse_provider_model,
         provider_configs=PROVIDER_CONFIGS,
-        limiter=limiter,
         get_chat_rate_limit=get_chat_rate_limit,
         get_embeddings_rate_limit=get_embeddings_rate_limit,
     )

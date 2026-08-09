@@ -46,14 +46,12 @@ def create_chat_router(
     *,
     parse_provider_model: Callable[..., tuple[str, str]],
     provider_configs: dict[str, Any],
-    limiter: Any,
     get_chat_rate_limit: Callable[[], str],
     get_embeddings_rate_limit: Callable[[], str],
 ) -> APIRouter:
     router = APIRouter()
 
     @router.post("/v1/chat/completions")
-    @limiter.limit(get_chat_rate_limit)
     async def chat_completions(
         request: Request,
         request_input: ChatCompletionRequestInput,
@@ -270,7 +268,6 @@ def create_chat_router(
                     logger.debug("target.aclose() failed", exc_info=True)
 
     @router.post("/v1/embeddings", response_model=EmbeddingResponse)
-    @limiter.limit(get_embeddings_rate_limit)
     async def create_embeddings(
         request: Request,
         request_input: EmbeddingRequest,

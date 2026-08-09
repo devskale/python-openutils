@@ -43,11 +43,6 @@ def test_chat_completions_success(client):
     assert data["usage"]["total_tokens"] == 7
 
 
-def test_rate_limiter_exists():
-    from uniinfer.proxy_app import limiter
-    assert limiter is not None
-
-
 def test_embeddings_requires_auth(client):
     response = client.post("/v1/embeddings", json={
         "model": "openai@text-embedding-3-small",

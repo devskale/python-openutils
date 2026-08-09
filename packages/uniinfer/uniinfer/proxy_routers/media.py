@@ -75,7 +75,6 @@ class STTVerboseResponseModel(BaseModel):
 
 def create_media_router(
     parse_provider_model: Callable[..., tuple[str, str]],
-    limiter: Any,
     get_media_rate_limit: Callable[[], str],
 ) -> APIRouter:
     router = APIRouter()
@@ -142,7 +141,6 @@ def create_media_router(
             raise HTTPException(status_code=500, detail=f"Failed to list image models: {str(e)}")
 
     @router.post("/v1/images/generations")
-    @limiter.limit(get_media_rate_limit)
     async def generate_images(
         request: Request,
         request_input: ImageGenerationRequest,
@@ -257,7 +255,6 @@ def create_media_router(
                 raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
 
     @router.post("/v1/audio/speech")
-    @limiter.limit(get_media_rate_limit)
     async def generate_speech(
         request: Request,
         request_input: TTSRequestModel,
@@ -290,7 +287,6 @@ def create_media_router(
             raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
 
     @router.post("/v1/audio/transcriptions")
-    @limiter.limit(get_media_rate_limit)
     async def transcribe_audio(
         request: Request,
         file: UploadFile = File(...),
