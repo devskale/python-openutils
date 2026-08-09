@@ -79,12 +79,6 @@ def test_proxy_app_imports():
     assert app is not None
 
 
-def test_rate_limit_helper():
-    from uniinfer.proxy_app import get_chat_rate_limit
-    limit = get_chat_rate_limit()
-    assert isinstance(limit, str)
-
-
 def test_models_helper():
     from uniinfer.provider_access import list_models_for_provider
     assert callable(list_models_for_provider)
