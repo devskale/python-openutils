@@ -177,7 +177,17 @@ def _invoke_via_openai_sdk(
     from openai import OpenAI
     from uniinfer import ChatCompletionResponse
 
-    client = OpenAI(base_url=base_url, api_key=bearer or "missing", timeout=300.0)
+    import httpx
+    # Fail-fast on stalls: a read timeout (no bytes for 90s) beats a 300s total
+    # hang when the upstream stalls (HTTP 000 — connection up, zero bytes).
+    # llminvoke then retries (timeout is transient → _try_model backoff), and a
+    # 429 raises openai.RateLimitError → classify_error → rate_limited →
+    # retry-after-backoff (already wired). connect/pool stay tight so a dead
+    # peer fails in seconds, not minutes.
+    client = OpenAI(
+        base_url=base_url, api_key=bearer or "missing",
+        timeout=httpx.Timeout(connect=10.0, read=90.0, write=30.0, pool=10.0),
+    )
     model_id = f"{provider}@{model}"
     openai_messages = [
         {"role": getattr(m, "role", None) or "user", "content": getattr(m, "content", None)}
