@@ -344,11 +344,11 @@ class TUProvider(ChatProvider):
                 data = response.json()
             except Exception as json_err:
                 raise map_provider_error(self._CREDGOO_SERVICE, Exception(f"TU API JSON parse error: {json_err}. Response: {raw_text[:500]}"), status_code=500, response_body=raw_text)
-            choice = data["choices"][0]
-            message_data = choice["message"]
+            choice = (data.get("choices") or [{}])[0]
+            message_data = choice.get("message", {}) or {}
             
             message = ChatMessage(
-                role=message_data["role"],
+                role=message_data.get("role", "assistant"),
                 content=message_data.get("content"),
                 tool_calls=message_data.get("tool_calls"),
                 tool_call_id=message_data.get("tool_call_id")
