@@ -152,6 +152,80 @@ def _resolve_call_config(
 # invoke_llm — one-shot (the escape hatch; no retry, no backup)
 # ════════════════════════════════════════════════════════════════════════
 
+def _invoke_via_openai_sdk(
+    *,
+    base_url: str,
+    bearer: str | None,
+    provider: str,
+    model: str,
+    messages: list[ChatMessage],
+    temperature: float,
+    max_tokens: int,
+    request_kwargs: dict,
+):
+    """Gateway call via the STANDARD SYNC openai SDK (no asyncio).
+
+    Why: uniinfer's provider.complete() bridges to its async httpx client via
+    asyncio.run(), which closes the event loop after every call; the process-
+    global client's connection pool then fills with zombie connections bound to
+    dead loops → "Event loop is closed" under high call counts (the PA
+    stepAssess storm). The openai SDK's own client manages its lifecycle sanely
+    and never crosses an event loop, so this path is immune. Returns a uniinfer
+    ChatCompletionResponse so the rest of llminvoke (extract/usage/alarm) is
+    unchanged. Model id is ``provider@model`` (the proxy routes by prefix).
+    """
+    from openai import OpenAI
+    from uniinfer import ChatCompletionResponse
+
+    client = OpenAI(base_url=base_url, api_key=bearer or "missing", timeout=300.0)
+    model_id = f"{provider}@{model}"
+    openai_messages = [
+        {"role": getattr(m, "role", None) or "user", "content": getattr(m, "content", None)}
+        for m in messages
+    ]
+    # vLLM extras (chat_template_kwargs.enable_thinking, …) ride in extra_body →
+    # merged into the top-level request JSON → forwarded by the proxy to vLLM.
+    resp = client.chat.completions.create(
+        model=model_id,
+        messages=openai_messages,
+        temperature=temperature,
+        max_tokens=max_tokens,
+        extra_body=request_kwargs or None,
+    )
+    # Crash loud (golden rule): no choices = gateway/upstream malfunction, not a
+    # legitimate empty. Surface it as an explicit error so it alarms + retries
+    # visibly — never degrade into a silent empty-content verdict.
+    if not resp.choices:
+        raise RuntimeError(
+            f"gateway {base_url} returned no choices for {model_id}: "
+            f"{resp.model_dump() if hasattr(resp, 'model_dump') else resp!r}"
+        )
+    choice = resp.choices[0]
+    msg = choice.message
+    u = getattr(resp, "usage", None)
+    usage = (
+        {
+            "prompt_tokens": getattr(u, "prompt_tokens", 0),
+            "completion_tokens": getattr(u, "completion_tokens", 0),
+            "total_tokens": getattr(u, "total_tokens", 0),
+        }
+        if u
+        else {}
+    )
+    return ChatCompletionResponse(
+        message=ChatMessage(
+            role=(getattr(msg, "role", None) or "assistant"),
+            content=getattr(msg, "content", None),
+        ),
+        provider=provider,
+        model=getattr(resp, "model", model_id),
+        usage=usage,
+        raw_response=resp.model_dump() if hasattr(resp, "model_dump") else {},
+        finish_reason=getattr(choice, "finish_reason", None),
+        thinking=getattr(msg, "reasoning_content", None),
+    )
+
+
 def invoke_llm(
     *,
     model: str,
@@ -169,20 +243,23 @@ def invoke_llm(
     usage data, error classification, or custom extraction). No retry, no
     backup — agentos uses this inside its own chain/breaker loop.
 
-    ``base_url`` (the llm-gateway endpoint) routes via the OpenAI-compatible
-    transport to that endpoint (with ``bearer``); the model id sent is the FULL
-    ``provider@model`` (the proxy routes by the prefix). Without ``base_url``,
-    the named provider + bare model are used (legacy direct path).
+    ``base_url`` (the llm-gateway endpoint): when set, the call goes through the
+    STANDARD openai SDK (sync) against that gateway with ``bearer``; the model
+    id sent is the FULL ``provider@model`` (the proxy routes by the prefix). This
+    bypasses uniinfer's async client entirely (no asyncio → no event-loop bug).
+    Without ``base_url``, the named provider + bare model use the legacy direct
+    path (uniinfer provider.complete()).
     """
     if base_url:
-        prov = create_provider("openai", base_url=base_url, api_key=bearer)
-        model_id = f"{provider}@{model}"
-    else:
-        prov = create_provider(provider)
-        model_id = model
+        return _invoke_via_openai_sdk(
+            base_url=base_url, bearer=bearer, provider=provider, model=model,
+            messages=messages, temperature=temperature, max_tokens=max_tokens,
+            request_kwargs=request_kwargs,
+        )
+    prov = create_provider(provider)
     request = ChatCompletionRequest(
         messages=messages,
-        model=model_id,
+        model=model,
         temperature=temperature,
         max_tokens=max_tokens,
         streaming=False,
