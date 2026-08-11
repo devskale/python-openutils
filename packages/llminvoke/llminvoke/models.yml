@@ -143,13 +143,12 @@ packages:
       precheck: {temperature: 0, request_kwargs: {chat_template_kwargs: {enable_thinking: false}}}
       stepDateExtract: {temperature: 0, request_kwargs: {chat_template_kwargs: {enable_thinking: false}}}
       stepLoopFactsheet: {temperature: 0, request_kwargs: {chat_template_kwargs: {enable_thinking: false}}}
-      # Orchestrator path (per-doc PA assessment) — nothink. The per-doc call is
-      # a structured classification (does THIS doc cover the criterion?) not deep
-      # reasoning; thinking-off is ~7× faster (15s→2s) and the conclude step only
-      # aggregates per-doc verdicts. Keeps the team's default path (orchestrator)
-      # within timeout; the legacy batch path (stepAssess) stays thinking-on below.
+      # Orchestrator per-doc assessment — nothink. The per-doc call is a
+      # structured classification (does THIS doc cover the criterion?) not deep
+      # reasoning; thinking-off is ~7× faster (15s→2s) and it runs once per doc
+      # (5+ calls = the dominant cost). Thinking still ON for the final verdict:
+      # stepSynthesizeCriterion (conclude) + stepAssess (legacy batch) below.
       stepOrchestrateDoc: {temperature: 0.2, request_kwargs: {chat_template_kwargs: {enable_thinking: false}}}
-      stepSynthesizeCriterion: {temperature: 0.2, request_kwargs: {chat_template_kwargs: {enable_thinking: false}}}
       # thinking-enabled steps (deep analysis) — judgment steps.
       # Hybrid nondeterminism policy: temperature 0.2 (low) as the DEFAULT —
       # reproducible verdicts, keeps most of the reasoning flexibility vs 0.
