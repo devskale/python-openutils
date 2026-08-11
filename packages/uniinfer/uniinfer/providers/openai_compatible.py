@@ -257,7 +257,7 @@ class OpenAICompatibleChatProvider(ChatProvider):
                 )
 
             response_data = response.json()
-            choice = response_data.get("choices", [{}])[0]
+            choice = (response_data.get("choices") or [{}])[0]
             message_data = choice.get("message", {})
             message = ChatMessage(
                 role=message_data.get("role", "assistant"),
