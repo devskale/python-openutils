@@ -125,7 +125,13 @@ def _resolve_call_config(
     elif package or client or task:
         cfg = resolve_model(package, client, task, env_prefix=env_prefix)
     elif model and provider:
-        cfg = ResolvedConfig(primary=ModelRef(provider=provider, model=model))
+        # Resolve base_url/bearer from env + clients.yml default so explicit-model
+        # calls still route via the gateway when configured. Without this, callers
+        # passing model+provider (e.g. FAP audit steps) bypassed the proxy → direct
+        # uniinfer → "Event loop is closed". resolve_model() reads env OPENAI_BASE_URL
+        # + clients.yml default; we keep its endpoint and override only the primary.
+        cfg = resolve_model(env_prefix=env_prefix)
+        cfg = replace(cfg, primary=ModelRef(provider=provider, model=model))
     else:
         raise ValueError(
             "call_llm needs one of: config=, package=/client=/task=, or model=+provider="
