@@ -49,6 +49,7 @@ __all__ = [
     "invoke_llm",
     "call_llm",
     "stream_llm",
+    "iter_llm_events",
     "create_provider",
     # fo-t7: empty-chain failure signal
     "LLMChainExhausted",
@@ -474,7 +475,8 @@ def _start_stream(
 ):
     """Open a stream + capture the first non-empty chunk, retrying transient errors.
 
-    Returns ``(stream_iterator, first_chunk_str)``. Raises on exhaustion.
+    Returns ``(stream_iterator, first_chunk)`` — the first chunk with content or
+    reasoning_content. Raises on exhaustion.
     This is the "before first token" phase — cheap to retry/backup (Q20).
     """
     attempts = cfg.retry.attempts
@@ -492,9 +494,11 @@ def _start_stream(
             )
             stream = prov.stream_complete(request)
             for chunk in stream:
-                content = getattr(getattr(chunk, "message", None), "content", None)
-                if isinstance(content, str) and content:
-                    return stream, content
+                _msg = getattr(chunk, "message", None)
+                _content = getattr(_msg, "content", None)
+                _reasoning = getattr(_msg, "reasoning_content", None)
+                if (isinstance(_content, str) and _content) or (isinstance(_reasoning, str) and _reasoning):
+                    return stream, chunk
             err = RuntimeError("empty_response")  # stream yielded nothing
         except Exception as exc:
             err = exc
@@ -557,12 +561,84 @@ def stream_llm(
             continue  # next backup
 
         # first token obtained — drain the rest, no backup (Q20)
-        yield first
+        _c0 = getattr(getattr(first, "message", None), "content", None)
+        if isinstance(_c0, str) and _c0:
+            yield _c0
         try:
             for chunk in stream:
                 content = getattr(getattr(chunk, "message", None), "content", None)
                 if isinstance(content, str) and content:
                     yield content
+        except Exception as exc:
+            emit_alarm(
+                "alarm", ref.provider, ref.model,
+                classify_error(exc), str(exc) + " (mid-stream)",
+                package=pkg, client=cli,
+            )
+        return  # done — even if mid-stream errored, we don't backup
+
+
+def _chunk_events(chunk):
+    """Yield (kind, text) events from a streaming chunk: reasoning + content."""
+    msg = getattr(chunk, "message", None)
+    r = getattr(msg, "reasoning_content", None)
+    if isinstance(r, str) and r:
+        yield ("reasoning", r)
+    c = getattr(msg, "content", None)
+    if isinstance(c, str) and c:
+        yield ("content", c)
+
+
+def iter_llm_events(
+    prompt: str | None = None,
+    *,
+    config: ResolvedConfig | None = None,
+    package: str | None = None,
+    client: str | None = None,
+    task: str | None = None,
+    model: str | None = None,
+    provider: str | None = None,
+    messages: list[ChatMessage] | None = None,
+    system_prompt: str | None = None,
+    temperature: float | None = None,
+    max_tokens: int | None = None,
+    max_attempts: int | None = None,
+    env_prefix: str | None = None,
+    **request_kwargs,
+):
+    """Streaming invocation yielding ``(kind, text)`` events — ``('reasoning', …)`` (the
+    thinking) + ``('content', …)`` (the answer).
+
+    Same resolution + retry/backup as ``call_llm`` / ``stream_llm``; once the first
+    token flows, the stream runs to completion with no retry/backup (cannot un-stream).
+    Use this (not ``stream_llm``) when you want to surface the model's **thinking**
+    live (e.g. a streaming audit/Begründung).
+    """
+    cfg = _resolve_call_config(
+        config=config, package=package, client=client, task=task,
+        model=model, provider=provider,
+        temperature=temperature, max_tokens=max_tokens,
+        max_attempts=max_attempts, env_prefix=env_prefix,
+    )
+    msgs = _build_messages(prompt, messages, system_prompt)
+    pkg = package or _package_from_env()
+    cli = client or os.environ.get("KONTEXT_CLIENT", "").strip() or None
+
+    for ref in cfg.chain:
+        try:
+            stream, first = _start_stream(ref, cfg, msgs, request_kwargs)
+        except Exception as exc:
+            emit_alarm(
+                "alarm", ref.provider, ref.model,
+                classify_error(exc), str(exc),
+                package=pkg, client=cli,
+            )
+            continue  # next backup
+        # first token obtained — drain the rest, no backup (Q20)
+        yield from _chunk_events(first)
+        try:
+            for chunk in stream:
+                yield from _chunk_events(chunk)
         except Exception as exc:
             emit_alarm(
                 "alarm", ref.provider, ref.model,
