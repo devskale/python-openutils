@@ -64,6 +64,14 @@ class TUProvider(ChatProvider):
     """TU (Tencent Unbounded) LLM Provider implementation."""
 
     _DEFAULT_MAX_TOKENS = 8192
+    # Thinking-disable keys across the reasoning families served by TU (vLLM).
+    # Qwen3.x/Gemma 4 read "enable_thinking"; DeepSeek V3.1/V4 + Holo2 read
+    # "thinking". A reasoning-off intent fans BOTH out — each chat template
+    # picks the key it understands and ignores the rest, so no per-model
+    # registry is needed (verified live 2026-08-14: deepseek-v4-flash-284b
+    # honors thinking:false, ignores enable_thinking; qwen-3.6-35b is the
+    # inverse). New reasoning families pick one of these spellings for free.
+    _THINKING_OFF_KNOBS: tuple[str, ...] = ("enable_thinking", "thinking")
     ACCESS_TIER = "granted"  # key-granted: TU Wien Aqueduct (university-hosted, access via key — not a public free tier, not paid-$)
     _CREDGOO_SERVICE = "tu"
     _DEFAULT_BASE_URL = TU_BASE_URL
@@ -293,10 +301,15 @@ class TUProvider(ChatProvider):
         # Qwen3.x / GLM-5.x; vLLM #35574). Forwarded verbatim: the escape hatch.
         ctk = dict(request.chat_template_kwargs or {})
         # reasoning_effort none/minimal disables reasoning (the cross-provider
-        # contract). Inject the default unless the caller already expressed
-        # intent via the escape hatch (explicit chat_template_kwargs wins).
-        if request.reasoning_effort in REASONING_OFF and "enable_thinking" not in ctk:
-            ctk["enable_thinking"] = False
+        # contract). Different reasoning families expose DIFFERENT disable keys
+        # here, so we inject the union of every known "thinking off" spelling:
+        # Qwen3.x/Gemma read enable_thinking, DeepSeek V3.1/V4 + Holo2 read
+        # thinking. The chat template consumes the key it understands and
+        # ignores the others — no per-model branch needed. Explicit caller
+        # knobs win over the injected default (escape-hatch precedence).
+        if request.reasoning_effort in REASONING_OFF and not (set(ctk) & set(self._THINKING_OFF_KNOBS)):
+            for _knob in self._THINKING_OFF_KNOBS:
+                ctk.setdefault(_knob, False)
         if ctk:
             payload["chat_template_kwargs"] = ctk
 

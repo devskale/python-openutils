@@ -71,6 +71,24 @@ class TestTuPreparePayload:
         ctk = p.get("chat_template_kwargs", {})
         assert ctk.get("enable_thinking") is not False
 
+    @pytest.mark.parametrize("effort", ["none", "minimal"])
+    def test_off_levels_fan_both_thinking_knobs(self, effort):
+        """Reasoning-off fans the union of disable keys so every family's chat
+        template (Qwen3/Gemma: enable_thinking; DeepSeek/Holo2: thinking)
+        finds the one it understands. Verified live against aqueduct."""
+        p = self._payload(reasoning_effort=effort)
+        ctk = p["chat_template_kwargs"]
+        assert ctk["enable_thinking"] is False
+        assert ctk["thinking"] is False
+
+    def test_explicit_any_knob_wins_over_off_intent(self):
+        """A caller-set DeepSeek knob (thinking) also suppresses the injected
+        default, matching the enable_thinking escape-hatch contract."""
+        p = self._payload(reasoning_effort="none", chat_template_kwargs={"thinking": True})
+        ctk = p["chat_template_kwargs"]
+        assert ctk["thinking"] is True
+        assert "enable_thinking" not in ctk
+
     def test_unset_leaves_no_ctk(self):
         p = self._payload()
         assert "chat_template_kwargs" not in p
@@ -91,6 +109,7 @@ class TestTuPreparePayload:
         ctk = p["chat_template_kwargs"]
         assert ctk["foo"] == "bar"
         assert ctk["enable_thinking"] is False
+        assert ctk["thinking"] is False
 
     def test_reasoning_effort_forwarded_when_supported(self):
         p = self._payload(reasoning_effort="high")
