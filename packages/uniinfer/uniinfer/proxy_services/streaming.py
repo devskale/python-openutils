@@ -17,6 +17,17 @@ from uniinfer.proxy_services.glm_leak_repair import GlmLeakInterceptor
 logger = logging.getLogger("uniioai_proxy")
 
 
+class _StreamPrimeTimeout(Exception):
+    """Priming timed out twice — raised into the relay so it emits a LOUD,
+    recognizable ``stream_timeout``/504 error chunk instead of the generic
+    ``internal_server_error``/``code: null`` disguise (RC#5).
+
+    A mid-200-stream error chunk with a generic type is invisible to every
+    status-code-based retry on the client side — this sentinel keeps the
+    failure identifiable (and the stats status honest at 504).
+    """
+
+
 def is_openai_strict_mode() -> bool:
     return False
 
@@ -96,6 +107,9 @@ async def astream_response_generator(
     idle_timeout = float(
         os.getenv("UNIINFER_STREAM_IDLE_TIMEOUT", "300")
     )  # Increased for reasoning models
+    prime_keepalive = float(
+        os.getenv("UNIINFER_STREAM_PRIME_KEEPALIVE", "15")
+    )  # SSE comment interval during the priming-retry window (RC#5)
 
     first_chunk = {
         "id": completion_id,
@@ -111,10 +125,19 @@ async def astream_response_generator(
     # rate-limit transport) instead of a 200-with-error-chunk. Non-429 open
     # errors fall through to the normal error-chunk path after commit. The
     # first upstream chunk is held in _pending and fed to the relay loop below.
+    #
+    # RC#5: a first-token (priming) TIMEOUT retries the upstream ONCE — the
+    # reasoning model is usually just thinking long, not wedged. Because the
+    # second window is just as silent, the SSE 200 + welcome chunk are
+    # committed early and comment heartbeats (``: keep-alive``) keep the
+    # client's read timeout from firing meanwhile. Only a second timeout
+    # fails — loudly, as a recognizable stream_timeout/504 chunk.
     _pending: list = []
     _prime_error: BaseException | None = None
-    try:
-        _async_iter = target.astream_complete(
+    welcome_committed = False
+
+    def _open_upstream() -> Any:
+        return target.astream_complete(
             messages,
             temperature=temp,
             max_tokens=max_tok,
@@ -124,6 +147,9 @@ async def astream_response_generator(
             chat_template_kwargs=chat_template_kwargs,
             extra=extra,
         ).__aiter__()
+
+    try:
+        _async_iter = _open_upstream()
         _pending.append(
             await asyncio.wait_for(_async_iter.__anext__(), timeout=heartbeat_interval)
         )
@@ -131,10 +157,47 @@ async def astream_response_generator(
         raise  # no SSE committed — caller returns HTTP 429
     except StopAsyncIteration:
         pass  # empty upstream: loop sees StopAsyncIteration next and finishes cleanly
+    except asyncio.TimeoutError:
+        # First-token timeout — retry the upstream once (RC#5).
+        yield f"data: {json.dumps(first_chunk)}\n\n"  # commit early + keep the client fed
+        welcome_committed = True
+        try:
+            try:
+                await _async_iter.aclose()  # release the wedged upstream iterator
+            except Exception:
+                pass
+            _async_iter = _open_upstream()
+            # Poll the (undisturbed) first-chunk pull while feeding the client
+            # comment heartbeats — asyncio.wait never cancels the pull, unlike
+            # per-slice wait_for, whose cancel kills the upstream generator.
+            _pull = asyncio.ensure_future(_async_iter.__anext__())
+            _prime_deadline = time.monotonic() + heartbeat_interval
+            while True:
+                _budget = _prime_deadline - time.monotonic()
+                if _budget <= 0:
+                    _pull.cancel()
+                    await asyncio.gather(_pull, return_exceptions=True)
+                    raise asyncio.TimeoutError
+                _done, _ = await asyncio.wait({_pull}, timeout=min(prime_keepalive, _budget))
+                if _done:
+                    break
+                yield ": keep-alive\n\n"
+            _pending.append(_pull.result())
+        except RateLimitError as e:
+            _prime_error = e  # SSE 200 already committed — rate-limit chunk after commit
+        except StopAsyncIteration:
+            pass
+        except asyncio.TimeoutError:
+            # 2nd failure — loud + recognizable, never the generic disguise.
+            _prime_error = _StreamPrimeTimeout(
+                f"Stream priming timeout: no first token from upstream "
+                f"after 2 attempts ({heartbeat_interval:.0f}s each)"
+            )
     except BaseException as e:  # noqa: BLE001
         _prime_error = e  # non-429 open error — error chunk after commit
 
-    yield f"data: {json.dumps(first_chunk)}\n\n"
+    if not welcome_committed:
+        yield f"data: {json.dumps(first_chunk)}\n\n"
 
     seen_tool_calls = False
     sent_finish_reason = False
@@ -175,11 +238,12 @@ async def astream_response_generator(
                 now = time.monotonic()
                 idle_for = now - last_yield_time
                 if idle_for >= idle_timeout:
+                    _stats_status = 504
                     error_chunk = {
                         "error": {
                             "message": f"Stream idle timeout after {idle_for:.2f}s",
                             "type": "stream_timeout",
-                            "code": None,
+                            "code": 504,
                         }
                     }
                     yield f"data: {json.dumps(error_chunk)}\n\n"
@@ -467,16 +531,31 @@ async def astream_response_generator(
                 }
                 yield f"data: {json.dumps(usage_chunk)}\n\n"
 
+    except _StreamPrimeTimeout as e:
+        # RC#5: both priming attempts timed out — loud + recognizable.
+        _stats_status = 504
+        error_chunk = {
+            "error": {
+                "message": str(e),
+                "type": "stream_timeout",
+                "code": 504,
+            }
+        }
+        yield f"data: {json.dumps(error_chunk)}\n\n"
+        sent_finish_reason = True
     except (UniInferError, ValueError) as e:
         _stats_status = int(getattr(e, "status_code", 500) or 500)
         message = str(e)
         if isinstance(e, ProviderError) and e.response_body:
             message = f"{message} | Provider Response: {e.response_body}"
+        _code = getattr(e, "status_code", None)
+        if _code is None and isinstance(e, RateLimitError):
+            _code = 429  # a rate-limit error IS a 429, whatever the ctor got
         error_chunk = {
             "error": {
                 "message": message,
                 "type": type(e).__name__,
-                "code": getattr(e, "status_code", None),
+                "code": _code,
             }
         }
         yield f"data: {json.dumps(error_chunk)}\n\n"
