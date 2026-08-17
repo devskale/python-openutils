@@ -483,7 +483,11 @@ def _start_stream(
     err: BaseException = RuntimeError("not attempted")
     for attempt in range(attempts):
         try:
-            prov = create_provider(ref.provider)
+            # Gateway-Pfad wie call_llm/_try_model: cfg.base_url/bearer
+            # weiterreichen — sonst streamt der Pfad DIREKT zum Provider
+            # (TU-Aqueduct), umgeht den uniinfer-Proxy (der das reasoning
+            # normalisiert + routed) und denkt still ohne reasoning-Events.
+            prov = create_provider(ref.provider, base_url=cfg.base_url, api_key=cfg.bearer)
             request = ChatCompletionRequest(
                 messages=msgs,
                 model=ref.model,
