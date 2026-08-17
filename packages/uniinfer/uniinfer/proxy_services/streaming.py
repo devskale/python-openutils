@@ -100,7 +100,6 @@ async def astream_response_generator(
     chunk_count = 0
     heartbeat_count = 0
     last_yield_time = time.monotonic()
-    idle_warning_threshold = 10.0
     heartbeat_interval = float(
         os.getenv("UNIINFER_STREAM_HEARTBEAT", "120")
     )  # Increased for reasoning models
@@ -361,13 +360,6 @@ async def astream_response_generator(
 
                 # Handle error finish_reason from provider (e.g., preemption detection)
                 if chunk_finish_reason == "error":
-                    import sys
-
-                    print(
-                        f"[DEBUG] STREAMING: Got error finish_reason, raw_response={chunk.raw_response}",
-                        file=sys.stderr,
-                        flush=True,
-                    )
                     error_msg = "Stream error"
                     if chunk.raw_response and isinstance(chunk.raw_response, dict):
                         error_msg = chunk.raw_response.get("error", error_msg)
