@@ -579,9 +579,17 @@ def stream_llm(
 
 
 def _chunk_events(chunk):
-    """Yield (kind, text) events from a streaming chunk: reasoning + content."""
+    """Yield (kind, text) events from a streaming chunk: reasoning + content.
+
+    Reasoning kommt je nach Provider an TWO Stellen an:
+    - ``chunk.message.reasoning_content`` (manche Provider)
+    - ``chunk.thinking`` (uniinfer-Contract: TUProvider legt reasoning dort ab)
+    Beide pruefen, erster gewinnt.
+    """
     msg = getattr(chunk, "message", None)
     r = getattr(msg, "reasoning_content", None)
+    if not (isinstance(r, str) and r):
+        r = getattr(chunk, "thinking", None)
     if isinstance(r, str) and r:
         yield ("reasoning", r)
     c = getattr(msg, "content", None)
@@ -624,9 +632,15 @@ def iter_llm_events(
     pkg = package or _package_from_env()
     cli = client or os.environ.get("KONTEXT_CLIENT", "").strip() or None
 
+    # task/profile request_kwargs (temperature-Profile, nothink-Flags,
+    # chat_template_kwargs …) MIT den per-call kwargs mergen — sonst verliert
+    # der Stream die halbe Konfiguration (Bug: thinking-Events verschwanden,
+    # weil enable_thinking-Overrides nie ankamen).
+    merged_kwargs = {**cfg.request_kwargs, **request_kwargs}
+
     for ref in cfg.chain:
         try:
-            stream, first = _start_stream(ref, cfg, msgs, request_kwargs)
+            stream, first = _start_stream(ref, cfg, msgs, merged_kwargs)
         except Exception as exc:
             emit_alarm(
                 "alarm", ref.provider, ref.model,
