@@ -142,6 +142,9 @@ packages:
       stepRetrieve: {temperature: 0.2, request_kwargs: {chat_template_kwargs: {enable_thinking: false}}}
       precheck: {temperature: 0, request_kwargs: {chat_template_kwargs: {enable_thinking: false}}}
       stepDateExtract: {temperature: 0, request_kwargs: {chat_template_kwargs: {enable_thinking: false}}}
+      # AAB-Anforderungs-Extraktion (FAP gather): strukturierte Feld-Extraktion
+      # aus der AAB, keine Interpretation — thinking OFF (Vorfall: 97.7s mit ON).
+      stepAabExtract: {temperature: 0.2, request_kwargs: {chat_template_kwargs: {enable_thinking: false}}}
       stepLoopFactsheet: {temperature: 0, request_kwargs: {chat_template_kwargs: {enable_thinking: false}}}
       # Orchestrator per-doc assessment — nothink. The per-doc call is a
       # structured classification (does THIS doc cover the criterion?) not deep
