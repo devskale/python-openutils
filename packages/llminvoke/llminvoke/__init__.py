@@ -488,9 +488,12 @@ def _start_stream(
             # (TU-Aqueduct), umgeht den uniinfer-Proxy (der das reasoning
             # normalisiert + routed) und denkt still ohne reasoning-Events.
             prov = create_provider(ref.provider, base_url=cfg.base_url, api_key=cfg.bearer)
+            # Gateway-Route: das Model-id-Format ist provider@model (der Proxy
+            # routet per Prefix). Ohne Prefix -> 422 'Invalid model format'.
+            _model_id = ref.model if "@" in ref.model else f"{ref.provider}@{ref.model}"
             request = ChatCompletionRequest(
                 messages=msgs,
-                model=ref.model,
+                model=_model_id,
                 temperature=cfg.temperature,
                 max_tokens=cfg.max_tokens,
                 streaming=True,
