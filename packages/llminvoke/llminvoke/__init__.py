@@ -586,7 +586,12 @@ def stream_llm(
 
 
 def _chunk_events(chunk):
-    """Yield (kind, text) events from a streaming chunk: reasoning + content.
+    """Yield (kind, text) events from a streaming chunk: reasoning + content + usage.
+
+    Der terminale Usage-Chunk (vLLM/OpenAI stream_options.include_usage — der
+    Proxy reicht ihn durch) wird als ``("usage", dict)``-Event ausgeliefert,
+    damit Streaming-Konsumenten Token-Zahlen behalten (klark0-UI zeigt
+    Dauer+Tokens; Vorfall: nach Streaming-Upgrade alles 0).
 
     Reasoning kommt je nach Provider an TWO Stellen an:
     - ``chunk.message.reasoning_content`` (manche Provider)
@@ -602,6 +607,12 @@ def _chunk_events(chunk):
     c = getattr(msg, "content", None)
     if isinstance(c, str) and c:
         yield ("content", c)
+    # Terminaler Usage-Chunk: choices leer, usage gefüllt → als Event durchreichen
+    u = getattr(chunk, "usage", None)
+    if u:
+        d = u if isinstance(u, dict) else (u.model_dump() if hasattr(u, "model_dump") else dict(u))
+        if d:
+            yield ("usage", d)
 
 
 def iter_llm_events(
