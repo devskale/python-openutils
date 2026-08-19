@@ -6,4 +6,4 @@ with a 5-tier precedence and reports the live prompt set. See ADR 0001.
 from .loader import get_prompt_set_info, get_prompts_root, load_prompt
 
 __all__ = ["load_prompt", "get_prompt_set_info", "get_prompts_root"]
-__version__ = "0.1.3"
+__version__ = "0.1.4"
