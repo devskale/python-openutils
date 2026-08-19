@@ -95,6 +95,7 @@ def create_models_router(version: str) -> APIRouter:
         """List models. Defaults to accessible (free/granted) only — ~300 models
         instead of ~1500. Use ?all=true for everything, ?provider=X / ?type=X
         to narrow further. Catalog is mtime-cached (instant after first call)."""
+        await ensure_fresh_models_file()  # stale (>REFETCHTIME, default 24h) → background regen
         models = Catalog().list_resolved()
         if not show_all:
             models = [m for m in models if m.get("access") in ("free", "granted", "")]
