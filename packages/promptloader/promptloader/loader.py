@@ -266,7 +266,10 @@ def load_prompt(name: str, *, package: str | None = None) -> str:
     for label, pkg_dir in tiers:
         if pkg_dir is None:
             continue
-        path = _resolve_in_dir(pkg_dir, stem)
+        # Subpath support: 'flow/step' resolves directly under the package tree
+        # (basename index only matches bare stems, so try the literal path first).
+        direct = pkg_dir / f"{stem}.md"
+        path = direct if direct.is_file() else _resolve_in_dir(pkg_dir, stem)
         searched.append(f"[{label}] {pkg_dir}")
         if path is not None:
             if label == "bundled":
