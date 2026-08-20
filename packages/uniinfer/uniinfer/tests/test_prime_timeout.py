@@ -148,8 +148,11 @@ def test_prime_timeout_retries_once_and_recovers(monkeypatch):
     assert _content(raw) == "hello world"
     assert raw[-1] == "data: [DONE]\n\n"
     assert _error_chunk(raw) is None
-    # the wedged first iterator was closed (no leaked upstream stream)
-    assert target.closed_iters == 1
+    # BOTH upstream iterators were closed: the wedged first one at retry time,
+    # the (already exhausted) retry one deterministically in the outer finally
+    # — an exhausted generator's aclose is a no-op, but it must not be skipped
+    # on the paths where the iterator is still live (leaked httpx stream).
+    assert target.closed_iters == 2
 
 
 def test_prime_timeout_keeps_client_alive_with_comments(monkeypatch):
