@@ -38,11 +38,16 @@ providers:
 # Keyed provider@model. context_window = fair standard (upstream spec), NOT
 # measured maximum — represents the safe operating range.
 models:
+  tu@qwen-3.6-35b-vllm:
+    context_window: 131072
+    max_output_tokens: 64000
+    supports_thinking: true
+    description: "Qwen 3.6 35B via TU Aqueduct, vLLM-Deployment (production default) — identisches Modell zu tu@qwen-3.6-35b, separates, stabileres Deployment"
   tu@qwen-3.6-35b:
     context_window: 131072
     max_output_tokens: 64000
     supports_thinking: true
-    description: "Qwen 3.6 35B via TU Aqueduct (production default)"
+    description: "Qwen 3.6 35B via TU Aqueduct (BACKUP — primäres Deployment hatte intermittierend wedged Replica 2026-08-25: ~35% silent hangs; siehe Issue uniinfer-tu-wedged-backend-hardening)"
   tu@qwen-3.6-30b:
     context_window: 131072
     supports_thinking: true
@@ -101,7 +106,12 @@ models:
 # The fallback when nothing else is specified. Per-client overrides live in
 # clients.yml / team settings. See ADR 0004 for the full precedence chain.
 default:
-  model: tu@qwen-3.6-35b
+  model: tu@qwen-3.6-35b-vllm
+  # Backup-Kette (ADR 0004 §4): transient erschöpft / permanent → nächstes Glied.
+  # Der Schnell-Schalter ist die runtime clients.yml (`model:`-Zeile, mtime-Reload,
+  # kein Restart); Backups fließen aus jeder Schicht, env pinnt nur den Primary.
+  backups:
+    - tu@qwen-3.6-35b
   temperature: 0.7
   max_tokens: 10000
   retry:

@@ -90,30 +90,56 @@ def test_inline_bearer_passthrough(monkeypatch, tmp_path):
 # ── slice 3: gateway routing (invoke_llm) ──────────────────────────────
 
 def test_invoke_llm_gateway_routes_via_openai_with_full_model_id(monkeypatch):
-    """base_url set → OpenAI-compatible transport; model id = full provider@model."""
+    """base_url set → OpenAI-SDK transport; model id = full provider@model."""
     import llminvoke
     from uniinfer import ChatMessage
     seen = {}
 
-    class _FakeProv:
-        def complete(self, request):
-            seen["model_id"] = request.model
-            return "RAW"
+    class _FakeMsg:
+        role = "assistant"
+        content = "ok"
 
-    def _fake_create(provider, *, base_url=None, api_key=None):
-        seen["provider"], seen["base_url"], seen["api_key"] = provider, base_url, api_key
-        return _FakeProv()
+    class _FakeChoice:
+        message = _FakeMsg()
+        finish_reason = "stop"
 
-    monkeypatch.setattr(llminvoke, "create_provider", _fake_create)
-    llminvoke.invoke_llm(
+    class _FakeUsage:
+        prompt_tokens = 1
+        completion_tokens = 1
+        total_tokens = 2
+
+    class _FakeResponse:
+        choices = [_FakeChoice()]
+        usage = _FakeUsage()
+
+        def model_dump(self):
+            return {"fake": True}
+
+    class _FakeCompletions:
+        def create(self, *, model, messages, temperature, max_tokens, extra_body):
+            seen["model_id"] = model
+            seen["messages"] = messages
+            return _FakeResponse()
+
+    class _FakeChat:
+        completions = _FakeCompletions()
+
+    class _FakeOpenAI:
+        def __init__(self, *, base_url, api_key, timeout=None):
+            seen["base_url"], seen["api_key"] = base_url, api_key
+            self.chat = _FakeChat()
+
+    import openai
+    monkeypatch.setattr(openai, "OpenAI", _FakeOpenAI)
+    resp = llminvoke.invoke_llm(
         model="qwen-3.6-35b", provider="tu",
         messages=[ChatMessage(role="user", content="hi")],
         base_url="https://uniinfer.skale.dev/v1", bearer="sk-test",
     )
-    assert seen["provider"] == "openai"                       # gateway transport
     assert seen["base_url"] == "https://uniinfer.skale.dev/v1"
-    assert seen["api_key"] == "sk-test"                        # bearer → api_key
+    assert seen["api_key"] == "sk-test"                       # bearer → api_key
     assert seen["model_id"] == "tu@qwen-3.6-35b"               # full provider@model (gotcha)
+    assert resp.message.content == "ok"                        # SDK resp → ChatCompletionResponse
 
 
 def test_invoke_llm_legacy_path_without_base_url(monkeypatch):
