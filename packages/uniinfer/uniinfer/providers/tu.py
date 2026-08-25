@@ -359,17 +359,32 @@ class TUProvider(ChatProvider):
                 raise map_provider_error(self._CREDGOO_SERVICE, Exception(f"TU API JSON parse error: {json_err}. Response: {raw_text[:500]}"), status_code=500, response_body=raw_text)
             choice = (data.get("choices") or [{}])[0]
             message_data = choice.get("message", {}) or {}
-            
-            message = ChatMessage(
-                role=message_data.get("role", "assistant"),
-                content=message_data.get("content"),
-                tool_calls=message_data.get("tool_calls"),
-                tool_call_id=message_data.get("tool_call_id")
-            )
-            
+
+            content = message_data.get("content")
+            tool_calls = message_data.get("tool_calls")
             # Handle reasoning_content (TU thinking models)
             reasoning_content = message_data.get("reasoning_content") or message_data.get("reasoning")
-            
+
+            # TU throttles (>25 req/min) with 200 + empty content instead of a
+            # proper 429. Empty is only legitimate when thinking consumed the
+            # whole max_tokens budget (reasoning present) or the answer is a
+            # tool call — anything else is a rate-limit shadow: map it onto the
+            # existing 429 path so client-side backoff engages.
+            if not content and not reasoning_content and not tool_calls:
+                raise map_provider_error(
+                    self._CREDGOO_SERVICE,
+                    Exception("TU API returned empty content (suspected rate-limit shadow)"),
+                    status_code=429,
+                    response_body=raw_text[:500],
+                )
+
+            message = ChatMessage(
+                role=message_data.get("role", "assistant"),
+                content=content,
+                tool_calls=tool_calls,
+                tool_call_id=message_data.get("tool_call_id")
+            )
+
             return ChatCompletionResponse(
                 message=message,
                 provider=self._CREDGOO_SERVICE,
@@ -395,6 +410,7 @@ class TUProvider(ChatProvider):
             chunks_yielded = 0  # Track if we receive any valid chunks
             received_done = False  # Track if we received [DONE] marker
             received_finish_reason = False  # Track if we received finish_reason
+            received_payload = False  # Track if any content/reasoning/tool_calls arrived
             async for line in response.aiter_lines():
                 if not line:
                     continue
@@ -428,6 +444,8 @@ class TUProvider(ChatProvider):
                         # Handle reasoning_content (TU thinking models)
                         reasoning_content = delta.get('reasoning_content') or delta.get('reasoning')
                         tool_calls = delta.get('tool_calls')
+                        if content or reasoning_content or tool_calls:
+                            received_payload = True
                         
                         if not content and not reasoning_content and not tool_calls and not finish_reason:
                             if not data.get("usage"):
@@ -502,6 +520,29 @@ class TUProvider(ChatProvider):
                     model=request.model,
                     usage={},
                     raw_response={"error": f"TU API stream terminated prematurely after {chunks_yielded} chunks - model may have preempted"},
+                    finish_reason="error",
+                    thinking=None
+                )
+                return  # Exit generator cleanly
+
+            # Stream completed (finish_reason/[DONE]) but never carried
+            # content, reasoning, or tool calls — TU's silent rate-limit shadow
+            # (200, empty). Surface it as an error marker (same pattern as
+            # preemption above) instead of an empty "success" the caller
+            # would retry blindly.
+            if not received_payload:
+                log_raw_response(
+                    provider=self._CREDGOO_SERVICE,
+                    operation="chat.completions.stream",
+                    raw_response={"error": "Stream completed with empty content (suspected rate-limit shadow)"},
+                    log_file=os.path.join(os.getcwd(), "logs", "tu_raw_chat.log"),
+                )
+                yield ChatCompletionResponse(
+                    message=ChatMessage(role="assistant", content=""),
+                    provider=self._CREDGOO_SERVICE,
+                    model=request.model,
+                    usage={},
+                    raw_response={"error": "TU API stream completed with empty content (suspected rate-limit shadow)"},
                     finish_reason="error",
                     thinking=None
                 )
