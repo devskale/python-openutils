@@ -100,6 +100,39 @@ class TUProvider(ChatProvider):
         self._async_client: httpx.AsyncClient | None = None
         self._owns_client = True  # False once _get_async_client returns a pooled client
         
+    def _new_async_client(self) -> httpx.AsyncClient:
+        """Mint a fresh AsyncClient for this provider's base_url."""
+        return httpx.AsyncClient(
+            base_url=self.base_url,
+            headers={
+                "Authorization": f"Bearer {self.api_key}",
+                "Content-Type": "application/json"
+            },
+            timeout=httpx.Timeout(300.0, connect=30.0),  # 5 min timeout for large models
+            http2=True,
+        )
+
+    def _replace_pooled_client(self) -> httpx.AsyncClient:
+        """Evict the pooled client after a read timeout (wedged upstream backend).
+
+        A backend that accepts the request but never answers (TU's wedged-
+        replica failure mode) pins the pooled h2 connection — every multiplexed
+        request on it hangs for the full read timeout, and so does every retry
+        that reuses it. Replacing the pool entry forces the retry onto a fresh
+        TCP/TLS connection (fresh load-balancer routing). The old client is
+        deliberately NOT closed: in-flight requests on it must finish; it is
+        dropped for GC instead.
+        """
+        replacement = self._new_async_client()
+        _TU_CLIENT_CACHE[self.base_url] = replacement
+        self._async_client = replacement
+        self._owns_client = False
+        logger.warning(
+            "[%s] read timeout — pooled client evicted, retrying on a fresh connection",
+            self._CREDGOO_SERVICE,
+        )
+        return replacement
+
     async def _get_async_client(self) -> httpx.AsyncClient:
         """Get the shared (per-base_url) httpx.AsyncClient for TU.
 
@@ -109,6 +142,15 @@ class TUProvider(ChatProvider):
         client is cached process-wide; aclose() skips it (see _owns_client)."""
         # Respect a caller/test-injected client before consulting the pool.
         if self._async_client is not None and not self._async_client.is_closed:
+            # Re-sync with the process-wide pool: a concurrent request may have
+            # evicted this client after a read timeout (see _replace_pooled_client).
+            # Without this, long-lived provider instances would keep serving on
+            # the wedged connection forever. Injected clients (_owns_client) are
+            # exempt — the caller owns their lifecycle.
+            if not self._owns_client:
+                pooled = _TU_CLIENT_CACHE.get(self.base_url)
+                if pooled is not None and pooled is not self._async_client and not pooled.is_closed:
+                    self._async_client = pooled
             return self._async_client
         client = _TU_CLIENT_CACHE.get(self.base_url)
         if client is None or client.is_closed:
@@ -117,15 +159,7 @@ class TUProvider(ChatProvider):
             # httpcore #1093 connection-slot leak (HTTP/1.1-specific). ALPN falls
             # back to HTTP/1.1 for hosts that don't speak h2. Replaces the earlier
             # keepalive=0 workaround (which cost a TLS handshake per request).
-            client = httpx.AsyncClient(
-                base_url=self.base_url,
-                headers={
-                    "Authorization": f"Bearer {self.api_key}",
-                    "Content-Type": "application/json"
-                },
-                timeout=httpx.Timeout(300.0, connect=30.0),  # 5 min timeout for large models
-                http2=True,
-            )
+            client = self._new_async_client()
             _TU_CLIENT_CACHE[self.base_url] = client
         self._async_client = client
         self._owns_client = False
@@ -149,7 +183,19 @@ class TUProvider(ChatProvider):
         for attempt in range(max_retries + 1):
             try:
                 response = await client.post(url, json=payload)
-            except (httpx.TimeoutException, httpx.TransportError) as e:
+            except httpx.TimeoutException as e:
+                last_exc = e
+                logger.warning("[%s] read timeout on %s (attempt %d/%d): %s", self._CREDGOO_SERVICE, model, attempt + 1, max_retries + 1, e)
+                if attempt < max_retries:
+                    # A read timeout on a wedged backend poisons the pooled
+                    # connection for every request on it — evict it so this
+                    # retry (and all concurrent requests) get fresh routing.
+                    if not self._owns_client:
+                        client = self._replace_pooled_client()
+                    await asyncio.sleep(min(2.0 * (attempt + 1), 8.0))
+                    continue
+                raise map_provider_error(self._CREDGOO_SERVICE, e)
+            except httpx.TransportError as e:
                 last_exc = e
                 logger.warning("[tu] network error on %s (attempt %d/%d): %s", model, attempt + 1, max_retries + 1, e)
                 if attempt < max_retries:
@@ -187,7 +233,19 @@ class TUProvider(ChatProvider):
             try:
                 cm = client.stream("POST", url, json=payload)
                 response = await cm.__aenter__()
-            except (httpx.TimeoutException, httpx.TransportError) as e:
+            except httpx.TimeoutException as e:
+                last_exc = e
+                logger.warning("[%s] read timeout on %s stream (attempt %d/%d): %s", self._CREDGOO_SERVICE, model, attempt + 1, max_retries + 1, e)
+                if attempt < max_retries:
+                    # Same wedged-backend eviction as the non-streaming path:
+                    # retry on a fresh connection instead of re-hanging on the
+                    # poisoned pooled one.
+                    if not self._owns_client:
+                        client = self._replace_pooled_client()
+                    await asyncio.sleep(min(2.0 * (attempt + 1), 8.0))
+                    continue
+                raise map_provider_error(self._CREDGOO_SERVICE, e)
+            except httpx.TransportError as e:
                 last_exc = e
                 logger.warning("[tu] network error on %s stream (attempt %d/%d): %s", model, attempt + 1, max_retries + 1, e)
                 if attempt < max_retries:
