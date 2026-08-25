@@ -89,6 +89,7 @@ class TUProvider(ChatProvider):
                                        Aqueduct-backed endpoints typically don't support this.
         """
         self.api_key = api_key or os.getenv("TU_API_KEY")
+        self._key_source = "explicit" if api_key else ("env" if os.getenv("TU_API_KEY") else "credgoo")
         if not self.api_key:
             try:
                 from credgoo import get_api_key
@@ -111,6 +112,29 @@ class TUProvider(ChatProvider):
             timeout=httpx.Timeout(300.0, connect=30.0),  # 5 min timeout for large models
             http2=True,
         )
+
+    def _refresh_credgoo_key(self) -> bool:
+        """Refetch the API key from credgoo after an upstream 401.
+
+        credgoo-issued keys rotate without notice; a long-running process (the
+        amd proxy) holds the old key until restart. Returns True when the key
+        actually changed (caller should rebuild the pooled client — the key is
+        baked into its Authorization header — and retry). Explicit/env keys are
+        never refreshed here: the caller owns them.
+        """
+        if self._key_source != "credgoo":
+            return False
+        try:
+            from credgoo import get_api_key
+            fresh = get_api_key(self._CREDGOO_SERVICE)
+        except Exception as e:
+            logger.warning("[%s] credgoo key refresh failed: %s", self._CREDGOO_SERVICE, e)
+            return False
+        if fresh and fresh != self.api_key:
+            logger.info("[%s] credgoo key rotated — updated", self._CREDGOO_SERVICE)
+            self.api_key = fresh
+            return True
+        return False
 
     def _replace_pooled_client(self) -> httpx.AsyncClient:
         """Evict the pooled client after a read timeout (wedged upstream backend).
@@ -207,6 +231,21 @@ class TUProvider(ChatProvider):
                     await asyncio.sleep(min(2.0 * (attempt + 1), 8.0))
                     continue
                 raise map_provider_error(self._CREDGOO_SERVICE, e)
+            if response.status_code == 401 and attempt < max_retries:
+                # Key rotation: credgoo-issued keys rotate without notice and the
+                # pooled client carries the old one in its Authorization header.
+                # Refetch → rebuild → retry; if the key is unchanged (or not
+                # credgoo-sourced) raise immediately (permanent error).
+                if self._refresh_credgoo_key():
+                    if not self._owns_client:
+                        client = self._replace_pooled_client()
+                    continue
+                raise map_provider_error(
+                    self._CREDGOO_SERVICE,
+                    Exception(f"TU API error: 401 - {response.text}"),
+                    status_code=401,
+                    response_body=response.text,
+                )
             if response.status_code == 429:
                 # Transparent rate-limit transport: no proxy-side throttle — just
                 # relay the upstream 429 to the caller; the client does its own
@@ -262,6 +301,29 @@ class TUProvider(ChatProvider):
                     await asyncio.sleep(min(2.0 * (attempt + 1), 8.0))
                     continue
                 raise map_provider_error(self._CREDGOO_SERVICE, e)
+            if response.status_code == 401 and attempt < max_retries:
+                # Same key-rotation handling as the non-streaming path: refetch
+                # from credgoo, rebuild the pooled client (Authorization header),
+                # retry. Unchanged key → permanent auth error.
+                if self._refresh_credgoo_key():
+                    try:
+                        await cm.__aexit__(None, None, None)
+                    except Exception:
+                        pass
+                    if not self._owns_client:
+                        client = self._replace_pooled_client()
+                    continue
+                error_body = await response.aread()
+                try:
+                    await cm.__aexit__(None, None, None)
+                except Exception:
+                    pass
+                raise map_provider_error(
+                    self._CREDGOO_SERVICE,
+                    Exception(f"TU API error: 401 - {error_body}"),
+                    status_code=401,
+                    response_body=error_body,
+                )
             if response.status_code == 429:
                 # Transparent rate-limit transport (see _post_with_ratelimit_retry):
                 # no proxy-side throttle — surface the upstream 429 to the caller.
