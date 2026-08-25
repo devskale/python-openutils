@@ -63,6 +63,22 @@ class TestTUPoolEvictionAcomplete:
     """Non-streaming: read timeout evicts the pool; retry lands on fresh client."""
 
     @pytest.mark.asyncio
+    async def test_transport_error_retries_on_fresh_client(self, monkeypatch):
+        """Wedged hangs often end as TransportError (LB kills the conn) — evict too."""
+        provider = TUProvider(api_key="k")
+        mock_a = _pool_client(post_side_effect=httpx.ReadError("connection killed by LB"))
+        mock_b = _pool_client(post_return=_good_response("recovered"))
+        _TU_CLIENT_CACHE[provider.base_url] = mock_a
+        monkeypatch.setattr(TUProvider, "_new_async_client", lambda self: mock_b)
+
+        response = await provider.acomplete(_request())
+
+        assert response.message.content == "recovered"
+        assert _TU_CLIENT_CACHE[provider.base_url] is mock_b
+
+
+
+    @pytest.mark.asyncio
     async def test_read_timeout_retries_on_fresh_client(self, monkeypatch):
         provider = TUProvider(api_key="k")
         mock_a = _pool_client(post_side_effect=httpx.ReadTimeout("wedged backend"))
