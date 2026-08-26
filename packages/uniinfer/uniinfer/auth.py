@@ -12,21 +12,19 @@ logger = logging.getLogger(__name__)
 security = HTTPBearer(auto_error=False)
 
 def validate_proxy_token(credentials: Optional[HTTPAuthorizationCredentials] = Depends(security)) -> str:
-    """
-    Validates the bearer token provided to the proxy.
-    
-    This function currently acts as a pass-through for the token, which can be
-    either a direct provider API key or a credgoo combined token (bearer@encryption).
-    
-    Future versions can implement centralized proxy-level authentication (e.g.,
-    checking against a database of allowed users/tokens).
-    
+    """Validate the bearer token provided to the proxy.
+
+    Pass-through: the token must simply be PRESENT. It can be either a credgoo
+    combined token ('bearer@encryption') or — historically — a direct provider
+    key. Bare direct keys are rejected in verify_provider_access (see there);
+    this layer only guards against missing credentials.
+
     Args:
         credentials: The HTTPBearer credentials from the request.
-        
+
     Returns:
         str: The validated token string.
-        
+
     Raises:
         HTTPException: 401 if authentication is missing.
     """
@@ -55,18 +53,32 @@ def get_optional_proxy_token(credentials: Optional[HTTPAuthorizationCredentials]
 def verify_provider_access(token: str, provider_name: str) -> str:
     """
     Verifies that the provided token can be used to retrieve an API key for the provider.
-    
+
+    Hard gate (live finding 2026-08-26): bare (non-'@') tokens are rejected for
+    keyed providers. A bare string used to slip through as a "direct key" — but
+    keyed providers like TU are served from the process-wide POOLED client whose
+    Authorization header carries the SERVER's own credentials, so any junk
+    bearer got served on our quota once the pool was warm. Consumers must
+    present a credgoo combined token ('bearer@encryption'), which resolves
+    server-side via credgoo.
+
     Args:
         token: The bearer token (direct or credgoo combo).
         provider_name: The name of the LLM provider.
-        
+
     Returns:
         str: The actual provider API key.
-        
+
     Raises:
         HTTPException: 401 if key retrieval fails.
     """
     try:
+        if token and "@" not in token and instance_requires_api_key(provider_name):
+            logger.warning("Rejected bare (non-combo) bearer token for '%s'", provider_name)
+            raise AuthenticationError(
+                "Direct provider keys are not accepted on this gateway; "
+                "send a credgoo combined token (bearer@encryption)."
+            )
         api_key = get_provider_api_key(token, provider_name)
         if not api_key and instance_requires_api_key(provider_name):
             raise AuthenticationError(f"No API key found for provider '{provider_name}'")

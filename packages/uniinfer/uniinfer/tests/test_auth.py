@@ -42,13 +42,26 @@ def test_get_optional_proxy_token_missing():
     assert response.status_code == 200
     assert response.json() == {"token": None}
 
+@patch("uniinfer.auth.instance_requires_api_key")
 @patch("uniinfer.auth.get_provider_api_key")
-def test_verify_provider_access_success(mock_get_key):
-    """Test verify_provider_access returns the key on success."""
+def test_verify_provider_access_success(mock_get_key, mock_requires):
+    """Combo tokens resolve via credgoo and return the key."""
+    mock_requires.return_value = True
     mock_get_key.return_value = "real-api-key"
-    result = verify_provider_access("test-token", "openai")
+    result = verify_provider_access("bearer@encryption", "openai")
     assert result == "real-api-key"
-    mock_get_key.assert_called_once_with("test-token", "openai")
+    mock_get_key.assert_called_once_with("bearer@encryption", "openai")
+
+@patch("uniinfer.auth.get_provider_api_key")
+def test_verify_provider_access_bare_token_rejected(mock_get_key):
+    """Bare (non-'@') tokens are rejected for keyed providers — the pool serves
+    its own credentials otherwise (live finding 2026-08-26)."""
+    from fastapi import HTTPException
+    with pytest.raises(HTTPException) as excinfo:
+        verify_provider_access("bare-direct-key", "openai")
+    assert excinfo.value.status_code == 401
+    assert "credgoo combined token" in excinfo.value.detail
+    mock_get_key.assert_not_called()
 
 @patch("uniinfer.auth.get_provider_api_key")
 def test_verify_provider_access_ollama(mock_get_key):
@@ -57,13 +70,15 @@ def test_verify_provider_access_ollama(mock_get_key):
     result = verify_provider_access("test-token", "ollama")
     assert result is None
 
+@patch("uniinfer.auth.instance_requires_api_key")
 @patch("uniinfer.auth.get_provider_api_key")
-def test_verify_provider_access_failure(mock_get_key):
+def test_verify_provider_access_failure(mock_get_key, mock_requires):
     """Test verify_provider_access raises 401 on failure."""
     from fastapi import HTTPException
+    mock_requires.return_value = True
     mock_get_key.side_effect = AuthenticationError("Invalid key")
-    
+
     with pytest.raises(HTTPException) as excinfo:
-        verify_provider_access("bad-token", "openai")
+        verify_provider_access("bearer@encryption", "openai")
     assert excinfo.value.status_code == 401
     assert "Invalid key" in excinfo.value.detail
