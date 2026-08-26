@@ -9,13 +9,14 @@ from __future__ import annotations
 
 import asyncio
 import gc
+import hashlib
 import json
 import logging
 import os
 import time
 import tracemalloc
 import uuid
-from collections import Counter
+from collections import Counter, deque
 from logging.handlers import RotatingFileHandler
 
 logger = logging.getLogger("uniioai_proxy")
@@ -166,12 +167,94 @@ async def mem_trace_loop(_app) -> None:
 # leaked under streaming (Starlette #1012). Streams responses straight through
 # with zero buffering; adds request-id logging + body-size limit.
 # ---------------------------------------------------------------------------
-async def _asgi_send_json(send, status_code: int, body: dict) -> None:
+async def _asgi_send_json(send, status_code: int, body: dict, extra_headers: list | None = None) -> None:
     payload = json.dumps(body).encode()
+    headers = [(b"content-type", b"application/json"),
+               (b"content-length", str(len(payload)).encode())] + (extra_headers or [])
     await send({"type": "http.response.start", "status": status_code,
-                "headers": [(b"content-type", b"application/json"),
-                             (b"content-length", str(len(payload)).encode())]})
+                "headers": headers})
     await send({"type": "http.response.body", "body": payload})
+
+
+class _AuthBan:
+    """Per-IP auth-failure tracker with temporary ban (fail2ban, in-process).
+
+    N auth-failures (401s) within a rolling window -> the IP is banned for Y
+    hours: requests are rejected with 429 + Retry-After before touching the
+    app. Purely in-memory (resets on restart — deliberate: bans are emergency
+    shielding, not punishment). Table is size-capped against distributed
+    prober floods.
+
+    Env knobs: UNIINFER_AUTH_BAN_FAILS (default 10), UNIINFER_AUTH_BAN_WINDOW_S
+    (default 900), UNIINFER_AUTH_BAN_HOURS (default 2).
+    """
+
+    _MAX_TRACKED = 50_000
+
+    def __init__(self):
+        self.fails: dict[str, deque] = {}
+        self.banned_until: dict[str, float] = {}
+        self.threshold = int(os.getenv("UNIINFER_AUTH_BAN_FAILS", "10"))
+        self.window_s = float(os.getenv("UNIINFER_AUTH_BAN_WINDOW_S", "900"))
+        self.hours = float(os.getenv("UNIINFER_AUTH_BAN_HOURS", "2"))
+
+    def remaining(self, ip: str, now: float | None = None) -> float:
+        now = now if now is not None else time.time()
+        until = self.banned_until.get(ip, 0.0)
+        return max(0.0, until - now)
+
+    def record_failure(self, ip: str) -> bool:
+        """Count one 401 for ip; returns True when this failure triggers a ban."""
+        now = time.time()
+        if len(self.fails) > self._MAX_TRACKED:
+            self._prune(now)
+        dq = self.fails.setdefault(ip, deque())
+        dq.append(now)
+        while dq and dq[0] < now - self.window_s:
+            dq.popleft()
+        if len(dq) >= self.threshold:
+            self.banned_until[ip] = now + self.hours * 3600
+            del self.fails[ip]
+            logger.warning(
+                "[auth-ban] %s banned for %.1fh after %d auth failures in %.0fs",
+                ip, self.hours, self.threshold, self.window_s,
+            )
+            return True
+        return False
+
+    def _prune(self, now: float):
+        horizon = now - max(self.window_s, self.hours * 3600)
+        self.fails = {ip: dq for ip, dq in self.fails.items()
+                      if any(t >= horizon for t in dq)}
+        self.banned_until = {ip: t for ip, t in self.banned_until.items() if t > now}
+
+
+_AUTH_BANS = _AuthBan()
+
+
+def _client_ip(scope) -> tuple[str, bool]:
+    """Best-effort client IP + whether it came from our trusted front proxy.
+
+    nginx sits on loopback and appends $remote_addr to X-Forwarded-For — so for
+    loopback peers the RIGHTMOST entry is the client address as seen by our own
+    proxy (leftmost entries are attacker-spoofable). Non-loopback peers are
+    taken as-is: their socket address cannot be forged.
+    """
+    peer = None
+    c = scope.get("client")
+    if isinstance(c, (tuple, list)) and c:
+        peer = str(c[0])
+    xff = None
+    for k, v in scope.get("headers", []):
+        if k == b"x-forwarded-for":
+            xff = v.decode("latin-1", "replace")
+            break
+    from_loopback = peer in ("127.0.0.1", "::1")
+    if xff:
+        entries = [e.strip() for e in xff.split(",") if e.strip()]
+        if entries:
+            return (entries[-1], True) if from_loopback else (peer or entries[-1], False)
+    return (peer or "unknown", from_loopback)
 
 
 class LeanHTTPMiddleware:
@@ -185,6 +268,19 @@ class LeanHTTPMiddleware:
         if scope.get("type") != "http":
             await self.app(scope, receive, send)
             return
+        ip, from_proxy = _client_ip(scope)
+        loopback_only = ip.startswith("127.") or ip == "::1"
+        if not loopback_only:
+            left = _AUTH_BANS.remaining(ip)
+            if left > 0:
+                retry_after = int(left) + 1
+                logger.debug("[auth-ban] rejecting %s (%ds left)", ip, retry_after)
+                await _asgi_send_json(
+                    send, 429,
+                    {"detail": "Too many authentication failures; temporarily banned."},
+                    extra_headers=[(b"retry-after", str(retry_after).encode())],
+                )
+                return
         for k, v in scope.get("headers", []):
             if k == b"content-length":
                 try:
@@ -198,6 +294,18 @@ class LeanHTTPMiddleware:
         st = scope.setdefault("state", {})
         if isinstance(st, dict):
             st["request_id"] = request_id
+        # Auth fingerprint — which credential answered? Logs only a SHA256
+        # prefix of the bearer (never the secret), so 401 bursts can be matched
+        # to the exact token that produced them.
+        auth_fp = None
+        for k, v in scope.get("headers", []):
+            if k == b"authorization":
+                raw = v.decode("latin-1", "replace")
+                token = raw[7:] if raw.lower().startswith("bearer ") else raw
+                if token:
+                    auth_fp = "sha256:" + hashlib.sha256(token.encode()).hexdigest()[:10]
+                    st["auth_token"] = token  # for downstream access-recording
+                break
         method, path = scope.get("method"), scope.get("path")
         logger.debug("[%s] START %s %s", request_id, method, path)
         started = time.time()
@@ -221,6 +329,16 @@ class LeanHTTPMiddleware:
                          (time.time() - started) * 1000, e)
             raise
         ct = resp["ctype"] or ""
+        if resp["status"] == 401 and not loopback_only and ip != "unknown":
+            triggered = _AUTH_BANS.record_failure(ip)
+            if triggered:
+                log_fn = logger.warning
+            else:
+                log_fn = logger.debug
+            log_fn("[auth-ban] 401 counted for %s (fails=%d/%d)%s", ip,
+                   len(_AUTH_BANS.fails.get(ip, ())), _AUTH_BANS.threshold,
+                   " — BANNED" if triggered else "")
         if "text/event-stream" not in ct:
-            logger.info("[%s] END %s %s - Status: %s - Duration: %.2fms",
-                        request_id, method, path, resp["status"], (time.time() - started) * 1000)
+            logger.info("[%s] END %s %s - Status: %s - Duration: %.2fms%s",
+                        request_id, method, path, resp["status"], (time.time() - started) * 1000,
+                        f" - auth={auth_fp}" if auth_fp else "")
