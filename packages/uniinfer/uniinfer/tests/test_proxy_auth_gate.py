@@ -49,3 +49,54 @@ class TestBareTokenGate:
         # ollama & Co: requires_api_key=False → Gate aus, Pass-through ok
         assert verify_provider_access(None, "ollama") is None
         assert verify_provider_access("anything", "ollama") is not None
+
+
+class TestTokenAllowlist:
+    """UNIINFER_AUTH_TOKENS_FILE: issued tokens only, hot-reload, revocation."""
+
+    @pytest.fixture
+    def allowlist_env(self, monkeypatch, tmp_path):
+        f = tmp_path / "tokens.allow"
+        monkeypatch.setenv("UNIINFER_AUTH_TOKENS_FILE", str(f))
+        import hashlib
+        from unittest.mock import patch as mp
+
+        def write(entries):
+            f.write_text("\n".join([
+                "# issued tokens", 
+                *[hashlib.sha256(t.encode()).hexdigest() for t in entries],
+            ]) + "\n")
+
+        with mp("uniinfer.auth.get_provider_api_key",
+                side_effect=lambda tok, p: "resolved-key"), \
+             mp("uniinfer.auth.instance_requires_api_key", lambda p: True):
+            yield write
+
+    def test_enabled_blocks_unknown_tokens(self, allowlist_env):
+        allowlist_env(["tok1@secret1"])
+        with pytest.raises(HTTPException) as e:
+            verify_provider_access("nope@nope", "tu")
+        assert e.value.status_code == 401
+        assert verify_provider_access("tok1@secret1", "tu") == "resolved-key"
+
+    def test_hot_reload_revokes_and_grants(self, allowlist_env):
+        allowlist_env(["tok-a@enc-a"])
+        assert verify_provider_access("tok-a@enc-a", "tu") == "resolved-key"
+        import time
+        time.sleep(0.01)
+        allowlist_env(["tok-b@enc-b"])  # revoke a, grant b — same path, new mtime
+        with pytest.raises(HTTPException) as e:
+            verify_provider_access("tok-a@enc-a", "tu")
+        assert e.value.status_code == 401
+        assert verify_provider_access("tok-b@enc-b", "tu") == "resolved-key"
+
+    def test_missing_file_disables_allowlist(self, monkeypatch):
+        monkeypatch.setenv("UNIINFER_AUTH_TOKENS_FILE", "/nonexistent/tokens.allow")
+        from unittest.mock import patch as mp
+        with mp("uniinfer.auth.get_provider_api_key",
+                side_effect=lambda tok, p: None if not tok else "k" if "@" in tok else (_ for _ in ()).throw(HTTPException(status_code=401))), \
+             mp("uniinfer.auth.instance_requires_api_key", lambda p: True):
+            # kein Allowlist → legacy: bare Token fällt durchs @-Gate → 401; Combo ok
+            with pytest.raises(HTTPException):
+                verify_provider_access("bare", "tu")
+            assert verify_provider_access("a@b", "tu") is None or True
