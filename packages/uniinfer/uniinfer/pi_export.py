@@ -200,11 +200,21 @@ def _prettify(provider: str, model_id: str) -> str:
     return f"{leaf} ({prov})"
 
 
+# Providers whose backend rejects top-level reasoning_effort. Aqueduct-backed
+# TU models 400 with UnsupportedParamsError on reasoning_effort (verified live
+# 2026-09-09); the safe disable knob there is chat_template_kwargs — which the
+# TUProvider applies server-side. pi must never send reasoning_effort for these.
+_NO_REASONING_EFFORT_PROVIDERS = frozenset({"tu", "tu-staging"})
+
+
 def catalog_model_to_pi(provider: str, model: dict) -> PiModel:
     """Convert one catalog model dict (nested under a provider) to a PiModel."""
     mid = model.get("id", "")
     caps = model.get("capabilities")
     ctx = model.get("context_window") or model.get("contextWindow")
+    compat: dict = {"maxTokensField": "max_tokens"}
+    if provider in _NO_REASONING_EFFORT_PROVIDERS:
+        compat["supportsReasoningEffort"] = False
     return PiModel(
         id=f"{provider}@{mid}",
         name=model.get("name") or _prettify(provider, mid),
@@ -213,7 +223,7 @@ def catalog_model_to_pi(provider: str, model: dict) -> PiModel:
         context_window=ctx if isinstance(ctx, int) and ctx > 0 else 131072,
         max_tokens=_DEFAULT_MAX_TOKENS,
         cost=_pi_cost(model.get("cost")),
-        compat={"maxTokensField": "max_tokens"},
+        compat=compat,
     )
 
 
