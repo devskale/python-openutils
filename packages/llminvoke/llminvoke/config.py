@@ -382,15 +382,20 @@ def resolve_model(
 
     # ── map `thinking` → the provider's reasoning knob (per model) ──
     # qwen-3.x: chat_template_kwargs.enable_thinking (off=False). reasoning_effort
-    # models (o-series-style): none/minimal/low/medium/high. 'on'/None = default.
+    # models (o-series-style): minimal/low/medium/high. 'on'/None = default.
+    # 'off' AND 'none' both mean "disable reasoning" (uniinfer REASONING_OFF) and
+    # both map to the chat-template knob — NOT reasoning_effort: aqueduct-backed
+    # TU models 400 on reasoning_effort (UnsupportedParamsError, verified live
+    # 2026-09-09), while chat_template_kwargs.enable_thinking=false is honored
+    # by the same endpoint (verified same day).
     if thinking is not None:
         thinking = "on" if isinstance(thinking, bool) and thinking else \
                    "off" if isinstance(thinking, bool) else str(thinking).strip().lower()
-        if thinking == "off":
+        if thinking in ("off", "none"):
             ctk = dict(task_kwargs.get("chat_template_kwargs") or {})
             ctk.setdefault("enable_thinking", False)
             task_kwargs["chat_template_kwargs"] = ctk
-        elif thinking in ("none", "minimal", "low", "medium", "high"):
+        elif thinking in ("minimal", "low", "medium", "high"):
             task_kwargs["reasoning_effort"] = thinking
 
     return ResolvedConfig(
