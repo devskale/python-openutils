@@ -205,3 +205,39 @@ def test_raise_on_empty_not_triggered_on_success(patched):
     inv, _calls = make_invoke({"m1": [("ok", "hello")]})
     mp.setattr(llminvoke, "invoke_llm", inv)
     assert call_llm("x", config=cfg(), raise_on_empty=True) == "hello"
+
+
+# ---------------------------------------------------------------------------
+# dict-messages coercion — gateway path nullified content on raw dicts
+# (Vorfall TU-smoke 2026-09-05: getattr(dict,'content') → None → upstream
+# 400 "messages[0].user.content: Field required" auf allen Nicht-vllm-Routen)
+# ---------------------------------------------------------------------------
+
+
+def test_build_messages_coerces_dicts():
+    from llminvoke import ChatMessage, _build_messages
+
+    msgs = _build_messages(
+        None,
+        [{"role": "user", "content": "hallo"}],
+        None,
+    )
+    assert len(msgs) == 1
+    assert isinstance(msgs[0], ChatMessage)
+    assert msgs[0].role == "user"
+    assert msgs[0].content == "hallo"
+
+
+def test_build_messages_keeps_chatmessage_objects():
+    from llminvoke import ChatMessage, _build_messages
+
+    orig = [ChatMessage(role="user", content="x")]
+    out = _build_messages(None, orig, None)
+    assert out[0] is orig[0] and out == orig
+
+
+def test_build_messages_prompt_and_system_still_work():
+    from llminvoke import ChatMessage, _build_messages
+
+    msgs = _build_messages("frage", None, "sys")
+    assert [(m.role, m.content) for m in msgs] == [("system", "sys"), ("user", "frage")]

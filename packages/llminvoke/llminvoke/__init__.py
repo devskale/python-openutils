@@ -89,9 +89,20 @@ def _build_messages(
     messages: list[ChatMessage] | None,
     system_prompt: str | None,
 ) -> list[ChatMessage]:
-    """Resolve messages: explicit > built from prompt/system_prompt."""
+    """Resolve messages: explicit > built from prompt/system_prompt.
+
+    Explicit dict messages are coerced to ChatMessage: callers passing raw
+    ``{'role': ..., 'content': ...}`` dicts otherwise crash the GATEWAY path
+    with a cryptic upstream 400 ("messages[0].user.content: Field required") —
+    _invoke_via_openai_sdk serializes via getattr(), and getattr on a dict
+    returns None (Vorfall: TU-smoke 2026-09-05 — alle Nicht-vllm-Routen 400ten
+    auf content=null; die vllm-Route tolerierte es und maskierte den Bug).
+    """
     if messages is not None:
-        return messages
+        return [
+            m if isinstance(m, ChatMessage) else ChatMessage(**m)
+            for m in messages
+        ]
     msgs: list[ChatMessage] = []
     if system_prompt:
         msgs.append(ChatMessage(role="system", content=system_prompt))
