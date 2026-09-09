@@ -139,6 +139,19 @@ def model_info_to_dict(m, default_access: str = "") -> dict:
     return d
 
 
+def _provider_models_to_dicts(models, cls, provider_id: str) -> list[dict]:
+    """Serialize list_models() output, skipping anything that is not a
+    ModelInfo so one misbehaving provider can't kill the whole refresh."""
+    out = []
+    for m in models:
+        if not hasattr(m, "id"):
+            log.warning("  %s: list_models returned non-ModelInfo entry %r — skipped",
+                        provider_id, m)
+            continue
+        out.append(model_info_to_dict(m, getattr(cls, "ACCESS_TIER", "")))
+    return out
+
+
 def fetch_provider_models(provider_id, cls, credgoo_service, kind):
     """Call list_models() on a provider, return list of dicts."""
     kwargs = {}
@@ -154,7 +167,7 @@ def fetch_provider_models(provider_id, cls, credgoo_service, kind):
         except Exception as e:
             log.warning("  %s: failed without key: %s", provider_id, e)
             return []
-        return [model_info_to_dict(m, getattr(cls, "ACCESS_TIER", "")) for m in models]
+        return _provider_models_to_dicts(models, cls, provider_id)
 
     # Provider-specific extra params for list_models (only infra params, not chat params)
     from uniinfer.config.providers import PROVIDER_CONFIGS
@@ -174,7 +187,7 @@ def fetch_provider_models(provider_id, cls, credgoo_service, kind):
         traceback.print_exc()
         return []
 
-    return [model_info_to_dict(m, getattr(cls, "ACCESS_TIER", "")) for m in models]
+    return _provider_models_to_dicts(models, cls, provider_id)
 
 
 def load_type_overrides() -> dict:

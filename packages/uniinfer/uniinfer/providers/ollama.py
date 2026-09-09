@@ -136,10 +136,9 @@ class OllamaProvider(ChatProvider):
             return [ModelInfo(id=model["name"], owned_by=model.get("details", {}).get("family"), access="free", raw=model) for model in data.get("models", [])]
         except Exception as e:
             print(f"Error listing models from Ollama: {str(e)}")
-            # Fallback to default models if API call fails
-            return [
-                "error listing models",
-            ]
+            # Callers expect ModelInfo entries (or an empty list) — a bare
+            # string here crashes catalog generators with AttributeError.
+            return []
 
     async def acomplete(
         self,
