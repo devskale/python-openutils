@@ -59,6 +59,14 @@ cd packages/uniinfer && uv sync --extra all
 - 🚫 **Never** log plaintext credentials (credgoo: XOR + Base64 only)
 - 🚫 **Never** use file permissions looser than `0o600` for cached credentials
 
+## Dev methodology (metarepo-indexed)
+
+Single source of truth: [metarepo AGENTS.md](../AGENTS.md) — rules→gates ladder + test discipline. What applies here:
+
+- **Gates after lockfile/source changes:** `cd .. && ./k.sh test scripts` (hermetic, seconds) + `./k.sh deps check-locks`. The `git-deps` gate enforces `rev = "main"` on internal git sources; the `llm-gate` enforces llminvoke-routed provider clients — new violations fail, tracked debt warns.
+- **Releasing an openutils package:** `cd .. && ./k.sh deps release <pkg>` (version-bump + push + bump dependents) — never hand-roll the chain.
+- **A gotcha that recurs → Gotchas above; once objectively checkable → a `*.test` gate** in the metarepo (auto-discovered).
+
 ## Within This Repo: Local Paths
 
 uniinfer depends on credgoo via editable path source:
