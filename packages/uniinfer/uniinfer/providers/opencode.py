@@ -12,6 +12,9 @@ Note: Claude models on OpenCode use the Anthropic-messages API
 (``https://opencode.ai/zen``) and are NOT served by this OpenAI-compatible
 provider (which targets ``/v1``).
 """
+import os
+import uuid
+
 import requests
 from typing import Optional
 
@@ -30,8 +33,22 @@ class OpenCodeProvider(OpenAICompatibleChatProvider):
     # upstreams (e.g. big-pickle, mimo-v2.5-free).
     PRESERVE_MULTIMODAL = True
 
+    # Zen's free tier only serves official clients: requests without a
+    # session header get 400 MissingSessionID ("free tier can only be used
+    # in OpenCode"). pi sends the same pair (provider-attribution.ts);
+    # this header set is verified to pass zen validation. Override via
+    # UNIINFER_OPENCODE_SESSION / UNIINFER_OPENCODE_CLIENT if needed.
+    SESSION_HEADERS = {
+        "x-opencode-session": os.environ.get(
+            "UNIINFER_OPENCODE_SESSION", f"uniinfer-{uuid.uuid4().hex[:12]}"),
+        "x-opencode-client": os.environ.get("UNIINFER_OPENCODE_CLIENT", "unii"),
+    }
+
     def __init__(self, api_key: Optional[str] = None):
         super().__init__(api_key=api_key, base_url=self.BASE_URL)
+
+    def _get_extra_headers(self) -> dict[str, str]:
+        return dict(self.SESSION_HEADERS)
 
     @classmethod
     def list_models(cls, api_key: Optional[str] = None) -> list["ModelInfo"]:

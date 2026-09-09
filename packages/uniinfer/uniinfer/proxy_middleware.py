@@ -329,7 +329,13 @@ class LeanHTTPMiddleware:
                          (time.time() - started) * 1000, e)
             raise
         ct = resp["ctype"] or ""
-        if resp["status"] == 401 and not loopback_only and ip != "unknown":
+        # Count only OUR OWN auth rejections: validate_proxy_token passes any
+        # request that merely PRESENTS a bearer, so this proxy's 401 only ever
+        # occurs when no Authorization header was sent at all. A 401 under a
+        # presented token is an upstream provider error (e.g. zen "Model not
+        # supported") and must not feed the fail2ban — a catalog sweep of dead
+        # models would otherwise ban valid clients for hours.
+        if resp["status"] == 401 and auth_fp is None and not loopback_only and ip != "unknown":
             triggered = _AUTH_BANS.record_failure(ip)
             if triggered:
                 log_fn = logger.warning
