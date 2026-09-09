@@ -540,7 +540,13 @@ def main():
 
     for provider_id, cls, credgoo_service, kind in providers:
         log.info("Fetching %s (%s) ...", provider_id, kind)
-        models = fetch_provider_models(provider_id, cls, credgoo_service, kind)
+        # One misbehaving provider (dead endpoint, malformed payload, …) must
+        # never abort the whole refresh — log and continue with the rest.
+        try:
+            models = fetch_provider_models(provider_id, cls, credgoo_service, kind)
+        except Exception as e:
+            log.warning("  %s: fetch crashed, skipped: %s", provider_id, e)
+            models = []
         if models:
             # Apply type overrides (always wins), then derive_type as fallback
             for m in models:

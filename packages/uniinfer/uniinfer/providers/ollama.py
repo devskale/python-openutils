@@ -129,7 +129,10 @@ class OllamaProvider(ChatProvider):
             if api_key:
                 headers["Authorization"] = f"Bearer {api_key}"
 
-            response = requests.get(endpoint, headers=headers)
+            # Timeout is mandatory here: this endpoint is often a remote box
+            # that may be down, and an untimed request stalls catalog refresh
+            # runs for minutes.
+            response = requests.get(endpoint, headers=headers, timeout=15)
             response.raise_for_status()
 
             data = response.json()

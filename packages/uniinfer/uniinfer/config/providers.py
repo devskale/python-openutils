@@ -75,9 +75,8 @@ PROVIDER_CONFIGS = {
         'name': 'Ollama',
         'default_model': 'gemma3:4b',
         'needs_api_key': False,
-        'extra_params': {
-            'base_url': 'https://amp1.mooo.com:11444'
-        }
+        # amp1.mooo.com:11444 (former managed endpoint) is gone; fall back to
+        # the default localhost:11434 unless an instance overrides base_url.
     },
     'arli': {
         'name': 'ArliAI',
