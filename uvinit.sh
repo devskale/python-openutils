@@ -248,7 +248,13 @@ setup_extras_for() {  # $1 = package dir → prints "--extra X --extra Y …" (o
     req="$req $opts"
   fi
   req=$(printf '%s' "$req" | sed -E 's/--extra[[:space:]]+//g')   # → "a b c"
-  defined="$(defined_extras "$pkgdir")"
+  # defined_extras prints newline-separated; the case-match below expects
+  # space-separated (" $defined " vs *" $e "*). Without the tr, a newline
+  # before the extra name means NO extra ever matches for multi-extra packages
+  # → machine setupoptions silently skipped → e.g. pdf2md [full] pruned from
+  # worker venvs → docling gone → paged/OCR conversions fail + fall back to
+  # pdfplumber (seitenverlust incident, B4 root cause #2).
+  defined="$(defined_extras "$pkgdir" | tr '\n' ' ')"
   for e in $req; do
     [ -z "$e" ] && continue
     case " $defined " in *" $e "*)
