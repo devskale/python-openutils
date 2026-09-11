@@ -2674,7 +2674,7 @@ wheels = [
 
 [[package]]
 name = "uniinfer"
-version = "0.8.53"
+version = "0.8.54"
 source = { editable = "." }
 dependencies = [
     { name = "ai21" },
