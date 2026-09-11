@@ -8,6 +8,7 @@ import httpx
 import json
 import logging
 import os
+import time
 from datetime import datetime
 
 from ..core import ChatProvider, ChatCompletionRequest, ChatCompletionResponse, ChatMessage, REASONING_OFF
@@ -58,6 +59,124 @@ def _parse_retry_after(headers: Any) -> float | None:
 # upstream, reused across all requests (no per-request client creation → no
 # native TLS/buffer leak under streaming load). See _get_async_client.
 _TU_CLIENT_CACHE: dict[str, httpx.AsyncClient] = {}
+
+# --- Stream robustness knobs -------------------------------------------------
+# A TU backend that accepts a request but never answers (its wedged-replica
+# failure mode) used to hold a stream open for the FULL httpx read timeout
+# (300s) before the retry path could act — so a wedged stream produced several-
+# minute hangs. These bound that window tightly:
+#   * TU_STREAM_OPEN_TIMEOUT — max wait for response headers after POST
+#   * TU_STREAM_GAP_TIMEOUT  — max idle time between SSE lines mid-stream
+# A stream idle longer than the gap is treated as wedged: the pooled client is
+# evicted and (if no chunk has reached the caller yet) the stream is replayed
+# on a fresh connection. Both are overridable via env for targeted tuning.
+def _env_float(name: str, default: float) -> float:
+    try:
+        return float(os.getenv(name, ""))
+    except (TypeError, ValueError):
+        return default
+
+TU_STREAM_OPEN_TIMEOUT = _env_float("TU_STREAM_OPEN_TIMEOUT", 90.0)
+TU_STREAM_GAP_TIMEOUT = _env_float("TU_STREAM_GAP_TIMEOUT", 60.0)
+
+
+class StreamStalledError(Exception):
+    """Internal: a TU stream produced no data within the idle-gap timeout
+    (wedged backend). Caught in ``astream_complete`` so it can replay from a
+    fresh connection while no chunk has been emitted yet, otherwise it is
+    surfaced to the caller as an upstream error."""
+
+
+class TUTelemetry:
+    """Process-wide wedge/stall telemetry for the TU upstream, surfaced through
+    the proxy /health ``upstream`` block so an operator can see at a glance how
+    much is wedged or hanging right now."""
+
+    def __init__(self) -> None:
+        self.evictions = 0            # pooled httpx client evictions
+        self.transport_retries = 0    # attempts after the first (retries)
+        self.open_stalls = 0          # read timeouts while (re-)opening a stream
+        self.body_stalls = 0          # idle-gap timeouts mid-stream
+        self.stall_retries = 0        # successful replays after a pre-first-chunk stall
+        self.rate_limits = 0          # upstream 429s relayed to the caller
+        self.active_streams: dict[int, dict] = {}  # id -> {start,last,model}
+        self._seq = 0
+
+    def register_stream(self, model: str) -> int:
+        self._seq += 1
+        now = time.monotonic()
+        self.active_streams[self._seq] = {"start": now, "last": now, "model": model}
+        return self._seq
+
+    def touch(self, sid: int) -> None:
+        s = self.active_streams.get(sid)
+        if s is not None:
+            s["last"] = time.monotonic()
+
+    def unregister(self, sid: int) -> None:
+        self.active_streams.pop(sid, None)
+
+    def snapshot(self, stalled_after_s: float) -> dict:
+        now = time.monotonic()
+        stuck = 0
+        streams = []
+        for s in self.active_streams.values():
+            idle = now - s["last"]
+            streams.append({
+                "model": s["model"],
+                "age_s": round(now - s["start"], 1),
+                "idle_s": round(idle, 1),
+            })
+            if idle >= stalled_after_s:
+                stuck += 1
+        return {
+            "evictions": self.evictions,
+            "transport_retries": self.transport_retries,
+            "open_stalls": self.open_stalls,
+            "body_stalls": self.body_stalls,
+            "stall_retries": self.stall_retries,
+            "rate_limits": self.rate_limits,
+            "in_flight": len(streams),
+            "stuck_streams": stuck,
+            "stall_threshold_s": round(stalled_after_s, 1),
+            "streams": streams,
+        }
+
+
+_TU_TELEMETRY = TUTelemetry()
+
+
+async def clear_wedge_state() -> dict:
+    """Force-drop + close every pooled TU client and reset the live wedge registry.
+
+    Operator-triggered (proxy POST /debug/wedge/clear) when /health reports
+    stuck streams. Closing the pooled httpx clients aborts any wedged in-flight
+    request (kill the hang) and empties the pool, so every provider instance
+    mints a brand-new connection (with its own API key) on its next request
+    instead of reusing the wedged socket. Counters are kept for the historical
+    picture; only the *live* stuck state is reset.
+
+    Returns what was dropped/cleared so the caller (and /health) can confirm.
+    """
+    active = dict(_TU_TELEMETRY.active_streams)
+    now = time.monotonic()
+    cleared_streams = [
+        {"model": s["model"], "idle_s": round(now - s["last"], 1)}
+        for s in active.values()
+    ]
+    _TU_TELEMETRY.active_streams.clear()
+    clients = list(_TU_CLIENT_CACHE.values())
+    _TU_CLIENT_CACHE.clear()
+    for client in clients:
+        try:
+            await client.aclose()
+        except Exception:
+            pass
+    return {
+        "closed_clients": len(clients),
+        "cleared_streams": len(cleared_streams),
+        "streams": cleared_streams,
+    }
 
 
 class TUProvider(ChatProvider):
@@ -147,6 +266,7 @@ class TUProvider(ChatProvider):
         deliberately NOT closed: in-flight requests on it must finish; it is
         dropped for GC instead.
         """
+        _TU_TELEMETRY.evictions += 1
         replacement = self._new_async_client()
         _TU_CLIENT_CACHE[self.base_url] = replacement
         self._async_client = replacement
@@ -214,6 +334,7 @@ class TUProvider(ChatProvider):
                     # A read timeout on a wedged backend poisons the pooled
                     # connection for every request on it — evict it so this
                     # retry (and all concurrent requests) get fresh routing.
+                    _TU_TELEMETRY.transport_retries += 1
                     if not self._owns_client:
                         client = self._replace_pooled_client()
                     await asyncio.sleep(min(2.0 * (attempt + 1), 8.0))
@@ -226,6 +347,7 @@ class TUProvider(ChatProvider):
                     # A wedged-backend hang typically ends as a TransportError
                     # (LB kills the silent connection) — same pool poisoning as
                     # a read timeout, so same eviction + fresh-connection retry.
+                    _TU_TELEMETRY.transport_retries += 1
                     if not self._owns_client:
                         client = self._replace_pooled_client()
                     await asyncio.sleep(min(2.0 * (attempt + 1), 8.0))
@@ -250,6 +372,7 @@ class TUProvider(ChatProvider):
                 # Transparent rate-limit transport: no proxy-side throttle — just
                 # relay the upstream 429 to the caller; the client does its own
                 # backoff instead of hanging on an internal replay.
+                _TU_TELEMETRY.rate_limits += 1
                 logger.warning("[%s] 429 on model %s — relaying 429 to caller", self._CREDGOO_SERVICE, model)
                 raise map_provider_error(
                     self._CREDGOO_SERVICE,
@@ -273,17 +396,31 @@ class TUProvider(ChatProvider):
         transient transport errors are retried a few times.
         """
         last_exc: Exception | None = None
+        # Bound how long we wait for response headers after POST. TU's wedged
+        # backend accepts but never answers; a per-request read timeout here fails
+        # that case in TU_STREAM_OPEN_TIMEOUT seconds instead of the client's 300s
+        # streaming budget. The injected/retry client reuses its own pool timeout.
+        base_t = getattr(client, "timeout", None)
+        if isinstance(base_t, httpx.Timeout):
+            open_timeout = httpx.Timeout(
+                connect=base_t.connect, read=TU_STREAM_OPEN_TIMEOUT,
+                write=base_t.write, pool=base_t.pool,
+            )
+        else:
+            open_timeout = httpx.Timeout(TU_STREAM_OPEN_TIMEOUT, connect=30.0)
         for attempt in range(max_retries + 1):
             try:
-                cm = client.stream("POST", url, json=payload)
+                cm = client.stream("POST", url, json=payload, timeout=open_timeout)
                 response = await cm.__aenter__()
             except httpx.TimeoutException as e:
                 last_exc = e
+                _TU_TELEMETRY.open_stalls += 1
                 logger.warning("[%s] read timeout on %s stream (attempt %d/%d): %s", self._CREDGOO_SERVICE, model, attempt + 1, max_retries + 1, e)
                 if attempt < max_retries:
                     # Same wedged-backend eviction as the non-streaming path:
                     # retry on a fresh connection instead of re-hanging on the
                     # poisoned pooled one.
+                    _TU_TELEMETRY.transport_retries += 1
                     if not self._owns_client:
                         client = self._replace_pooled_client()
                     await asyncio.sleep(min(2.0 * (attempt + 1), 8.0))
@@ -296,6 +433,7 @@ class TUProvider(ChatProvider):
                     # Wedged-backend hangs usually die as TransportError (LB
                     # kills the silent connection) — evict + retry fresh, same
                     # as the non-streaming path.
+                    _TU_TELEMETRY.transport_retries += 1
                     if not self._owns_client:
                         client = self._replace_pooled_client()
                     await asyncio.sleep(min(2.0 * (attempt + 1), 8.0))
@@ -327,6 +465,7 @@ class TUProvider(ChatProvider):
             if response.status_code == 429:
                 # Transparent rate-limit transport (see _post_with_ratelimit_retry):
                 # no proxy-side throttle — surface the upstream 429 to the caller.
+                _TU_TELEMETRY.rate_limits += 1
                 logger.warning("[%s] 429 on model %s stream — relaying 429 to caller", self._CREDGOO_SERVICE, model)
                 error_body = await response.aread()
                 try:
@@ -530,89 +669,152 @@ class TUProvider(ChatProvider):
             raise map_provider_error(self._CREDGOO_SERVICE, e)
 
     async def astream_complete(self, request: ChatCompletionRequest) -> AsyncIterator[ChatCompletionResponse]:
-        """Async streaming completion implementation for TU."""
-        request.streaming = True
-        client = await self._get_async_client()
-        payload = self._prepare_payload(request)
+        """Async streaming completion implementation for TU.
 
-        cm, response = await self._open_stream_with_ratelimit_retry(client, "/chat/completions", payload, request.model)
-        try:
+        A stream that produces no data within ``TU_STREAM_GAP_TIMEOUT`` is
+        treated as wedged: the pooled client is evicted and, while no chunk has
+        reached the caller yet (nothing to replay), the stream is replayed on a
+        fresh connection. Once data has been emitted it can no longer be
+        replayed, so a stall there is surfaced as an upstream error. The retry
+        window here only covers body stalls; ``_open_stream_with_ratelimit_retry``
+        still owns the open-phase (headers) retries.
+        """
+        request.streaming = True
+        payload = self._prepare_payload(request)
+        max_retries = 4
+        last_stall: StreamStalledError | None = None
+        for attempt in range(max_retries + 1):
+            client = await self._get_async_client()
+            cm = response = None
             chunks_yielded = 0  # Track if we receive any valid chunks
             received_done = False  # Track if we received [DONE] marker
             received_finish_reason = False  # Track if we received finish_reason
             received_payload = False  # Track if any content/reasoning/tool_calls arrived
-            async for line in response.aiter_lines():
-                if not line:
-                    continue
-                if line.strip() == 'data: [DONE]':
-                    received_done = True
-                    break
-                if not line.startswith('data: '):
-                    continue
-                # Per-chunk logging is extremely verbose and was filling disk.
-                # Only enabled when UNIINFER_DEBUG_RAW=1.
-                if _raw_logging_enabled():
-                    log_raw_response(
-                        provider=self._CREDGOO_SERVICE,
-                        operation="chat.completions.stream",
-                        raw_response={"line": line},
-                        log_file=os.path.join(os.getcwd(), "logs", "tu_raw_chat.log"),
-                    )
-                
+            try:
+                cm, response = await self._open_stream_with_ratelimit_retry(
+                    client, "/chat/completions", payload, request.model
+                )
+                sid = _TU_TELEMETRY.register_stream(request.model)
                 try:
-                    data_str = line[6:]
-                    data = json.loads(data_str)
-                    if 'choices' in data and len(data['choices']) > 0:
-                        choice = data['choices'][0]
-                        delta = choice.get('delta', {})
-                        finish_reason = choice.get('finish_reason')
-                        
-                        if finish_reason:
-                            received_finish_reason = True
-                        
-                        content = delta.get('content')
-                        # Handle reasoning_content (TU thinking models)
-                        reasoning_content = delta.get('reasoning_content') or delta.get('reasoning')
-                        tool_calls = delta.get('tool_calls')
-                        if content or reasoning_content or tool_calls:
-                            received_payload = True
-                        
-                        if not content and not reasoning_content and not tool_calls and not finish_reason:
-                            if not data.get("usage"):
-                                continue
-                            
-                        chunks_yielded += 1
-                        message = ChatMessage(
-                            role=delta.get('role', 'assistant'),
-                            content=content,
-                            tool_calls=tool_calls
-                        )
-                        
-                        yield ChatCompletionResponse(
-                            message=message,
-                            provider=self._CREDGOO_SERVICE,
-                            model=data.get("model", request.model),
-                            usage=data.get("usage") or {},
-                            raw_response=data,
-                            finish_reason=finish_reason,
-                            thinking=reasoning_content  # Separate thinking content
-                        )
-                    elif data.get("usage"):
-                        # Terminal usage-only chunk (choices:[]). vLLM emits this
-                        # when stream_options.include_usage is set; forward it so
-                        # the proxy can emit usage to clients.
-                        yield ChatCompletionResponse(
-                            message=ChatMessage(role="assistant", content=None),
-                            provider=self._CREDGOO_SERVICE,
-                            model=data.get("model", request.model),
-                            usage=data["usage"],
-                            raw_response=data,
-                            finish_reason=None,
-                            thinking=None,
-                        )
-                except json.JSONDecodeError:
-                    continue
-            
+                    it = response.aiter_lines()
+                    while True:
+                        try:
+                            line = await asyncio.wait_for(it.__anext__(), timeout=TU_STREAM_GAP_TIMEOUT)
+                        except StopAsyncIteration:
+                            break
+                        except asyncio.TimeoutError:
+                            # Wedged: no data within the idle gap. Evict the
+                            # pooled connection and (if nothing emitted yet)
+                            # replay fresh — handled in the except below.
+                            _TU_TELEMETRY.body_stalls += 1
+                            _TU_TELEMETRY.touch(sid)
+                            raise StreamStalledError(request.model) from None
+                        _TU_TELEMETRY.touch(sid)
+                        if not line:
+                            continue
+                        if line.strip() == 'data: [DONE]':
+                            received_done = True
+                            break
+                        if not line.startswith('data: '):
+                            continue
+                        # Per-chunk logging is extremely verbose and was filling disk.
+                        # Only enabled when UNIINFER_DEBUG_RAW=1.
+                        if _raw_logging_enabled():
+                            log_raw_response(
+                                provider=self._CREDGOO_SERVICE,
+                                operation="chat.completions.stream",
+                                raw_response={"line": line},
+                                log_file=os.path.join(os.getcwd(), "logs", "tu_raw_chat.log"),
+                            )
+
+                        try:
+                            data_str = line[6:]
+                            data = json.loads(data_str)
+                            if 'choices' in data and len(data['choices']) > 0:
+                                choice = data['choices'][0]
+                                delta = choice.get('delta', {})
+                                finish_reason = choice.get('finish_reason')
+
+                                if finish_reason:
+                                    received_finish_reason = True
+
+                                content = delta.get('content')
+                                # Handle reasoning_content (TU thinking models)
+                                reasoning_content = delta.get('reasoning_content') or delta.get('reasoning')
+                                tool_calls = delta.get('tool_calls')
+                                if content or reasoning_content or tool_calls:
+                                    received_payload = True
+
+                                if not content and not reasoning_content and not tool_calls and not finish_reason:
+                                    if not data.get("usage"):
+                                        continue
+
+                                chunks_yielded += 1
+                                message = ChatMessage(
+                                    role=delta.get('role', 'assistant'),
+                                    content=content,
+                                    tool_calls=tool_calls
+                                )
+
+                                yield ChatCompletionResponse(
+                                    message=message,
+                                    provider=self._CREDGOO_SERVICE,
+                                    model=data.get("model", request.model),
+                                    usage=data.get("usage") or {},
+                                    raw_response=data,
+                                    finish_reason=finish_reason,
+                                    thinking=reasoning_content  # Separate thinking content
+                                )
+                            elif data.get("usage"):
+                                # Terminal usage-only chunk (choices:[]). vLLM emits this
+                                # when stream_options.include_usage is set; forward it so
+                                # the proxy can emit usage to clients.
+                                yield ChatCompletionResponse(
+                                    message=ChatMessage(role="assistant", content=None),
+                                    provider=self._CREDGOO_SERVICE,
+                                    model=data.get("model", request.model),
+                                    usage=data["usage"],
+                                    raw_response=data,
+                                    finish_reason=None,
+                                    thinking=None,
+                                )
+                        except json.JSONDecodeError:
+                            continue
+                finally:
+                    _TU_TELEMETRY.unregister(sid)
+
+            except StreamStalledError as e:
+                last_stall = e
+                if chunks_yielded > 0 or attempt >= max_retries:
+                    # Already streamed data to the caller (can't replay without
+                    # duplicating the prefix) or out of attempts: clear the
+                    # wedged connection for concurrent requests and surface the
+                    # stall as an error.
+                    if not self._owns_client:
+                        client = self._replace_pooled_client()
+                    raise map_provider_error(
+                        self._CREDGOO_SERVICE,
+                        Exception(f"TU stream stalled after {chunks_yielded} chunks on {request.model}"),
+                    ) from e
+                # Nothing emitted yet → safe to replay the whole stream on a
+                # fresh connection (fresh LB routing) instead of erroring out.
+                _TU_TELEMETRY.stall_retries += 1
+                if not self._owns_client:
+                    client = self._replace_pooled_client()
+                await asyncio.sleep(min(2.0 * (attempt + 1), 8.0))
+                continue
+            except Exception as e:
+                if isinstance(e, UniInferError):
+                    raise
+                raise map_provider_error(self._CREDGOO_SERVICE, e)
+            finally:
+                if cm is not None:
+                    try:
+                        await cm.__aexit__(None, None, None)
+                    except Exception:
+                        pass
+
+            # Stream ended: run the (unchanged) completeness guards.
             # Detect incomplete stream (preemption) - stream ended without proper completion
             if chunks_yielded == 0:
                 log_raw_response(
@@ -632,7 +834,7 @@ class TUProvider(ChatProvider):
                     thinking=None
                 )
                 return  # Exit generator cleanly
-            
+
             # Detect premature stream termination - stream had chunks but no finish_reason or [DONE]
             if not received_done and not received_finish_reason:
                 import sys
@@ -677,15 +879,12 @@ class TUProvider(ChatProvider):
                     thinking=None
                 )
                 return  # Exit generator cleanly
-        except Exception as e:
-            if isinstance(e, UniInferError):
-                raise
-            raise map_provider_error(self._CREDGOO_SERVICE, e)
-        finally:
-            try:
-                await cm.__aexit__(None, None, None)
-            except Exception:
-                pass
+
+            return
+        raise map_provider_error(
+            self._CREDGOO_SERVICE,
+            last_stall or Exception("TU stream exhausted retries"),
+        )
 
     @classmethod
     def list_models(cls, api_key: str | None = None, **kwargs) -> list[ModelInfo]:

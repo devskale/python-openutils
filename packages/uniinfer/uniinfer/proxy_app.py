@@ -44,6 +44,14 @@ from uniinfer.proxy_routers.smoke import create_smoke_router
 from uniinfer.proxy_routers.capabilities import create_capabilities_router
 from uniinfer.proxy_routers.stats import create_stats_router
 
+try:
+    # TU wedge/stall telemetry, surfaced in /health. Guarded so a proxy that
+    # never loads the tu provider (or a refactor that removes it) still works.
+    from uniinfer.providers.tu import TU_STREAM_GAP_TIMEOUT, _TU_TELEMETRY
+except Exception:  # pragma: no cover - defensive
+    TU_STREAM_GAP_TIMEOUT = 60.0
+    _TU_TELEMETRY = None
+
 # Load environment variables from .env file
 load_dotenv()
 
@@ -324,12 +332,20 @@ async def health(request: Request):
                                                - (jstats.get("allocated") or 0)), 1)
 
     # status thresholds tuned to the unit's 200M soft / 300M hard caps
+    upstream = None
+    if _TU_TELEMETRY is not None:
+        upstream = {"tu": _TU_TELEMETRY.snapshot(TU_STREAM_GAP_TIMEOUT)}
+
     status = "ok"
     if (swap_kb and swap_kb > 0) or (majflt_per_s and majflt_per_s > 50) \
             or loop_ms > 1000 or (max_mb and rss_mb and rss_mb >= 0.95 * max_mb):
         status = "crit"
     elif (rss_mb and high_mb and rss_mb >= 0.85 * high_mb) \
             or (majflt_per_s and majflt_per_s > 10) or loop_ms > 100:
+        status = "warn"
+    # Right now a TU stream is idle past the wedge threshold → the box is
+    # serving a hang; flag it so a curl /health is actionable at a glance.
+    if upstream is not None and upstream["tu"]["stuck_streams"] > 0 and status != "crit":
         status = "warn"
 
     return {
@@ -346,6 +362,7 @@ async def health(request: Request):
             "majflt_per_s": round(majflt_per_s, 1) if majflt_per_s is not None else None,
         },
         "allocator": allocator,
+        "upstream": upstream,
     }
 
 
@@ -370,6 +387,24 @@ async def debug_mem(api_bearer_token: str = Depends(validate_proxy_token)):
         "top_by_count": by_count.most_common(20),
         "top_by_size_kb": [(t, round(s / 1024)) for t, s in by_size.most_common(20)],
     }
+
+
+@app.post("/debug/wedge/clear", include_in_schema=False)
+async def debug_wedge_clear(api_bearer_token: str = Depends(validate_proxy_token)):
+    """Force-clear wedged/stuck TU streams (operator action).
+
+    Closes every pooled TU httpx client (aborting any wedged in-flight request)
+    and resets the live active-stream registry. Use when /health reports
+    ``stuck_streams > 0`` so stuck work is killed now and next requests route on
+    a fresh connection instead of waiting out the hang. Returns the before/after
+    telemetry so the operator can confirm what was cleared.
+    """
+    from uniinfer.providers.tu import TU_STREAM_GAP_TIMEOUT, _TU_TELEMETRY, clear_wedge_state
+
+    before = _TU_TELEMETRY.snapshot(TU_STREAM_GAP_TIMEOUT)
+    cleared = await clear_wedge_state()
+    after = _TU_TELEMETRY.snapshot(TU_STREAM_GAP_TIMEOUT)
+    return {"cleared": cleared, "before": before, "after": after}
 
 
 # --- Run the API (for local development) ---
