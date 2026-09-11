@@ -336,6 +336,24 @@ async def health(request: Request):
     if _TU_TELEMETRY is not None:
         upstream = {"tu": _TU_TELEMETRY.snapshot(TU_STREAM_GAP_TIMEOUT)}
 
+    # Per-model request/TTFT averages over the last 24h — makes "slow model"
+    # (upstream prefill) vs "slow proxy" distinguishable at a glance.
+    models_24h = None
+    try:
+        from uniinfer.proxy_services.stats import get_stats
+        per_model = get_stats().get()["last_24h"]["per_model"]
+        models_24h = [
+            {
+                "model": r["model"],
+                "req": r["requests"],
+                "avg_ttft_s": round(r["avg_ttft_ms"] / 1000, 1) if r["avg_ttft_ms"] else None,
+                "avg_latency_s": round(r["avg_latency_ms"] / 1000, 1),
+            }
+            for r in per_model[:5]
+        ]
+    except Exception:
+        pass
+
     status = "ok"
     if (swap_kb and swap_kb > 0) or (majflt_per_s and majflt_per_s > 50) \
             or loop_ms > 1000 or (max_mb and rss_mb and rss_mb >= 0.95 * max_mb):
@@ -363,6 +381,7 @@ async def health(request: Request):
         },
         "allocator": allocator,
         "upstream": upstream,
+        "models_24h": models_24h,
     }
 
 

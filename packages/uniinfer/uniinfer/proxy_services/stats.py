@@ -32,7 +32,7 @@ _SNAPSHOT_PATH = os.path.join("logs", "stats.json")
 
 
 def _empty_counters() -> dict[str, int]:
-    return {"req": 0, "errors": 0, "prompt": 0, "completion": 0, "total": 0, "latency_sum": 0, "latency_n": 0}
+    return {"req": 0, "errors": 0, "prompt": 0, "completion": 0, "total": 0, "latency_sum": 0, "latency_n": 0, "ttft_sum": 0, "ttft_n": 0}
 
 
 def _merged_counters(v: Any) -> dict[str, int]:
@@ -77,8 +77,14 @@ class StatsCollector:
         status: int | None,
         latency_ms: float | None,
         usage: dict[str, Any] | None,
+        ttft_ms: float | None = None,
     ) -> None:
-        """Record one completed request."""
+        """Record one completed request.
+
+        ttft_ms: time-to-first-token (first UPSTREAM chunk) for streamed
+        requests. None/absent for non-streaming calls — only successful
+        streams carry a meaningful TTFT.
+        """
         if not provider_model:
             return
         now = int(time.time())
@@ -87,6 +93,7 @@ class StatsCollector:
         total = int((usage or {}).get("total_tokens") or (prompt + completion))
         is_error = 1 if (status is not None and status >= 400) else 0
         lat = int(latency_ms or 0)
+        ttft = int(round(ttft_ms)) if ttft_ms is not None else None
 
         hour = now - (now % _HOUR)
         day = now - (now % _DAY)
@@ -106,6 +113,9 @@ class StatsCollector:
             if lat:
                 c["latency_sum"] += lat
                 c["latency_n"] += 1
+            if ttft is not None:
+                c["ttft_sum"] += ttft
+                c["ttft_n"] += 1
 
         t = self._totals[provider_model]
         t["req"] += 1
@@ -116,6 +126,9 @@ class StatsCollector:
         if lat:
             t["latency_sum"] += lat
             t["latency_n"] += 1
+        if ttft is not None:
+            t["ttft_sum"] += ttft
+            t["ttft_n"] += 1
 
         self._records_since_snapshot += 1
         if self._records_since_snapshot >= _SNAPSHOT_EVERY:
@@ -172,7 +185,7 @@ class StatsCollector:
             bucket_req = bucket_err = bucket_prompt = bucket_completion = bucket_total = 0
             for model, c in models.items():
                 agg = per_model[model]
-                for k in ("req", "errors", "prompt", "completion", "total", "latency_sum", "latency_n"):
+                for k in ("req", "errors", "prompt", "completion", "total", "latency_sum", "latency_n", "ttft_sum", "ttft_n"):
                     agg[k] += c[k]
                 bucket_req += c["req"]
                 bucket_err += c["errors"]
@@ -205,6 +218,7 @@ class StatsCollector:
                 "completion_tokens": c["completion"],
                 "total_tokens": c["total"],
                 "avg_latency_ms": round(c["latency_sum"] / lat_n) if c["latency_n"] else 0,
+                "avg_ttft_ms": round(c["ttft_sum"] / c["ttft_n"]) if c["ttft_n"] else 0,
             })
         out.sort(key=lambda r: r["requests"], reverse=True)
         return out

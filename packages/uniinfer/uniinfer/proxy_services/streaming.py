@@ -135,6 +135,7 @@ async def astream_response_generator(
     _stats_t0 = time.monotonic()
     _stats_usage: dict = {}
     _stats_status = 200
+    _stats_ttft_ms: float | None = None  # first UPSTREAM chunk (not the welcome chunk)
     chunk_count = 0
     heartbeat_count = 0
     last_yield_time = time.monotonic()
@@ -192,6 +193,7 @@ async def astream_response_generator(
             _pending.append(
                 await asyncio.wait_for(_async_iter.__anext__(), timeout=heartbeat_interval)
             )
+            _stats_ttft_ms = (time.monotonic() - _stats_t0) * 1000
         except RateLimitError:
             raise  # no SSE committed — caller returns HTTP 429
         except StopAsyncIteration:
@@ -218,6 +220,7 @@ async def astream_response_generator(
                             break
                         yield ": keep-alive\n\n"
                     _pending.append(_pull.result())
+                    _stats_ttft_ms = (time.monotonic() - _stats_t0) * 1000
                 finally:
                     # Never abandon an in-flight pull: a GeneratorExit at the
                     # keep-alive yield (client disconnect) used to leak it, leaving
@@ -627,6 +630,7 @@ async def astream_response_generator(
                 status=_stats_status,
                 latency_ms=(time.monotonic() - _stats_t0) * 1000,
                 usage=_stats_usage or None,
+                ttft_ms=_stats_ttft_ms,
             )
         except Exception:
             pass
