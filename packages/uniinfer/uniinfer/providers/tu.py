@@ -379,6 +379,7 @@ class TUProvider(ChatProvider):
                     Exception(f"TU API error: 429 - {response.text}"),
                     status_code=429,
                     response_body=response.text,
+                    retry_after=_parse_retry_after(response.headers),
                 )
             return response
         if last_exc is not None:
@@ -477,6 +478,7 @@ class TUProvider(ChatProvider):
                     Exception(f"TU API error: 429 - {error_body}"),
                     status_code=429,
                     response_body=error_body,
+                    retry_after=_parse_retry_after(response.headers),
                 )
             if response.status_code != 200:
                 error_body = await response.aread()

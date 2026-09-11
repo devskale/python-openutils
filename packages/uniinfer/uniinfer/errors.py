@@ -31,10 +31,12 @@ class RateLimitError(ProviderError):
         response_body: Optional[str] = None,
         quota_metric: Optional[str] = None,
         quota_limit: Optional[int] = None,
+        retry_after: Optional[float] = None,
     ):
         super().__init__(message, status_code, response_body)
         self.quota_metric = quota_metric
         self.quota_limit = quota_limit
+        self.retry_after = retry_after
 
 
 class TimeoutError(ProviderError):
@@ -47,7 +49,7 @@ class InvalidRequestError(ProviderError):
     pass
 
 
-def map_provider_error(provider_name: str, original_error: Exception, status_code: Optional[int] = None, response_body: Optional[str] = None) -> ProviderError:
+def map_provider_error(provider_name: str, original_error: Exception, status_code: Optional[int] = None, response_body: Optional[str] = None, retry_after: Optional[float] = None) -> ProviderError:
     """
     Map a provider-specific error to a UniInfer error.
     
@@ -68,7 +70,7 @@ def map_provider_error(provider_name: str, original_error: Exception, status_cod
     
     # Rate limit errors
     if status_code == 429 or any(term in error_message for term in ["rate limit", "ratelimit", "too many requests", "429"]):
-        return RateLimitError(f"{provider_name} rate limit error: {str(original_error)}", status_code, response_body)
+        return RateLimitError(f"{provider_name} rate limit error: {str(original_error)}", status_code, response_body, retry_after=retry_after)
     
     # Timeout errors
     if status_code in [408, 504] or any(term in error_message for term in ["timeout", "timed out"]):

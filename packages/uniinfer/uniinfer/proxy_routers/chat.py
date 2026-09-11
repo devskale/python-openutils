@@ -222,8 +222,11 @@ def create_chat_router(
             )
         except RateLimitError as e:
             detail = f"{e} | Response: {e.response_body}" if e.response_body else str(e)
+            _ra = getattr(e, "retry_after", None)
             raise HTTPException(
-                status_code=getattr(e, "status_code", 429) or 429, detail=detail
+                status_code=getattr(e, "status_code", 429) or 429,
+                detail=detail,
+                headers={"Retry-After": str(max(1, int(_ra)))} if _ra else None,
             )
         except HTTPException:
             raise
@@ -324,8 +327,11 @@ def create_chat_router(
             )
         except RateLimitError as e:
             detail = f"{e} | Response: {e.response_body}" if e.response_body else str(e)
+            _ra = getattr(e, "retry_after", None)
             raise HTTPException(
-                status_code=getattr(e, "status_code", 429) or 429, detail=detail
+                status_code=getattr(e, "status_code", 429) or 429,
+                detail=detail,
+                headers={"Retry-After": str(max(1, int(_ra)))} if _ra else None,
             )
         except ProviderError as e:
             detail = f"Provider Error ({provider_name}): {e}"
