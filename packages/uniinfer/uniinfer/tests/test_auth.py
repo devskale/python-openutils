@@ -1,5 +1,5 @@
 import pytest
-from fastapi import FastAPI, Depends
+from fastapi import FastAPI, Depends, HTTPException
 from fastapi.testclient import TestClient
 from uniinfer.auth import validate_proxy_token, get_optional_proxy_token, verify_provider_access
 from uniinfer.errors import AuthenticationError
@@ -82,3 +82,32 @@ def test_verify_provider_access_failure(mock_get_key, mock_requires):
         verify_provider_access("bearer@encryption", "openai")
     assert excinfo.value.status_code == 401
     assert "Invalid key" in excinfo.value.detail
+
+
+@patch("uniinfer.auth._allowed_token_hashes")
+@patch("uniinfer.auth.instance_requires_api_key")
+@patch("uniinfer.auth.get_provider_api_key")
+def test_verify_provider_access_none_token_keyless_with_allowlist(mock_get_key, mock_requires, mock_allowed):
+    """Regression (pollinations 500s): a None bearer token with the allowlist
+    configured must not crash on _token_hash(None) — keyless providers send
+    no Authorization header at all."""
+    mock_allowed.return_value = frozenset({"somehash"})
+    mock_requires.return_value = False
+    mock_get_key.return_value = None
+
+    result = verify_provider_access(None, "pollinations")
+    assert result is None
+
+
+@patch("uniinfer.auth._allowed_token_hashes")
+@patch("uniinfer.auth.instance_requires_api_key")
+@patch("uniinfer.auth.get_provider_api_key")
+def test_verify_provider_access_none_token_keyed_401(mock_get_key, mock_requires, mock_allowed):
+    """None token on a keyed provider → clean 401, never a 500."""
+    mock_allowed.return_value = frozenset({"somehash"})
+    mock_requires.return_value = True
+    mock_get_key.return_value = None
+
+    with pytest.raises(HTTPException) as excinfo:
+        verify_provider_access(None, "openai")
+    assert excinfo.value.status_code == 401

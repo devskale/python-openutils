@@ -121,8 +121,12 @@ def verify_provider_access(token: str, provider_name: str) -> str:
     try:
         # Issued-token allowlist (when configured): only tokens in the file
         # pass — rotation/revocation is an edit away, no restart.
+        # A None token (no Authorization header) skips the allowlist: it is the
+        # legitimate path for keyless providers (e.g. pollinations); keyed
+        # providers still 401 downstream. Hashing None here crashed with a 500
+        # on every keyless request once the allowlist was configured.
         allowed = _allowed_token_hashes()
-        if allowed is not None:
+        if allowed is not None and token:
             if _token_hash(token) not in allowed:
                 logger.warning("Rejected bearer token not on the issued list (provider='%s')", provider_name)
                 raise AuthenticationError(
