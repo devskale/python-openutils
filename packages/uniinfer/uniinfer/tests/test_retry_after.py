@@ -80,3 +80,59 @@ class MagicMockClient:
 
     def post(self, *a, **kw):
         return self._post_fn(*a, **kw)
+
+
+# --- TU rate budget + payload audit log + transport-retry knob -----------------
+
+def test_tu_rate_budget_off_by_default(monkeypatch):
+    import uniinfer.providers.tu as tu
+    monkeypatch.delenv("TU_RATE_LIMIT_PER_MIN", raising=False)
+    assert tu._get_tu_rate_bucket() is None
+
+
+@pytest.mark.asyncio
+async def test_tu_rate_budget_throttles_with_retry_after(monkeypatch):
+    import uniinfer.providers.tu as tu
+    monkeypatch.setenv("TU_RATE_LIMIT_PER_MIN", "2")
+    tu._TU_RATE_BUCKET = None; tu._TU_RATE_BUCKET_RATE = 0.0
+    await tu._enforce_tu_rate_budget("m")   # token 1
+    await tu._enforce_tu_rate_budget("m")   # token 2
+    with pytest.raises(RateLimitError) as exc:
+        await tu._enforce_tu_rate_budget("m")  # empty -> local 429
+    assert exc.value.retry_after is not None and exc.value.retry_after > 0
+    assert exc.value.status_code == 429
+    tu._TU_RATE_BUCKET = None; tu._TU_RATE_BUCKET_RATE = 0.0
+    monkeypatch.delenv("TU_RATE_LIMIT_PER_MIN", raising=False)
+
+
+def test_log_outgoing_payload_keys_not_content(caplog):
+    import logging
+    import uniinfer.providers.tu as tu
+    with caplog.at_level(logging.INFO, logger="uniinfer.providers.tu"):
+        tu._log_outgoing_payload("m", {"model": "m", "messages": [{"role": "user", "content": "GEHEIM"}]}, operation="TEST")
+    joined = " ".join(caplog.messages)
+    assert "payload keys=[model,messages]" in joined or "keys=[messages,model]" in joined
+    assert "GEHEIM" not in joined  # content never logged without UNIINFER_DEBUG_RAW
+
+
+def test_transport_retries_env_knob(monkeypatch):
+    import uniinfer.providers.tu as tu
+    monkeypatch.setenv("TU_TRANSPORT_RETRIES", "0")
+    prov = tu.TUProvider(api_key="k")
+
+    class C:
+        def __init__(self):
+            self.calls = 0
+
+        async def post(self, *a, **kw):
+            import httpx as _h
+            self.calls += 1
+            raise _h.ReadTimeout("wedged")
+
+    import httpx as _hx
+    from uniinfer.errors import ProviderError
+    c = C()
+    with pytest.raises(ProviderError):
+        import asyncio
+        asyncio.run(prov._post_with_ratelimit_retry(c, "https://x/v1/chat/completions", {"model": "m"}, "m"))
+    assert c.calls == 1  # 0 retries -> exactly one attempt, no masking

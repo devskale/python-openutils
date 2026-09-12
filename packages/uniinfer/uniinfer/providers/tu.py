@@ -13,7 +13,7 @@ from datetime import datetime
 
 from ..core import ChatProvider, ChatCompletionRequest, ChatCompletionResponse, ChatMessage, REASONING_OFF
 
-from ..errors import map_provider_error, UniInferError
+from ..errors import map_provider_error, UniInferError, RateLimitError
 from ..logging_utils import log_raw_response
 
 logger = logging.getLogger(__name__)
@@ -27,6 +27,21 @@ TU_STAGING_BASE_URL = "https://aqueduct-staging.ai.datalab.tuwien.ac.at/v1"
 # (preemption / empty stream) are still logged regardless of this flag.
 def _raw_logging_enabled() -> bool:
     return os.getenv("UNIINFER_DEBUG_RAW", "").lower() in {"1", "true", "yes"}
+
+
+def _log_outgoing_payload(model: str, payload: dict[str, Any], *, operation: str) -> None:
+    """Audit trail for outgoing TU payloads.
+
+    Always-on INFO line: model + payload keys + byte size — enough to spot a
+    malformed/mutated request shape in the log without dumping user content.
+    Full payload (messages included) only behind UNIINFER_DEBUG_RAW.
+    """
+    keys = ",".join(sorted(payload.keys()))
+    size = len(json.dumps(payload, default=str))
+    logger.info("[tu] %s -> %s | payload keys=[%s] bytes=%d", operation, model, keys, size)
+    if _raw_logging_enabled():
+        logger.info("[tu] %s -> %s | FULL PAYLOAD: %s", operation, model,
+                    json.dumps(payload, default=str)[:4000])
 
 
 
@@ -80,6 +95,68 @@ TU_STREAM_OPEN_TIMEOUT = _env_float("TU_STREAM_OPEN_TIMEOUT", 90.0)
 TU_STREAM_GAP_TIMEOUT = _env_float("TU_STREAM_GAP_TIMEOUT", 60.0)
 
 
+class _TokenBucket:
+    """Minimal asyncio-safe token bucket (rate_per_min tokens per minute)."""
+
+    def __init__(self, rate_per_min: float) -> None:
+        self.rate = rate_per_min
+        self.capacity = max(1.0, rate_per_min)
+        self.tokens = float(self.capacity)
+        self.updated = time.monotonic()
+        self._lock = asyncio.Lock()
+
+    async def take(self) -> float | None:
+        """Consume one token; returns None when taken, else the seconds until
+        the next token is available (caller decides how to react)."""
+        async with self._lock:
+            now = time.monotonic()
+            self.tokens = min(self.capacity, self.tokens + (now - self.updated) * self.rate / 60.0)
+            self.updated = now
+            if self.tokens >= 1.0:
+                self.tokens -= 1.0
+                return None
+            return (1.0 - self.tokens) * 60.0 / self.rate
+
+
+_TU_RATE_BUCKET: _TokenBucket | None = None
+_TU_RATE_BUCKET_RATE: float = 0.0
+
+
+def _get_tu_rate_bucket() -> _TokenBucket | None:
+    """Process-wide TU rate budget (TU_RATE_LIMIT_PER_MIN; 0/unset = off).
+
+    TU soft-throttles over-quota requests by WEDGING them (minutes of silence)
+    instead of answering 429 — so staying under the quota locally converts
+    brutal upstream hangs into clean, immediate 429s with Retry-After."""
+    global _TU_RATE_BUCKET, _TU_RATE_BUCKET_RATE
+    rate = _env_float("TU_RATE_LIMIT_PER_MIN", 0.0)
+    if rate <= 0:
+        return None
+    if _TU_RATE_BUCKET is None or rate != _TU_RATE_BUCKET_RATE:
+        _TU_RATE_BUCKET = _TokenBucket(rate)
+        _TU_RATE_BUCKET_RATE = rate
+    return _TU_RATE_BUCKET
+
+
+async def _enforce_tu_rate_budget(model: str) -> None:
+    """Raise an immediate RateLimitError when the local TU budget is empty."""
+    bucket = _get_tu_rate_bucket()
+    if bucket is None:
+        return
+    wait_s = await bucket.take()
+    if wait_s is not None:
+        _TU_TELEMETRY.throttled += 1
+        logger.warning(
+            "[tu] local rate budget exhausted (%s/min) on %s — answering 429 + Retry-After %.1fs instead of wedging upstream",
+            bucket.rate, model, wait_s,
+        )
+        raise RateLimitError(
+            f"TU local rate budget exhausted ({bucket.rate:g}/min) — retry in {wait_s:.1f}s (keeps upstream under its quota)",
+            status_code=429,
+            retry_after=wait_s,
+        )
+
+
 class StreamStalledError(Exception):
     """Internal: a TU stream produced no data within the idle-gap timeout
     (wedged backend). Caught in ``astream_complete`` so it can replay from a
@@ -102,6 +179,7 @@ class TUTelemetry:
         self.prime_retries = 0        # first-token window hit once (RC#5 retry)
         self.prime_timeouts = 0       # first token never arrived (2 windows) — 504 to caller
         self.last_prime_timeout: dict | None = None  # {model, ts(monotonic)}
+        self.throttled = 0            # local 429s from the TU rate budget (TU_RATE_LIMIT_PER_MIN)
         self.active_streams: dict[int, dict] = {}  # id -> {start,last,model}
         self._seq = 0
 
@@ -150,6 +228,7 @@ class TUTelemetry:
             "rate_limits": self.rate_limits,
             "prime_retries": self.prime_retries,
             "prime_timeouts": self.prime_timeouts,
+            "throttled": self.throttled,
             "last_prime_timeout": (
                 {
                     "model": self.last_prime_timeout["model"],
@@ -337,14 +416,18 @@ class TUProvider(ChatProvider):
         return
 
     async def _post_with_ratelimit_retry(
-        self, client: httpx.AsyncClient, url: str, payload: dict[str, Any], model: str, max_retries: int = 4
+        self, client: httpx.AsyncClient, url: str, payload: dict[str, Any], model: str, max_retries: int | None = None
     ) -> httpx.Response:
         """POST with transparent 429 + transport-error retries.
 
         Upstream HTTP 429 is NOT throttled or internally retried — it is relayed
         to the caller as a RateLimitError immediately (the client does its own
-        backoff). Only transient transport errors are retried a few times.
+        backoff). Only transient transport errors are retried a few times
+        (TU_TRANSPORT_RETRIES, default 4; 0 = lean relay: fail on first error).
         """
+        if max_retries is None:
+            max_retries = int(_env_float("TU_TRANSPORT_RETRIES", 4.0))
+        _log_outgoing_payload(model, payload, operation="POST")
         last_exc: Exception | None = None
         for attempt in range(max_retries + 1):
             try:
@@ -409,20 +492,26 @@ class TUProvider(ChatProvider):
         raise map_provider_error(self._CREDGOO_SERVICE, Exception("TU API error: exhausted retries"))
 
     async def _open_stream_with_ratelimit_retry(
-        self, client: httpx.AsyncClient, url: str, payload: dict[str, Any], model: str, max_retries: int = 4
+        self, client: httpx.AsyncClient, url: str, payload: dict[str, Any], model: str, max_retries: int | None = None
     ):
         """Open a streaming POST with transparent 429 + transport-error retries.
+
+        Retries are env-tunable (TU_TRANSPORT_RETRIES, default 4; 0 = lean relay).
 
         Returns the ``(context_manager, response)`` pair; the caller must exit
         the context manager (e.g. via ``finally``). Upstream 429 is relayed to
         the caller as a RateLimitError immediately (no throttle/retry); only
         transient transport errors are retried a few times.
         """
+        if max_retries is None:
+            max_retries = int(_env_float("TU_TRANSPORT_RETRIES", 4.0))
+        _log_outgoing_payload(model, payload, operation="STREAM-OPEN")
         last_exc: Exception | None = None
         # Bound how long we wait for response headers after POST. TU's wedged
         # backend accepts but never answers; a per-request read timeout here fails
         # that case in TU_STREAM_OPEN_TIMEOUT seconds instead of the client's 300s
         # streaming budget. The injected/retry client reuses its own pool timeout.
+        _log_outgoing_payload(model, payload, operation="STREAM-OPEN")
         base_t = getattr(client, "timeout", None)
         if isinstance(base_t, httpx.Timeout):
             open_timeout = httpx.Timeout(
@@ -620,6 +709,7 @@ class TUProvider(ChatProvider):
         return payload
 
     async def acomplete(self, request: ChatCompletionRequest) -> ChatCompletionResponse:
+        await _enforce_tu_rate_budget(request.model or "unknown")
         """Async completion implementation for TU."""
         client = await self._get_async_client()
         payload = self._prepare_payload(request)
@@ -693,6 +783,7 @@ class TUProvider(ChatProvider):
             raise map_provider_error(self._CREDGOO_SERVICE, e)
 
     async def astream_complete(self, request: ChatCompletionRequest) -> AsyncIterator[ChatCompletionResponse]:
+        await _enforce_tu_rate_budget(request.model or "unknown")
         """Async streaming completion implementation for TU.
 
         A stream that produces no data within ``TU_STREAM_GAP_TIMEOUT`` is
