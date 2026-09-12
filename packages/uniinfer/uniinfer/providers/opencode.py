@@ -18,6 +18,7 @@ import uuid
 import requests
 from typing import Optional
 
+from ..core import ModelInfo
 from .openai_compatible import OpenAICompatibleChatProvider
 
 
@@ -65,7 +66,6 @@ class OpenCodeProvider(OpenAICompatibleChatProvider):
         - ``cost.input == 0``   -> access 'free' (data-driven, not a name
           heuristic; removes the old ``-free``/``big-pickle`` special-case).
         """
-        from ..core import ModelInfo
         try:
             r = requests.get("https://pi.dev/api/models/providers/opencode", timeout=30)
             r.raise_for_status()

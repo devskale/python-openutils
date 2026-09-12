@@ -5,7 +5,7 @@ Cohere provider implementation.
 import os
 from typing import AsyncIterator, Optional
 
-from ..core import ChatProvider, ChatCompletionRequest, ChatCompletionResponse, ChatMessage
+from ..core import ChatCompletionRequest, ChatCompletionResponse, ChatMessage, ChatProvider, ModelInfo
 from ..errors import map_provider_error, UniInferError
 
 try:
@@ -138,7 +138,6 @@ class CohereProvider(ChatProvider):
         """
         List available models from Cohere.
         """
-        from ..core import ModelInfo
         if not HAS_COHERE:
             raise ImportError(
                 "cohere package is required for the CohereProvider. "

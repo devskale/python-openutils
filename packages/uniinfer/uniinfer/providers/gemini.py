@@ -5,7 +5,7 @@ Google Gemini provider implementation with async support.
 import json
 from typing import Dict, Any, Optional, List, AsyncIterator
 
-from ..core import ChatProvider, ChatCompletionRequest, ChatCompletionResponse, ChatMessage
+from ..core import ChatCompletionRequest, ChatCompletionResponse, ChatMessage, ChatProvider, ModelInfo
 from ..errors import map_provider_error, UniInferError, RateLimitError
 
 # Try to import google-genai package (latest recommended package)
@@ -110,7 +110,6 @@ class GeminiProvider(ChatProvider):
             ValueError: If no API key is provided or found.
             Exception: If the API request fails.
         """
-        from ..core import ModelInfo
         if not api_key:
             try:
                 from credgoo import get_api_key

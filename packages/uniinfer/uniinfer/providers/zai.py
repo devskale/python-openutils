@@ -6,7 +6,7 @@ import asyncio
 import logging
 from typing import Optional
 
-from ..core import ChatProvider, ChatCompletionRequest, ChatCompletionResponse, ChatMessage, REASONING_OFF
+from ..core import ChatCompletionRequest, ChatCompletionResponse, ChatMessage, ChatProvider, ModelInfo, REASONING_OFF
 from ..errors import map_provider_error, UniInferError
 
 logger = logging.getLogger(__name__)
@@ -106,7 +106,6 @@ class ZAIBaseProvider(ChatProvider):
 
     @classmethod
     def list_models(cls, api_key: Optional[str] = None, base_url: Optional[str] = None) -> list[ModelInfo]:
-        from ..core import ModelInfo
         if not api_key:
             raise ValueError("API key is required to list models")
         try:

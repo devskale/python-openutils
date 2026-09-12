@@ -6,6 +6,7 @@ import os
 import requests
 from typing import Optional
 
+from ..core import ModelInfo
 from ..errors import map_provider_error
 from .openai_compatible import OpenAICompatibleChatProvider
 
@@ -37,14 +38,12 @@ class OpenAIProvider(OpenAICompatibleChatProvider):
 
     @classmethod
     def list_models(cls, api_key: Optional[str] = None) -> list[ModelInfo]:
-        from ..core import ModelInfo
         """
         List available models from OpenAI using the API.
 
         Returns:
             list[ModelInfo]: A list of model info objects.
         """
-        from ..core import ModelInfo
         if not api_key:
             raise ValueError("API key is required to list models")
 

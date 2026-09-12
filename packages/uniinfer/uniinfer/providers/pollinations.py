@@ -25,6 +25,7 @@ from typing import Optional
 
 import requests
 
+from ..core import ModelInfo
 from ..errors import map_provider_error
 from .openai_compatible import OpenAICompatibleChatProvider
 
@@ -67,7 +68,6 @@ class PollinationsProvider(OpenAICompatibleChatProvider):
         ``/v1/models``. Access: no positive token/image cost field → FREE
         (the ``∞`` tier); else PAID. Read-only — no pollen spent.
         """
-        from ..core import ModelInfo
 
         headers = {"Authorization": f"Bearer {api_key}"} if api_key else {}
 

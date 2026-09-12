@@ -6,7 +6,7 @@ import json
 import requests
 from typing import Optional, AsyncIterator
 
-from ..core import ChatProvider, ChatCompletionRequest, ChatCompletionResponse, ChatMessage, REASONING_OFF
+from ..core import ChatCompletionRequest, ChatCompletionResponse, ChatMessage, ChatProvider, ModelInfo, REASONING_OFF
 from ..errors import map_provider_error, UniInferError
 
 
@@ -102,7 +102,6 @@ class OllamaProvider(ChatProvider):
 
     @classmethod
     def list_models(cls, **kwargs) -> list[ModelInfo]:
-        from ..core import ModelInfo
         """
         List available models from Ollama.
 

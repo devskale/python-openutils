@@ -4,7 +4,7 @@ OpenAI TTS provider implementation.
 """
 from typing import Optional
 
-from ..core import TTSProvider, TTSRequest, TTSResponse
+from ..core import ModelInfo, TTSProvider, TTSRequest, TTSResponse
 from ..errors import map_provider_error, UniInferError
 
 
@@ -30,7 +30,6 @@ class OpenAITTSProvider(TTSProvider):
 
     @classmethod
     def list_models(cls, api_key: Optional[str] = None, **kwargs) -> list[ModelInfo]:
-        from ..core import ModelInfo
         """List available TTS models from OpenAI."""
         return [ModelInfo(id=m, type="tts") for m in ["tts-1", "tts-1-hd"]]
 

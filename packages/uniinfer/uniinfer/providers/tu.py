@@ -11,7 +11,7 @@ import os
 import time
 from datetime import datetime
 
-from ..core import ChatProvider, ChatCompletionRequest, ChatCompletionResponse, ChatMessage, REASONING_OFF
+from ..core import ChatCompletionRequest, ChatCompletionResponse, ChatMessage, ChatProvider, ModelInfo, REASONING_OFF
 
 from ..errors import map_provider_error, UniInferError, RateLimitError
 from ..logging_utils import log_raw_response
@@ -1003,7 +1003,6 @@ class TUProvider(ChatProvider):
 
     @classmethod
     def list_models(cls, api_key: str | None = None, **kwargs) -> list[ModelInfo]:
-        from ..core import ModelInfo
         """List available models for TU.
         
         Args:

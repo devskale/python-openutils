@@ -5,7 +5,7 @@ AI21 provider implementation.
 from typing import Optional, AsyncIterator
 import os
 
-from ..core import ChatProvider, ChatCompletionRequest, ChatCompletionResponse, ChatMessage
+from ..core import ChatCompletionRequest, ChatCompletionResponse, ChatMessage, ChatProvider, ModelInfo
 from ..errors import map_provider_error, UniInferError
 import requests
 
@@ -54,7 +54,6 @@ class AI21Provider(ChatProvider):
 
     @staticmethod
     def list_models(api_key: Optional[str] = None) -> list[ModelInfo]:
-        from ..core import ModelInfo
         """List available AI21 models."""
         if not api_key:
             try:

@@ -3,7 +3,7 @@ from __future__ import annotations
 TU embedding provider implementation.
 """
 
-from ..core import EmbeddingProvider, EmbeddingRequest, EmbeddingResponse
+from ..core import EmbeddingProvider, EmbeddingRequest, EmbeddingResponse, ModelInfo
 from ..errors import map_provider_error, UniInferError
 
 
@@ -29,7 +29,6 @@ class TuAIEmbeddingProvider(EmbeddingProvider):
 
     @classmethod
     def list_models(cls, api_key: str | None = None, **kwargs) -> list[ModelInfo]:
-        from ..core import ModelInfo
         """List available models from TU AI using the API."""
         import requests
         if not api_key:

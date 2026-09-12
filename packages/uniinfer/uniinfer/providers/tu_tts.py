@@ -3,7 +3,7 @@ from __future__ import annotations
 TU TTS provider implementation.
 """
 
-from ..core import TTSProvider, TTSRequest, TTSResponse
+from ..core import ModelInfo, TTSProvider, TTSRequest, TTSResponse
 from ..errors import map_provider_error, UniInferError
 
 

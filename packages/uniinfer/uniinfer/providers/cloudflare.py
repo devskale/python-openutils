@@ -11,7 +11,7 @@ so all models are tagged access='free'.
 import json
 from typing import Optional, List, AsyncIterator
 
-from ..core import ChatProvider, ChatCompletionRequest, ChatCompletionResponse, ChatMessage
+from ..core import ChatCompletionRequest, ChatCompletionResponse, ChatMessage, ChatProvider, ModelInfo
 from ..errors import map_provider_error, AuthenticationError, UniInferError
 
 
@@ -55,7 +55,6 @@ class CloudflareProvider(ChatProvider):
         """
         List available models from Cloudflare Workers AI.
         """
-        from ..core import ModelInfo
         import requests
         if api_key is None:
             try:

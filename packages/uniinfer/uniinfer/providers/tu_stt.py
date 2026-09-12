@@ -4,7 +4,7 @@ TU STT provider implementation.
 """
 import os
 
-from ..core import STTProvider, STTRequest, STTResponse
+from ..core import ModelInfo, STTProvider, STTRequest, STTResponse
 from ..errors import map_provider_error, UniInferError
 
 

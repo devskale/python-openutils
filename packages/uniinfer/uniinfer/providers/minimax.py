@@ -4,6 +4,7 @@ MiniMax provider implementation.
 """
 from typing import Optional
 
+from ..core import ModelInfo
 from .anthropic_compatible import AnthropicCompatibleProvider
 
 
@@ -24,7 +25,6 @@ class MiniMaxProvider(AnthropicCompatibleProvider):
 
     @classmethod
     def list_models(cls, api_key: Optional[str] = None, **kwargs) -> list[ModelInfo]:
-        from ..core import ModelInfo
         """
         MiniMax Anthropic-compatible API may not expose Anthropic model-list endpoint.
         Return known supported models as stable fallback.

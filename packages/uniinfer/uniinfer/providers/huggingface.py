@@ -4,7 +4,7 @@ HuggingFace Inference provider implementation.
 """
 from typing import Any, Optional, List, AsyncIterator
 
-from ..core import ChatProvider, ChatCompletionRequest, ChatCompletionResponse, ChatMessage
+from ..core import ChatCompletionRequest, ChatCompletionResponse, ChatMessage, ChatProvider, ModelInfo
 from ..errors import map_provider_error, UniInferError
 
 try:
@@ -68,7 +68,6 @@ class HuggingFaceProvider(ChatProvider):
     @classmethod
     def list_models(cls, api_key: Optional[str] = None) -> list[ModelInfo]:
         """List available models from HuggingFace."""
-        from ..core import ModelInfo
         try:
             if not HAS_HUGGINGFACE:
                 return []

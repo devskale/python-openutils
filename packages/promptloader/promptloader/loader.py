@@ -102,8 +102,6 @@ def _resolve_pkg_dir(root: Path, package: str) -> Path | None:
         if candidate.is_dir():
             return candidate
     return None
-    v = os.environ.get(var)
-    return Path(v).expanduser() if v else None
 
 
 def _clone_dir() -> Path | None:

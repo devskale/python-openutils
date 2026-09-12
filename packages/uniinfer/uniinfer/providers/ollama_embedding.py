@@ -4,7 +4,7 @@ Ollama embedding provider implementation.
 """
 from typing import List, Optional
 
-from ..core import EmbeddingProvider, EmbeddingRequest, EmbeddingResponse
+from ..core import EmbeddingProvider, EmbeddingRequest, EmbeddingResponse, ModelInfo
 from ..errors import map_provider_error, UniInferError
 
 
@@ -29,7 +29,6 @@ class OllamaEmbeddingProvider(EmbeddingProvider):
 
     @classmethod
     def list_models(cls, **kwargs) -> list[ModelInfo]:
-        from ..core import ModelInfo
         """List available models from Ollama."""
         import requests
         try:

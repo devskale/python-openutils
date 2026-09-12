@@ -3,7 +3,7 @@ import json
 import os
 from typing import Any, AsyncIterator, Optional
 
-from ..core import ChatCompletionRequest, ChatCompletionResponse, ChatMessage, ChatProvider
+from ..core import ChatCompletionRequest, ChatCompletionResponse, ChatMessage, ChatProvider, ModelInfo
 from ..errors import UniInferError, map_provider_error
 
 try:
@@ -51,7 +51,6 @@ class AnthropicCompatibleProvider(ChatProvider):
 
     @classmethod
     def list_models(cls, api_key: Optional[str] = None, **kwargs) -> list[ModelInfo]:
-        from ..core import ModelInfo
         if not HAS_ANTHROPIC:
             import logging
             logging.warning("anthropic package not installed — cannot list %s models", cls.PROVIDER_ID)
