@@ -294,6 +294,23 @@ def get_prompt_set_info() -> dict:
                 commit = line.split(":", 1)[1].strip()
             if line.startswith("built_at:"):
                 version = line.split(":", 1)[1].strip()
+    elif root and (root / ".git").exists():
+        # Plain git checkout (no VERSION file — that's bundle-only): derive
+        # version/commit from git so the version endpoint reports something.
+        try:
+            import subprocess
+            commit = subprocess.run(
+                ["git", "-C", str(root), "rev-parse", "HEAD"],
+                capture_output=True, text=True, timeout=10,
+            ).stdout.strip()[:12] or None
+            version = subprocess.run(
+                # commit DATE as the built_at analog (a checkout has no tags;
+                # the hash alone would just duplicate `commit`)
+                ["git", "-C", str(root), "log", "-1", "--format=%cI"],
+                capture_output=True, text=True, timeout=10,
+            ).stdout.strip() or None
+        except Exception:
+            pass
 
     prompts: list[dict] = []
     if root and root.is_dir():
