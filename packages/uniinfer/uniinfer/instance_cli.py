@@ -45,7 +45,8 @@ def _probe(base_url: str, api_key: Optional[str]) -> tuple[bool, bool]:
 def _store_key_in_credgoo(service: str, key: str) -> bool:
     """Best-effort store a key under a credgoo service (no interactive confirm)."""
     try:
-        from credgoo.store import CredentialStore, _resolve_cache_dir  # type: ignore
+        from credgoo.credgoo import _resolve_cache_dir  # lives in credgoo.py, not store.py (import-resolution gate)
+        from credgoo.store import CredentialStore  # type: ignore
 
         store = CredentialStore(_resolve_cache_dir(None))
         if not store.supports("add_key"):
