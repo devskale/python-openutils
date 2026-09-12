@@ -14,6 +14,30 @@ from uniinfer.proxy_schemas.chat import (
 )
 from uniinfer.proxy_services.glm_leak_repair import GlmLeakInterceptor
 
+# Prime-timeout telemetry (best-effort): the RC#5 first-token windows are the
+# streaming layer's own failure mode; they surface through the TU telemetry
+# singleton in /health so "client saw a timeout" is findable without log diving.
+try:  # pragma: no cover - import guard mirrors proxy_app.py
+    from uniinfer.providers.tu import _TU_TELEMETRY as _PRIME_TELEMETRY
+except Exception:  # noqa: BLE001
+    _PRIME_TELEMETRY = None
+
+
+def _note_prime_retry(model: str) -> None:
+    if _PRIME_TELEMETRY is not None:
+        try:
+            _PRIME_TELEMETRY.note_prime_retry(model)
+        except Exception:
+            pass
+
+
+def _note_prime_timeout(model: str) -> None:
+    if _PRIME_TELEMETRY is not None:
+        try:
+            _PRIME_TELEMETRY.note_prime_timeout(model)
+        except Exception:
+            pass
+
 logger = logging.getLogger("uniioai_proxy")
 
 
@@ -200,6 +224,7 @@ async def astream_response_generator(
             pass  # empty upstream: loop sees StopAsyncIteration next and finishes cleanly
         except asyncio.TimeoutError:
             # First-token timeout — retry the upstream once (RC#5).
+            _note_prime_retry(model_name)
             yield f"data: {json.dumps(first_chunk)}\n\n"  # commit early + keep the client fed
             welcome_committed = True
             try:
@@ -236,6 +261,7 @@ async def astream_response_generator(
                 pass
             except asyncio.TimeoutError:
                 # 2nd failure — loud + recognizable, never the generic disguise.
+                _note_prime_timeout(model_name)
                 _prime_error = _StreamPrimeTimeout(
                     f"Stream priming timeout: no first token from upstream "
                     f"after 2 attempts ({heartbeat_interval:.0f}s each)"
@@ -574,6 +600,15 @@ async def astream_response_generator(
         except _StreamPrimeTimeout as e:
             # RC#5: both priming attempts timed out — loud + recognizable.
             _stats_status = 504
+            # Visible at default log level: this error otherwise only exists as
+            # an SSE chunk on the client while stats lag up to 50 records —
+            # operators must be able to correlate "client saw timeout" with the
+            # server side (model, request id) immediately.
+            logger.warning(
+                "%sStream priming timeout for %s — no first token after 2 attempts, relaying 504",
+                stream_label,
+                model_name,
+            )
             error_chunk = {
                 "error": {
                     "message": str(e),

@@ -99,8 +99,20 @@ class TUTelemetry:
         self.body_stalls = 0          # idle-gap timeouts mid-stream
         self.stall_retries = 0        # successful replays after a pre-first-chunk stall
         self.rate_limits = 0          # upstream 429s relayed to the caller
+        self.prime_retries = 0        # first-token window hit once (RC#5 retry)
+        self.prime_timeouts = 0       # first token never arrived (2 windows) — 504 to caller
+        self.last_prime_timeout: dict | None = None  # {model, ts(monotonic)}
         self.active_streams: dict[int, dict] = {}  # id -> {start,last,model}
         self._seq = 0
+
+    def note_prime_retry(self, model: str) -> None:
+        """First-token window elapsed once; the RC#5 retry is under way."""
+        self.prime_retries += 1
+
+    def note_prime_timeout(self, model: str) -> None:
+        """Both first-token windows elapsed — caller gets a 504 chunk."""
+        self.prime_timeouts += 1
+        self.last_prime_timeout = {"model": model, "ts": time.monotonic()}
 
     def register_stream(self, model: str) -> int:
         self._seq += 1
@@ -136,6 +148,16 @@ class TUTelemetry:
             "body_stalls": self.body_stalls,
             "stall_retries": self.stall_retries,
             "rate_limits": self.rate_limits,
+            "prime_retries": self.prime_retries,
+            "prime_timeouts": self.prime_timeouts,
+            "last_prime_timeout": (
+                {
+                    "model": self.last_prime_timeout["model"],
+                    "ago_s": round(now - self.last_prime_timeout["ts"], 1),
+                }
+                if self.last_prime_timeout
+                else None
+            ),
             "in_flight": len(streams),
             "stuck_streams": stuck,
             "stall_threshold_s": round(stalled_after_s, 1),

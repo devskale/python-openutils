@@ -103,9 +103,12 @@ def test_stream_records_ttft(fresh_stats):
 
 
 def test_stream_prime_timeout_records_no_ttft(fresh_stats):
-    """Upstream never yields a first chunk → no TTFT recorded (not a TTFT sample)."""
+    """Upstream never yields a first chunk → no TTFT recorded (not a TTFT sample).
+    Prime telemetry counts the retry + the final timeout and /health's snapshot
+    carries the counters + the last incident."""
     import asyncio
     from unittest.mock import MagicMock
+    from uniinfer.providers.tu import TUTelemetry, _TU_TELEMETRY
     from uniinfer.proxy_services.streaming import astream_response_generator
 
     async def never(*a, **kw):
@@ -117,21 +120,18 @@ def test_stream_prime_timeout_records_no_ttft(fresh_stats):
 
     target = MagicMock()
     target.provider_model = "tu@wedged"
-    target.astream_complete = MagicMock(return_value=never())
+    target.astream_complete = MagicMock(side_effect=lambda *a, **k: never())  # fresh generator per open
     target.aclose = aclose
 
     async def consume():
         gen = astream_response_generator(
             target=target, messages=[{"role": "user", "content": "hi"}], temp=0.5, max_tok=10,
         )
-        # short-circuit: pull only a few SSE items, then close the generator
-        it = gen.__aiter__()
-        for _ in range(3):
-            try:
-                await it.__anext__()
-            except StopAsyncIteration:
+        # consume to completion: the retry window must elapse so the SECOND
+        # timeout fires (504 chunk + [DONE]) — an early aclose() aborts mid-window
+        async for item in gen:
+            if "stream_timeout" in item or "[DONE]" in item:
                 break
-        await it.aclose()
 
     import os
     os.environ["UNIINFER_STREAM_HEARTBEAT"] = "0.2"
@@ -145,3 +145,25 @@ def test_stream_prime_timeout_records_no_ttft(fresh_stats):
     entry = fresh_stats._totals.get("tu@wedged", {})
     assert entry.get("ttft_n", 0) == 0
     assert entry.get("req", 0) >= 1
+
+    # prime telemetry: one retry window + one final timeout, visible in snapshot
+    assert _TU_TELEMETRY.prime_retries >= 1
+    assert _TU_TELEMETRY.prime_timeouts >= 1
+    snap = _TU_TELEMETRY.snapshot(60.0)
+    assert snap["prime_timeouts"] >= 1
+    assert snap["prime_retries"] >= 1
+    assert snap["last_prime_timeout"]["model"] == "tu@wedged"
+    assert snap["last_prime_timeout"]["ago_s"] >= 0.0
+
+
+def test_tutelemetry_snapshot_has_prime_keys():
+    """The /health upstream block exposes the prime counters even when idle."""
+    from uniinfer.providers.tu import TUTelemetry
+    TUTelemetry._instance = None
+    try:
+        snap = TUTelemetry().snapshot(60.0)
+        assert "prime_timeouts" in snap
+        assert "prime_retries" in snap
+        assert snap["last_prime_timeout"] is None
+    finally:
+        TUTelemetry._instance = None
