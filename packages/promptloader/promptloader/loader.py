@@ -123,6 +123,21 @@ def _clone_dir() -> Path | None:
     return None
 
 
+def split_frontmatter(text: str) -> tuple[str, str]:
+    """PUBLIC: split a prompt/markdown file into (frontmatter, body).
+
+    Thin stable wrapper over the internal parser — consumers outside this
+    package (robotni-arq's prompt routes) must not import underscore API
+    (robotni-Paket-Review R7: every promptloader refactor broke them lazily
+    at runtime)."""
+    return _split_frontmatter(text)
+
+
+def frontmatter_version(text: str) -> str | None:
+    """PUBLIC: the ``version:`` field of a file's frontmatter, or None."""
+    return _get_version(text)
+
+
 def get_prompts_root() -> Path | None:
     """The resolved kontext-prompts root directory (clone or env override).
 
