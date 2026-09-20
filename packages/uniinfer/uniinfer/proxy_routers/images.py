@@ -17,7 +17,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
-from uniinfer.auth import get_optional_proxy_token
+from uniinfer.auth import get_optional_proxy_token, verify_provider_access
 from uniinfer.provider_access import get_provider_api_key
 from uniinfer.images import ImageTarget, ImageData, ImageGenerationError
 
@@ -62,17 +62,18 @@ def create_images_router(
         provider_name: str,
         api_bearer_token: Optional[str] = Depends(get_optional_proxy_token),
     ):
+        # Gate (issue: images-route-bypasses-auth-gate): a PRESENTED token must
+        # pass the same checks as chat (allowlist + combo). Fail closed on bad
+        # credentials — BEFORE the fallback try/except, which would swallow the
+        # 401. The public catalog itself stays listable without a token.
+        api_key_for_list = None
+        if provider_name == "pollinations" and api_bearer_token:
+            api_key_for_list = verify_provider_access(api_bearer_token, "pollinations")
         try:
             models = []
 
             if provider_name == "pollinations":
                 try:
-                    api_key_for_list = None
-                    if api_bearer_token:
-                        try:
-                            api_key_for_list = get_provider_api_key(api_bearer_token, "pollinations")
-                        except Exception:
-                            pass
                     async with _http_client(request) as client:
                         headers = {"User-Agent": "UniIOAI/0.1"}
                         if api_key_for_list:
@@ -127,13 +128,15 @@ def create_images_router(
                 n = request_input.n or 1
                 size = request_input.size or "512x512"
 
-                api_key = None
-                if api_bearer_token:
-                    try:
-                        pname, _ = parse_provider_model(provider_model)
-                        api_key = get_provider_api_key(api_bearer_token, pname)
-                    except Exception:
-                        api_key = None
+                # Same auth gate as chat (issue: images-route-bypasses-auth-gate):
+                # allowlist + combo requirement + bare-key rejection, fail closed.
+                # The old `except Exception: api_key = None` fallback let bare
+                # upstream keys ride the pooled client's quota unauthenticated.
+                try:
+                    pname, _ = parse_provider_model(provider_model)
+                except ValueError as e:
+                    raise HTTPException(status_code=400, detail=str(e))
+                api_key = verify_provider_access(api_bearer_token, pname)
 
                 try:
                     target = ImageTarget(provider_model, api_key=api_key)
