@@ -104,7 +104,8 @@ async def main() -> int:
     async with httpx.AsyncClient(timeout=args.timeout) as client:
         for label, base, token in checks:
             for m in CHAT_MODELS:
-                res = await probe(client, base, token, m, args.timeout)
+                model_id = m if label == "proxy" else m  # proxy needs "tu@<model>"
+                res = await probe(client, base, token, (f"tu@{m}" if label == "proxy" else m), args.timeout)
                 status, sev = verdict(res)
                 worst = max(worst, sev)
                 all_results[f"{label}:{m}"] = {**res, "status": status}
