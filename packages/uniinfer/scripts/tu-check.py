@@ -46,11 +46,17 @@ async def probe(client: httpx.AsyncClient, base: str, token: str, model: str,
     body = {"model": model, "messages": [{"role": "user", "content": "Say OK"}],
             "max_tokens": 20, "stream": True}
     t0 = time.monotonic()
-    out = {"model": model, "ttfb": None, "done": False, "error": None}
+    out = {"model": model, "ttfb": None, "done": False, "error": None, "status": None}
     try:
         async with client.stream("POST", f"{base}/chat/completions", json=body,
                                  headers={"Authorization": f"Bearer {token}",
                                           "Content-Type": "application/json"}) as r:
+            out["status"] = r.status_code
+            if r.status_code != 200:
+                body_text = (await r.aread()).decode(errors="replace")[:120]
+                out["error"] = f"HTTP {r.status_code}: {body_text}"
+                out["total"] = round(time.monotonic() - t0, 1)
+                return out
             async for line in r.aiter_lines():
                 if line.startswith("data:"):
                     if "[DONE]" in line:
