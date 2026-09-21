@@ -128,6 +128,15 @@ packages:
   pdf2md:
     temperature: 0.2
     max_tokens: 4096
+  md2blank:
+    max_tokens: 16384
+    temperature: 0.7
+    tasks:
+      fnamer:
+        model: openrouter@google/gemma-3-27b-it:free
+      blank:
+        model: tu@qwen-3.6-35b-vllm
+
   strukt2meta:
     max_tokens: 16384
     temperature: 0.7
