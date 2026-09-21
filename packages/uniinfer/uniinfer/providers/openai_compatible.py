@@ -171,6 +171,63 @@ class OpenAICompatibleChatProvider(ChatProvider):
         """
         return {}
 
+    def _sanitize_tools_schema(self, tools: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        """Neutralize parameter-schema constructs that strict grammar-based tool
+        backends (e.g. qwen via ModelRun) reject with
+        ``more than one JSON reading of the same emitted value``.
+
+        The classic offender is a union that mixes ``object`` with another type
+        (``oneOf``/``anyOf`` or a multi-type array) — the exact shape MCP-style
+        ``args`` params use (object-or-string). Grammar folding cannot decide
+        which alternative a token belongs to, so the whole request 400s.
+
+        Collapsing such a node to an open ``{"type": "object"}`` is
+        deterministic (always foldable) and matches the real semantics of an
+        object-bag parameter. Non-object unions are left untouched; plain
+        object branches are left as-is. A deep copy is produced so the incoming
+        request is never mutated.
+        """
+        import copy
+
+        out = copy.deepcopy(tools)
+
+        def _clean(node: Any) -> Any:
+            if not isinstance(node, dict):
+                return node
+            desc = node.get("description")
+            t = node.get("type")
+            # Multi-type array containing object -> open object.
+            if isinstance(t, list):
+                if "object" in t:
+                    node = {"type": "object"}
+                else:
+                    node["type"] = t[0] if t else "string"
+            # oneOf/anyOf union with an object alternative -> open object.
+            elif not isinstance(t, list):
+                for key in ("oneOf", "anyOf"):
+                    alts = node.get(key)
+                    if isinstance(alts, list) and any(
+                        isinstance(a, dict) and a.get("type") == "object" for a in alts
+                    ):
+                        node = {"type": "object"}
+                        break
+            if desc:
+                node.setdefault("description", desc)
+            # Recurse into nested schema containers.
+            for k in ("properties", "additionalProperties", "items", "prefixItems"):
+                v = node.get(k)
+                if isinstance(v, dict) and k == "properties":
+                    node[k] = {kk: _clean(vv) for kk, vv in v.items()}
+                elif isinstance(v, dict):
+                    node[k] = _clean(v)
+            return node
+
+        for spec in out:
+            fn = spec.get("function") or {}
+            if fn.get("parameters"):
+                fn["parameters"] = _clean(fn["parameters"])
+        return out
+
     def _build_payload(
         self,
         request: ChatCompletionRequest,
@@ -193,7 +250,7 @@ class OpenAICompatibleChatProvider(ChatProvider):
         if request.max_tokens is not None:
             payload["max_tokens"] = request.max_tokens
         if request.tools:
-            payload["tools"] = request.tools
+            payload["tools"] = self._sanitize_tools_schema(request.tools)
         if request.tool_choice:
             payload["tool_choice"] = request.tool_choice
 

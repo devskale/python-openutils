@@ -85,3 +85,65 @@ def test_proxy_forwards_unknown_openai_params():
     assert extra.get("top_p") == 0.1
     assert extra.get("seed") == 42
     assert extra.get("response_format") == {"type": "json_object"}
+
+
+def test_tool_union_schema_sanitized():
+    """Ambiguous object-or-string unions (e.g. MCP 'args') are collapsed to an
+    open object so grammar-folding backends don't 400 them."""
+    provider = MistralProvider(api_key="k")
+    req = ChatCompletionRequest(
+        messages=[ChatMessage(role="user", content="hi")],
+        model="mistral-medium-latest",
+        tools=[
+            {
+                "type": "function",
+                "function": {
+                    "name": "mcp",
+                    "description": "Call an MCP tool",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "server": {"type": "string"},
+                            "tool": {"type": "string"},
+                            "args": {"oneOf": [
+                                {"type": "object", "additionalProperties": True},
+                                {"type": "string"},
+                            ]},
+                        },
+                        "required": ["tool"],
+                    },
+                },
+            }
+        ],
+    )
+    payload = provider._build_payload(req, False, {})
+    params = payload["tools"][0]["function"]["parameters"]
+    # the ambiguous node is now a deterministic open object
+    assert params["properties"]["args"] == {"type": "object"}
+    # plain string params untouched, object root intact
+    assert params["properties"]["server"] == {"type": "string"}
+    assert params["type"] == "object"
+    assert params["required"] == ["tool"]
+
+
+def test_tool_multitype_object_array_sanitized():
+    provider = MistralProvider(api_key="k")
+    req = ChatCompletionRequest(
+        messages=[ChatMessage(role="user", content="hi")],
+        model="mistral-medium-latest",
+        tools=[{
+            "type": "function",
+            "function": {
+                "name": "f",
+                "parameters": {"type": "object", "properties": {
+                    "x": {"type": ["object", "string"]},
+                    "y": {"type": ["number", "boolean"]},
+                }},
+            },
+        }],
+    )
+    payload = provider._build_payload(req, False, {})
+    props = payload["tools"][0]["function"]["parameters"]["properties"]
+    assert props["x"] == {"type": "object"}     # object alternative wins
+    assert props["y"]["type"] == "number"       # non-object multi-type -> first type
+    assert props["y"]["type"] != ["number", "boolean"]
