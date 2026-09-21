@@ -2,6 +2,7 @@ from __future__ import annotations
 """
 Groq provider implementation with async support.
 """
+import json
 import os
 from typing import Dict, Any, Iterator, Optional, List, AsyncIterator
 
@@ -48,6 +49,54 @@ class GroqProvider(ChatProvider):
         self.client = Groq(api_key=self.api_key)
         self.async_client = AsyncGroq(api_key=self.api_key)
 
+    _MAX_OUTPUT_CACHE: dict[str, Optional[int]] = {}
+
+    @classmethod
+    def _catalog_max_output(cls, model_id: Optional[str]) -> Optional[int]:
+        """Model max_output from the packaged catalog (uniinfer/models/models.json).
+
+        Groq hard-caps ``max_tokens`` per model (e.g. qwen3.8-27b: 16384) —
+        sending more 400s the whole request. The catalog carries the cap since
+        list_models() populates max_output; callers rarely know it.
+        """
+        if not model_id or model_id not in cls._MAX_OUTPUT_CACHE:
+            try:
+                from pathlib import Path
+                p = Path(__file__).resolve().parent.parent / "models" / "models.json"
+                data = json.loads(p.read_text())
+                for m in (data.get("providers", {}).get("groq", {}) or {}).get("models", []):
+                    v = m.get("max_output")
+                    if isinstance(v, int) and v > 0:
+                        cls._MAX_OUTPUT_CACHE[m["id"]] = v
+            except Exception:
+                pass
+            cls._MAX_OUTPUT_CACHE.setdefault(model_id, None)
+        return cls._MAX_OUTPUT_CACHE.get(model_id)
+
+    def _build_groq_params(
+        self,
+        request: ChatCompletionRequest,
+        stream: bool,
+        provider_specific_kwargs: dict,
+    ) -> dict[str, Any]:
+        """Single param builder for sync/async/stream — one place for the
+        max_tokens clamp (Groq rejects max_tokens > model cap with a 400)."""
+        params: dict[str, Any] = {
+            "model": request.model or "llama-3.1-8b",
+            "messages": self._flatten_messages(request.messages),
+            "temperature": request.temperature,
+            "stream": stream,
+        }
+        if request.max_tokens is not None:
+            cap = self._catalog_max_output(request.model)
+            params["max_tokens"] = min(request.max_tokens, cap) if cap else request.max_tokens
+        if request.tools:
+            params["tools"] = request.tools
+        if request.tool_choice:
+            params["tool_choice"] = request.tool_choice
+        params.update(provider_specific_kwargs)
+        return params
+
     async def acomplete(
         self,
         request: ChatCompletionRequest,
@@ -58,20 +107,7 @@ class GroqProvider(ChatProvider):
         """
         messages = self._flatten_messages(request.messages)
 
-        params = {
-            "model": request.model or "llama-3.1-8b",
-            "messages": messages,
-            "temperature": request.temperature,
-            "stream": False,
-        }
-
-        if request.max_tokens is not None:
-            params["max_tokens"] = request.max_tokens
-        if request.tools:
-            params["tools"] = request.tools
-        if request.tool_choice:
-            params["tool_choice"] = request.tool_choice
-        params.update(provider_specific_kwargs)
+        params = self._build_groq_params(request, False, provider_specific_kwargs)
 
         try:
             completion = await self.async_client.chat.completions.create(**params)
@@ -135,20 +171,7 @@ class GroqProvider(ChatProvider):
         """
         messages = self._flatten_messages(request.messages)
 
-        params = {
-            "model": request.model or "llama-3.1-8b",
-            "messages": messages,
-            "temperature": request.temperature,
-            "stream": True,
-        }
-
-        if request.max_tokens is not None:
-            params["max_tokens"] = request.max_tokens
-        if request.tools:
-            params["tools"] = request.tools
-        if request.tool_choice:
-            params["tool_choice"] = request.tool_choice
-        params.update(provider_specific_kwargs)
+        params = self._build_groq_params(request, True, provider_specific_kwargs)
 
         try:
             stream = await self.async_client.chat.completions.create(**params)
@@ -251,11 +274,22 @@ class GroqProvider(ChatProvider):
                 in_mods = getattr(model, "input_modalities", None) or ["text"]
                 out_mods = getattr(model, "output_modalities", None) or ["text"]
                 caps = {"vision": True} if "image" in in_mods else None
+                # Non-text outputs (TTS like orpheus) are not chat models —
+                # typing them chat made them appear in chat-only client lists.
+                if "text" not in out_mods:
+                    mtype = "tts" if "audio" in out_mods else "other"
+                else:
+                    mtype = "chat"
                 out.append(ModelInfo(
                     id=model.id,
                     owned_by=getattr(model, "owned_by", None),
                     created=getattr(model, "created", None),
+                    type=mtype,
                     context_window=getattr(model, "context_window", None),
+                    # Groq hard-caps max_tokens per model (e.g. qwen3.8-27b:
+                    # 16384); carrying it lets callers/routers clamp.
+                    max_output=(getattr(model, "max_completion_tokens", None)
+                                or getattr(model, "max_output_length", None)),
                     access="free",  # universally free (forever-free tier, no CC; API carries no pricing)
                     status="active" if getattr(model, "active", True) else "deprecated",
                     modalities={"input": in_mods, "output": out_mods},
@@ -305,20 +339,7 @@ class GroqProvider(ChatProvider):
         messages = _flatten_messages(request.messages)
 
         # Prepare parameters
-        params = {
-            "model": request.model or "llama-3.1-8b",
-            "messages": messages,
-            "temperature": request.temperature,
-            "stream": True,
-        }
-
-        if request.max_tokens is not None:
-            params["max_tokens"] = request.max_tokens
-        if request.tools:
-            params["tools"] = request.tools
-        if request.tool_choice:
-            params["tool_choice"] = request.tool_choice
-        params.update(provider_specific_kwargs)
+        params = self._build_groq_params(request, True, provider_specific_kwargs)
 
         try:
             # Make the streaming request
