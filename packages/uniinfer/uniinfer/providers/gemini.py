@@ -76,13 +76,29 @@ class GeminiProvider(ChatProvider):
 
         self.config = kwargs
 
+    # Module-level client cache: the proxy instantiates a fresh provider per
+    # request, so an instance-level cache never hits. genai.Client construction
+    # builds an httpx client incl. ssl.create_default_context (blocking, loads
+    # system CAs) — doing that per request ON THE EVENT LOOP wedged the whole
+    # proxy under sustained load (2026-09-21 smoke sweep). One client per api_key
+    # is safe: genai clients are stateless beyond the transport.
+    _CLIENT_CACHE: dict[str, Any] = {}
+
     def _get_client(self):
         """
-        Get or create synchronous Gemini client.
+        Get or create the Gemini client, cached per api_key at module level.
+        A 120s http timeout is baked in — without it a hung upstream call
+        blocks its request forever (aio has no default timeout).
         """
-        if self._client is None:
-            self._client = genai.Client(api_key=self.api_key)
-        return self._client
+        cached = GeminiProvider._CLIENT_CACHE.get(self.api_key)
+        if cached is None:
+            cached = genai.Client(
+                api_key=self.api_key,
+                http_options={"timeout": 120_000},  # ms
+            )
+            GeminiProvider._CLIENT_CACHE[self.api_key] = cached
+        self._client = cached
+        return cached
 
     async def aclose(self):
         """
@@ -456,7 +472,13 @@ class GeminiProvider(ChatProvider):
         **provider_specific_kwargs
     ) -> ChatCompletionResponse:
         """Internal implementation of asynchronous completion for Gemini."""
-        client = self._get_client()
+        # First construction per process does blocking work (SSL/CA loading) —
+        # keep it off the event loop; afterwards the cache hits are cheap.
+        if self.api_key not in GeminiProvider._CLIENT_CACHE:
+            import asyncio
+            client = await asyncio.to_thread(self._get_client)
+        else:
+            client = self._get_client()
 
         if self.api_key is None:
             raise ValueError("Gemini API key is required")
