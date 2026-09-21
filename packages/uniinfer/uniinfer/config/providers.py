@@ -71,13 +71,6 @@ PROVIDER_CONFIGS = {
         'default_model': 'gpt-3.5-turbo',
         'needs_api_key': True,
     },
-    'ollama': {
-        'name': 'Ollama',
-        'default_model': 'gemma3:4b',
-        'needs_api_key': False,
-        # amp1.mooo.com:11444 (former managed endpoint) is gone; fall back to
-        # the default localhost:11434 unless an instance overrides base_url.
-    },
     'arli': {
         'name': 'ArliAI',
         'default_model': 'Qwen3-14B',
