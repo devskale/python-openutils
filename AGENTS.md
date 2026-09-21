@@ -118,8 +118,11 @@ it *is* this repo.
 
 To deploy a uniinfer change to the live proxy:
 ```bash
-ssh amd 'cd code/python-openutils/packages/uniinfer && ./deploy.sh'
-# deploy.sh = git pull → uv sync --all-extras → sudo systemctl restart uniioai-proxy
+ssh amd 'cd code/python-openutils/packages/uniinfer && ./deploy.sh --all-extras'
+# deploy.sh = git pull → uv sync --frozen --all-extras → sudo systemctl restart uniioai-proxy
+# ⚠️ Immer --all-extras für amd: ein bare `./deploy.sh` wählt den lean base-only
+# Default und STRIPPT die optionalen Provider-SDKs (anthropic, gemini, mistral,
+# cohere, huggingface, …) aus der venv — diese Provider brechen dann live.
 ```
 If you're already on amd editing in-place, the equivalent is:
 ```bash

@@ -39,7 +39,10 @@ sudo journalctl -u uniioai-proxy -f        # live logs
 curl -s http://localhost:8124/v1/system/version  # health check
 ```
 
-After pushing to `main`: `cd /home/ubuntu/code/python-openutils && git pull && cd packages/uniinfer && uv sync && sudo systemctl restart uniioai-proxy`
+After pushing to `main`: `cd /home/ubuntu/code/python-openutils && git pull && cd packages/uniinfer && uv sync --all-extras && sudo systemctl restart uniioai-proxy`
+
+> Bare `uv sync` = lean base-only und strippt die optionalen Provider-SDKs.
+> Production (amd) immer `--all-extras` (oder `./deploy.sh --all-extras`).
 
 | Key | Value |
 |-----|-------|

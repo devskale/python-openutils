@@ -13,6 +13,10 @@
 #   --extras A,B,C  base + exactly those extras. Available extras:
 #                   anthropic  gemini  mistral  cohere  huggingface  groq  ai21
 #   --all-extras    base + every optional provider SDK (opt-in; the old default).
+#
+#   ⚠️ PRODUCTION (amd / uniinfer.skale.dev) MUST use `./deploy.sh --all-extras`.
+#   A bare deploy strips the optional SDKs from the venv and breaks those
+#   providers live. See AGENTS.md → Deploy.
 
 set -e
 
