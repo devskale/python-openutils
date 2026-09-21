@@ -137,8 +137,11 @@ class GeminiProvider(ChatProvider):
                 if supported_actions:
                     capabilities["supported_actions"] = supported_actions
 
+                # Strip the "models/" prefix the API puts on model names so
+                # catalog/serving ids are clean (e.g. gemini-2.5-flash).
+                clean_id = model_name.removeprefix("models/")
                 results.append(ModelInfo(
-                    id=model_name,
+                    id=clean_id,
                     name=getattr(model, 'display_name', None),
                     type="chat",
                     context_window=getattr(model, 'input_token_limit', None),
