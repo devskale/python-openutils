@@ -471,23 +471,61 @@ class OpenCodeProvider(OpenAICompatibleChatProvider):
         input_items: list[dict[str, Any]] = []
         for message in request.messages:
             role = message.role
+
+            # The Responses API represents tool results as a flat
+            # function_call_output item — NOT as a role="tool" message.
+            # role="tool" is rejected upstream with
+            # "input[N] did not match any supported type".
+            if role == "tool":
+                output = message.content
+                if isinstance(output, (dict, list)):
+                    try:
+                        output = json.dumps(output, ensure_ascii=False)
+                    except Exception:
+                        output = str(output)
+                input_items.append({
+                    "type": "function_call_output",
+                    "call_id": message.tool_call_id or "",
+                    "output": output or "",
+                })
+                continue
+
+            # System messages are expressed as "developer" role in the responses API.
             if role == "system":
                 role = "developer"
+
             part_type = "output_text" if role == "assistant" else "input_text"
             content = message.content
+            parts: list[dict[str, Any]] = []
             if isinstance(content, list):
-                parts = []
                 for part in content:
+                    if not isinstance(part, dict):
+                        continue
                     ptype = part.get("type")
-                    if ptype == "text":
+                    if ptype in ("text", "input_text", "output_text"):
                         parts.append({"type": part_type, "text": part.get("text", "")})
                     elif ptype == "image_url":
                         url = (part.get("image_url") or {}).get("url", "")
-                        parts.append({"type": "input_image", "image_url": url})
-                item_content: Any = parts
-            else:
-                item_content = [{"type": part_type, "text": content or ""}]
-            input_items.append({"role": role, "content": item_content})
+                        if url:
+                            parts.append({"type": "input_image", "image_url": url})
+            elif content:
+                parts.append({"type": part_type, "text": content})
+
+            if parts:
+                input_items.append({"role": role, "content": parts})
+
+            # Assistant tool calls become function_call items after the message.
+            if role == "assistant" and message.tool_calls:
+                for tc in message.tool_calls:
+                    if not isinstance(tc, dict):
+                        continue
+                    fn = tc.get("function") or {}
+                    input_items.append({
+                        "type": "function_call",
+                        "call_id": tc.get("id") or "",
+                        "name": (fn.get("name") if isinstance(fn, dict) else None) or tc.get("name", ""),
+                        "arguments": (fn.get("arguments") if isinstance(fn, dict) else "") or tc.get("arguments", ""),
+                    })
 
         tools_flat = list(self._agent_tools_flat())
         if request.tools:

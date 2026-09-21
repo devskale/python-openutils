@@ -461,3 +461,38 @@ def test_responses_buffered_completed(monkeypatch):
     assert resp.finish_reason == "tool_calls"
     assert resp.message.tool_calls[0]["function"]["name"] == "grep"
     assert resp.usage["total_tokens"] == 9
+
+
+def test_responses_payload_tool_items(monkeypatch):
+    """Tool results must become function_call_output items (not role=tool),
+    and assistant tool calls function_call items (responses-API shape)."""
+    _prime_docs(monkeypatch)
+    p = OpenCodeProvider(api_key="test")
+    req = ChatCompletionRequest(
+        model="muse-spark-1.3-contributor-free",
+        messages=[
+            ChatMessage(role="user", content="2+2?"),
+            ChatMessage(
+                role="assistant", content=None,
+                tool_calls=[{"id": "call_1", "type": "function",
+                             "function": {"name": "calc", "arguments": '{"x":4}'}}],
+            ),
+            ChatMessage(role="tool", tool_call_id="call_1", content="4"),
+            ChatMessage(role="user", content="weiter"),
+        ],
+        streaming=True,
+    )
+    payload = p._build_responses_payload(req)
+    items = payload["input"]
+    # no role="tool" anywhere
+    assert all(i.get("role") != "tool" for i in items)
+    # assistant function_call item present
+    assert any(i.get("type") == "function_call" and i.get("call_id") == "call_1"
+               and i.get("name") == "calc" and "x" in i.get("arguments", "") for i in items)
+    # tool result as function_call_output with matching call_id
+    assert any(i.get("type") == "function_call_output" and i.get("call_id") == "call_1"
+               and i.get("output") == "4" for i in items)
+    # order: function_call before its function_call_output
+    pos_fc = [i for i, it in enumerate(items) if it.get("type") == "function_call"]
+    pos_out = [i for i, it in enumerate(items) if it.get("type") == "function_call_output"]
+    assert pos_fc and pos_out and pos_fc[0] < pos_out[0]
