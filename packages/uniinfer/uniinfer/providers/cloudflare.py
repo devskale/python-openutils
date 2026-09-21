@@ -104,7 +104,9 @@ class CloudflareProvider(ChatProvider):
                 "Text Embeddings": "embedding", "Automatic Speech Recognition": "stt",
                 "Text-to-Speech": "tts", "Image-to-Text": "chat",  # vision (image to text)
                 "Image Classification": "image", "Text Classification": "classification",
-                "Translation": "chat", "Dumb Pipe": "chat",
+                # Translation models need a {text, target_language} input schema,
+                # not messages — typing them chat makes chat clients 400 them.
+                "Translation": "translation", "Dumb Pipe": "chat",
             }
             if models_data.get("success", False) and "result" in models_data:
                 for model in models_data["result"]:
