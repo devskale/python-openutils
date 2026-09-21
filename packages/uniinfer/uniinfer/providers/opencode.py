@@ -6,8 +6,13 @@ OpenCode (opencode.ai) runs the "zen" model router — an OpenAI-compatible
 endpoint that aggregates many models (DeepSeek, GPT, Gemini, Qwen, GLM,
 MiniMax, Kimi, …). Free models are id-suffixed ``-free`` plus ``big-pickle``:
 mimo-v2.5-free, ling-3.0-flash-fin-free, nemotron-3-ultra-free,
-nemotron-3.5-lightning-free, deepseek-v4-flash-free, muse-spark-*-contributor-free,
-jev-1.13-free (systemone endpoint — NOT chat; unsupported here).
+nemotron-3.5-lightning-free, deepseek-v4-flash-free, muse-spark-*-contributor-free.
+Jev models (``jev-1.13-free``) are System One *decision* models served via
+``/v1/systemone`` (state + typed questions -> values/probabilities). They are
+exposed through the chat API by a wrapper: the last user message must be a
+JSON object ``{"state": ..., "questions": {...}"}`` and the response content
+is the ``answers`` object as JSON. The systemone endpoint has no free-tier
+gate — plain requests pass.
 
 Free-tier gate ("FreeTierError: OpenCode's free tier can only be used from
 within OpenCode"): the zen upstream serves free models only for requests that
@@ -162,17 +167,12 @@ class OpenCodeProvider(OpenAICompatibleChatProvider):
         payload["stream_options"] = {"include_usage": True}
         return payload
 
-    async def acomplete(
+    async def _chat_acomplete(
         self,
         request: ChatCompletionRequest,
         **provider_specific_kwargs,
     ) -> ChatCompletionResponse:
-        """Streamed completion aggregated into one response.
-
-        Zen free-tier requests MUST be ``stream: true`` (non-streaming → 403),
-        so the non-streaming path internally consumes the SSE stream and
-        merges content, reasoning, tool-call deltas and usage.
-        """
+        """Chat completion: streamed (zen requirement) and aggregated."""
         endpoint = self._completion_endpoint()
         payload = self._build_payload(request, False, provider_specific_kwargs)
         headers = self._build_headers()
@@ -264,6 +264,102 @@ class OpenCodeProvider(OpenAICompatibleChatProvider):
                 raise
             raise map_provider_error(self._error_name(), e)
 
+    # ------------------------------------------------------------------ #
+    # System One (Jev) — decision models via /v1/systemone. No free-tier
+    # gate: plain requests pass. Wrapped into the chat API: last user
+    # message must be JSON {"state": ..., "questions": {...}}; the response
+    # content is the answers object as JSON.
+    # ------------------------------------------------------------------ #
+    SYSTEMONE_PREFIX = "jev-"
+
+    @classmethod
+    def _is_systemone_model(cls, model_id: Optional[str]) -> bool:
+        return bool(model_id) and model_id.split(":")[0].startswith(cls.SYSTEMONE_PREFIX)
+
+    def _systemone_endpoint(self) -> str:
+        return f"{self.base_url.rstrip('/')}/systemone"
+
+    def _extract_systemone_payload(self, request: ChatCompletionRequest) -> dict[str, Any]:
+        last_user = None
+        for message in request.messages:
+            if message.role == "user":
+                last_user = message
+        text = getattr(last_user, "content", None) if last_user else None
+        if not text or not isinstance(text, str):
+            raise ValueError(
+                'OpenCode jev models need the last user message to be a JSON object '
+                '"state" and "questions" keys (System One API).'
+            )
+        try:
+            parsed = json.loads(text)
+        except json.JSONDecodeError as e:
+            raise ValueError(
+                "OpenCode jev models need the last user message to be valid JSON "
+                f'{{"state": ..., "questions": ...}}}} (System One API): {e}'
+            ) from e
+        if not isinstance(parsed, dict) or "state" not in parsed or "questions" not in parsed:
+            raise ValueError(
+                'OpenCode jev payload must contain "state" and "questions" keys.'
+            )
+        return {"model": request.model, "state": parsed["state"], "questions": parsed["questions"]}
+
+    async def _systemone_acomplete(self, request: ChatCompletionRequest) -> ChatCompletionResponse:
+        payload = self._extract_systemone_payload(request)
+        headers = self._build_headers()
+        client = await self._get_async_client()
+        try:
+            response = await client.post(self._systemone_endpoint(), headers=headers, json=payload, timeout=60.0)
+            if response.status_code != 200:
+                raise map_provider_error(
+                    self._error_name(),
+                    Exception(f"{self._error_name()} API error: {response.status_code} - {response.text}"),
+                    status_code=response.status_code,
+                    response_body=response.text,
+                )
+            data = response.json()
+            usage_raw = data.get("usage") or {}
+            input_tokens = usage_raw.get("input_tokens", 0)
+            output_tokens = usage_raw.get("output_tokens", 0)
+            return ChatCompletionResponse(
+                message=ChatMessage(role="assistant", content=json.dumps(data.get("answers") or {})),
+                provider=self.PROVIDER_ID,
+                model=data.get("model", request.model),
+                usage={
+                    "prompt_tokens": input_tokens,
+                    "completion_tokens": output_tokens,
+                    "total_tokens": input_tokens + output_tokens,
+                },
+                raw_response=data,
+                finish_reason="stop",
+                thinking=None,
+            )
+        except Exception as e:
+            if isinstance(e, UniInferError):
+                raise
+            raise map_provider_error(self._error_name(), e)
+
+    async def acomplete(
+        self,
+        request: ChatCompletionRequest,
+        **provider_specific_kwargs,
+    ) -> ChatCompletionResponse:
+        """Route: jev-* -> System One decision API, else chat (streamed)."""
+        if self._is_systemone_model(request.model or self.DEFAULT_MODEL):
+            return await self._systemone_acomplete(request)
+        return await self._chat_acomplete(request, **provider_specific_kwargs)
+
+    async def astream_complete(
+        self,
+        request: ChatCompletionRequest,
+        **provider_specific_kwargs,
+    ) -> AsyncIterator[ChatCompletionResponse]:
+        """Route: jev-* yields one aggregated chunk (no stream upstream)."""
+        if self._is_systemone_model(request.model or self.DEFAULT_MODEL):
+            yield await self._systemone_acomplete(request)
+            return
+        async for chunk in super().astream_complete(request, **provider_specific_kwargs):
+            yield chunk
+
     @classmethod
     def list_models(cls, api_key: Optional[str] = None) -> list["ModelInfo"]:
         """List models from OpenCode/Zen via pi.dev catalog.
@@ -284,7 +380,7 @@ class OpenCodeProvider(OpenAICompatibleChatProvider):
             r.raise_for_status()
             data = r.json()
         except Exception:
-            return []
+            data = {}
         out = []
         for mid, m in data.items():
             cost = m.get("cost") or {}
@@ -307,6 +403,20 @@ class OpenCodeProvider(OpenAICompatibleChatProvider):
                     capabilities=caps or None,
                     modalities=inputs or None,
                     raw=m,
+                )
+            )
+        # pi.dev lags behind the live zen catalog — pin the System One model
+        # (served via /v1/systemone, wrapped into chat by this provider).
+        if not any(m.id == "jev-1.13-free" for m in out):
+            out.append(
+                ModelInfo(
+                    id="jev-1.13-free",
+                    name="Jev 1.13 Free (System One)",
+                    owned_by="opencode",
+                    cost={"input": 0.0, "output": 0.0},
+                    access="free",
+                    capabilities={"structured_outputs": True},
+                    raw={"endpoint": "systemone"},
                 )
             )
         return out

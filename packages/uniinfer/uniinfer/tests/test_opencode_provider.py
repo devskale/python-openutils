@@ -57,7 +57,7 @@ def test_list_models_parses_and_marks_free():
         models = OpenCodeProvider.list_models()
 
     ids = [m.id for m in models]
-    assert ids == ["deepseek-v4-flash-free", "big-pickle", "gpt-5.5", "claude-haiku-4-5"]
+    assert ids == ["deepseek-v4-flash-free", "big-pickle", "gpt-5.5", "claude-haiku-4-5", "jev-1.13-free"]
 
     # Free models (-free, big-pickle) marked cost 0; paid left as-is from catalog
     by_id = {m.id: m for m in models}
@@ -256,3 +256,127 @@ async def test_acomplete_aggregates_tool_call_deltas(monkeypatch):
     assert resp.finish_reason == "tool_calls"
     assert resp.message.tool_calls[0]["function"]["name"] == "bash"
     assert resp.message.tool_calls[0]["function"]["arguments"] == '{"cmd":"ls"}'
+
+
+# ------------------------------------------------------------------ #
+# System One (jev) chat wrapper
+# ------------------------------------------------------------------ #
+class _FakePostResponse:
+    def __init__(self, data, status_code=200):
+        self._data = data
+        self.status_code = status_code
+        self.text = json.dumps(data)
+
+    def json(self):
+        return self._data
+
+
+class _FakePostClient:
+    def __init__(self, data, status_code=200, ):
+        self._data = data
+        self._status = status_code
+        self.calls = []
+
+    async def post(self, url, **kwargs):
+        self.calls.append((url, kwargs))
+        return _FakePostResponse(self._data, self._status)
+
+
+_JEV_OK = {
+    "model": "jev-1.13-free",
+    "answers": {"is_urgent": {"type": "noul", "noul": 0.96}},
+    "usage": {"input_tokens": 290, "output_tokens": 23},
+    "cost": "0",
+}
+
+
+def _jev_req(content):
+    return ChatCompletionRequest(
+        model="jev-1.13-free",
+        messages=[ChatMessage(role="user", content=content)],
+        temperature=0.7,
+        streaming=False,
+    )
+
+
+@pytest.mark.asyncio
+async def test_jev_routes_to_systemone(monkeypatch):
+    p = OpenCodeProvider(api_key="test")
+    client = _FakePostClient(_JEV_OK)
+
+    async def fake_client():
+        return client
+
+    monkeypatch.setattr(p, "_get_async_client", fake_client)
+    resp = await p.acomplete(
+        _jev_req(json.dumps({"state": "payments failed", "questions": {"q": {"type": "noul"}}}))
+    )
+    url, kwargs = client.calls[0]
+    assert url.endswith("/systemone")
+    assert kwargs["json"]["model"] == "jev-1.13-free"
+    assert kwargs["json"]["state"] == "payments failed"
+    assert json.loads(resp.message.content) == _JEV_OK["answers"]
+    assert resp.usage == {"prompt_tokens": 290, "completion_tokens": 23, "total_tokens": 313}
+    assert resp.finish_reason == "stop"
+
+
+@pytest.mark.asyncio
+async def test_jev_stream_yields_single_chunk(monkeypatch):
+    p = OpenCodeProvider(api_key="test")
+    monkeypatch.setattr(p, "_get_async_client", lambda: _fake_await(_FakePostClient(_JEV_OK)))
+
+    async def collect():
+        return [c async for c in p.astream_complete(
+            _jev_req(json.dumps({"state": "x", "questions": {}})))]
+
+    chunks = await collect()
+    assert len(chunks) == 1
+    assert json.loads(chunks[0].message.content)["is_urgent"]["noul"] == 0.96
+
+
+async def _fake_await(value):
+    return value
+
+
+@pytest.mark.asyncio
+async def test_jev_rejects_non_json_message():
+    p = OpenCodeProvider(api_key="test")
+    with pytest.raises(Exception) as exc:
+        await p.acomplete(_jev_req("just a plain question"))
+    assert "JSON" in str(exc.value) or "state" in str(exc.value)
+
+
+@pytest.mark.asyncio
+async def test_jev_rejects_missing_keys():
+    p = OpenCodeProvider(api_key="test")
+    with pytest.raises(Exception) as exc:
+        await p.acomplete(_jev_req(json.dumps({"state": "no questions"})))
+    assert "questions" in str(exc.value)
+
+
+@pytest.mark.asyncio
+async def test_non_jev_does_not_hit_systemone(monkeypatch):
+    p = OpenCodeProvider(api_key="test")
+    client = _FakePostClient(_JEV_OK)
+
+    async def fake_client():
+        return client
+
+    monkeypatch.setattr(p, "_get_async_client", fake_client)
+    lines = [
+        'data: {"choices":[{"index":0,"delta":{"content":"ok"}}]}',
+        'data: [DONE]',
+    ]
+
+    class _Both(_FakePostClient):
+        def stream(self, method, url, **kw):
+            return _FakeStreamCtx(_FakeSSEResponse(lines))
+
+    p2 = OpenCodeProvider(api_key="test")
+
+    async def fake2():
+        return _Both(_JEV_OK)
+
+    monkeypatch.setattr(p2, "_get_async_client", fake2)
+    resp = await p2.acomplete(_req())  # mimo → chat path
+    assert resp.message.content == "ok"
