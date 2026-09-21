@@ -60,6 +60,19 @@ def discover_providers():
         svc = PROVIDER_CONFIGS.get(name, {}).get("credgoo_service", name)
         entries.append((name, cls, svc, "chat"))
 
+    # Lazy-registered chat providers (e.g. gemini via the 'gemini' extra):
+    # resolve them so the refresh sees them too. A missing extra or a broken
+    # import just skips the provider (logged at fetch time).
+    for name in sorted(ProviderFactory._lazy_providers):
+        if name in ProviderFactory._providers:
+            continue
+        try:
+            cls = ProviderFactory.get_provider_class(name)
+        except Exception:
+            continue
+        svc = PROVIDER_CONFIGS.get(name, {}).get("credgoo_service", name)
+        entries.append((name, cls, svc, "chat"))
+
     # Embedding providers
     for name, cls in EmbeddingProviderFactory._providers.items():
         svc = PROVIDER_CONFIGS.get(name, {}).get("credgoo_service", name)
