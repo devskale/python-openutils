@@ -4,43 +4,41 @@ OpenCode / Zen provider implementation.
 
 OpenCode (opencode.ai) runs the "zen" model router — an OpenAI-compatible
 endpoint that aggregates many models (DeepSeek, GPT, Gemini, Qwen, GLM,
-MiniMax, Kimi, …). Free models are id-suffixed ``-free`` plus ``big-pickle``:
-mimo-v2.5-free, ling-3.0-flash-fin-free, nemotron-3-ultra-free,
-nemotron-3.5-lightning-free, deepseek-v4-flash-free, muse-spark-*-contributor-free.
-Jev models (``jev-1.13-free``) are System One *decision* models served via
-``/v1/systemone`` (state + typed questions -> values/probabilities). They are
-exposed through the chat API by a wrapper: the last user message must be a
-JSON object ``{"state": ..., "questions": {...}"}`` and the response content
-is the ``answers`` object as JSON. The systemone endpoint has no free-tier
-gate — plain requests pass.
+MiniMax, Kimi, …). Free models are id-suffixed ``-free`` plus ``big-pickle``.
 
-Free-tier gate ("FreeTierError: OpenCode's free tier can only be used from
-within OpenCode"): the zen upstream serves free models only for requests that
-look like real opencode agent traffic. Empirically required and sufficient
-(2026-09-21, verified request-by-request):
+**Everything model-specific is derived dynamically** — no hardcoded model
+lists or prefixes:
 
-1. ``User-Agent: opencode/<ver> ai-sdk/provider-utils/<ver> runtime/bun/<ver>``
-2. ``x-opencode-client: cli`` and ``x-opencode-project: global``
-3. ``x-opencode-request`` / ``x-opencode-session`` IDs whose 12-hex prefix
-   encodes the *current* millisecond timestamp: ``hex48(ts_ms * 0x1000 +
-   counter)`` — messages ascending, sessions *bitwise-inverted* (descending).
-   Mirrors ``packages/opencode/src/id/id.ts``. Random/future hex → 403.
-4. The canonical 12-tool agent array (bash, edit, glob, grep, question, read,
-   skill, task, todowrite, webfetch, websearch, write) in ``tools`` — a
-   system prompt is NOT required, but missing/partial tools → 403.
-5. ``stream: true`` — non-streaming requests → 403. ``complete()`` therefore
-   streams internally and aggregates the SSE into one response.
+- model universe: live ``GET /zen/v1/models`` (always current)
+- endpoint dialect + display names + pricing: the official docs tables,
+  parsed from the opencode repo's ``zen.mdx`` (raw.githubusercontent.com,
+  cached 1h). This maps each model id to its dialect:
+  ``chat`` (/chat/completions), ``responses`` (/responses — muse-spark,
+  gpt family), ``systemone`` (/systemone — jev decision models),
+  ``anthropic``/``google`` (unsupported here → clear error)
+- metadata (context window, caps): pi.dev catalog enrichment where present
 
-A Bearer key is optional for free models (``Bearer public``/anonymous passes);
-an API key is resolved from credgoo when available so usage is tracked to the
-account and paid models work.
+Free-tier gate ("FreeTierError: can only be used from within OpenCode") —
+empirically required and sufficient per dialect (2026-09-21):
 
-Note: Claude models on OpenCode use the Anthropic-messages API
-(``https://opencode.ai/zen``) and are NOT served by this OpenAI-compatible
-provider (which targets ``/v1``).
+- chat: opencode User-Agent + client/project headers + timestamp-encoded
+  msg/ses IDs (mirrors ``packages/opencode/src/id/id.ts``) + the canonical
+  12-tool agent array + ``stream: true``
+- responses: same headers/IDs + the same tools in FLAT responses format +
+  ``stream: true``
+- systemone: NO gate — plain requests pass
+
+``complete()`` therefore streams internally (chat/responses) and aggregates.
+A Bearer key is optional for free models (``Bearer public`` passes); the
+credgoo ``opencode`` key is attached when present (usage tracking + paid).
+
+Jev (System One) models are decision models: the last user message must be
+JSON ``{"state": ..., "questions": ...}}``; the response content is the
+``answers`` object as JSON.
 """
 import json
 import os
+import re
 import secrets
 import string
 import threading
@@ -57,14 +55,94 @@ from .openai_compatible import OpenAICompatibleChatProvider
 _TOOLS_PATH = Path(__file__).resolve().parent / "opencode_agent_tools.json"
 _B62 = string.digits + string.ascii_uppercase + string.ascii_lowercase
 
+# Official docs tables (endpoints + pricing) — the authoritative, versioned
+# source for dialect mapping and free/paid detection. Parsed from the repo,
+# so model additions upstream flow through without code changes here.
+_DOCS_URL = ("https://raw.githubusercontent.com/anomalyco/opencode/dev/"
+             "packages/web/src/content/docs/zen.mdx")
+_DOCS_TTL = 3600.0
+_DOCS_CACHE: Optional[dict[str, Any]] = None
+_DOCS_CACHE_TS = 0.0
+
+
+def _parse_price_cell(cell: str) -> Optional[float]:
+    """'Free' -> 0.0, '$0.042' -> 0.042, '-'/'' -> None."""
+    cell = cell.strip()
+    if not cell or cell == "-":
+        return None
+    if cell.lower() == "free":
+        return 0.0
+    try:
+        return float(cell.replace("$", "").replace(",", ""))
+    except ValueError:
+        return None
+
+
+def _parse_docs_mdx(text: str) -> dict[str, Any]:
+    """Parse the Endpoints + Pricing tables from the zen docs MDX.
+
+    Returns {"endpoints": {id: {name, endpoint, sdk}}, "pricing": {id: {input, output}}}.
+    Pricing rows carry display names (sometimes with '(≤ 200K tokens)' tier
+    qualifiers); they are mapped to ids via the Endpoints table's names. For
+    tiered models the first ('≤') row wins.
+    """
+    endpoints: dict[str, dict[str, str]] = {}
+    pricing_by_name: dict[str, dict[str, Optional[float]]] = {}
+    mode: Optional[str] = None
+    for raw in text.splitlines():
+        if not raw.strip().startswith("|"):
+            continue
+        cells = [c.strip() for c in raw.strip().strip("|").split("|")]
+        if set("".join(cells)) <= set("-: "):
+            continue  # separator row
+        header = " ".join(cells).lower()
+        if "model id" in header and "endpoint" in header:
+            mode = "endpoints"
+            continue
+        if "input" in header and "output" in header and "cached" in header:
+            mode = "pricing"
+            continue
+        if mode == "endpoints" and len(cells) >= 3:
+            name, mid, endpoint = cells[0], cells[1], cells[2].strip("`")
+            endpoints[mid] = {"name": name, "endpoint": endpoint, "sdk": cells[3].strip("`") if len(cells) > 3 else ""}
+        elif mode == "pricing" and len(cells) >= 3:
+            name = re.sub(r"\s*\([^)]*\)\s*$", "", cells[0]).strip()  # drop tier qualifiers
+            if name and name not in pricing_by_name:  # first row = base (≤) tier
+                pricing_by_name[name] = {
+                    "input": _parse_price_cell(cells[1]),
+                    "output": _parse_price_cell(cells[2]),
+                }
+    pricing: dict[str, dict[str, Optional[float]]] = {}
+    for mid, entry in endpoints.items():
+        price = pricing_by_name.get(entry["name"])
+        if price is not None:
+            pricing[mid] = price
+    return {"endpoints": endpoints, "pricing": pricing}
+
+
+def _docs_tables() -> Optional[dict[str, Any]]:
+    """Docs tables, cached; stale cache beats none on fetch failure."""
+    global _DOCS_CACHE, _DOCS_CACHE_TS
+    now = time.time()
+    if _DOCS_CACHE is not None and now - _DOCS_CACHE_TS < _DOCS_TTL:
+        return _DOCS_CACHE
+    try:
+        text = requests.get(_DOCS_URL, timeout=15).text
+        tables = _parse_docs_mdx(text)
+        if tables["endpoints"] or tables["pricing"]:
+            _DOCS_CACHE, _DOCS_CACHE_TS = tables, now
+        return _DOCS_CACHE
+    except Exception:
+        return _DOCS_CACHE
+
 
 class OpenCodeProvider(OpenAICompatibleChatProvider):
-    """Provider for the OpenCode/Zen model router (OpenAI-compatible)."""
+    """Provider for the OpenCode/Zen model router (dynamic catalog)."""
 
     BASE_URL = "https://opencode.ai/zen/v1"
     PROVIDER_ID = "opencode"
     ERROR_PROVIDER_NAME = "OpenCode"
-    DEFAULT_MODEL = "deepseek-v4-flash-free"
+    DEFAULT_MODEL = "mimo-v2.5-free"
     CREDGOO_SERVICE = "opencode"
     # Free models are usable anonymously (Bearer public); the key from credgoo
     # is attached when present (usage tracking + paid models), but is optional.
@@ -93,6 +171,37 @@ class OpenCodeProvider(OpenAICompatibleChatProvider):
             except Exception:
                 api_key = None
         super().__init__(api_key=api_key, base_url=self.BASE_URL)
+
+    # ------------------------------------------------------------------ #
+    # Dialect routing — derived from the docs endpoints table, not prefixes
+    # ------------------------------------------------------------------ #
+    @classmethod
+    def _dialect_for(cls, model_id: Optional[str]) -> str:
+        """'chat' | 'responses' | 'systemone' | 'anthropic' | 'google'."""
+        tables = _docs_tables() or {}
+        entry = (tables.get("endpoints") or {}).get(model_id or "", {})
+        endpoint = entry.get("endpoint", "")
+        if endpoint.endswith("/systemone"):
+            return "systemone"
+        if endpoint.endswith("/responses"):
+            return "responses"
+        if endpoint.endswith("/chat/completions"):
+            return "chat"
+        if "/messages" in endpoint:
+            return "anthropic"
+        if "/models/" in endpoint:
+            return "google"
+        return "chat"  # unknown/docs unavailable → the common case
+
+    def _unsupported_dialect_error(self, dialect: str, model_id: str):
+        return map_provider_error(
+            self._error_name(),
+            ValueError(
+                f"{self._error_name()} model '{model_id}' speaks the '{dialect}' API, "
+                "which this OpenAI-compatible provider does not serve "
+                "(Anthropic-messages / Google-generateContent models)."
+            ),
+        )
 
     # ------------------------------------------------------------------ #
     # opencode ID dialect (packages/opencode/src/id/id.ts):
@@ -143,6 +252,23 @@ class OpenCodeProvider(OpenAICompatibleChatProvider):
                 cls._agent_tools_cache = []
         return cls._agent_tools_cache
 
+    @classmethod
+    def _agent_tools_flat(cls) -> list[dict[str, Any]]:
+        """Canonical toolset in the flat Responses-API tool format."""
+        out = []
+        for tool in cls._agent_tools():
+            fn = tool.get("function", {})
+            flat = {
+                "type": "function",
+                "name": fn.get("name"),
+                "description": fn.get("description", ""),
+                "parameters": fn.get("parameters", {"type": "object", "properties": {}}),
+            }
+            if tool.get("strict") is not None:
+                flat["strict"] = tool["strict"]
+            out.append(flat)
+        return out
+
     def _build_payload(
         self,
         request: ChatCompletionRequest,
@@ -167,6 +293,9 @@ class OpenCodeProvider(OpenAICompatibleChatProvider):
         payload["stream_options"] = {"include_usage": True}
         return payload
 
+    # ------------------------------------------------------------------ #
+    # chat dialect (/chat/completions) — streamed, aggregated
+    # ------------------------------------------------------------------ #
     async def _chat_acomplete(
         self,
         request: ChatCompletionRequest,
@@ -265,17 +394,10 @@ class OpenCodeProvider(OpenAICompatibleChatProvider):
             raise map_provider_error(self._error_name(), e)
 
     # ------------------------------------------------------------------ #
-    # System One (Jev) — decision models via /v1/systemone. No free-tier
-    # gate: plain requests pass. Wrapped into the chat API: last user
-    # message must be JSON {"state": ..., "questions": {...}}; the response
-    # content is the answers object as JSON.
+    # systemone dialect (/systemone — jev decision models). No free-tier
+    # gate. Wrapped into chat: last user message = JSON {"state","questions"};
+    # response content = the answers object as JSON.
     # ------------------------------------------------------------------ #
-    SYSTEMONE_PREFIX = "jev-"
-
-    @classmethod
-    def _is_systemone_model(cls, model_id: Optional[str]) -> bool:
-        return bool(model_id) and model_id.split(":")[0].startswith(cls.SYSTEMONE_PREFIX)
-
     def _systemone_endpoint(self) -> str:
         return f"{self.base_url.rstrip('/')}/systemone"
 
@@ -287,19 +409,19 @@ class OpenCodeProvider(OpenAICompatibleChatProvider):
         text = getattr(last_user, "content", None) if last_user else None
         if not text or not isinstance(text, str):
             raise ValueError(
-                'OpenCode jev models need the last user message to be a JSON object '
+                'OpenCode systemone (jev) models need the last user message to be a JSON object '
                 '"state" and "questions" keys (System One API).'
             )
         try:
             parsed = json.loads(text)
         except json.JSONDecodeError as e:
             raise ValueError(
-                "OpenCode jev models need the last user message to be valid JSON "
+                "OpenCode systemone (jev) models need the last user message to be valid JSON "
                 f'{{"state": ..., "questions": ...}}}} (System One API): {e}'
             ) from e
         if not isinstance(parsed, dict) or "state" not in parsed or "questions" not in parsed:
             raise ValueError(
-                'OpenCode jev payload must contain "state" and "questions" keys.'
+                'OpenCode systemone (jev) payload must contain "state" and "questions" keys.'
             )
         return {"model": request.model, "state": parsed["state"], "questions": parsed["questions"]}
 
@@ -338,14 +460,196 @@ class OpenCodeProvider(OpenAICompatibleChatProvider):
                 raise
             raise map_provider_error(self._error_name(), e)
 
+    # ------------------------------------------------------------------ #
+    # responses dialect (/responses — muse-spark, gpt family). Free-tier
+    # gate like chat, but tools in the FLAT format and Responses SSE events.
+    # ------------------------------------------------------------------ #
+    def _responses_endpoint(self) -> str:
+        return f"{self.base_url.rstrip('/')}/responses"
+
+    def _build_responses_payload(self, request: ChatCompletionRequest) -> dict[str, Any]:
+        input_items: list[dict[str, Any]] = []
+        for message in request.messages:
+            role = message.role
+            if role == "system":
+                role = "developer"
+            part_type = "output_text" if role == "assistant" else "input_text"
+            content = message.content
+            if isinstance(content, list):
+                parts = []
+                for part in content:
+                    ptype = part.get("type")
+                    if ptype == "text":
+                        parts.append({"type": part_type, "text": part.get("text", "")})
+                    elif ptype == "image_url":
+                        url = (part.get("image_url") or {}).get("url", "")
+                        parts.append({"type": "input_image", "image_url": url})
+                item_content: Any = parts
+            else:
+                item_content = [{"type": part_type, "text": content or ""}]
+            input_items.append({"role": role, "content": item_content})
+
+        tools_flat = list(self._agent_tools_flat())
+        if request.tools:
+            by_name = {t.get("name"): t for t in tools_flat}
+            for tool in request.tools:
+                fn = tool.get("function", {})
+                name = fn.get("name")
+                if not name:
+                    continue
+                by_name[name] = {
+                    "type": "function",
+                    "name": name,
+                    "description": fn.get("description", ""),
+                    "parameters": fn.get("parameters", {"type": "object", "properties": {}}),
+                }
+            tools_flat = list(by_name.values())
+
+        payload: dict[str, Any] = {
+            "model": request.model,
+            "input": input_items,
+            "tools": tools_flat,
+            "stream": True,
+            "store": False,
+        }
+        if tools_flat:
+            payload["tool_choice"] = request.tool_choice or "auto"
+        # GPT-family responses models burn a chunk of the output budget on
+        # mandatory opaque reasoning before any text (effort "none" → 400,
+        # like Kilo). max_output_tokens is a cap, not a target — floor it so
+        # small caller limits don't starve the visible text entirely.
+        if request.max_tokens is not None:
+            payload["max_output_tokens"] = max(request.max_tokens, 1024)
+        else:
+            payload["max_output_tokens"] = 32000
+        if request.temperature is not None:
+            payload["temperature"] = request.temperature
+        from ..core import REASONING_OFF
+        effort = request.reasoning_effort or "low"
+        if effort in REASONING_OFF:
+            effort = "none"
+        payload["reasoning"] = {"effort": effort}
+        return payload
+
+    async def _responses_stream(
+        self, request: ChatCompletionRequest
+    ) -> AsyncIterator[tuple[Optional[str], Optional[dict[str, Any]], Optional[dict[str, Any]], Optional[str]]]:
+        """Yield (content_delta, tool_call_item, usage, finish) tuples from SSE."""
+        payload = self._build_responses_payload(request)
+        headers = self._build_headers()
+        client = await self._get_async_client()
+        saw_delta = False
+        async with client.stream("POST", self._responses_endpoint(), headers=headers, json=payload, timeout=60.0) as response:
+            if response.status_code != 200:
+                error_body = await response.aread()
+                error_text = error_body.decode("utf-8", errors="replace")
+                raise map_provider_error(
+                    self._error_name(),
+                    Exception(f"{self._error_name()} API error: {response.status_code} - {error_text}"),
+                    status_code=response.status_code,
+                    response_body=error_text,
+                )
+            async for line in response.aiter_lines():
+                if not line.startswith("data:"):
+                    continue
+                data_str = line[5:].strip()
+                if not data_str or data_str == "[DONE]":
+                    continue
+                try:
+                    data = json.loads(data_str)
+                except json.JSONDecodeError:
+                    continue
+                etype = data.get("type", "")
+                if etype == "response.output_text.delta":
+                    saw_delta = True
+                    yield data.get("delta"), None, None, None
+                elif etype == "response.output_item.done":
+                    item = data.get("item") or {}
+                    if item.get("type") == "function_call":
+                        yield None, item, None, None
+                elif etype in ("response.completed", "response.incomplete"):
+                    resp = data.get("response") or {}
+                    usage = resp.get("usage") or {}
+                    if not saw_delta:
+                        # Buffered backend: the full output arrives only on the
+                        # completed event — replay it as content/tool events.
+                        for out_item in resp.get("output") or []:
+                            if out_item.get("type") == "message":
+                                for part in out_item.get("content") or []:
+                                    if part.get("type") in ("output_text", "text") and part.get("text"):
+                                        yield part["text"], None, None, None
+                            elif out_item.get("type") == "function_call":
+                                yield None, out_item, None, None
+                    finish = "stop" if etype == "response.completed" else "length"
+                    yield None, None, usage, finish
+                elif etype in ("response.failed", "error", "response.error"):
+                    err = (data.get("response") or {}).get("error") or data.get("error") or {}
+                    raise map_provider_error(
+                        self._error_name(),
+                        Exception(f"{self._error_name()} responses stream error: {json.dumps(err)[:300]}"),
+                    )
+
+    async def _responses_acomplete(self, request: ChatCompletionRequest) -> ChatCompletionResponse:
+        content_parts: list[str] = []
+        tool_calls: list[dict[str, Any]] = []
+        usage: dict[str, Any] = {}
+        finish: Optional[str] = None
+        try:
+            async for content, item, event_usage, event_finish in self._responses_stream(request):
+                if content:
+                    content_parts.append(content)
+                if item:
+                    tool_calls.append({
+                        "id": item.get("call_id") or item.get("id"),
+                        "type": "function",
+                        "function": {"name": item.get("name"), "arguments": item.get("arguments", "")},
+                    })
+                if event_usage:
+                    usage = event_usage
+                if event_finish:
+                    finish = event_finish
+        except Exception as e:
+            if isinstance(e, UniInferError):
+                raise
+            raise map_provider_error(self._error_name(), e)
+        if tool_calls:
+            finish = "tool_calls"
+        input_tokens = usage.get("input_tokens", 0)
+        output_tokens = usage.get("output_tokens", 0)
+        return ChatCompletionResponse(
+            message=ChatMessage(
+                role="assistant",
+                content="".join(content_parts) or None,
+                tool_calls=tool_calls or None,
+                tool_call_id=None,
+            ),
+            provider=self.PROVIDER_ID,
+            model=request.model,
+            usage={
+                "prompt_tokens": input_tokens,
+                "completion_tokens": output_tokens,
+                "total_tokens": usage.get("total_tokens", input_tokens + output_tokens),
+            },
+            raw_response={},
+            finish_reason=finish or "stop",
+            thinking=None,
+        )
+
+    # ------------------------------------------------------------------ #
+    # routing
+    # ------------------------------------------------------------------ #
     async def acomplete(
         self,
         request: ChatCompletionRequest,
         **provider_specific_kwargs,
     ) -> ChatCompletionResponse:
-        """Route: jev-* -> System One decision API, else chat (streamed)."""
-        if self._is_systemone_model(request.model or self.DEFAULT_MODEL):
+        dialect = self._dialect_for(request.model or self.DEFAULT_MODEL)
+        if dialect == "systemone":
             return await self._systemone_acomplete(request)
+        if dialect == "responses":
+            return await self._responses_acomplete(request)
+        if dialect in ("anthropic", "google"):
+            raise self._unsupported_dialect_error(dialect, request.model or "")
         return await self._chat_acomplete(request, **provider_specific_kwargs)
 
     async def astream_complete(
@@ -353,70 +657,137 @@ class OpenCodeProvider(OpenAICompatibleChatProvider):
         request: ChatCompletionRequest,
         **provider_specific_kwargs,
     ) -> AsyncIterator[ChatCompletionResponse]:
-        """Route: jev-* yields one aggregated chunk (no stream upstream)."""
-        if self._is_systemone_model(request.model or self.DEFAULT_MODEL):
+        dialect = self._dialect_for(request.model or self.DEFAULT_MODEL)
+        if dialect == "systemone":
             yield await self._systemone_acomplete(request)
             return
+        if dialect == "responses":
+            try:
+                async for content, item, usage, finish in self._responses_stream(request):
+                    if content is None and item is None and usage is None and finish is None:
+                        continue
+                    if item is not None:
+                        yield ChatCompletionResponse(
+                            message=ChatMessage(
+                                role="assistant",
+                                content=None,
+                                tool_calls=[{
+                                    "id": item.get("call_id") or item.get("id"),
+                                    "type": "function",
+                                    "function": {"name": item.get("name"), "arguments": item.get("arguments", "")},
+                                }],
+                            ),
+                            provider=self.PROVIDER_ID,
+                            model=request.model,
+                            usage={},
+                            raw_response={},
+                            finish_reason=None,
+                            thinking=None,
+                        )
+                    elif content is not None:
+                        yield ChatCompletionResponse(
+                            message=ChatMessage(role="assistant", content=content),
+                            provider=self.PROVIDER_ID,
+                            model=request.model,
+                            usage={},
+                            raw_response={},
+                            finish_reason=None,
+                            thinking=None,
+                        )
+                    if usage:
+                        yield ChatCompletionResponse(
+                            message=ChatMessage(role="assistant", content=None),
+                            provider=self.PROVIDER_ID,
+                            model=request.model,
+                            usage={
+                                "prompt_tokens": usage.get("input_tokens", 0),
+                                "completion_tokens": usage.get("output_tokens", 0),
+                                "total_tokens": usage.get("total_tokens", usage.get("input_tokens", 0) + usage.get("output_tokens", 0)),
+                            },
+                            raw_response={},
+                            finish_reason=finish,
+                            thinking=None,
+                        )
+            except Exception as e:
+                if isinstance(e, UniInferError):
+                    raise
+                raise map_provider_error(self._error_name(), e)
+            return
+        if dialect in ("anthropic", "google"):
+            raise self._unsupported_dialect_error(dialect, request.model or "")
         async for chunk in super().astream_complete(request, **provider_specific_kwargs):
             yield chunk
 
+    # ------------------------------------------------------------------ #
+    # model listing — fully dynamic
+    # ------------------------------------------------------------------ #
     @classmethod
     def list_models(cls, api_key: Optional[str] = None) -> list["ModelInfo"]:
-        """List models from OpenCode/Zen via pi.dev catalog.
+        """Dynamic catalog, no hardcoded model lists.
 
-        The native ``/v1/models`` endpoint returns bare IDs with no metadata.
-        pi.dev maintains an enriched catalog (context windows, max tokens,
-        reasoning flag, input modalities, cost) — pull from there instead.
-
-        pi.dev uses flat top-level fields (``reasoning``, ``input``, ``cost``)
-        rather than a ``capabilities`` dict, so we translate:
-        - ``reasoning: true``  -> capabilities.reasoning
-        - ``input: [...'image']`` -> capabilities.vision (+ modalities)
-        - ``cost.input == 0``   -> access 'free' (data-driven, not a name
-          heuristic; removes the old ``-free``/``big-pickle`` special-case).
+        1. model universe: live ``GET {BASE_URL}/models`` (bare ids, always
+           current; falls back to the docs endpoints table on failure)
+        2. dialect/name/pricing from the parsed official docs tables
+           (see :func:`_docs_tables`) — free = pricing Input 'Free' (0.0)
+        3. metadata (context window, max tokens, capabilities) enriched from
+           the pi.dev catalog where the id is known there
         """
+        live_ids: list[str] = []
+        try:
+            r = requests.get(f"{cls.BASE_URL.rstrip('/')}/models", timeout=30,
+                             headers={"Authorization": "Bearer public"})
+            r.raise_for_status()
+            live_ids = [m.get("id") for m in r.json().get("data", []) if m.get("id")]
+        except Exception:
+            live_ids = []
+
+        tables = _docs_tables() or {}
+        endpoints = tables.get("endpoints") or {}
+        pricing = tables.get("pricing") or {}
+        if not live_ids:
+            live_ids = list(endpoints)
+
+        pi_meta: dict[str, dict[str, Any]] = {}
         try:
             r = requests.get("https://pi.dev/api/models/providers/opencode", timeout=30)
             r.raise_for_status()
-            data = r.json()
+            pi_meta = r.json()
         except Exception:
-            data = {}
-        out = []
-        for mid, m in data.items():
-            cost = m.get("cost") or {}
-            free = cost.get("input", 0) == 0
-            inputs = m.get("input") or []
+            pi_meta = {}
+
+        out: list[ModelInfo] = []
+        for mid in live_ids:
+            entry = endpoints.get(mid, {})
+            price = pricing.get(mid)
+            meta = pi_meta.get(mid, {})
+            pi_cost = meta.get("cost") or {}
+            if price is not None:
+                cost = {"input": price.get("input"), "output": price.get("output")}
+                free = price.get("input") == 0.0
+            elif pi_cost:
+                cost = pi_cost
+                free = pi_cost.get("input", 1) == 0
+            else:
+                cost = None
+                free = mid.endswith("-free")  # last-resort heuristic, no id pinning
+            inputs = meta.get("input") or []
             caps = {}
-            if m.get("reasoning"):
+            if meta.get("reasoning"):
                 caps["reasoning"] = True
             if "image" in inputs:
                 caps["vision"] = True
             out.append(
                 ModelInfo(
                     id=mid,
-                    name=m.get("name"),
+                    name=entry.get("name") or meta.get("name") or mid,
                     owned_by="opencode",
-                    context_window=m.get("contextWindow"),
-                    max_output=m.get("maxTokens"),
+                    context_window=meta.get("contextWindow"),
+                    max_output=meta.get("maxTokens"),
                     cost=cost,
                     access="free" if free else "paid",
                     capabilities=caps or None,
                     modalities=inputs or None,
-                    raw=m,
-                )
-            )
-        # pi.dev lags behind the live zen catalog — pin the System One model
-        # (served via /v1/systemone, wrapped into chat by this provider).
-        if not any(m.id == "jev-1.13-free" for m in out):
-            out.append(
-                ModelInfo(
-                    id="jev-1.13-free",
-                    name="Jev 1.13 Free (System One)",
-                    owned_by="opencode",
-                    cost={"input": 0.0, "output": 0.0},
-                    access="free",
-                    capabilities={"structured_outputs": True},
-                    raw={"endpoint": "systemone"},
+                    raw={"endpoint": entry.get("endpoint", ""), "sdk": entry.get("sdk", "")},
                 )
             )
         return out
