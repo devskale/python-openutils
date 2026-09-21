@@ -128,3 +128,14 @@ def _parse(catalog_json):
             raw=model,
         ))
     return out
+
+
+def test_kilo_sends_explicit_user_agent():
+    """Kilo rejects the httpx default UA (python-httpx/x.y.z) with 403; the
+    provider must send an explicit, non-httpx User-Agent."""
+    p = KiloProvider(api_key="test")
+    headers = p._build_headers()
+    ua = headers.get("User-Agent")
+    assert ua is not None, "Kilo must set an explicit User-Agent"
+    assert "python-httpx" not in ua, f"UA must not identify httpx: {ua!r}"
+    assert ua == KiloProvider.USER_AGENT

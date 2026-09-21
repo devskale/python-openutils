@@ -54,6 +54,17 @@ class KiloProvider(OpenAICompatibleChatProvider):
                 api_key = None
         super().__init__(api_key=api_key, base_url=self.BASE_URL)
 
+    # Kilo's gateway rejects requests whose ``User-Agent`` identifies the
+    # python-httpx client (``python-httpx/x.y.z``) with HTTP 403 Forbidden
+    # (``fra1::...``), while the same payload with a neutral/curl User-Agent
+    # succeeds. httpx sets ``python-httpx/x.y.z`` by default, so we must send an
+    # explicit User-Agent for Kilo requests. ``_get_extra_headers`` is merged
+    # into the request headers by the base ``_build_headers``.
+    USER_AGENT = "uniinfer/0.1.4"
+
+    def _get_extra_headers(self) -> dict[str, str]:
+        return {"User-Agent": self.USER_AGENT}
+
     def _reasoning_payload(self, reasoning_effort: Optional[str]) -> dict[str, Any]:
         """Kilo mirrors OpenRouter: use the ``reasoning`` object dialect."""
         return openrouter_reasoning_payload(reasoning_effort)
