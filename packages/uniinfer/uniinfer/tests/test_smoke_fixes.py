@@ -190,3 +190,29 @@ def test_keyless_instance_flag_propagates(monkeypatch):
     c2 = comp.Target("groq@m")
     assert "REQUIRES_API_KEY" not in captured
     assert c2.provider.REQUIRES_API_KEY is True
+
+
+def test_keyless_flag_with_strict_provider_signature(monkeypatch):
+    """Provider mit strikter __init__ (z.B. KiloProvider(api_key)) dürfen an
+    keyless Specs nicht mit 'unexpected keyword argument' 400en — die Basis-
+    klasse wendet den Flag zentral an."""
+    from uniinfer.providers.kilo import KiloProvider
+    from uniinfer.config.instances import InstanceSpec
+
+    spec = InstanceSpec(alias="kilo", provider="kilo", is_builtin=True,
+                        requires_api_key=False)  # Kilo: REQUIRES_API_KEY = False
+    import uniinfer.completion as comp
+    monkeypatch.setattr(comp, "resolve_instance", lambda alias: spec)
+    monkeypatch.setattr(comp, "_extra_params", lambda p: {})
+
+    t = comp.Target("kilo@qwen/qwen3.8-27b:free", api_key="k")
+    assert t.provider.REQUIRES_API_KEY is False  # Flag zentral angewandt
+
+
+def test_keyless_flag_base_class_central():
+    """Die Basisklasse (nicht der Unterklassen-__init__) wendet den Flag an —
+    gilt damit für ALLE Provider, auch ohne eigene **kwargs-Kette."""
+    from uniinfer.core import ChatProvider
+    p = ChatProvider.__new__(ChatProvider)
+    ChatProvider.__init__(p, api_key="k", REQUIRES_API_KEY=False)
+    assert p.REQUIRES_API_KEY is False

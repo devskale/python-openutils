@@ -293,6 +293,11 @@ class ChatProvider:
             **kwargs: Additional provider-specific configuration parameters.
         """
         self.api_key = api_key
+        # Keyless-instance override (instances overlay, requires_api_key:false):
+        # applied centrally so EVERY provider — auch solche mit strikter
+        # __init__-Signatur wie KiloProvider(api_key) — den Gate abschalten kann.
+        if kwargs.get("REQUIRES_API_KEY") is not None:
+            self.REQUIRES_API_KEY = bool(kwargs["REQUIRES_API_KEY"])
         self._async_client: Optional[httpx.AsyncClient] = None
         self._owns_client = True  # False once _get_async_client returns the shared client
         # Additional provider-specific configuration can be handled by subclasses
@@ -497,6 +502,11 @@ class EmbeddingProvider:
             **kwargs: Additional provider-specific configuration parameters.
         """
         self.api_key = api_key
+        # Keyless-instance override (instances overlay, requires_api_key:false):
+        # applied centrally so EVERY provider — auch solche mit strikter
+        # __init__-Signatur wie KiloProvider(api_key) — den Gate abschalten kann.
+        if kwargs.get("REQUIRES_API_KEY") is not None:
+            self.REQUIRES_API_KEY = bool(kwargs["REQUIRES_API_KEY"])
         self._async_client: Optional[httpx.AsyncClient] = None
         # Additional provider-specific configuration can be handled by subclasses
 

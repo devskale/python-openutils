@@ -45,7 +45,7 @@ class KiloProvider(OpenAICompatibleChatProvider):
     # to vision-capable upstreams (e.g. stepfun/step-3.7-flash:free).
     PRESERVE_MULTIMODAL = True
 
-    def __init__(self, api_key: Optional[str] = None):
+    def __init__(self, api_key: Optional[str] = None, **kwargs):
         if not api_key:
             try:
                 from credgoo import get_api_key
