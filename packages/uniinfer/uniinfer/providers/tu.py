@@ -45,6 +45,16 @@ def _log_outgoing_payload(model: str, payload: dict[str, Any], *, operation: str
 
 
 
+def _timeout_ctx(model: str, payload: dict[str, Any]) -> str:
+    """Context-rich timeout message: empty str(httpx.ReadTimeout) produced the
+    useless 'tu error: ' relays. Names the likely causes so the operator can
+    act (oversized context vs wedged replica) without log diving."""
+    kb = len(json.dumps(payload, default=str)) // 1024
+    return (f"upstream timeout: no response headers within {TU_STREAM_OPEN_TIMEOUT:.0f}s "
+            f"(model={model}, payload={kb}KB) — "
+            f"likely wedged TU replica or oversized context (compact the session)")
+
+
 def _parse_retry_after(headers: Any) -> float | None:
     """Parse a Retry-After header (delta-seconds or HTTP-date) if present."""
     raw = None
@@ -434,7 +444,7 @@ class TUProvider(ChatProvider):
                 response = await client.post(url, json=payload)
             except httpx.TimeoutException as e:
                 last_exc = e
-                logger.warning("[%s] read timeout on %s (attempt %d/%d): %s", self._CREDGOO_SERVICE, model, attempt + 1, max_retries + 1, e)
+                logger.warning("[%s] read timeout on %s (attempt %d/%d): %s %s", self._CREDGOO_SERVICE, model, attempt + 1, max_retries + 1, e, _timeout_ctx(model, payload))
                 if attempt < max_retries:
                     # A read timeout on a wedged backend poisons the pooled
                     # connection for every request on it — evict it so this
@@ -488,6 +498,8 @@ class TUProvider(ChatProvider):
                 )
             return response
         if last_exc is not None:
+            if isinstance(last_exc, httpx.TimeoutException):
+                raise map_provider_error(self._CREDGOO_SERVICE, Exception(_timeout_ctx(model, payload)))
             raise map_provider_error(self._CREDGOO_SERVICE, last_exc)
         raise map_provider_error(self._CREDGOO_SERVICE, Exception("TU API error: exhausted retries"))
 
@@ -527,7 +539,7 @@ class TUProvider(ChatProvider):
             except httpx.TimeoutException as e:
                 last_exc = e
                 _TU_TELEMETRY.open_stalls += 1
-                logger.warning("[%s] read timeout on %s stream (attempt %d/%d): %s", self._CREDGOO_SERVICE, model, attempt + 1, max_retries + 1, e)
+                logger.warning("[%s] read timeout on %s stream (attempt %d/%d): %s %s", self._CREDGOO_SERVICE, model, attempt + 1, max_retries + 1, e, _timeout_ctx(model, payload))
                 if attempt < max_retries:
                     # Same wedged-backend eviction as the non-streaming path:
                     # retry on a fresh connection instead of re-hanging on the
@@ -614,6 +626,8 @@ class TUProvider(ChatProvider):
                 )
             return cm, response
         if last_exc is not None:
+            if isinstance(last_exc, httpx.TimeoutException):
+                raise map_provider_error(self._CREDGOO_SERVICE, Exception(_timeout_ctx(model, payload)))
             raise map_provider_error(self._CREDGOO_SERVICE, last_exc)
         raise map_provider_error(self._CREDGOO_SERVICE, Exception("TU API error: exhausted stream retries"))
 
