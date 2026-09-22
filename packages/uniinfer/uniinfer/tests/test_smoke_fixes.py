@@ -216,3 +216,19 @@ def test_keyless_flag_base_class_central():
     p = ChatProvider.__new__(ChatProvider)
     ChatProvider.__init__(p, api_key="k", REQUIRES_API_KEY=False)
     assert p.REQUIRES_API_KEY is False
+
+
+def test_keyless_flag_opencode_provider():
+    """OpenCodeProvider (REQUIRES_API_KEY=False, strikte Signatur) darf an
+    keyless Specs nicht mehr mit argument-mismatch 400en."""
+    import uniinfer.completion as comp
+    from uniinfer.config.instances import InstanceSpec
+    from uniinfer.providers.opencode import OpenCodeProvider
+
+    spec = InstanceSpec(alias="opencode", provider="opencode", is_builtin=True,
+                        requires_api_key=False)
+    monkeypatch.setattr(comp, "resolve_instance", lambda alias: spec)
+    monkeypatch.setattr(comp, "_extra_params", lambda p: {})
+    t = comp.Target("opencode@mimo-v2.6-flash-free", api_key="k")
+    assert isinstance(t.provider, OpenCodeProvider)
+    assert t.provider.REQUIRES_API_KEY is False

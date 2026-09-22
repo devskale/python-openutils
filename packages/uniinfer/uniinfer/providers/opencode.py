@@ -163,7 +163,7 @@ class OpenCodeProvider(OpenAICompatibleChatProvider):
     _id_counter = 0
     _agent_tools_cache: Optional[list[dict[str, Any]]] = None
 
-    def __init__(self, api_key: Optional[str] = None):
+    def __init__(self, api_key: Optional[str] = None, **kwargs):
         if not api_key:
             try:
                 from credgoo import get_api_key
