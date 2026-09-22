@@ -43,6 +43,7 @@ from uniinfer.proxy_routers.tools import create_tools_router
 from uniinfer.proxy_routers.smoke import create_smoke_router
 from uniinfer.proxy_routers.capabilities import create_capabilities_router
 from uniinfer.proxy_routers.stats import create_stats_router
+from uniinfer.proxy_routers.systemone import create_systemone_router
 
 try:
     # TU wedge/stall telemetry, surfaced in /health. Guarded so a proxy that
@@ -248,6 +249,7 @@ app.include_router(create_stats_router())
 app.include_router(create_images_router(parse_provider_model))
 app.include_router(create_audio_router(parse_provider_model))
 app.include_router(create_system_router(UNIINFER_VERSION))
+app.include_router(create_systemone_router(parse_provider_model=parse_provider_model))
 
 
 app.include_router(
