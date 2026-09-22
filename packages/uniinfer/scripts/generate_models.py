@@ -534,8 +534,29 @@ def _acquire_run_lock() -> None:
 
 def main():
     _acquire_run_lock()
+    import argparse
+    ap = argparse.ArgumentParser(
+        description="Regeneriert den Modelle-Katalog (models.json).")
+    ap.add_argument(
+        "--provider", action="append", metavar="ID",
+        help="Nur diese Provider aktualisieren (wiederholbar, z.B. --provider groq "
+             "--provider gemini). Alle übrigen Katalog-Einträge bleiben "
+             "unangetastet erhalten.")
+    args = ap.parse_args()
+    only = {p.lower() for p in args.provider} if args.provider else None
+
     log.info("Discovering providers...")
     providers = discover_providers()
+    if only:
+        providers = [p for p in providers if p[0] in only]
+        unknown = only - {p[0] for p in providers}
+        if unknown:
+            log.warning("Unbekannte Provider im Filter ignoriert: %s",
+                        ", ".join(sorted(unknown)))
+        if not providers:
+            log.error("Keiner der gefilterten Provider ist bekannt — Abbruch.")
+            sys.exit(1)
+        log.info("Provider-Filter aktiv: %s", ", ".join(sorted(only)))
     log.info("Found %d providers\n", len(providers))
 
     type_overrides = load_type_overrides()
@@ -736,6 +757,12 @@ def main():
         preserved = len(result) - before
         if preserved:
             log.info("Preserved %d custom-alias catalog entries", preserved)
+        # Gefilterter Lauf: die Katalog-Einträge aller NICHT aktualisierten
+        # Provider unverändert übernehmen, statt sie zu verwerfen.
+        if only:
+            for pid, entry in existing_providers.items():
+                if pid not in only:
+                    result.setdefault(pid, entry)
         total_models = sum(len(v.get("models", [])) for v in result.values())
     except Exception as e:
         log.warning("Could not preserve custom-alias entries: %s", e)

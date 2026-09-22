@@ -274,6 +274,12 @@ class GroqProvider(ChatProvider):
                 in_mods = getattr(model, "input_modalities", None) or ["text"]
                 out_mods = getattr(model, "output_modalities", None) or ["text"]
                 caps = {"vision": True} if "image" in in_mods else None
+                # Tool-Unterstützung aus supported_features (z.B. groq/compound
+                # hat sie NICHT — Requests mit Tools 400en dort hart).
+                feats = getattr(model, "supported_features", None) or []
+                if feats:
+                    caps = dict(caps or {})
+                    caps["tool_call"] = "tools" in feats
                 # Non-text outputs (TTS like orpheus) are not chat models —
                 # typing them chat made them appear in chat-only client lists.
                 if "text" not in out_mods:
