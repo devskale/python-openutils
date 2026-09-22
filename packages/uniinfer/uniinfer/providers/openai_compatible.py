@@ -249,6 +249,12 @@ class OpenAICompatibleChatProvider(ChatProvider):
         }
         if request.max_tokens is not None:
             payload["max_tokens"] = request.max_tokens
+            # Weicher, konfigurierbarer Cap (model_defaults.json) — z.B. fuer
+            # Free-Tier-Modelle, deren Tier-Limit weit unter dem API-Hardcap
+            # liegt (groq qwen3.8-27b: API 16384, Tier ~1000).
+            soft_cap = defaults.get("max_tokens_cap")
+            if isinstance(soft_cap, int) and soft_cap > 0:
+                payload["max_tokens"] = min(payload["max_tokens"], soft_cap)
         if request.tools:
             payload["tools"] = self._sanitize_tools_schema(request.tools)
         if request.tool_choice:

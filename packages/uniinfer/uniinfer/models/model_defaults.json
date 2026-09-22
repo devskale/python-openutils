@@ -4,5 +4,8 @@
     },
     "kimi-k2.6": {
         "temperature": 1.0
+    },
+    "qwen/qwen3.8-27b": {
+        "max_tokens_cap": 1000
     }
 }

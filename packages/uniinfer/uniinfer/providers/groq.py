@@ -89,7 +89,14 @@ class GroqProvider(ChatProvider):
         }
         if request.max_tokens is not None:
             cap = self._catalog_max_output(request.model)
-            params["max_tokens"] = min(request.max_tokens, cap) if cap else request.max_tokens
+            mt = min(request.max_tokens, cap) if cap else request.max_tokens
+            # Weicher Config-Cap (model_defaults.json) neben dem Katalog-Hardcap:
+            # Free-Tier-Limits liegen oft weit unter der API-Grenze.
+            from .openai_compatible import _load_model_defaults
+            soft = (_load_model_defaults().get(request.model) or {}).get("max_tokens_cap")
+            if isinstance(soft, int) and soft > 0:
+                mt = min(mt, soft)
+            params["max_tokens"] = mt
         if request.tools:
             params["tools"] = request.tools
         if request.tool_choice:
