@@ -218,7 +218,7 @@ def test_keyless_flag_base_class_central():
     assert p.REQUIRES_API_KEY is False
 
 
-def test_keyless_flag_opencode_provider():
+def test_keyless_flag_opencode_provider(monkeypatch):
     """OpenCodeProvider (REQUIRES_API_KEY=False, strikte Signatur) darf an
     keyless Specs nicht mehr mit argument-mismatch 400en."""
     import uniinfer.completion as comp
