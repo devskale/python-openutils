@@ -566,8 +566,8 @@ wheels = [
 
 [[package]]
 name = "credgoo"
-version = "0.1.14"
-source = { git = "https://github.com/devskale/python-openutils.git?subdirectory=packages%2Fcredgoo&rev=main#3ee8c465a83e8a296467faa63713e4f9f03e42e9" }
+version = "0.1.15"
+source = { git = "https://github.com/devskale/python-openutils.git?subdirectory=packages%2Fcredgoo&rev=main#51e49ba7e1ad53c6f1fba7fcd3e24a0b369d21be" }
 dependencies = [
     { name = "requests", version = "2.32.5", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.10'" },
     { name = "requests", version = "2.34.2", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.10'" },
@@ -1909,8 +1909,8 @@ wheels = [
 
 [[package]]
 name = "uniinfer"
-version = "0.8.55"
-source = { git = "https://github.com/devskale/python-openutils.git?subdirectory=packages%2Funiinfer&rev=main#3ee8c465a83e8a296467faa63713e4f9f03e42e9" }
+version = "0.8.56"
+source = { git = "https://github.com/devskale/python-openutils.git?subdirectory=packages%2Funiinfer&rev=main#51e49ba7e1ad53c6f1fba7fcd3e24a0b369d21be" }
 dependencies = [
     { name = "ai21" },
     { name = "credgoo" },
