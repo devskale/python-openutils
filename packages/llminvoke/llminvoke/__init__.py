@@ -176,6 +176,7 @@ def _invoke_via_openai_sdk(
     bearer: str | None,
     provider: str,
     model: str,
+    bare_model: bool = False,
     messages: list[ChatMessage],
     temperature: float,
     max_tokens: int,
@@ -206,7 +207,7 @@ def _invoke_via_openai_sdk(
         base_url=base_url, api_key=bearer or "missing",
         timeout=httpx.Timeout(connect=10.0, read=90.0, write=30.0, pool=10.0),
     )
-    model_id = f"{provider}@{model}"
+    model_id = model if bare_model else f"{provider}@{model}"
     openai_messages = [
         {"role": getattr(m, "role", None) or "user", "content": getattr(m, "content", None)}
         for m in messages
@@ -263,6 +264,7 @@ def invoke_llm(
     max_tokens: int = 4096,
     base_url: str | None = None,
     bearer: str | None = None,
+    bare_model: bool = False,
     **request_kwargs,
 ):
     """One-shot invocation: credgoo → provider → request → .complete().
@@ -282,7 +284,7 @@ def invoke_llm(
         return _invoke_via_openai_sdk(
             base_url=base_url, bearer=bearer, provider=provider, model=model,
             messages=messages, temperature=temperature, max_tokens=max_tokens,
-            request_kwargs=request_kwargs,
+            request_kwargs=request_kwargs, bare_model=bare_model,
         )
     prov = create_provider(provider)
     request = ChatCompletionRequest(
@@ -331,6 +333,7 @@ def _try_model(
                 max_tokens=cfg.max_tokens,
                 base_url=cfg.base_url,
                 bearer=cfg.bearer,
+                bare_model=cfg.bare_model,
                 **merged_kwargs,
             )
             text = extract_response_text(response)

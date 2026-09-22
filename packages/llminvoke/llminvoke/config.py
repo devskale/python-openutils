@@ -113,6 +113,10 @@ class ResolvedConfig:
     request_kwargs: dict = field(default_factory=dict)  # e.g. chat_template_kwargs
     # OpenAI-compatible endpoint (the gateway). None = use the provider's own endpoint.
     base_url: str | None = None
+    # Lokaler OpenAI-kompatibler Server (z.B. vLLM auf der Box): model-id BARE
+    # senden — das provider@model-format ist das UNII-GATEWAY-routing, ein lokaler
+    # vllm kennt nur die nackte model-id (dgx 2026-09-22). clients.yml: bare_model: true
+    bare_model: bool = False
     bearer: str | None = None          # resolved key (credgoo/env/inline), not the ref
 
     @property
@@ -307,6 +311,7 @@ def resolve_model(
 
     # ── endpoint triple: base_url + bearer (env fallback; clients.yml overrides) ─
     base_url = os.environ.get("OPENAI_BASE_URL", "").strip() or None
+    bare_model = False
     bearer_ref: str | None = os.environ.get("OPENAI_API_KEY", "").strip() or None
     thinking: str | bool | None = None     # off|on|none|low|medium|high (mapped per model at return)
 
@@ -339,6 +344,7 @@ def resolve_model(
         retry = _parse_retry(client_cfg.get("retry"), retry)
         dsgvo_required = bool(client_cfg.get("dsgvo_required", dsgvo_required))
         base_url = client_cfg.get("base_url", base_url)
+        bare_model = bool(client_cfg.get("bare_model", bare_model))
         bearer_ref = client_cfg.get("bearer", bearer_ref)
         thinking = client_cfg.get("thinking", thinking)
 
@@ -407,6 +413,7 @@ def resolve_model(
         dsgvo_required=dsgvo_required,
         request_kwargs=task_kwargs,
         base_url=base_url,
+        bare_model=bare_model,
         bearer=_resolve_bearer(bearer_ref),
     )
 
