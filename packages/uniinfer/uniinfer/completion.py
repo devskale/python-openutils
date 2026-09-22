@@ -91,6 +91,11 @@ class Target:
             kwargs["api_key"] = api_key
         if base_url is not None:
             kwargs["base_url"] = base_url
+        if not spec.requires_api_key:
+            # Keyless instance (local ollama/vLLM/LM Studio, public endpoints):
+            # the class default REQUIRES_API_KEY=True would 400 every request
+            # even though the overlay says keyless — propagate the flag.
+            kwargs["REQUIRES_API_KEY"] = False
         self.provider = ProviderFactory.get_provider(spec.provider, **kwargs)
         self._record_access = record_access
 

@@ -69,6 +69,10 @@ class OpenAICompatibleChatProvider(ChatProvider):
     def __init__(self, api_key: Optional[str] = None, base_url: Optional[str] = None, **kwargs):
         super().__init__(api_key, **kwargs)
         self.base_url = base_url or self.BASE_URL
+        # Keyless-instance override (z.B. public vLLM endpoints via the
+        # instances overlay): drop the class-level key requirement.
+        if kwargs.get("REQUIRES_API_KEY") is not None:
+            self.REQUIRES_API_KEY = bool(kwargs["REQUIRES_API_KEY"])
 
     # ------------------------------------------------------------------ #
     # model listing — a template method. The mechanics (credgoo key,

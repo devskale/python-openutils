@@ -15,6 +15,7 @@ import pytest
 
 from uniinfer.core import ChatCompletionRequest, ChatMessage
 from uniinfer.providers.mistral import MistralProvider
+from uniinfer.providers.openai_compatible import OpenAICompatibleChatProvider
 from uniinfer.providers.groq import GroqProvider
 
 
@@ -153,3 +154,39 @@ def test_gemini_client_cache_shared(monkeypatch):
     assert c1 is c2                      # ein Client pro Key über Instanzen
     assert len(calls) == 1               # nur EIN Mal konstruiert
     assert calls[0].get("http_options", {}).get("timeout") == 120_000  # ms
+
+
+# ---------------------------------------------------------------- #
+# Keyless custom instances (z.B. HF vLLM endpoints via Overlay)
+# ---------------------------------------------------------------- #
+def test_keyless_instance_flag_propagates(monkeypatch):
+    """requires_api_key:false aus der Instance-Spec muss den Provider-Gate
+    (REQUIRES_API_KEY) abschalten — sonst 400en public Endpoints."""
+    import uniinfer.completion as comp
+    from uniinfer.config.instances import InstanceSpec
+
+    captured = {}
+
+    def fake_get_provider(name, **kwargs):
+        captured.update(kwargs)
+        return OpenAICompatibleChatProvider(api_key=kwargs.get("api_key"),
+                                            base_url=kwargs.get("base_url"),
+                                            REQUIRES_API_KEY=kwargs.get("REQUIRES_API_KEY"))
+
+    spec = InstanceSpec(alias="dgemma", provider="mistral", is_builtin=False,
+                        base_url="https://x.example/v1", requires_api_key=False)
+    monkeypatch.setattr(comp, "resolve_instance", lambda alias: spec)
+    monkeypatch.setattr(comp.ProviderFactory, "get_provider", fake_get_provider)
+    monkeypatch.setattr(comp, "_extra_params", lambda p: {})
+
+    c = comp.Target("dgemma@google/diffusiongemma-26B-A4B-it")
+    assert captured.get("REQUIRES_API_KEY") is False
+    assert c.provider.REQUIRES_API_KEY is False
+    # Kontrolle: normale Instanz behält den Gate
+    spec2 = InstanceSpec(alias="groq", provider="mistral", is_builtin=True,
+                         requires_api_key=True)
+    monkeypatch.setattr(comp, "resolve_instance", lambda alias: spec2)
+    captured.clear()
+    c2 = comp.Target("groq@m")
+    assert "REQUIRES_API_KEY" not in captured
+    assert c2.provider.REQUIRES_API_KEY is True
