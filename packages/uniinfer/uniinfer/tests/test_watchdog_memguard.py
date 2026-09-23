@@ -105,3 +105,17 @@ async def test_mem_guard_exits_when_stays_high(monkeypatch):
     await asyncio.sleep(0.2)
     task.cancel()
     assert exits == [75]  # controlled exit for clean restart
+
+
+def test_health_reports_asyncio_task_count():
+    """Task-leak gauge: /health must expose len(asyncio.all_tasks()) so a
+    monotonic climb is visible in one curl (async-concurrency.com pattern)."""
+    from fastapi.testclient import TestClient
+    import uniinfer.proxy_app as pa
+
+    with TestClient(pa.app) as client:
+        r = client.get("/health")
+        assert r.status_code == 200
+        body = r.json()
+        tasks = body.get("asyncio_tasks")
+        assert isinstance(tasks, int) and tasks >= 1

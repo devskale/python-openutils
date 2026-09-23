@@ -380,6 +380,7 @@ async def health(request: Request):
         "version": UNIINFER_VERSION,
         "uptime_seconds": int(time.time() - _HEALTH_START),
         "event_loop_latency_ms": round(loop_ms, 2),
+        "asyncio_tasks": len(asyncio.all_tasks()),
         "memory": {
             "rss_mb": rss_mb,
             "peak_mb": (peak_kb // 1024) if peak_kb else None,

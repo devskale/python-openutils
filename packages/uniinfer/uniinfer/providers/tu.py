@@ -37,11 +37,10 @@ def _log_outgoing_payload(model: str, payload: dict[str, Any], *, operation: str
     Full payload (messages included) only behind UNIINFER_DEBUG_RAW.
     """
     keys = ",".join(sorted(payload.keys()))
-    size = len(json.dumps(payload, default=str))
-    logger.info("[tu] %s -> %s | payload keys=[%s] bytes=%d", operation, model, keys, size)
+    raw = json.dumps(payload, default=str)  # single dump; size line always, raw only when enabled
+    logger.info("[tu] %s -> %s | payload keys=[%s] bytes=%d", operation, model, keys, len(raw))
     if _raw_logging_enabled():
-        logger.info("[tu] %s -> %s | FULL PAYLOAD: %s", operation, model,
-                    json.dumps(payload, default=str)[:4000])
+        logger.info("[tu] %s -> %s | FULL PAYLOAD: %s", operation, model, raw[:4000])
 
 
 
