@@ -453,7 +453,8 @@ class TUProvider(ChatProvider):
                         client = self._replace_pooled_client()
                     await asyncio.sleep(min(2.0 * (attempt + 1), 8.0))
                     continue
-                raise map_provider_error(self._CREDGOO_SERVICE, e)
+                raise map_provider_error(
+                    self._CREDGOO_SERVICE, Exception(_timeout_ctx(model, payload))) from e
             except httpx.TransportError as e:
                 last_exc = e
                 logger.warning("[tu] network error on %s (attempt %d/%d): %s", model, attempt + 1, max_retries + 1, e)
@@ -548,7 +549,8 @@ class TUProvider(ChatProvider):
                         client = self._replace_pooled_client()
                     await asyncio.sleep(min(2.0 * (attempt + 1), 8.0))
                     continue
-                raise map_provider_error(self._CREDGOO_SERVICE, e)
+                raise map_provider_error(
+                    self._CREDGOO_SERVICE, Exception(_timeout_ctx(model, payload))) from e
             except httpx.TransportError as e:
                 last_exc = e
                 logger.warning("[tu] network error on %s stream (attempt %d/%d): %s", model, attempt + 1, max_retries + 1, e)

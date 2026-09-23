@@ -213,3 +213,56 @@ async def test_clear_wedge_state_drops_pool_and_streams(monkeypatch):
     assert _TU_CLIENT_CACHE == {}  # pool dropped → next request mints fresh
     assert _TU_TELEMETRY.active_streams == {}
     assert _TU_TELEMETRY.snapshot(60.0)["in_flight"] == 0
+
+
+class _ReadTimeoutCM:
+    """httpx stream context manager whose __aenter__ raises ReadTimeout —
+    models the stream-open timeout (no response headers within N s)."""
+
+    def __init__(self, exc):
+        self._exc = exc
+
+    async def __aenter__(self):
+        raise self._exc
+
+    async def __aexit__(self, *args):
+        return None
+
+
+@pytest.mark.asyncio
+async def test_stream_open_timeout_exhausted_relays_context(monkeypatch):
+    """Regression: an exhausted stream-open timeout must relay a context-rich
+    message. Raw httpx.ReadTimeout.str() is empty -> clients saw 'tu error: '
+    (the 3ee8c46 log fix covered the WARNING, not the raised exception)."""
+    monkeypatch.setenv("TU_TRANSPORT_RETRIES", "0")
+    provider = TUProvider(api_key="k")
+    c = AsyncMock(spec=httpx.AsyncClient)
+    c.is_closed = False
+    c.stream.side_effect = [_ReadTimeoutCM(httpx.ReadTimeout("no headers"))]
+    _TU_CLIENT_CACHE[provider.base_url] = c
+    monkeypatch.setattr(TUProvider, "_new_async_client", lambda self: c)
+
+    with pytest.raises(ProviderError) as ei:
+        async for _ch in provider.astream_complete(_request("m")):
+            pass
+    assert "upstream timeout" in str(ei.value)
+    assert "deepseek-v4-flash-284b" in str(ei.value) or "m" in str(ei.value)
+    assert _TU_TELEMETRY.open_stalls == 1
+
+
+@pytest.mark.asyncio
+async def test_post_timeout_exhausted_relays_context(monkeypatch):
+    """Same guarantee on the non-streaming POST path (TU_TRANSPORT_RETRIES=0:
+    first transport error relays immediately with the model/payload context)."""
+    monkeypatch.setenv("TU_TRANSPORT_RETRIES", "0")
+    provider = TUProvider(api_key="k")
+    c = AsyncMock(spec=httpx.AsyncClient)
+    c.is_closed = False
+    c.post.side_effect = httpx.ReadTimeout("no headers")
+    _TU_CLIENT_CACHE[provider.base_url] = c
+    monkeypatch.setattr(TUProvider, "_new_async_client", lambda self: c)
+
+    with pytest.raises(ProviderError) as ei:
+        await provider._post_with_ratelimit_retry(
+            c, provider.base_url, {"messages": [{"role": "user", "content": "hi"}]}, "m")
+    assert "upstream timeout" in str(ei.value)
