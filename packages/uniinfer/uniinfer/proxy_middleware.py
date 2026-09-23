@@ -102,7 +102,9 @@ def _mem_trace_logger() -> logging.Logger:
     if not lg.handlers:
         try:
             os.makedirs(os.path.dirname(_MEM_TRACE_PATH), exist_ok=True)
-            h = RotatingFileHandler(_MEM_TRACE_PATH, maxBytes=2_000_000, backupCount=2)
+            # Small rotating cap: 1MB x 3 files = 3MB disk worst case — the
+            # tracer must never become its own disk-pressure problem.
+            h = RotatingFileHandler(_MEM_TRACE_PATH, maxBytes=1_000_000, backupCount=2)
             h.setFormatter(logging.Formatter("%(message)s"))
             lg.addHandler(h)
             lg.setLevel(logging.INFO)
@@ -110,6 +112,22 @@ def _mem_trace_logger() -> logging.Logger:
         except Exception:
             pass
     return lg
+
+
+def _jemalloc_fields() -> dict:
+    """Compact jemalloc split for the trace line ({} when not preloaded).
+    live grows -> real native leak; retained grows -> allocator behavior."""
+    try:
+        j = jemalloc_stats()
+    except Exception:
+        return {}
+    if j.get("allocated") is None:
+        return {}
+    return {
+        "j_live": round(j.get("allocated") or 0, 1),
+        "j_res": round(j.get("resident") or 0, 1),
+        "j_ret": round(j.get("retained") or 0, 1),
+    }
 
 
 async def mem_trace_loop(_app) -> None:
@@ -144,7 +162,7 @@ async def mem_trace_loop(_app) -> None:
                 tasks = None
             line = {"t": time.strftime("%H:%M:%S"), "up_s": int(time.time() - t0),
                     "rss_kb": rss_kb, "data_kb": data_kb, "objs": total,
-                    "tasks": tasks, "top": dict(by.most_common(10))}
+                    "tasks": tasks, **_jemalloc_fields(), "top": dict(by.most_common(10))}
             lg.info(json.dumps(line))
             if use_malloc:
                 snap = tracemalloc.take_snapshot()

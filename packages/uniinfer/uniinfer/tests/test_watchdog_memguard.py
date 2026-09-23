@@ -119,3 +119,21 @@ def test_health_reports_asyncio_task_count():
         body = r.json()
         tasks = body.get("asyncio_tasks")
         assert isinstance(tasks, int) and tasks >= 1
+
+
+def test_mem_trace_jemalloc_fields(monkeypatch):
+    """Trace line carries the live/retained split when jemalloc is active
+    (tomorrow's verification: live grows = leak, retained grows = allocator)."""
+    import uniinfer.proxy_middleware as pm
+
+    monkeypatch.setattr(pm, "jemalloc_stats", lambda: {"allocated": 22.5, "resident": 28.0, "retained": 5.0})
+    f = pm._jemalloc_fields()
+    assert f == {"j_live": 22.5, "j_res": 28.0, "j_ret": 5.0}
+
+    monkeypatch.setattr(pm, "jemalloc_stats", lambda: {"allocated": None})
+    assert pm._jemalloc_fields() == {}
+
+    def boom():
+        raise RuntimeError("no jemalloc")
+    monkeypatch.setattr(pm, "jemalloc_stats", boom)
+    assert pm._jemalloc_fields() == {}
