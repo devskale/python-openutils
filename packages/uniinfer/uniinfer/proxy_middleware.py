@@ -102,9 +102,9 @@ def _mem_trace_logger() -> logging.Logger:
     if not lg.handlers:
         try:
             os.makedirs(os.path.dirname(_MEM_TRACE_PATH), exist_ok=True)
-            # Small rotating cap: 1MB x 3 files = 3MB disk worst case — the
+            # Small rotating cap: 500KB x 3 files = 1.5MB disk worst case — the
             # tracer must never become its own disk-pressure problem.
-            h = RotatingFileHandler(_MEM_TRACE_PATH, maxBytes=1_000_000, backupCount=2)
+            h = RotatingFileHandler(_MEM_TRACE_PATH, maxBytes=500_000, backupCount=2)
             h.setFormatter(logging.Formatter("%(message)s"))
             lg.addHandler(h)
             lg.setLevel(logging.INFO)

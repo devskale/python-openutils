@@ -78,7 +78,7 @@ if not root_logger.handlers:
     log_file_path = os.path.join(log_dir, "uniioai_proxy.log")
 
     file_handler = RotatingFileHandler(
-        log_file_path, maxBytes=2 * 1024 * 1024, backupCount=5)
+        log_file_path, maxBytes=2 * 1024 * 1024, backupCount=3)
     file_handler.setFormatter(logging.Formatter(
         '%(asctime)s - %(name)s - %(levelname)s - %(message)s'))
     root_logger.addHandler(file_handler)
