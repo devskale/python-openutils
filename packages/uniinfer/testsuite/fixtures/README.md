@@ -82,13 +82,19 @@ status_code, error`. HTTP 402/429/4xx/5xx werden als `status_code` erfasst (kein
 
 ## Modelle / Secrets (gitignored)
 
-`testsuite/models.json` (**nicht committet**) listet die Ziele:
+`testsuite/models.json` (**nicht committet**, lokale Datei im Repo) listet die
+Ziele — der `base_url` pro Eintrag ist **der public serving point, abgeleitet aus
+der nginx-Config, nie eine ratende URL**:
 ```json
 { "models": [
-  {"name":"tu qwen-3.6-35b","base_url":"https://amd1.mooo.com:8123/v1","bearer":"$PROXY_KEY","model_id":"tu@qwen-3.6-35b"},
+  {"name":"tu qwen-3.6-35b","base_url":"https://<public-host>/v1","bearer":"$PROXY_KEY","model_id":"tu@qwen-3.6-35b"},
   {"name":"nim (local)","base_url":"http://localhost:8000/v1","bearer":"EMPTY","model_id":"Nvidia/…","enabled":false}
 ]}
 ```
+- **`<public-host>` ermitteln statt raten:**
+  `ssh amd 'sudo nginx -T | grep -B3 -A8 "server_name.*uniinfer"'` → der TLS-Vhost
+  (aktuell `uniinfer.skale.dev`) + `proxy_pass http://localhost:<port>`. Der lokale
+  Backend-Port kommt aus der systemd-Unit: `ssh amd 'systemctl cat uniioai-proxy | grep ExecStart'`.
 - `bearer`: `EMPTY`/"" = kein Auth · `$VAR`/`env:VAR` = aus `.env` · sonst literal. `.env` wird vom Runner geladen.
 - `enabled: false` = übersprungen.
 

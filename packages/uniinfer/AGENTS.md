@@ -30,13 +30,19 @@ uv run python3 scripts/generate_models.py  # regenerate models.json
 
 ## Deployment (Production)
 
-Proxy runs as **systemd service** on `amd-1`, port **8124**.
+Proxy runs as **systemd service** on `amd-1`. **Never hardcode the port here —
+discover it from the live config:**
+
+```bash
+ssh amd 'systemctl cat uniioai-proxy | grep ExecStart'  # backend port (--port …)
+ssh amd 'sudo nginx -T | grep -B3 -A8 "server_name.*uniinfer"'  # public exposure
+```
 
 ```bash
 sudo systemctl status uniioai-proxy
 sudo systemctl restart uniioai-proxy
 sudo journalctl -u uniioai-proxy -f        # live logs
-curl -s http://localhost:8124/v1/system/version  # health check
+curl -s http://localhost:<port-from-unit>/v1/system/version  # health check
 ```
 
 After pushing to `main`: `cd /home/ubuntu/code/python-openutils && git pull && cd packages/uniinfer && uv sync --all-extras && sudo systemctl restart uniioai-proxy`
@@ -48,7 +54,7 @@ After pushing to `main`: `cd /home/ubuntu/code/python-openutils && git pull && c
 |-----|-------|
 | Service file | `/etc/systemd/system/uniioai-proxy.service` |
 | Working dir | `/home/ubuntu/code/python-openutils/packages/uniinfer` |
-| Binary | `.venv/bin/python .venv/bin/uniioai-proxy --port 8124` |
+| Binary | `.venv/bin/python .venv/bin/uniioai-proxy --port <quoted from systemd unit>` |
 | Config | `.env` (`PROXY_KEY`, `PROXYHOST`, `PROXY_PORT`) — gitignored |
 | Models refresh | `uniioai-models-refresh.timer` daily at 04:00 UTC |
 

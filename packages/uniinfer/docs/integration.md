@@ -191,8 +191,11 @@ The dashboard at `/capabilities` renders whatever `--capabilities` (or
 
 ## 2. uniioai API (the proxy)
 
-OpenAI-compatible HTTP front. Same `provider@model` ids. Default dev port
-`8124` (nginx TLS on `8123`); production on `amd`.
+OpenAI-compatible HTTP front. Same `provider@model` ids. Runs on `amd` as a
+systemd service — **discover the serving port/exposure from the live config, never
+hardcode it:** `ssh amd 'systemctl cat uniioai-proxy | grep ExecStart'` (backend
+port) and `ssh amd 'sudo nginx -T | grep -B3 -A8 "server_name.*uniinfer"'`
+(public TLS exposure).
 
 | Endpoint | Method | Purpose |
 |---|---|---|
@@ -211,7 +214,8 @@ Bearer token = the proxy `PROXY_KEY` (credgoo combined `bearer@encryption`):
 
 ```bash
 export KEY="$PROXY_KEY"          # credgoo combined token (bearer@encryption) — never commit the real value
-curl -s https://localhost:8123/v1/system/version -H "Authorization: Bearer $KEY"
+# discover the public base URL from nginx config: ssh amd 'sudo nginx -T | grep -B3 -A8 "server_name.*uniinfer"'
+curl -s https://uniinfer.skale.dev/v1/system/version -H "Authorization: Bearer $KEY"
 # {"version":"0.5.44"}
 ```
 

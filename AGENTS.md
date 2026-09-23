@@ -112,9 +112,22 @@ There are two deploy targets — do not confuse them.
 ### 1. The uniioai proxy on `amd` (this host)
 
 The `uniioai-proxy` systemd service runs **on amd** from this local checkout
-(`/home/ubuntu/code/python-openutils/packages/uniinfer`), served by uvicorn on
-port `8124` (nginx TLS front on `8123`). It is **not** pulled via git URL —
-it *is* this repo.
+(`/home/ubuntu/code/python-openutils/packages/uniinfer`). It is **not** pulled
+via git URL — it *is* this repo.
+
+**Serving point — never hardcode ports, always discover from the live config:**
+
+- **Backend port (uvicorn):** read from the systemd unit, not from here:
+  `ssh amd 'systemctl cat uniioai-proxy | grep ExecStart'` → `--port 8124`
+- **Public exposure (nginx):** find the vhost from nginx config, not from a
+  fixed port:
+  `ssh amd 'sudo nginx -T | grep -B3 -A8 "server_name.*uniinfer"'` → the TLS
+  vhost `uniinfer.skale.dev` on 443 with `proxy_pass http://localhost:<port>`
+- **Registry (metarepo):** server `amd` in `repos.yml` (note: "unii proxy
+  (uniinfer.skale.dev)") — query via `./scripts/lib/repos`.
+
+If these drift from anything written here, the live config wins — update this
+file to match, never the reverse.
 
 To deploy a uniinfer change to the live proxy:
 ```bash
