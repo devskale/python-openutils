@@ -135,11 +135,18 @@ async def lifespan(app: FastAPI):
     if os.getenv("UNIINFER_MEM_TRACE", "") in {"1", "true", "yes"}:
         trace_task = asyncio.create_task(mem_trace_loop(app))
         logger.info("memory tracer enabled -> logs/mem_trace.log (UNIINFER_MEM_TRACE)")
+    # Structural freeze protection (live finding 2026-09-23): a frozen loop
+    # must not require a human SIGKILL. sd_notify watchdog -> systemd restarts;
+    # memory guard -> controlled exit before reclaim-thrash freezes the loop.
+    from uniinfer.proxy_services.sd_notify import memory_guard_task, watchdog_task
+    watchdog = asyncio.create_task(watchdog_task())
+    mem_guard = asyncio.create_task(memory_guard_task())
     try:
         yield
     finally:
-        if trace_task is not None:
-            trace_task.cancel()
+        for t in (watchdog, mem_guard, trace_task):
+            if t is not None:
+                t.cancel()
         await app.state.http.aclose()
 
 
