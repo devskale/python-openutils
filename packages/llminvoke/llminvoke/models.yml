@@ -128,7 +128,7 @@ default:
   backups:
     # 2026-09-24: tu@qwen-3.6-35b (plain deployment) auf tu EINGESTELLT (404-alarm)
     # — cross-provider-backup stattdessen: gemini-flash (live getestet OK).
-    - gemini@models/gemini-flash-latest
+    - gemini@models/gemini-3.8-flash
   temperature: 0.7
   max_tokens: 10000
   retry:
