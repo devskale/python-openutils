@@ -69,6 +69,21 @@ models:
     context_window: 1048576
     max_output_tokens: 8192
     description: "Gemini 2.5 Pro"
+  gemini@models/gemini-flash-latest:
+    context_window: 1048576
+    max_output_tokens: 65536
+    supports_thinking: true
+    description: "Gemini Flash (Latest-Alias — rollt auf die aktuelle Flash-Generation, live getestet 2026-09-24). Cross-provider-default-backup."
+  gemini@models/gemini-3.8-flash:
+    context_window: 1048576
+    max_output_tokens: 65536
+    supports_thinking: true
+    description: "Gemini 3.8 Flash — aktuellste nummerierte Flash-Generation (live getestet 2026-09-24)."
+  gemini@models/gemini-3.5-flash:
+    context_window: 1048576
+    max_output_tokens: 65536
+    supports_thinking: true
+    description: "Gemini 3.5 Flash — stable getestete Generation, saubere kurze Antworten (live getestet 2026-09-24)."
   gemini@models/gemini-2.5-flash:
     context_window: 1048576
     max_output_tokens: 8192
@@ -113,7 +128,7 @@ default:
   backups:
     # 2026-09-24: tu@qwen-3.6-35b (plain deployment) auf tu EINGESTELLT (404-alarm)
     # — cross-provider-backup stattdessen: gemini-flash (live getestet OK).
-    - gemini@models/gemini-2.5-flash
+    - gemini@models/gemini-flash-latest
   temperature: 0.7
   max_tokens: 10000
   retry:
