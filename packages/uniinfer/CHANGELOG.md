@@ -4,6 +4,26 @@ All notable changes to **uniinfer** are documented in this file.
 Versions follow [Semantic Versioning](https://semver.org/); this file
 adheres to [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.8.57] - 2026-09-24
+
+### Added
+
+- **Progressive agent discovery.** `GET /v1` returns a secret-free manifest
+  with auth shape and follow-up links. `GET /v1/providers` lists enabled
+  builtin/fleet instances from the local registry and cached catalog — no auth,
+  no upstream calls, and no `base_url`/credgoo leakage. `GET /` returns the same
+  manifest under `Accept: application/json` while preserving the browser UI.
+- **Slim model discovery.** `/v1/models?fields=id,type,context_window,...`
+  projects catalog entries to an explicit allowlisted subset while retaining the
+  `id/object/provider` navigation core. Live `/v1/models/{instance}` remains
+  authenticated.
+
+### Changed
+
+- `/v1/providers` changed from an authenticated list of provider classes to a
+  public discovery list of enabled *instances*. Custom aliases are addressable
+  via the reported `/v1/models/{instance}` live-models URL.
+
 ## [0.8.40] - 2026-08-09
 
 ### Fixed — memory stability (the wedge)

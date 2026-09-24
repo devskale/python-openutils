@@ -3,14 +3,20 @@
 Split from proxy_app.py for locality: these are static-file-serving + JSON-data
 endpoints, distinct from the app factory, health probe, and API routers.
 """
+
 from __future__ import annotations
 
 import json
-import os
 import logging
+import os
 
 from fastapi import APIRouter, HTTPException, Request
-from fastapi.responses import FileResponse, HTMLResponse
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
+
+from uniinfer.proxy_services.discovery import (
+    discovery_headers,
+    discovery_manifest,
+)
 
 logger = logging.getLogger("uniioai_proxy")
 
@@ -31,11 +37,15 @@ def create_system_router(version: str) -> APIRouter:
             raise HTTPException(status_code=404, detail="webdemo.html not found")
         with open(html_file_path, encoding="utf-8") as f:
             html = f.read()
-        build = str(int(max(
-            os.path.getmtime(os.path.join(_WEBDEMO_DIR, fn))
-            for fn in os.listdir(_WEBDEMO_DIR)
-            if os.path.isfile(os.path.join(_WEBDEMO_DIR, fn))
-        )))
+        build = str(
+            int(
+                max(
+                    os.path.getmtime(os.path.join(_WEBDEMO_DIR, fn))
+                    for fn in os.listdir(_WEBDEMO_DIR)
+                    if os.path.isfile(os.path.join(_WEBDEMO_DIR, fn))
+                )
+            )
+        )
         return HTMLResponse(html.replace("__BUILD__", build))
 
     @router.get("/perf", include_in_schema=False)
@@ -64,7 +74,9 @@ def create_system_router(version: str) -> APIRouter:
         key = body.get("key")
         result = body.get("result")
         if not key or not isinstance(result, dict):
-            raise HTTPException(status_code=400, detail="Body must contain 'key' and 'result'")
+            raise HTTPException(
+                status_code=400, detail="Body must contain 'key' and 'result'"
+            )
         existing = {}
         if os.path.exists(_SPEED_RESULTS):
             try:
@@ -110,8 +122,13 @@ def create_system_router(version: str) -> APIRouter:
         return FileResponse(md_file_path, media_type="text/markdown")
 
     @router.get("/", include_in_schema=False)
-    async def root():
-        """Serve the unified web app."""
+    async def root(request: Request):
+        """Serve the unified web app, or JSON discovery when requested."""
+        accept = request.headers.get("accept", "")
+        if "application/json" in accept.lower():
+            return JSONResponse(
+                discovery_manifest(version), headers=discovery_headers()
+            )
         html = os.path.join(_WEBDEMO_DIR, "webdemo.html")
         if not os.path.exists(html):
             raise HTTPException(status_code=404, detail="webdemo.html not found")

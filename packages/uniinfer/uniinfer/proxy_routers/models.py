@@ -1,27 +1,31 @@
+import asyncio
+import logging
+import os
+
 from fastapi import APIRouter, Depends, HTTPException, Query
-from fastapi.responses import Response
+from fastapi.responses import JSONResponse, Response
+from starlette.concurrency import run_in_threadpool
 
 from uniinfer.auth import get_optional_proxy_token, validate_proxy_token
+from uniinfer.config.instances import alias_serve_decision, resolve_instance
+from uniinfer.core import ModelInfo
+from uniinfer.errors import AuthenticationError
 from uniinfer.provider_access import (
     list_embedding_models_for_provider,
     list_embedding_providers,
     list_models_for_provider,
-    list_providers,
 )
-from uniinfer.errors import AuthenticationError
+from uniinfer.proxy_services.discovery import (
+    discovery_headers,
+    discovery_manifest,
+    project_model_fields,
+    provider_discovery,
+)
 from uniinfer.proxy_services.models_registry import (
     Catalog,
     ensure_fresh_models_file,
     refresh_models_file,
 )
-from uniinfer.core import ModelInfo
-import dataclasses
-import asyncio
-import logging
-import os
-from starlette.concurrency import run_in_threadpool
-
-from uniinfer.config.instances import alias_serve_decision, resolve_instance
 
 _logger = logging.getLogger("uniioai_proxy")
 _ALIAS_REFRESH_TTL_DEFAULT = 300.0
@@ -31,7 +35,9 @@ _alias_bg_tasks: set[asyncio.Task] = set()
 
 def _alias_refresh_ttl() -> float:
     try:
-        return float(os.getenv("UNIINFER_ALIAS_REFRESH_TTL", _ALIAS_REFRESH_TTL_DEFAULT))
+        return float(
+            os.getenv("UNIINFER_ALIAS_REFRESH_TTL", _ALIAS_REFRESH_TTL_DEFAULT)
+        )
     except (TypeError, ValueError):
         return _ALIAS_REFRESH_TTL_DEFAULT
 
@@ -45,7 +51,7 @@ async def _bg_refresh_alias(alias: str, token: str | None) -> None:
         _alias_inflight.discard(alias)
 
 
-def _cached_alias_response(provider_name: str) -> dict:
+def _cached_alias_response(provider_name: str, fields: str | None = None) -> dict:
     entry = Catalog().read_nested(provider_name)["providers"].get(provider_name, {})
     data = [dict(m, object="model") for m in entry.get("models", [])]
     try:
@@ -54,6 +60,12 @@ def _cached_alias_response(provider_name: str) -> dict:
         data = Catalog().resolve_for_instance(provider_name, data)
     except Exception:
         pass
+    for model in data:
+        model.setdefault("provider", provider_name)
+    try:
+        data = project_model_fields(data, fields)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
     return {"object": "list", "data": data}
 
 
@@ -86,11 +98,28 @@ def _model_info_to_dict(m) -> dict:
 def create_models_router(version: str) -> APIRouter:
     router = APIRouter()
 
+    @router.get("/v1")
+    async def discover_api():
+        """Return the secret-free entry point for progressive API discovery."""
+        return JSONResponse(discovery_manifest(version), headers=discovery_headers())
+
     @router.get("/v1/models")
     async def list_models(
-        show_all: bool = Query(False, alias="all", description="Include all models (default: only free/granted)."),
-        provider: str | None = Query(None, description="Filter by provider (e.g. 'openai')."),
-        type: str | None = Query(None, description="Filter by type (chat, image, tts, stt, embed)."),
+        show_all: bool = Query(
+            False,
+            alias="all",
+            description="Include all models (default: only free/granted).",
+        ),
+        provider: str | None = Query(
+            None, description="Filter by provider (e.g. 'openai')."
+        ),
+        type: str | None = Query(
+            None, description="Filter by type (chat, image, tts, stt, embed)."
+        ),
+        fields: str | None = Query(
+            None,
+            description="Comma-separated fields to project; id/object/provider are always included.",
+        ),
     ):
         """List models. Defaults to accessible (free/granted) only — ~300 models
         instead of ~1500. Use ?all=true for everything, ?provider=X / ?type=X
@@ -103,11 +132,20 @@ def create_models_router(version: str) -> APIRouter:
             models = [m for m in models if m.get("provider") == provider]
         if type:
             models = [m for m in models if m.get("type") == type]
+        try:
+            models = project_model_fields(models, fields)
+        except ValueError as e:
+            raise HTTPException(status_code=400, detail=str(e))
         return {
             "object": "list",
             "data": models,
             "version": version,
         }
+
+    @router.get("/v1/providers")
+    async def discover_providers():
+        """List enabled provider instances without credentials or upstream calls."""
+        return JSONResponse(provider_discovery(version), headers=discovery_headers())
 
     @router.get("/v1/system/version")
     async def get_version():
@@ -123,10 +161,12 @@ def create_models_router(version: str) -> APIRouter:
     @router.get("/v1/catalog")
     async def get_catalog(
         providers: str | None = Query(
-            None, description="Comma-separated provider IDs to include (e.g. 'openai,gemini'). Omit for all."
+            None,
+            description="Comma-separated provider IDs to include (e.g. 'openai,gemini'). Omit for all.",
         ),
         download: bool = Query(
-            False, description="If true, send as attachment (Content-Disposition) for direct download."
+            False,
+            description="If true, send as attachment (Content-Disposition) for direct download.",
         ),
     ):
         """Return the raw nested models.json catalog, optionally filtered by provider(s).
@@ -138,6 +178,7 @@ def create_models_router(version: str) -> APIRouter:
         await ensure_fresh_models_file()
         catalog = Catalog().read_nested(providers)
         import json as _json
+
         body = _json.dumps(catalog, indent=2, ensure_ascii=False)
         headers = {}
         if download:
@@ -155,7 +196,8 @@ def create_models_router(version: str) -> APIRouter:
         await ensure_fresh_models_file()
         models = Catalog().list_resolved()
         deprecated = [
-            m for m in models
+            m
+            for m in models
             if m.get("status") == "deprecated" or m.get("deprecation_date")
         ]
         return {
@@ -167,10 +209,13 @@ def create_models_router(version: str) -> APIRouter:
     @router.get("/v1/models/new")
     async def list_new_models(days: int = 7):
         """List models first seen in the last N days."""
-        from datetime import datetime, timezone, timedelta
+        from datetime import datetime, timedelta, timezone
+
         await ensure_fresh_models_file()
         models = Catalog().list_resolved()
-        cutoff = (datetime.now(timezone.utc) - timedelta(days=days)).strftime("%Y-%m-%d")
+        cutoff = (datetime.now(timezone.utc) - timedelta(days=days)).strftime(
+            "%Y-%m-%d"
+        )
         new = [m for m in models if m.get("first_seen", "") >= cutoff]
         return {
             "object": "list",
@@ -190,7 +235,9 @@ def create_models_router(version: str) -> APIRouter:
         """
         await ensure_fresh_models_file()
         stale = Catalog().read_stale_models()
-        filtered = [s for s in stale if s.get("days_missing", 0) >= days] if days else stale
+        filtered = (
+            [s for s in stale if s.get("days_missing", 0) >= days] if days else stale
+        )
         return {
             "object": "list",
             "data": filtered,
@@ -198,16 +245,15 @@ def create_models_router(version: str) -> APIRouter:
             "prune_after_days": 90,
         }
 
-    @router.get("/v1/providers")
-    async def get_providers(api_bearer_token: str = Depends(validate_proxy_token)):
-        try:
-            providers = list_providers()
-            return {"object": "list", "data": providers}
-        except Exception as e:
-            raise HTTPException(status_code=500, detail=str(e))
-
     @router.get("/v1/models/{provider_name}")
-    async def dynamic_list_models(provider_name: str, api_bearer_token: str = Depends(validate_proxy_token)):
+    async def dynamic_list_models(
+        provider_name: str,
+        fields: str | None = Query(
+            None,
+            description="Comma-separated fields to project; id/object/provider are always included.",
+        ),
+        api_bearer_token: str = Depends(validate_proxy_token),
+    ):
         try:
             spec = resolve_instance(provider_name)
         except ValueError as e:
@@ -221,22 +267,33 @@ def create_models_router(version: str) -> APIRouter:
                     age, _alias_refresh_ttl(), provider_name in _alias_inflight
                 )
                 if decision == "serve_cached":
-                    return _cached_alias_response(provider_name)
+                    return _cached_alias_response(provider_name, fields)
                 if decision == "serve_cached_and_refresh":
                     _alias_inflight.add(provider_name)
-                    task = asyncio.create_task(_bg_refresh_alias(provider_name, api_bearer_token))
+                    task = asyncio.create_task(
+                        _bg_refresh_alias(provider_name, api_bearer_token)
+                    )
                     _alias_bg_tasks.add(task)
                     task.add_done_callback(_alias_bg_tasks.discard)
-                    return _cached_alias_response(provider_name)
+                    return _cached_alias_response(provider_name, fields)
                 # fetch_sync -> fall through to the live fetch below
-            raw_models = await run_in_threadpool(list_models_for_provider, provider_name, api_bearer_token)
-            if provider_name == "zai" and "glm-4.5-flash" not in [str(m) for m in raw_models]:
+            raw_models = await run_in_threadpool(
+                list_models_for_provider, provider_name, api_bearer_token
+            )
+            if provider_name == "zai" and "glm-4.5-flash" not in [
+                str(m) for m in raw_models
+            ]:
                 raw_models.append("glm-4.5-flash")
+            data = [_model_info_to_dict(m) for m in raw_models]
+            for model in data:
+                model.setdefault("provider", provider_name)
+            try:
+                data = project_model_fields(data, fields)
+            except ValueError as e:
+                raise HTTPException(status_code=400, detail=str(e))
             return {
                 "object": "list",
-                "data": [
-                    _model_info_to_dict(m) for m in raw_models
-                ],
+                "data": data,
             }
         except ValueError as e:
             raise HTTPException(status_code=400, detail=str(e))
@@ -271,9 +328,7 @@ def create_models_router(version: str) -> APIRouter:
             )
             return {
                 "object": "list",
-                "data": [
-                    _model_info_to_dict(m) for m in raw_models
-                ],
+                "data": [_model_info_to_dict(m) for m in raw_models],
             }
         except ValueError as e:
             raise HTTPException(status_code=400, detail=str(e))
@@ -283,14 +338,27 @@ def create_models_router(version: str) -> APIRouter:
             raise HTTPException(status_code=500, detail=str(e))
 
     @router.get("/v1/models/overrides")
-    async def get_model_overrides(api_bearer_token: str = Depends(validate_proxy_token)):
+    async def get_model_overrides(
+        api_bearer_token: str = Depends(validate_proxy_token),
+    ):
         """Return all model overrides."""
         return Catalog().read_overrides()
 
     @router.put("/v1/models/overrides/{model_id:path}")
-    async def put_model_override(model_id: str, body: dict, api_bearer_token: str = Depends(validate_proxy_token)):
+    async def put_model_override(
+        model_id: str, body: dict, api_bearer_token: str = Depends(validate_proxy_token)
+    ):
         """Save a model override. Fields: type, context_window, max_output, dimensions, cost, capabilities, name."""
-        allowed = {"type", "context_window", "max_output", "dimensions", "cost", "capabilities", "name", "modalities"}
+        allowed = {
+            "type",
+            "context_window",
+            "max_output",
+            "dimensions",
+            "cost",
+            "capabilities",
+            "name",
+            "modalities",
+        }
         override = {k: v for k, v in body.items() if k in allowed and v is not None}
         if not override:
             raise HTTPException(status_code=400, detail="No valid fields to update")
@@ -298,7 +366,9 @@ def create_models_router(version: str) -> APIRouter:
         return {"status": "ok", "model": model_id, "fields": list(override.keys())}
 
     @router.delete("/v1/models/overrides/{model_id:path}")
-    async def del_model_override(model_id: str, api_bearer_token: str = Depends(validate_proxy_token)):
+    async def del_model_override(
+        model_id: str, api_bearer_token: str = Depends(validate_proxy_token)
+    ):
         """Delete a model override."""
         deleted = Catalog().delete_override(model_id)
         return {"status": "ok", "deleted": deleted}

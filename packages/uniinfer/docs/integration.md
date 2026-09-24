@@ -199,14 +199,47 @@ port) and `ssh amd 'sudo nginx -T | grep -B3 -A8 "server_name.*uniinfer"'`
 
 | Endpoint | Method | Purpose |
 |---|---|---|
+| `/v1` | GET | progressive discovery manifest (no auth) |
+| `/v1/providers` | GET | enabled provider instances, catalog-only (no auth) |
 | `/v1/chat/completions` | POST | chat (stream + non-stream, tools, thinking) |
 | `/v1/embeddings` | POST | embeddings |
-| `/v1/models` | GET | catalog (with `speed` + `probed` fields when present) |
+| `/v1/models` | GET | catalog (with `speed` + `probed` fields when present; `fields=` projection) |
+| `/v1/models/{provider}` | GET | live models for a provider/instance (auth) |
 | `/v1/images/generations` | POST | image gen |
 | `/v1/system/version` | GET | health / version |
 | `/v1/system/smoke` | POST | reachability smoke (`?providers=tu`) |
 | `/v1/system/capabilities` | GET | capability matrix `?model=provider@x[&save=true]` |
 | `/v1/system/rate-limits` | GET | learned AIMD rate-limit state |
+
+### Agent discovery
+
+Agents can discover the API progressively. The first two steps are public,
+cached, local reads — they make no upstream/model calls and expose no secrets:
+
+```bash
+BASE=https://uniinfer.skale.dev
+
+# 1. machine-readable manifest (also available from / with Accept: application/json)
+curl -fsS "$BASE/v1"
+
+# 2. provider/fleet-instance names only
+curl -fsS "$BASE/v1/providers"
+
+# 3. lightweight model metadata for one provider
+curl -fsS "$BASE/v1/models?provider=tu&fields=id,type,context_window,capabilities"
+
+# 4. live models for an operator-specific fleet instance (requires Bearer auth)
+curl -fsS "$BASE/v1/models/zenfg" -H "Authorization: Bearer $KEY"
+```
+
+`/v1` links the OpenAPI document and guide; discovery responses include
+`Link: </openapi.json>; rel="service-desc"`. `/v1/providers` reports the enabled
+`alias`, whether it is builtin/custom, its underlying provider for custom
+aliases, cached model count, default model, and follow-up model URLs. It never
+exposes `base_url`, credgoo service names, or credentials. `fields=` works on
+both the public catalog and authenticated `/v1/models/{instance}` listings and
+keeps `id`, `object`, and `provider`; other requested fields must be in the
+documented field allowlist.
 
 ### Auth
 

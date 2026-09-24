@@ -108,6 +108,7 @@ Proxy requires a **credgoo combined token** (`bearer@encryption`) as Bearer auth
 
 - `uniinfer/completion.py` — **`Target`**: the deep completion-dispatch module. Owns parse → instantiate → request-build → dispatch → access-recording behind `complete / stream_complete / acomplete / astream_complete`. This is the one home for "reach a model and complete"; the old `get/stream/aget/astream_completion` helpers were removed.
 - `uniinfer/provider_access.py` — proxy helpers: credgoo key resolution (`get_provider_api_key`), embeddings (`get_embeddings`), model listing.
+- `uniinfer/proxy_services/discovery.py` — progressive agent discovery: `/v1` manifest, public `/v1/providers` summaries, and `/v1/models?fields=` projection. Local/catalog reads only; never exposes `base_url` or credgoo identities.
 - `uniinfer/proxy_app.py` — the FastAPI app + `main()` entry point (renamed from `uniioai_proxy.py`).
 - `uniinfer/core.py` — data classes: `ChatCompletionRequest` (with typed `reasoning_effort: Literal["none","minimal","low","medium","high"]`), `ChatProvider`, `ModelInfo`.
 - `uniinfer/ratelimit.py` — adaptive per-(provider,model) AIMD limiter (TU).
