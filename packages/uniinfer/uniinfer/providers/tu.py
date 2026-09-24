@@ -82,7 +82,11 @@ def _parse_retry_after(headers: Any) -> float | None:
 # Process-wide pool of httpx clients keyed by base_url — one client per
 # upstream, reused across all requests (no per-request client creation → no
 # native TLS/buffer leak under streaming load). See _get_async_client.
-_TU_CLIENT_CACHE: dict[str, httpx.AsyncClient] = {}
+# Loop-aware (uniinfer-shared-client-event-loop-closed): value is (client,
+# loop) — asyncio.run-per-call closes each loop, and a client pooled on a dead
+# loop serves zombie connections ("Event loop is closed"). Recreate on loop
+# mismatch; pooling holds within one long-lived loop.
+_TU_CLIENT_CACHE: dict[str, tuple[httpx.AsyncClient, asyncio.AbstractEventLoop]] = {}
 
 # --- Stream robustness knobs -------------------------------------------------
 # A TU backend that accepts a request but never answers (its wedged-replica
@@ -275,7 +279,7 @@ async def clear_wedge_state() -> dict:
         for s in active.values()
     ]
     _TU_TELEMETRY.active_streams.clear()
-    clients = list(_TU_CLIENT_CACHE.values())
+    clients = [c for (c, _loop) in _TU_CLIENT_CACHE.values()]
     _TU_CLIENT_CACHE.clear()
     for client in clients:
         try:
@@ -377,8 +381,12 @@ class TUProvider(ChatProvider):
         dropped for GC instead.
         """
         _TU_TELEMETRY.evictions += 1
+        try:
+            loop = asyncio.get_running_loop()
+        except RuntimeError:
+            loop = None
         replacement = self._new_async_client()
-        _TU_CLIENT_CACHE[self.base_url] = replacement
+        _TU_CLIENT_CACHE[self.base_url] = (replacement, loop)
         self._async_client = replacement
         self._owns_client = False
         logger.warning(
@@ -403,18 +411,27 @@ class TUProvider(ChatProvider):
             # exempt — the caller owns their lifecycle.
             if not self._owns_client:
                 pooled = _TU_CLIENT_CACHE.get(self.base_url)
-                if pooled is not None and pooled is not self._async_client and not pooled.is_closed:
-                    self._async_client = pooled
+                if pooled is not None:
+                    pooled_client = pooled[0]
+                    if pooled_client is not self._async_client and not pooled_client.is_closed:
+                        self._async_client = pooled_client
             return self._async_client
-        client = _TU_CLIENT_CACHE.get(self.base_url)
-        if client is None or client.is_closed:
+        loop = asyncio.get_running_loop()
+        cached = _TU_CLIENT_CACHE.get(self.base_url)
+        if cached is not None:
+            client, client_loop = cached
+            if client.is_closed or client_loop is not loop or client_loop.is_closed():
+                cached = None
+        if cached is not None:
+            client = cached[0]
+        else:
             # HTTP/2 multiplexing: one connection per host serves all concurrent
             # streams, so the pool never reaches the contention that triggers the
             # httpcore #1093 connection-slot leak (HTTP/1.1-specific). ALPN falls
             # back to HTTP/1.1 for hosts that don't speak h2. Replaces the earlier
             # keepalive=0 workaround (which cost a TLS handshake per request).
             client = self._new_async_client()
-            _TU_CLIENT_CACHE[self.base_url] = client
+            _TU_CLIENT_CACHE[self.base_url] = (client, loop)
         self._async_client = client
         self._owns_client = False
         return client

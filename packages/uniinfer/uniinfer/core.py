@@ -262,12 +262,34 @@ class ChatCompletionResponse:
 # per request. This is the documented httpx pattern (share one AsyncClient) and
 # the same approach TU already uses per base_url, applied globally.
 _SHARED_CLIENT: "httpx.AsyncClient | None" = None
+_SHARED_CLIENT_LOOP: "asyncio.AbstractEventLoop | None" = None
 
 
 def _shared_async_client() -> httpx.AsyncClient:
-    global _SHARED_CLIENT
-    if _SHARED_CLIENT is None or _SHARED_CLIENT.is_closed:
+    """Loop-aware shared client.
+
+    asyncio.run() per sync call creates AND CLOSES a loop each time; a cached
+    httpx.AsyncClient binds its pool to the first loop — after that loop dies
+    the pooled connections are zombies ("Event loop is closed"). Track the
+    loop the client was minted on; recreate on mismatch or closed cached
+    loop. Within one long-lived loop (proxy/server) the cache still holds —
+    pooling is preserved where it matters.
+    """
+    global _SHARED_CLIENT, _SHARED_CLIENT_LOOP
+    try:
+        loop = asyncio.get_running_loop()
+    except RuntimeError:
+        loop = None  # sync context without loop — mint detached client
+    if (
+        _SHARED_CLIENT is None
+        or _SHARED_CLIENT.is_closed
+        or loop is None
+        or _SHARED_CLIENT_LOOP is None
+        or _SHARED_CLIENT_LOOP is not loop
+        or _SHARED_CLIENT_LOOP.is_closed()
+    ):
         _SHARED_CLIENT = httpx.AsyncClient(http2=True, timeout=60.0)
+        _SHARED_CLIENT_LOOP = loop
     return _SHARED_CLIENT
 
 

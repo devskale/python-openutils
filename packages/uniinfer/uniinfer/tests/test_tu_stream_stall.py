@@ -120,7 +120,7 @@ async def test_stream_stall_before_first_chunk_replays_fresh(monkeypatch):
 
     mock_a = _client(wedged)
     mock_b = _client(ok)
-    _TU_CLIENT_CACHE[provider.base_url] = mock_a
+    _TU_CLIENT_CACHE[provider.base_url] = (mock_a, asyncio.get_running_loop())
     monkeypatch.setattr(TUProvider, "_new_async_client", lambda self: mock_b)
 
     chunks = []
@@ -131,7 +131,7 @@ async def test_stream_stall_before_first_chunk_replays_fresh(monkeypatch):
     assert _TU_TELEMETRY.body_stalls == 1
     assert _TU_TELEMETRY.stall_retries == 1
     assert _TU_TELEMETRY.evictions == 1  # pooled client evicted before the replay
-    assert _TU_CLIENT_CACHE[provider.base_url] is mock_b
+    assert _TU_CLIENT_CACHE[provider.base_url][0] is mock_b
 
 
 @pytest.mark.asyncio
@@ -150,7 +150,7 @@ async def test_stream_stall_after_chunk_is_a_hard_error(monkeypatch):
     wedged.aiter_lines = wedged_gen
 
     mock_a = _client(wedged)
-    _TU_CLIENT_CACHE[provider.base_url] = mock_a
+    _TU_CLIENT_CACHE[provider.base_url] = (mock_a, asyncio.get_running_loop())
     monkeypatch.setattr(TUProvider, "_new_async_client", lambda self: _client())
 
     with pytest.raises(ProviderError):
@@ -176,7 +176,7 @@ async def test_stream_stall_out_of_retries_is_a_hard_error(monkeypatch):
     wedged.aiter_lines = wedged_gen
 
     mock_a = _client(wedged)
-    _TU_CLIENT_CACHE[provider.base_url] = mock_a
+    _TU_CLIENT_CACHE[provider.base_url] = (mock_a, asyncio.get_running_loop())
     monkeypatch.setattr(TUProvider, "_new_async_client", lambda self: _client(wedged))
 
     with pytest.raises(ProviderError):
@@ -196,9 +196,9 @@ async def test_clear_wedge_state_drops_pool_and_streams(monkeypatch):
     provider = TUProvider(api_key="k")
     mock_a = _client()
     mock_b = _client()
-    _TU_CLIENT_CACHE[provider.base_url] = mock_a
+    _TU_CLIENT_CACHE[provider.base_url] = (mock_a, asyncio.get_running_loop())
     # a second TU base_url (e.g. staging) as an independent pooled client
-    _TU_CLIENT_CACHE["https://other.example/v1"] = mock_b
+    _TU_CLIENT_CACHE["https://other.example/v1"] = (mock_b, asyncio.get_running_loop())
 
     sid = _TU_TELEMETRY.register_stream("deepseek-v4-flash-284b")
     _TU_TELEMETRY.touch(sid)
@@ -239,7 +239,7 @@ async def test_stream_open_timeout_exhausted_relays_context(monkeypatch):
     c = AsyncMock(spec=httpx.AsyncClient)
     c.is_closed = False
     c.stream.side_effect = [_ReadTimeoutCM(httpx.ReadTimeout("no headers"))]
-    _TU_CLIENT_CACHE[provider.base_url] = c
+    _TU_CLIENT_CACHE[provider.base_url] = (c, asyncio.get_running_loop())
     monkeypatch.setattr(TUProvider, "_new_async_client", lambda self: c)
 
     with pytest.raises(ProviderError) as ei:
@@ -259,7 +259,7 @@ async def test_post_timeout_exhausted_relays_context(monkeypatch):
     c = AsyncMock(spec=httpx.AsyncClient)
     c.is_closed = False
     c.post.side_effect = httpx.ReadTimeout("no headers")
-    _TU_CLIENT_CACHE[provider.base_url] = c
+    _TU_CLIENT_CACHE[provider.base_url] = (c, asyncio.get_running_loop())
     monkeypatch.setattr(TUProvider, "_new_async_client", lambda self: c)
 
     with pytest.raises(ProviderError) as ei:

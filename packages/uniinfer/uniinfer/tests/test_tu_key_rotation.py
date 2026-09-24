@@ -7,6 +7,7 @@ proxy) holds the old key — baked into the pooled client's Authorization header
 credgoo, rebuilds the pooled client, and retries. An unchanged key (or an
 explicitly injected one) raises immediately: permanent auth error.
 """
+import asyncio
 import json
 import sys
 import types
@@ -88,7 +89,7 @@ class TestTUKeyRotation:
 
         mock_a = _pool_client(_unauthorized_response())
         mock_b = _pool_client(_good_response("recovered"))
-        _TU_CLIENT_CACHE[provider.base_url] = mock_a
+        _TU_CLIENT_CACHE[provider.base_url] = (mock_a, asyncio.get_running_loop())
         monkeypatch.setattr(TUProvider, "_new_async_client", lambda self: mock_b)
 
         keys["key"] = "fresh-key"  # rotate between init and the call
@@ -97,7 +98,7 @@ class TestTUKeyRotation:
 
         assert response.message.content == "recovered"
         assert provider.api_key == "fresh-key"
-        assert _TU_CLIENT_CACHE[provider.base_url] is mock_b
+        assert _TU_CLIENT_CACHE[provider.base_url][0] is mock_b
 
     @pytest.mark.asyncio
     async def test_unchanged_key_raises_immediately(self, monkeypatch):
@@ -107,7 +108,7 @@ class TestTUKeyRotation:
 
         provider = TUProvider(api_key=None)
         mock_a = _pool_client(_unauthorized_response())
-        _TU_CLIENT_CACHE[provider.base_url] = mock_a
+        _TU_CLIENT_CACHE[provider.base_url] = (mock_a, asyncio.get_running_loop())
 
         with pytest.raises(AuthenticationError):
             await provider.acomplete(_request())
@@ -124,7 +125,7 @@ class TestTUKeyRotation:
 
         provider = TUProvider(api_key="explicit-key")  # caller-owned
         mock_a = _pool_client(_unauthorized_response())
-        _TU_CLIENT_CACHE[provider.base_url] = mock_a
+        _TU_CLIENT_CACHE[provider.base_url] = (mock_a, asyncio.get_running_loop())
 
         with pytest.raises(AuthenticationError):
             await provider.acomplete(_request())
