@@ -47,7 +47,7 @@ models:
     context_window: 131072
     max_output_tokens: 64000
     supports_thinking: true
-    description: "Qwen 3.6 35B via TU Aqueduct (BACKUP — primäres Deployment hatte intermittierend wedged Replica 2026-08-25: ~35% silent hangs; siehe Issue uniinfer-tu-wedged-backend-hardening)"
+    description: "Qwen 3.6 35B via TU Aqueduct — DEPLOYMENT EINGESTELLT 2026-09-24 (404; historisch: wedged-Replica-Backup). Karte bleibt als Referenz, nicht mehr als aktivierbares backup verwenden."
   tu@qwen-3.6-30b:
     context_window: 131072
     supports_thinking: true
@@ -111,7 +111,9 @@ default:
   # Der Schnell-Schalter ist die runtime clients.yml (`model:`-Zeile, mtime-Reload,
   # kein Restart); Backups fließen aus jeder Schicht, env pinnt nur den Primary.
   backups:
-    - tu@qwen-3.6-35b
+    # 2026-09-24: tu@qwen-3.6-35b (plain deployment) auf tu EINGESTELLT (404-alarm)
+    # — cross-provider-backup stattdessen: gemini-flash (live getestet OK).
+    - gemini@models/gemini-2.5-flash
   temperature: 0.7
   max_tokens: 10000
   retry:
