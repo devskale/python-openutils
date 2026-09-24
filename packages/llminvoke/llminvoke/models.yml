@@ -69,6 +69,11 @@ models:
     context_window: 1048576
     max_output_tokens: 8192
     description: "Gemini 2.5 Pro"
+  gemini@models/gemini-flash-lite-latest:
+    context_window: 1048576
+    max_output_tokens: 65536
+    supports_thinking: true
+    description: "Gemini Flash-Lite (Latest-Alias) — default cross-provider-backup: antwortet auch wenn die grosse flash-gen 503-high-demand hat (gateway-sweep 2026-09-24)."
   gemini@models/gemini-flash-latest:
     context_window: 1048576
     max_output_tokens: 65536
@@ -128,7 +133,10 @@ default:
   backups:
     # 2026-09-24: tu@qwen-3.6-35b (plain deployment) auf tu EINGESTELLT (404-alarm)
     # — cross-provider-backup stattdessen: gemini-flash (live getestet OK).
-    - gemini@models/gemini-3.8-flash
+    # 2026-09-24 gateway-sweep: die volle flash-generation (3.5-3.8, latest-alias)
+    # steht haeufig unter 503-high-demand — als BACKUP unbrauchbar. flash-lite
+    # antwortet zuverlaessig (live: korrekt, sauber). Alias = auto-aktuell.
+    - gemini@models/gemini-flash-lite-latest
   temperature: 0.7
   max_tokens: 10000
   retry:
