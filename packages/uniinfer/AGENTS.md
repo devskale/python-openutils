@@ -55,16 +55,26 @@ After pushing to `main`: `cd /home/ubuntu/code/python-openutils && git pull && c
 | Service file | `/etc/systemd/system/uniioai-proxy.service` |
 | Working dir | `/home/ubuntu/code/python-openutils/packages/uniinfer` |
 | Binary | `.venv/bin/python .venv/bin/uniioai-proxy --port <quoted from systemd unit>` |
-| Config | `.env` (`PROXY_KEY`, `PROXYHOST`, `PROXY_PORT`) — gitignored |
+| Config | `.env` (`PROXYHOST`, `PROXY_PORT`, optional test/legacy `PROXY_KEY`) — gitignored; production auth files: `~/.config/uniinfer/auth_tokens.allow` + `.meta.json` |
 | Models refresh | `uniioai-models-refresh.timer` daily at 04:00 UTC |
 
 > **Naming:** the `uniioai-proxy` **command/service** runs the `uniinfer.proxy_app:main` **module** (renamed from `uniioai_proxy.py`; the command + logger name `uniioai_proxy` are intentionally kept). See [ARCHITECTURE.md](ARCHITECTURE.md#naming).
 
 ## Proxy Auth Token
 
-Proxy requires an **operator-issued gateway token** as Bearer auth. The live allowlist is `~/.config/uniinfer/auth_tokens.allow` on amd; metadata lives in `auth_tokens.meta.json`. Mint new tokens with `scripts/unii-token.py` — it prints plaintext once, stores only SHA-256, and supports TTL/provider scopes. Legacy combined-token behavior remains:
+Keyed routes require an **operator-issued gateway token** as Bearer auth. On amd,
+mint/list/revoke tokens with:
 
-- **Format**: `<credgoo_bearer>@<credgoo_encryption_key>` — `@` separator triggers credgoo resolution
+```bash
+cd /home/ubuntu/code/python-openutils/packages/uniinfer
+.venv/bin/python scripts/unii-token.py mint --name <unique-name> --ttl 30d [--provider tu]
+```
+
+The token is printed once; only its SHA-256 hash and non-secret metadata are
+stored. TTL and exact provider/instance scopes are enforced by the gateway.
+Canonical runbook: [docs/integration.md — Operator token minting](docs/integration.md#operator-token-minting).
+Legacy allowlist-only tokens remain valid until revoked.
+
 - **In test code**: `headers={"Authorization": f"Bearer {os.getenv('PROXY_KEY')}"}`
 - **No token?** Assert `status_code in [200, 401, 500]` to pass in both authed and unauthed environments
 
@@ -197,7 +207,7 @@ The config.json `tu_rate_limit_per_minute` still seeds the initial estimate.
 ## Known Footguns
 
 - **Thinking models need `max_tokens` ≫ 1–2k** — Qwen3.x / GLM-5.x / Claude extended-thinking consume the token budget on reasoning *before* the visible answer. A too-low cap yields empty / truncated output that looks like a model bug. Defaults in the smoke router (`4096`), the Anthropic provider (`8192`), and the CLI speedtest (`4096`) are set for this reason; the proxy chat path defaults to `32768`. Always pass a generous `max_tokens` when exercising thinking models.
-- `PROXY_KEY` format is `bearer@encryption` — the `@` is the delimiter, not part of either value
+- A gateway token contains `@`, but the delimiter only marks the legacy combined shape — both halves are opaque identity material, not upstream credentials
 - `ModelInfo` equality matches strings — `model_info == "gpt-4"` works but is easy to miss
 - Ollama models are addressed as `ollama@<model>` (split on first `@`); a bare id or `:` separator won't route — see "Ollama provider" above. Ollama also bypasses proxy auth — don't assume all endpoints require auth in tests
 - Provider metadata richness varies widely — see `docs/models.md` for the matrix

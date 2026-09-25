@@ -55,7 +55,7 @@ uv run uvicorn uniinfer.proxy_app:app --host 0.0.0.0 --port 8123
 ```python
 from openai import OpenAI
 client = OpenAI(base_url="http://localhost:8123/v1",
-                api_key="CREDGOO_BEARER@ENCRYPTION")   # credgoo combo
+                api_key=os.environ["UNIINFER_GATEWAY_TOKEN"])   # minted gateway token
 print(client.chat.completions.create(
     model="tu@qwen-3.6-35b",                            # provider@model
     messages=[{"role": "user", "content": "Hello!"}],
@@ -225,11 +225,19 @@ Dashboards: `/v1/system/stats.html`, `/v1/system/provider-limits.html`, `/capabi
 
 ### Authentication
 
-Bearer token, two forms:
-1. **Direct provider key** — `Bearer <PROVIDER_API_KEY>`
-2. **Credgoo combo** (multi-provider) — `Bearer <CREDGOO_BEARER>@<CREDGOO_ENCRYPTION>`
+Keyed production routes use an **operator-issued gateway token**:
 
-Falls back to `CREDGOO_BEARER_TOKEN` / `CREDGOO_ENCRYPTION_KEY` env vars. **Ollama bypasses auth** for local dev. Rate limits: chat 100/min, embeddings 200/min, media 50/min (`UNIINFER_RATE_LIMIT_CHAT`, …).
+```http
+Authorization: Bearer <UNIINFER_GATEWAY_TOKEN>
+```
+
+The token has the combined `u…@…` shape, but it is a minted gateway identity —
+not a raw provider key and not a credgoo secret. The proxy stores only its
+SHA-256 hash and resolves the real upstream key server-side via credgoo.
+Provider-scoped, time-limited tokens are minted with `scripts/unii-token.py`;
+see the [operator minting runbook](docs/integration.md#operator-token-minting).
+Discovery endpoints (`/v1`, `/v1/providers`, `/v1/models`) are public. Keyless
+local instances can stay tokenless according to their instance config.
 
 ---
 

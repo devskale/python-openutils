@@ -241,57 +241,133 @@ both the public catalog and authenticated `/v1/models/{instance}` listings and
 keeps `id`, `object`, and `provider`; other requested fields must be in the
 documented field allowlist.
 
-### Auth
+### Authentication
 
-Bearer token = the proxy `PROXY_KEY` (credgoo combined `bearer@encryption`):
+Production keyed routes use an **operator-issued gateway token** as Bearer auth:
 
-```bash
-export KEY="$PROXY_KEY"          # credgoo combined token (bearer@encryption) — never commit the real value
-# discover the public base URL from nginx config: ssh amd 'sudo nginx -T | grep -B3 -A8 "server_name.*uniinfer"'
-curl -s https://uniinfer.skale.dev/v1/system/version -H "Authorization: Bearer $KEY"
-# {"version":"0.5.44"}
+```http
+Authorization: Bearer <UNIINFER_GATEWAY_TOKEN>
 ```
 
-> Ollama requests **bypass** proxy auth locally; all other providers require it.
+The token looks like `u…@…`, but both halves are **random gateway identity
+material**, not credgoo credentials and not provider API keys. The gateway first
+checks its SHA-256 hash against the allowlist; when the request reaches a keyed
+provider, it resolves the real upstream key server-side through its own credgoo
+configuration. A minted token therefore cannot disclose an upstream key.
 
-### Operator token minting
+Discovery is public (`/v1`, `/v1/providers`, `/v1/models`). Keyed chat/embeddings/
+images/audio and live instance model listings require the Bearer token. Keyless
+local instances can remain tokenless according to their instance config. In the
+curl snippets below, `$KEY` means a currently issued gateway token.
 
-Use the operator CLI on the serving box (or any host sharing the same
-allowlist). It writes only SHA-256 hashes and metadata — never plaintext tokens:
+#### Operator token minting
+
+Run this on the serving box (amd), from the uniinfer package checkout:
 
 ```bash
+ssh amd
 cd /home/ubuntu/code/python-openutils/packages/uniinfer
 
-# default: 30-day expiry, access to all providers
-uv run python scripts/unii-token.py mint --name habit
+# Capture stdout (the token) while leaving metadata on stderr.
+# The command line contains no secret, so it is safe in shell history.
+TOKEN="$(.venv/bin/python scripts/unii-token.py mint \
+  --name my-agent \
+  --ttl 30d \
+  --provider tu)"
 
-# 7 days, restricted to one provider/instance alias
-uv run python scripts/unii-token.py mint --name ci --ttl 7d --provider tu
-
-# never expires (use sparingly), all providers
-uv run python scripts/unii-token.py mint --name long-lived --ttl never
-
-uv run python scripts/unii-token.py list
-uv run python scripts/unii-token.py revoke --name ci
-uv run python scripts/unii-token.py prune
+# For the curl snippets in this guide, use the captured token locally:
+KEY="$TOKEN"
+unset TOKEN
 ```
 
-The CLI prints the plaintext token to stdout once; operator details go to
-stderr. Store the token in the client's normal secret mechanism. The metadata
-sidecar is `~/.config/uniinfer/auth_tokens.meta.json` when the allowlist is the
-standard `auth_tokens.allow`. Paths can be overridden with
-`UNIINFER_AUTH_TOKENS_FILE` and `UNIINFER_AUTH_TOKENS_META_FILE`.
+Output split:
 
-Gateway behavior:
+- **stderr** — non-secret record: name, hash prefix, expiry, provider scope
+- **stdout** — the plaintext token, printed exactly once
 
-- allowlist possession remains the source of truth and hot-reloads
-- metadata expiry is enforced per bearer request
-- `providers` is an allowlist of exact provider/instance aliases (omit for all)
-- malformed metadata fails closed for bearer-token checks but does not affect
-  keyless routes
-- revocation removes the hash immediately; no proxy restart is needed
+Install the minted token directly in the client's secret store / environment
+variable. Do not write it to a repository, ticket, chat message, log, or shell
+history. When you no longer need it in the current shell, run `unset KEY`.
 
-Legacy allowlist-only tokens without metadata remain valid until revoked.
+Useful forms:
+
+```bash
+# 30 days (default), all providers
+.venv/bin/python scripts/unii-token.py mint --name habit
+
+# 7 days, only the exact `tu` provider alias
+.venv/bin/python scripts/unii-token.py mint --name ci --ttl 7d --provider tu
+
+# Multiple exact aliases: repeat the flag or use commas
+.venv/bin/python scripts/unii-token.py mint --name fleet-agent \
+  --ttl 4w --provider tu --provider zenfg,dgemma
+
+# Non-expiring token — use sparingly and revoke when no longer needed
+.venv/bin/python scripts/unii-token.py mint --name long-lived --ttl never
+```
+
+| Option | Meaning |
+|---|---|
+| `--name` | Unique active token name (`A-Z`, `a-z`, `0-9`, `_`, `.`, `-`) |
+| `--ttl` | `30d` by default; accepts `<number>s|m|h|d|w` or `never` |
+| `--provider` | Optional exact provider/instance alias allowlist. Omit it for all providers. |
+
+The provider scope applies to every auth-checked route, including chat,
+embeddings, images, audio, capabilities, smoke, SystemOne, and live model
+listings. A token scoped to `groq` cannot list or call `tu`.
+
+#### Inspect, rotate, and revoke
+
+```bash
+# No plaintext tokens are shown
+.venv/bin/python scripts/unii-token.py list
+
+# Remove one token immediately (no proxy restart)
+.venv/bin/python scripts/unii-token.py revoke --name ci
+
+# Remove an entry by its exact SHA-256 digest
+.venv/bin/python scripts/unii-token.py revoke --hash <sha256-token-hash>
+
+# Drop already-expired metadata entries and allowlist hashes
+.venv/bin/python scripts/unii-token.py prune
+```
+
+Rotation without a client outage:
+
+1. Mint a new versioned name, e.g. `my-agent-2026-09`.
+2. Distribute that token to the client.
+3. Revoke the old name.
+
+Active names are unique, so rotate to a new name rather than trying to mint the
+same active name twice.
+
+A small client smoke test (this performs a live provider model listing):
+
+```bash
+BASE=https://uniinfer.skale.dev
+curl -fsS "$BASE/v1/models/tu?fields=id" \
+  -H "Authorization: Bearer $TOKEN" >/dev/null && echo "token works"
+```
+
+#### Storage and gateway behavior
+
+On amd the registry consists of two `0600` files:
+
+- `~/.config/uniinfer/auth_tokens.allow` — one `sha256(token)` per line; the
+  hot-reload source of truth for possession
+- `~/.config/uniinfer/auth_tokens.meta.json` — name, created/expiry timestamps,
+  and optional provider scopes; also hot-reloaded
+
+Alternate paths can be supplied with `--allowlist` / `--metadata` or via
+`UNIINFER_AUTH_TOKENS_FILE` / `UNIINFER_AUTH_TOKENS_META_FILE`.
+
+The CLI never writes a plaintext token to disk. Expiry and provider scopes are
+enforced on every bearer request. Malformed metadata fails closed for bearer
+requests while keyless routes stay available. Removing a hash revokes access
+immediately; no service restart is needed.
+
+Legacy allowlist-only tokens without metadata remain valid until their hash is
+removed. They are not shown by `list` because they carry no registry metadata.
 
 ### Chat (OpenAI-shaped)
 
@@ -322,7 +398,7 @@ Returns `{profile, results[], summary}` — each probe `pass|fail|skip|error`.
 
 ```python
 from openai import OpenAI
-client = OpenAI(base_url="https://localhost:8123/v1", api_key=os.environ["PROXY_KEY"])   # your PROXY_KEY (bearer@encryption)
+client = OpenAI(base_url="https://localhost:8123/v1", api_key=os.environ["UNIINFER_GATEWAY_TOKEN"])
 r = client.chat.completions.create(
     model="mistral@mistral-medium-latest",
     messages=[{"role": "user", "content": "Hello"}],
