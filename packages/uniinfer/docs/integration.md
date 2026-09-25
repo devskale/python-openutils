@@ -254,6 +254,45 @@ curl -s https://uniinfer.skale.dev/v1/system/version -H "Authorization: Bearer $
 
 > Ollama requests **bypass** proxy auth locally; all other providers require it.
 
+### Operator token minting
+
+Use the operator CLI on the serving box (or any host sharing the same
+allowlist). It writes only SHA-256 hashes and metadata — never plaintext tokens:
+
+```bash
+cd /home/ubuntu/code/python-openutils/packages/uniinfer
+
+# default: 30-day expiry, access to all providers
+uv run python scripts/unii-token.py mint --name habit
+
+# 7 days, restricted to one provider/instance alias
+uv run python scripts/unii-token.py mint --name ci --ttl 7d --provider tu
+
+# never expires (use sparingly), all providers
+uv run python scripts/unii-token.py mint --name long-lived --ttl never
+
+uv run python scripts/unii-token.py list
+uv run python scripts/unii-token.py revoke --name ci
+uv run python scripts/unii-token.py prune
+```
+
+The CLI prints the plaintext token to stdout once; operator details go to
+stderr. Store the token in the client's normal secret mechanism. The metadata
+sidecar is `~/.config/uniinfer/auth_tokens.meta.json` when the allowlist is the
+standard `auth_tokens.allow`. Paths can be overridden with
+`UNIINFER_AUTH_TOKENS_FILE` and `UNIINFER_AUTH_TOKENS_META_FILE`.
+
+Gateway behavior:
+
+- allowlist possession remains the source of truth and hot-reloads
+- metadata expiry is enforced per bearer request
+- `providers` is an allowlist of exact provider/instance aliases (omit for all)
+- malformed metadata fails closed for bearer-token checks but does not affect
+  keyless routes
+- revocation removes the hash immediately; no proxy restart is needed
+
+Legacy allowlist-only tokens without metadata remain valid until revoked.
+
 ### Chat (OpenAI-shaped)
 
 ```bash

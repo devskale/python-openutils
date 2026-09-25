@@ -4,7 +4,20 @@ All notable changes to **uniinfer** are documented in this file.
 Versions follow [Semantic Versioning](https://semver.org/); this file
 adheres to [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.8.58] - 2026-09-24
+
+### Added
+
+- **Operator token minting.** `scripts/unii-token.py mint|list|revoke|prune`
+  issues named gateway tokens, prints plaintext once, stores only SHA-256, and
+  supports TTLs (`30d`, `12h`, `never`) plus optional exact provider/instance
+  scopes.
+- **Token metadata enforcement.** A hot-reloaded `auth_tokens.meta.json`
+  sidecar enforces expiry and provider scopes for bearer requests. Malformed
+  metadata fails closed for bearer tokens; keyless routes remain available.
+
 ## [0.8.57] - 2026-09-24
+
 
 ### Added
 
