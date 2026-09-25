@@ -14,18 +14,21 @@ The plaintext token is printed to stdout once. Operator details go to stderr.
 from __future__ import annotations
 
 import argparse
+import importlib.util
 import sys
 from collections.abc import Sequence
+from pathlib import Path
 
-from uniinfer.proxy_services.token_registry import (
-    TokenRegistryError,
-    list_tokens,
-    mint_token,
-    parse_ttl,
-    prune_expired,
-    resolve_paths,
-    revoke_token,
+_SPEC = importlib.util.spec_from_file_location(
+    "uniinfer_token_registry",
+    Path(__file__).resolve().parents[1]
+    / "uniinfer"
+    / "proxy_services"
+    / "token_registry.py",
 )
+registry = importlib.util.module_from_spec(_SPEC)
+sys.modules["uniinfer_token_registry"] = registry
+_SPEC.loader.exec_module(registry)
 
 
 def _providers(values: list[str] | None) -> list[str] | None:
@@ -101,12 +104,12 @@ def main(argv: Sequence[str] | None = None) -> int:
     """Run the CLI."""
     parser = build_parser()
     args = parser.parse_args(argv)
-    paths = resolve_paths(args.allowlist, args.metadata)
+    paths = registry.resolve_paths(args.allowlist, args.metadata)
 
     try:
         if args.command == "mint":
-            parse_ttl(args.ttl)
-            token, record = mint_token(
+            registry.parse_ttl(args.ttl)
+            token, record = registry.mint_token(
                 args.name,
                 args.ttl,
                 _providers(args.provider),
@@ -122,7 +125,9 @@ def main(argv: Sequence[str] | None = None) -> int:
             return 0
 
         if args.command == "list":
-            records = list_tokens(allowlist=paths.allowlist, metadata=paths.metadata)
+            records = registry.list_tokens(
+                allowlist=paths.allowlist, metadata=paths.metadata
+            )
             if not records:
                 print("No registered tokens.", file=sys.stderr)
                 return 0
@@ -131,7 +136,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             return 0
 
         if args.command == "revoke":
-            revoked = revoke_token(
+            revoked = registry.revoke_token(
                 name=args.name,
                 token_hash=args.hash,
                 allowlist=paths.allowlist,
@@ -143,12 +148,14 @@ def main(argv: Sequence[str] | None = None) -> int:
             return 0
 
         if args.command == "prune":
-            expired = prune_expired(allowlist=paths.allowlist, metadata=paths.metadata)
+            expired = registry.prune_expired(
+                allowlist=paths.allowlist, metadata=paths.metadata
+            )
             for record in expired:
                 print(_record_line(record), file=sys.stderr)
             print(f"Pruned {len(expired)} expired token(s).", file=sys.stderr)
             return 0
-    except TokenRegistryError as e:
+    except registry.TokenRegistryError as e:
         print(f"error: {e}", file=sys.stderr)
         return 2
 

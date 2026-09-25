@@ -4,7 +4,16 @@ All notable changes to **uniinfer** are documented in this file.
 Versions follow [Semantic Versioning](https://semver.org/); this file
 adheres to [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.8.59] - 2026-09-25
+
+### Fixed
+
+- **`unii-token` startup**: load the standalone registry module directly instead
+  of importing the full provider package. Mint/list/revoke now respond in
+  seconds on amd instead of waiting through the proxy import spike.
+
 ## [0.8.58] - 2026-09-24
+
 
 ### Added
 
