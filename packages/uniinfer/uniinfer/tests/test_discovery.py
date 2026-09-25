@@ -152,6 +152,10 @@ def test_instance_models_support_field_projection(client, monkeypatch):
         "uniinfer.proxy_routers.models.resolve_instance", lambda alias: spec
     )
     monkeypatch.setattr(
+        "uniinfer.proxy_routers.models.verify_provider_access",
+        lambda token, provider: "operator-key",
+    )
+    monkeypatch.setattr(
         "uniinfer.proxy_routers.models.list_models_for_provider", fetch_models
     )
 

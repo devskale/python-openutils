@@ -170,6 +170,53 @@ def test_auth_fails_closed_on_unreadable_metadata(registry_env, auth_env):
     assert "metadata unavailable" in error.value.detail
 
 
+def test_live_models_route_enforces_provider_scope(registry_env, auth_env, monkeypatch):
+    from fastapi.testclient import TestClient
+
+    from uniinfer.core import ModelInfo
+    from uniinfer.proxy_app import app
+    from uniinfer.proxy_routers import models as models_router
+
+    token, _ = registry.mint_token("scoped-list", "30d", providers=["groq"])
+    clear_token_caches()
+    monkeypatch.setattr(
+        models_router,
+        "list_models_for_provider",
+        lambda provider, bearer: [ModelInfo(id="model")],
+    )
+    client = TestClient(app, raise_server_exceptions=False)
+
+    denied = client.get("/v1/models/tu", headers={"Authorization": f"Bearer {token}"})
+    assert denied.status_code == 401
+    assert "not authorized for this provider" in denied.json()["detail"]
+
+
+def test_live_embedding_models_route_enforces_provider_scope(
+    registry_env, auth_env, monkeypatch
+):
+    from fastapi.testclient import TestClient
+
+    from uniinfer.core import ModelInfo
+    from uniinfer.proxy_app import app
+    from uniinfer.proxy_routers import models as models_router
+
+    token, _ = registry.mint_token("scoped-embed", "30d", providers=["groq"])
+    clear_token_caches()
+    monkeypatch.setattr(
+        models_router,
+        "list_embedding_models_for_provider",
+        lambda provider, bearer: [ModelInfo(id="embedding")],
+    )
+    client = TestClient(app, raise_server_exceptions=False)
+
+    denied = client.get(
+        "/v1/embedding/models/tu",
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert denied.status_code == 401
+    assert "not authorized for this provider" in denied.json()["detail"]
+
+
 def test_cli_mint_prints_token_once(registry_env, capsys, monkeypatch):
     allow, metadata = registry_env
     exit_code = _cli_main(["mint", "--name", "cli-agent", "--ttl", "7d"])

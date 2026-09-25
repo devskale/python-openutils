@@ -4,7 +4,17 @@ All notable changes to **uniinfer** are documented in this file.
 Versions follow [Semantic Versioning](https://semver.org/); this file
 adheres to [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.8.60] - 2026-09-25
+
+### Fixed
+
+- **Scope enforcement on live model listings.** `/v1/models/{provider}` and
+  `/v1/embedding/models/{provider}` now run the same allowlist/TTL/provider-scope
+  gate as chat, images, audio, capabilities, smoke, and SystemOne. Found by the
+  0.8.59 deploy smoke (a groq-scoped token could list `tu`).
+
 ## [0.8.59] - 2026-09-25
+
 
 ### Fixed
 

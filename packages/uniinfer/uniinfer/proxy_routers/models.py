@@ -6,7 +6,11 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import JSONResponse, Response
 from starlette.concurrency import run_in_threadpool
 
-from uniinfer.auth import get_optional_proxy_token, validate_proxy_token
+from uniinfer.auth import (
+    get_optional_proxy_token,
+    validate_proxy_token,
+    verify_provider_access,
+)
 from uniinfer.config.instances import alias_serve_decision, resolve_instance
 from uniinfer.core import ModelInfo
 from uniinfer.errors import AuthenticationError
@@ -259,6 +263,10 @@ def create_models_router(version: str) -> APIRouter:
         except ValueError as e:
             raise HTTPException(status_code=400, detail=str(e))
         try:
+            verify_provider_access(api_bearer_token, provider_name)
+        except HTTPException as e:
+            raise e
+        try:
             # Custom alias: serve cached within TTL, stale-while-revalidate beyond it
             # (background refresh, never blocks). First-ever hit (no cache) fetches sync.
             if not spec.is_builtin:
@@ -321,6 +329,7 @@ def create_models_router(version: str) -> APIRouter:
                     status_code=401,
                     detail="Authentication required for this provider",
                 )
+            verify_provider_access(api_bearer_token, provider_name)
 
             raw_models = list_embedding_models_for_provider(
                 provider_name,
@@ -330,6 +339,8 @@ def create_models_router(version: str) -> APIRouter:
                 "object": "list",
                 "data": [_model_info_to_dict(m) for m in raw_models],
             }
+        except HTTPException:
+            raise
         except ValueError as e:
             raise HTTPException(status_code=400, detail=str(e))
         except AuthenticationError as e:
