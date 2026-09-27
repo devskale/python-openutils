@@ -4,6 +4,24 @@ All notable changes to **uniinfer** are documented in this file.
 Versions follow [Semantic Versioning](https://semver.org/); this file
 adheres to [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.8.61] - 2026-09-27
+
+### Fixed
+
+- **Tool calls on strict-grammar Kilo models (`pattern` rejection).** Kilo routes
+  several free models — notably the ModelRun family serving `qwen/*:free` — through
+  a grammar-constrained tool decoder that refuses the whole request with
+  `failed to translate request: folding the request grammar: tool "herdr_agent"
+  parameter schema: parameter "name": unsupported schema keyword "pattern"`.
+  The offender is the `pattern` keyword in pi's tool schemas (e.g.
+  `@ogulcancelik/pi-herdr`'s `herdr_agent.name`), so every pi turn carrying that
+  tool 400s and tool calling is unusable on those models.
+  `_sanitize_tools_schema` already neutralized object-or-scalar unions for this
+  class of backend; it now also drops validation-only keywords when a provider
+  sets the new opt-in `STRICT_GRAMMAR_SCHEMAS` flag. `KiloProvider` opts in.
+  `pattern` carries no type information, so grammar and tool semantics are
+  unchanged; lenient backends keep `pattern` and lose no client-side validation.
+
 ## [0.8.60] - 2026-09-25
 
 ### Fixed
