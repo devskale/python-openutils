@@ -44,6 +44,11 @@ class KiloProvider(OpenAICompatibleChatProvider):
     # The gateway forwards native OpenAI multimodal content (image_url parts)
     # to vision-capable upstreams (e.g. stepfun/step-3.7-flash:free).
     PRESERVE_MULTIMODAL = True
+    # Several gateway upstreams (notably the ModelRun family serving
+    # qwen/*:free) decode tool calls through a strict grammar, and reject the
+    # whole request with "unsupported schema keyword" for validation-only
+    # keywords such as `pattern` that pi's tool schemas carry.
+    STRICT_GRAMMAR_SCHEMAS = True
 
     def __init__(self, api_key: Optional[str] = None, **kwargs):
         if not api_key:

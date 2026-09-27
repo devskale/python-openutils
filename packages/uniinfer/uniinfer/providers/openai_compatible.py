@@ -175,6 +175,20 @@ class OpenAICompatibleChatProvider(ChatProvider):
         """
         return {}
 
+    # Backends whose tool-call grammar folding cannot express these schema
+    # keywords. Strict/grammar providers (e.g. Kilo -> ModelRun) reject the
+    # whole request with "unsupported schema keyword" for each one, so the
+    # keywords have to be dropped before the request leaves the proxy.
+    # Set to True only for those providers; the default (False) keeps the
+    # keywords, which are semantically useful where they are accepted.
+    STRICT_GRAMMAR_SCHEMAS = False
+
+    # Schema keywords dropped entirely when STRICT_GRAMMAR_SCHEMAS is on.
+    # `pattern` is the common offender: pi's tool schemas carry it (e.g.
+    # herdr_agent's `name`), and grammar folding has no way to validate a
+    # regex while decoding, so it refuses the request outright.
+    STRICT_GRAMMAR_DROP_KEYS = ("pattern",)
+
     def _sanitize_tools_schema(self, tools: list[dict[str, Any]]) -> list[dict[str, Any]]:
         """Neutralize parameter-schema constructs that strict grammar-based tool
         backends (e.g. qwen via ModelRun) reject with
@@ -190,6 +204,12 @@ class OpenAICompatibleChatProvider(ChatProvider):
         object-bag parameter. Non-object unions are left untouched; plain
         object branches are left as-is. A deep copy is produced so the incoming
         request is never mutated.
+
+        When :attr:`STRICT_GRAMMAR_SCHEMAS` is set, the validation-only keywords
+        in :attr:`STRICT_GRAMMAR_DROP_KEYS` (e.g. ``pattern``) are additionally
+        removed at every depth, because that backend 400s on them with
+        ``unsupported schema keyword``. They carry no type information, so
+        dropping them only weakens client-side validation, not the grammar.
         """
         import copy
 
@@ -200,6 +220,12 @@ class OpenAICompatibleChatProvider(ChatProvider):
                 return node
             desc = node.get("description")
             t = node.get("type")
+            # Strict-grammar backends reject these keywords outright; drop them
+            # before the union handling below, so the stripped node is what gets
+            # collapsed/inspected.
+            if self.STRICT_GRAMMAR_SCHEMAS:
+                for key in self.STRICT_GRAMMAR_DROP_KEYS:
+                    node.pop(key, None)
             # Multi-type array containing object -> open object.
             if isinstance(t, list):
                 if "object" in t:

@@ -17,6 +17,7 @@ from uniinfer.core import ChatCompletionRequest, ChatMessage
 from uniinfer.providers.mistral import MistralProvider
 from uniinfer.providers.openai_compatible import OpenAICompatibleChatProvider
 from uniinfer.providers.groq import GroqProvider
+from uniinfer.providers.kilo import KiloProvider
 
 
 def _req(model, max_tokens=5000, tools=None):
@@ -99,6 +100,68 @@ def test_sanitize_nested_and_no_mutation():
     props = payload["tools"][0]["function"]["parameters"]["properties"]
     assert props["outer"]["properties"]["inner"]["type"] == "object"
     assert orig == snapshot  # Eingang nicht mutiert
+
+
+# ---------------------------------------------------------------- #
+# Strict-Grammar-Backends: `pattern` (u.a.) wird entfernt
+# ---------------------------------------------------------------- #
+def test_pattern_dropped_for_strict_grammar_provider():
+    """Kilo/ModelRun 400t auf `pattern` — das Keyword muss vor dem Request weg."""
+    p = KiloProvider(api_key="k")
+    assert p.STRICT_GRAMMAR_SCHEMAS is True
+    req = _req("qwen/qwen3.8-27b:free", tools=[{
+        "type": "function", "function": {"name": "herdr_agent", "parameters": {
+            "type": "object", "properties": {
+                "name": {"type": "string", "pattern": "^[a-z][a-z0-9_-]{0,31}$",
+                         "description": "Unique agent name"},
+                "target": {"type": "string"},
+            }, "required": ["name"]}}}])
+    payload = p._build_payload(req, False, {})
+    props = payload["tools"][0]["function"]["parameters"]["properties"]
+    assert "pattern" not in props["name"]
+    assert props["name"]["type"] == "string"
+    # Typ + description bleiben erhalten, nur das Validierungs-Keyword fliegt.
+    assert props["name"]["description"] == "Unique agent name"
+    assert props["target"] == {"type": "string"}
+
+
+def test_pattern_kept_for_lenient_provider():
+    """Ohne STRICT_GRAMMAR_SCHEMAS bleibt `pattern` erhalten — kein unnoetiger Verlust."""
+    p = MistralProvider(api_key="k")
+    assert p.STRICT_GRAMMAR_SCHEMAS is False
+    req = _req("mistral-medium-latest", tools=[{
+        "type": "function", "function": {"name": "t", "parameters": {
+            "type": "object", "properties": {
+                "name": {"type": "string", "pattern": "^[a-z]+$"}}}}}])
+    payload = p._build_payload(req, False, {})
+    props = payload["tools"][0]["function"]["parameters"]["properties"]
+    assert props["name"]["pattern"] == "^[a-z]+$"
+
+
+def test_pattern_dropped_nested_for_strict_grammar():
+    """Auch in tief verschachtelten Properties/items wird `pattern` entfernt."""
+    p = KiloProvider(api_key="k")
+    req = _req("qwen/qwen3.8-27b:free", tools=[{
+        "type": "function", "function": {"name": "t", "parameters": {
+            "type": "object", "properties": {
+                "outer": {"type": "object", "properties": {
+                    "inner": {"type": "string", "pattern": "^x$"}}}}}}}])
+    payload = p._build_payload(req, False, {})
+    inner = payload["tools"][0]["function"]["parameters"]["properties"]["outer"]["properties"]["inner"]
+    assert "pattern" not in inner and inner["type"] == "string"
+
+
+def test_pattern_drop_no_mutation():
+    """Der Original-Request wird nicht mutiert."""
+    import copy
+    p = KiloProvider(api_key="k")
+    orig = {"type": "object", "properties": {
+        "name": {"type": "string", "pattern": "^[a-z]+$"}}}
+    snapshot = copy.deepcopy(orig)
+    req = _req("qwen/qwen3.8-27b:free", tools=[
+        {"type": "function", "function": {"name": "t", "parameters": orig}}])
+    p._build_payload(req, False, {})
+    assert orig == snapshot
 
 
 # ---------------------------------------------------------------- #
