@@ -29,6 +29,10 @@ import httpx
 
 from uniinfer.completion import Target
 
+import logging
+
+logger = logging.getLogger(__name__)
+
 FIXTURES = Path(__file__).parent / "fixtures"
 PROBE_RESULTS_PATH = Path(__file__).parent.parent / "models" / "_probe_results.json"
 MODELS_JSON_PATH = Path(__file__).parent.parent / "models" / "models.json"
@@ -824,6 +828,31 @@ _TOOL_VERIFY_TOOLS = [
 ]
 _TOOL_VERIFY_PROMPT = "What time is it? Call the get_time tool to answer."
 
+# Straggler parking for _abandonable: asyncio keeps only WEAK refs to tasks,
+# so an abandoned-but-still-running task would otherwise be GC'd mid-flight.
+_ABANDONED: set["asyncio.Task[any]"] = set()
+
+
+async def _abandonable(coro, seconds: float):
+    """``asyncio.wait_for`` variant that cannot be outwaited by stubborn inner work.
+
+    ``wait_for``, on timeout, cancels the task and then AWAITS the cancellation
+    completing — if the coroutine is stuck somewhere that ignores
+    ``CancelledError`` (blocking executor thread, swallowing SDK), ``wait_for``
+    itself hangs (observed live: a verify wedged >4 min behind a 45 s cap with
+    zero CPU). We detach instead: the straggler is cancelled best-effort and
+    parked in ``_ABANDONED``; the caller gets ``TimeoutError`` promptly. The
+    straggler's own HTTP timeout (60 s) bounds its lifetime.
+    """
+    task = asyncio.ensure_future(coro)
+    try:
+        return await asyncio.wait_for(asyncio.shield(task), seconds)
+    except asyncio.TimeoutError:
+        task.cancel()
+        _ABANDONED.add(task)
+        task.add_done_callback(_ABANDONED.discard)
+        raise
+
 
 async def verify_tool_call(t: ProbeTarget) -> tuple[Optional[bool], str]:
     """Empirically answer "can this model emit a tool call" with one request.
@@ -846,7 +875,7 @@ async def verify_tool_call(t: ProbeTarget) -> tuple[Optional[bool], str]:
     """
     started = time.monotonic()
     try:
-        resp = await asyncio.wait_for(
+        resp = await _abandonable(
             _complete_quiet(
                 t,
                 [{"role": "user", "content": _TOOL_VERIFY_PROMPT}],
@@ -981,6 +1010,12 @@ async def softprobe_catalog(
                             "%Y-%m-%dT%H:%M:%SZ"
                         ),
                     }
+                    logger.info(
+                        "tool-verify %s -> %s (%s)",
+                        pm,
+                        "true" if verdict is True else ("false" if verdict is False else "none"),
+                        evidence,
+                    )
                     if verdict is None:
                         verified_inconclusive += 1
                     else:

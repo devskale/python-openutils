@@ -12,6 +12,7 @@ import pytest
 
 from uniinfer.capabilities.core import (
     ProbeTarget,
+    _abandonable,
     _tool_call_args,
     _tool_call_names,
     _type_matches,
@@ -290,6 +291,51 @@ class TestProbeStructuredOutput:
             mt.return_value.acomplete = AsyncMock(side_effect=RuntimeError("timeout"))
             r = await probe_structured_output(_target())
         assert r.status == "error"
+
+
+# --------------------------------------------------------------------------- #
+# _abandonable — the timeout that cannot be outwaited
+# --------------------------------------------------------------------------- #
+class TestAbandonableTimeout:
+    @pytest.mark.asyncio
+    async def test_uncancellable_inner_returns_promptly(self):
+        """Regression (live 2026-09-28): a verify wedged >4 min behind a 45 s
+        cap because asyncio.wait_for AWAITS the inner task's cancellation — a
+        coroutine that swallows CancelledError hangs wait_for itself.
+        _abandonable detaches the straggler and raises TimeoutError at the
+        cap."""
+        import asyncio
+        import time as _time
+
+        async def stubborn():
+            try:
+                await asyncio.sleep(30)  # would block plain wait_for for 30 s
+            except asyncio.CancelledError:
+                await asyncio.sleep(0.05)  # pathological: swallow, keep running
+                return None
+
+        t0 = _time.monotonic()
+        with pytest.raises(asyncio.TimeoutError):
+            await _abandonable(stubborn(), 0.15)
+        assert _time.monotonic() - t0 < 2.0  # returned at the cap, not at +30 s
+        # teardown the parked straggler so the test loop closes clean
+        from uniinfer.capabilities.core import _ABANDONED
+        for tsk in list(_ABANDONED):
+            tsk.cancel()
+            try:
+                await asyncio.wait_for(asyncio.gather(tsk, return_exceptions=True), 1)
+            except asyncio.TimeoutError:
+                pass
+
+    @pytest.mark.asyncio
+    async def test_abandonable_passes_result_through(self):
+        import asyncio
+
+        async def fine():
+            await asyncio.sleep(0.01)
+            return 42
+
+        assert await _abandonable(fine(), 5.0) == 42
 
 
 # --------------------------------------------------------------------------- #
