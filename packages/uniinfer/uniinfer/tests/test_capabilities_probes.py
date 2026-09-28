@@ -341,6 +341,23 @@ class TestVerifyToolCall:
             verdict, _ = await verify_tool_call(t)
         assert verdict is False
 
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize(
+        "err",
+        [
+            "InvalidRequestError: Function calling is not enabled for models/antigravity",
+            "InvalidRequestError: This model only supports Interactions API.",
+        ],
+    )
+    async def test_false_on_definitive_provider_refusals(self, err):
+        """Provider-worded 400 refusals are False, not inconclusive — the model
+        will never emit a tool call on this serving path."""
+        t = ProbeTarget(provider_model="p@m")
+        with patch("uniinfer.capabilities.core._complete_quiet",
+                   AsyncMock(side_effect=RuntimeError(err))):
+            verdict, _ = await verify_tool_call(t)
+        assert verdict is False
+
 
 class TestSoftprobeEmpiricalTools:
     """The softprobe writes verified tool_call back via model_overrides."""

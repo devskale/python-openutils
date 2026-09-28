@@ -874,6 +874,16 @@ async def verify_tool_call(t: ProbeTarget) -> tuple[Optional[bool], str]:
         msg = str(e).lower()
         if "does not support tools" in msg:
             return False, "backend rejects tools (400)"
+        # Definitive refusals, provider-worded variants:
+        # - gemini: "Function calling is not enabled for models/…"
+        # - gemini: "This model only supports Interactions API."
+        # Both are 400-class InvalidRequestErrors — the model will never emit
+        # a tool call on this serving path, which is a False, not an
+        # inconclusive (429/5xx/auth stay None so the declared value holds).
+        if "function calling is not enabled" in msg:
+            return False, "backend rejects tools: function calling not enabled"
+        if "only supports interactions api" in msg:
+            return False, "backend rejects tools: interactions-API-only model"
         return None, _short_error(e) + f" ({_ms(started)}ms)"
 
 
