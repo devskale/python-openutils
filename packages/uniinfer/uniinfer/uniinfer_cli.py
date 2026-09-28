@@ -472,6 +472,12 @@ def _softprobe(args):
         else:
             print(f"  x {pm}  {type(r).__name__}")
 
+    # Empirical tool-verify (opt-in per env, like generate_models.py):
+    # UNIINFER_EMPIRICAL_TOOLS=1 (default) verifies stale FREE chat models
+    # with one short request each; =paid/all includes priced ones; =0 off.
+    import os
+
+    _emp = os.environ.get("UNIINFER_EMPIRICAL_TOOLS", "1").strip().lower()
     summary = asyncio.run(
         softprobe_catalog(
             providers=want,
@@ -480,12 +486,20 @@ def _softprobe(args):
             ollama_key=ollama_key,
             ollama_url=ollama_url,
             on_progress=progress,
+            empirical_tools=_emp not in ("0", "false", "no", "off"),
+            empirical_include_paid=_emp in ("paid", "all"),
         )
     )
     print(
         f"\nSoftprobe complete: {summary['probed']} probed, {summary['skipped']} fresh-skipped, "
-        f"{summary['errors']} errors. (0 inference tokens spent)"
+        f"{summary['errors']} errors."
     )
+    if summary.get("tool_verified_true") or summary.get("tool_verified_false") or summary.get("tool_inconclusive"):
+        print(
+            f"Tool-verify: {summary['tool_verified_true']} true, "
+            f"{summary['tool_verified_false']} false, "
+            f"{summary['tool_inconclusive']} inconclusive"
+        )
 
 
 def main():
