@@ -55,16 +55,16 @@ models:
   tu@qwen-3.5-397b:
     context_window: 131072
     supports_thinking: true
-    description: "Qwen 3.5 397B via TU Aqueduct (kriterien task)"
+    description: "Qwen 3.5 397B via TU Aqueduct (kriterien/AAB-Analyse, großes Modell)"
   tu@gemma-4-26b:
     context_window: 262000
-    description: "Gemma 4 26B via TU Aqueduct"
+    description: "ENTFERNT vom Gateway (Stand 2026-09-25) — nicht mehr verfügbar; Karte nur noch Referenz"
   tu@qwen-coder-30b:
     context_window: 16384
-    description: "Qwen Coder 30B via TU Aqueduct"
+    description: "ENTFERNT vom Gateway (Stand 2026-09-25) — nicht mehr verfügbar; Karte nur noch Referenz"
   tu@mistral-small-3.2-24b:
     context_window: 16384
-    description: "Mistral Small 3.2 24B via TU Aqueduct"
+    description: "ENTFERNT vom Gateway (Stand 2026-09-25) — nicht mehr verfügbar; Karte nur noch Referenz"
   gemini@models/gemini-2.5-pro:
     context_window: 1048576
     max_output_tokens: 8192
