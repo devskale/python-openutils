@@ -2,6 +2,10 @@
 Description=UniInfer gentle background tool-verify (1 request, 6s apart, provider round-robin)
 After=network-online.target
 Wants=network-online.target
+# Schmale Box: der Sweep überspringt sich selbst, wenn unter 400 MB RAM
+# verfügbar sind (Swap-Thrash gemessen 2026-09-28: 990 MB Swap belegt, D-State
+# Page-Ins). Der Timer kommt alle 2h wieder — dann hoffentlich mit Luft.
+ConditionMemory=400M
 
 [Service]
 Type=oneshot
