@@ -303,7 +303,7 @@
         try {
           const r = await fetch(base() + "/v1/providers", { headers: authHeaders() });
           const d = await r.json();
-          providers = d.data || [];
+          providers = (d.data || []).map(p => (typeof p === "string" ? p : p.id));
           const sel = $("provider"); sel.innerHTML = "";
           providers.forEach(p => { const o = document.createElement("option"); o.value = o.textContent = p; sel.appendChild(o); });
           if (providers.length) loadModels(providers[0]);

@@ -579,7 +579,7 @@ ${js}`;
     async function loadTest() {
       const sel = $("#test-provider");
       if (sel.options.length && sel.options[0].value !== "") return;
-      try { const d = await dGet("/v1/providers"); const provs = d.data || d || []; sel.innerHTML = `<option value="__all__">All providers</option>` + provs.map(p => `<option value="${p}">${p}</option>`).join(""); }
+      try { const d = await dGet("/v1/providers"); const provs = (d.data || d || []).map(p => (typeof p === "string" ? p : p.id)); sel.innerHTML = `<option value="__all__">All providers</option>` + provs.map(p => `<option value="${p}">${p}</option>`).join(""); }
       catch (e) { sel.innerHTML = `<option value="">(failed to load providers)</option>`; }
     }
     async function probeOne(provider, model, depth, timeoutS) {
@@ -606,7 +606,7 @@ ${js}`;
       const tb2clear = $("#test-results"); tb2clear.innerHTML = `<table class="d-tbl"><thead><tr>${["#","model","status","ms"].concat(depth==="perf"?["tok/s"]:depth==="capability"?["tools"]:[]).map(c=>`<th>${c}</th>`).join("")}</tr></thead><tbody id="test-tbody"></tbody></table>`;
       const tb = $("#test-tbody"), prog = $("#test-progress");
       let targets = [];
-      const provs = prov === "__all__" ? (await dGet("/v1/providers").then(r => r.data || r || []).catch(() => [])) : [prov];
+      const provs = prov === "__all__" ? (await dGet("/v1/providers").then(r => (r.data || r || []).map(p => (typeof p === "string" ? p : p.id))).catch(() => [])) : [prov];
       for (const p of provs) { try { const d = await dGet("/v1/models/" + encodeURIComponent(p)); const arr = (d.data || d.models || d).map(x => typeof x === "string" ? x : x.id).filter(Boolean); targets = targets.concat(arr.slice(0, 50).map(m => ({ p, m }))); } catch (e) {} if (testAbort.signal.aborted) break; }
       let done = 0, alive = 0;
       for (const t of targets) {
@@ -643,7 +643,7 @@ ${js}`;
     async function loadProviders() {
       try {
         const { data: providers } = await apiJson("/v1/providers", { headers: getHeaders() });
-        store.providers = providers;
+        store.providers = providers.map(p => (typeof p === "string" ? p : p.id));
         providerSelect.innerHTML = '<option value="" disabled selected>Select provider</option>';
         providers.forEach(p => { const o = document.createElement("option"); o.value = p; o.textContent = p; providerSelect.appendChild(o); });
         providerSelect.disabled = false;
