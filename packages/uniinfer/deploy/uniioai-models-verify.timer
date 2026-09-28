@@ -1,0 +1,10 @@
+[Unit]
+Description=UniInfer gentle background tool-verify (every 2h)
+
+[Timer]
+OnCalendar=*-*-* 00/2:17:00 UTC
+Persistent=true
+RandomizedDelaySec=120
+
+[Install]
+WantedBy=timers.target

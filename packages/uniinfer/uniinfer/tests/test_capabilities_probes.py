@@ -408,6 +408,68 @@ class TestVerifyToolCall:
 class TestSoftprobeEmpiricalTools:
     """The softprobe writes verified tool_call back via model_overrides."""
 
+    def _multi_provider_doc(self):
+        return {"providers": {
+            "alpha": {"models": [
+                {"id": f"a{i}", "type": "chat", "cost": {}, "capabilities": {}}
+                for i in range(3)
+            ]},
+            "beta": {"models": [
+                {"id": f"b{i}", "type": "chat", "cost": {}, "capabilities": {}}
+                for i in range(2)
+            ]},
+        }}
+
+    @pytest.mark.asyncio
+    async def test_verify_queue_is_provider_round_robin(self):
+        """Consecutive verifies never hit the same provider (rate limits are
+        per-provider) — the queue interleaves alpha, beta, alpha, beta, …"""
+        doc = self._multi_provider_doc()
+        seen: list[str] = []
+
+        async def fake_verify(t):
+            seen.append(t.provider_name)
+            return (True, "emitted ['get_time']")
+
+        cat_inst = SimpleNamespace(read_nested=lambda *a, **k: doc,
+                                   save_override=lambda mid, fields: None)
+        with patch("uniinfer.proxy_services.models_registry.Catalog", lambda: cat_inst), \
+             patch("uniinfer.capabilities.core.probe_profile",
+                   AsyncMock(return_value=SimpleNamespace(detail={"profile": {}}))), \
+             patch("uniinfer.capabilities.core.save_probe_result", lambda r: None), \
+             patch("uniinfer.capabilities.core.verify_tool_call", fake_verify):
+            await softprobe_catalog(stale_days=None, empirical_tools=True,
+                                    verify_concurrency=1)
+        assert seen == ["alpha", "beta", "alpha", "beta", "alpha"]
+
+    @pytest.mark.asyncio
+    async def test_circuit_breaker_skips_rate_limited_provider(self, monkeypatch):
+        """After N consecutive rate-limit verdicts for one provider, its
+        remaining models are skipped (inconclusive, 'circuit open') instead of
+        burning their full timeout each."""
+        from uniinfer.capabilities import core as core_mod
+        monkeypatch.setattr(core_mod, "_RATE_CIRCUIT", 1)
+        doc = self._multi_provider_doc()
+        calls: list[str] = []
+
+        async def fake_verify(t):
+            calls.append(t.provider_name)
+            return (None, "HTTP 429: rate limit exceeded")
+
+        cat_inst = SimpleNamespace(read_nested=lambda *a, **k: doc,
+                                   save_override=lambda mid, fields: None)
+        with patch("uniinfer.proxy_services.models_registry.Catalog", lambda: cat_inst), \
+             patch("uniinfer.capabilities.core.probe_profile",
+                   AsyncMock(return_value=SimpleNamespace(detail={"profile": {}}))), \
+             patch("uniinfer.capabilities.core.save_probe_result", lambda r: None), \
+             patch("uniinfer.capabilities.core.verify_tool_call", fake_verify):
+            summ = await softprobe_catalog(stale_days=None, empirical_tools=True,
+                                           verify_concurrency=1)
+        # round-robin a,b,a,b,a with breaker at 1: each provider runs once,
+        # then its remaining models skip via the open circuit
+        assert calls.count("alpha") == 1 and calls.count("beta") == 1
+        assert summ["tool_inconclusive"] == 5
+
     @pytest.mark.asyncio
     async def test_probe_reuses_parsed_catalog_no_reread(self, tmp_path):
         """The softprobe passes its parsed providers dict through to

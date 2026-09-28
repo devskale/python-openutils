@@ -1,0 +1,24 @@
+[Unit]
+Description=UniInfer gentle background tool-verify (1 request, 6s apart, provider round-robin)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=ubuntu
+WorkingDirectory=/home/ubuntu/code/python-openutils/packages/uniinfer
+Environment=PATH=/home/ubuntu/.local/bin:/usr/local/bin:/usr/bin:/bin
+# Gentle: concurrency 1, 6 s spacing, provider round-robin, free models only.
+# Circuit breaker skips a provider after 5 consecutive rate-limit verdicts.
+ExecStart=/home/ubuntu/.local/bin/uv run python -m uniinfer.uniinfer_cli --softprobe --verify-concurrency 1 --verify-spacing 6
+# Hard failsafe: a wedged sweep dies here, never overlaps the next (systemd).
+TimeoutStartSec=1800
+# Thin box: low priority, bounded memory, no disk pressure.
+Nice=10
+IOSchedulingClass=idle
+MemoryMax=250M
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

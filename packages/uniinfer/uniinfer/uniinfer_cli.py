@@ -463,7 +463,9 @@ def _softprobe(args):
     want = args.provider if (args.provider and args.provider != "stepfun") else None
 
     def progress(pm, r, kind):
-        if kind == "ok":
+        if kind == "tool_verify":
+            print(f"  ~ {pm}  {r}")
+        elif kind == "ok":
             caps = (
                 ",".join((r.detail.get("profile", {}) or {}).get("capabilities", []))
                 or "?"
@@ -475,6 +477,9 @@ def _softprobe(args):
     # Empirical tool-verify (opt-in per env, like generate_models.py):
     # UNIINFER_EMPIRICAL_TOOLS=1 (default) verifies stale FREE chat models
     # with one short request each; =paid/all includes priced ones; =0 off.
+    # Gentle mode for the background updater: --verify-concurrency 1
+    # --verify-spacing 6 → one request at a time, 6 s apart, provider
+    # round-robin — no provider ever sees a burst.
     import os
 
     _emp = os.environ.get("UNIINFER_EMPIRICAL_TOOLS", "1").strip().lower()
@@ -488,6 +493,8 @@ def _softprobe(args):
             on_progress=progress,
             empirical_tools=_emp not in ("0", "false", "no", "off"),
             empirical_include_paid=_emp in ("paid", "all"),
+            verify_concurrency=getattr(args, "verify_concurrency", 8) or 8,
+            verify_spacing=getattr(args, "verify_spacing", 0.0) or 0.0,
         )
     )
     print(
@@ -701,6 +708,23 @@ def main():
         "--force",
         action="store_true",
         help="With --softprobe: reprobe even fresh entries.",
+    )
+    parser.add_argument(
+        "--verify-concurrency",
+        type=int,
+        default=8,
+        metavar="N",
+        help="With --softprobe: parallel empirical tool-verifies (default 8; the "
+             "gentle background updater uses 1).",
+    )
+    parser.add_argument(
+        "--verify-spacing",
+        type=float,
+        default=0.0,
+        metavar="SECONDS",
+        help="With --softprobe: pause between verify requests (gentle mode: 6). "
+             "Queue is provider round-robin, so consecutive requests hit "
+             "different providers.",
     )
     parser.add_argument(
         "--keys",

@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import asyncio
 import base64
+import itertools
 import json
 import re
 import time
@@ -839,6 +840,18 @@ _TOOL_VERIFY_PROMPT = "What time is it? Call the get_time tool to answer."
 # so an abandoned-but-still-running task would otherwise be GC'd mid-flight.
 _ABANDONED: set["asyncio.Task[any]"] = set()
 
+# Circuit breaker: after this many CONSECUTIVE rate-limit verdicts for one
+# provider, skip its remaining models this run (counted inconclusive). A
+# rate-limited provider makes every pending verify burn its full timeout —
+# observed live: 26 open sockets, minutes of 429 backoff for verifies that
+# all come back None anyway.
+_RATE_CIRCUIT = 5
+
+
+def _is_rate_limit(evidence: str) -> bool:
+    ev = (evidence or "").lower()
+    return "429" in ev or "rate limit" in ev or "quota" in ev or "overloaded" in ev
+
 
 async def _abandonable(coro, seconds: float):
     """``asyncio.wait_for`` variant that cannot be outwaited by stubborn inner work.
@@ -933,6 +946,8 @@ async def softprobe_catalog(
     on_progress: Optional[Callable[[str, Any, str], None]] = None,
     empirical_tools: bool = False,
     empirical_include_paid: bool = False,
+    verify_concurrency: int = 8,
+    verify_spacing: float = 0.0,
 ) -> dict[str, int]:
     """Probe (metadata ONLY — zero inference tokens) every catalog model.
 
@@ -943,8 +958,10 @@ async def softprobe_catalog(
     ``models.json``. Shared by the ``--softprobe`` CLI and the daily refresh.
 
     With ``empirical_tools=True`` additionally runs :func:`verify_tool_call`
-    for stale FREE chat models, bounded-parallel (8) so an on-demand run takes
-    seconds, not minutes, and writes the verified ``tool_call`` back via
+    for stale FREE chat models, bounded-parallel (default 8; the gentle
+    background updater uses 1 with ``verify_spacing`` seconds between
+    requests, queued provider-round-robin so consecutive requests never hit
+    the same provider) and writes the verified ``tool_call`` back via
     ``model_overrides.json`` (override > generated, so the correction survives
     the next regeneration). Declared metadata is only trustworthy where the
     upstream provider declares it carefully; this closes the gap with one
@@ -1021,18 +1038,47 @@ async def softprobe_catalog(
                             ),
                         )
                     )
+    # Provider round-robin: consecutive verifies never hit the same provider
+    # (rate limits are per-provider) — gemini, groq, gemini, groq, …
+    if verify_jobs:
+        lanes: dict[str, list[tuple]] = {}
+        for j in verify_jobs:
+            lanes.setdefault(j[0].split("@", 1)[0], []).append(j)
+        interleaved: list[tuple] = []
+        for round_ in itertools.zip_longest(*lanes.values()):
+            interleaved.extend(j for j in round_ if j is not None)
+        verify_jobs = interleaved
     verified_true = verified_false = verified_inconclusive = 0
     if verify_jobs:
-        sem = asyncio.Semaphore(8)
+        sem = asyncio.Semaphore(max(1, verify_concurrency))
+        rate_fail: dict[str, int] = {}
 
         async def _verify_job(
             pm: str, pkey: str, mid: str, m: dict, tgt: ProbeTarget
         ) -> Optional[bool]:
+            if rate_fail.get(tgt.provider_name, 0) >= _RATE_CIRCUIT:
+                evidence = "circuit open (provider rate-limited this run)"
+                tool_records[pkey] = {
+                    "verdict": "none",
+                    "evidence": evidence,
+                    "tested_at": datetime.now(timezone.utc).strftime(
+                        "%Y-%m-%dT%H:%M:%SZ"
+                    ),
+                }
+                if on_progress:
+                    on_progress(pm, f"tool_call=? ({evidence})", "tool_verify")
+                return None
             async with sem:
                 try:
                     verdict, evidence = await verify_tool_call(tgt)
                 except Exception as e:  # noqa: BLE001
                     verdict, evidence = None, _short_error(e)
+                if verdict is None and _is_rate_limit(evidence):
+                    rate_fail[tgt.provider_name] = rate_fail.get(tgt.provider_name, 0) + 1
+                else:
+                    rate_fail[tgt.provider_name] = 0
+                if verify_spacing > 0:
+                    await asyncio.sleep(verify_spacing)
             tool_records[pkey] = {
                 "verdict": "true" if verdict is True else ("false" if verdict is False else "none"),
                 "evidence": evidence,
