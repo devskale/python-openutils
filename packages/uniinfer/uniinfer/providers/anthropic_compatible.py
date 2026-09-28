@@ -67,6 +67,22 @@ class AnthropicCompatibleProvider(ChatProvider):
         if not api_key:
             raise ValueError(f"{cls.PROVIDER_ID} API key is required to list models")
         base_url = kwargs.get("base_url") or cls.BASE_URL
+
+        def _cap_support(value):
+            """Reduce an SDK capability object to a JSON-safe supported flag.
+
+            Newer anthropic SDKs model capabilities as pydantic objects
+            (e.g. ThinkingCapability with .supported/.types). Leaking them into
+            ModelInfo.capabilities broke JSON serialization of /v1/models/{p}
+            ('Object of type ThinkingCapability is not JSON serializable').
+            """
+            if value is None:
+                return None
+            supported = getattr(value, "supported", None)
+            if supported is not None:
+                return bool(supported)
+            return value if isinstance(value, (bool, str, int, float)) else None
+
         try:
             client = Anthropic(api_key=api_key, base_url=base_url, default_headers=cls._class_default_headers())
             response = client.models.list()
@@ -79,11 +95,11 @@ class AnthropicCompatibleProvider(ChatProvider):
                 caps = getattr(model, "capabilities", None)
                 capabilities = {}
                 if caps:
-                    capabilities["thinking"] = getattr(caps, "thinking", None)
-                    capabilities["image_input"] = getattr(caps, "image_input", None)
-                    capabilities["pdf_input"] = getattr(caps, "pdf_input", None)
-                    capabilities["code_execution"] = getattr(caps, "code_execution", None)
-                    capabilities["structured_outputs"] = getattr(caps, "structured_outputs", None)
+                    capabilities["thinking"] = _cap_support(getattr(caps, "thinking", None))
+                    capabilities["image_input"] = _cap_support(getattr(caps, "image_input", None))
+                    capabilities["pdf_input"] = _cap_support(getattr(caps, "pdf_input", None))
+                    capabilities["code_execution"] = _cap_support(getattr(caps, "code_execution", None))
+                    capabilities["structured_outputs"] = _cap_support(getattr(caps, "structured_outputs", None))
                     capabilities["tool_call"] = capabilities.get("code_execution")
                     capabilities["vision"] = capabilities.get("image_input")
                     capabilities = {k: v for k, v in capabilities.items() if v is not None}
