@@ -936,7 +936,8 @@ async def softprobe_catalog(
     ``models.json``. Shared by the ``--softprobe`` CLI and the daily refresh.
 
     With ``empirical_tools=True`` additionally runs :func:`verify_tool_call`
-    for stale FREE chat models and writes the verified ``tool_call`` back via
+    for stale FREE chat models, bounded-parallel (8) so an on-demand run takes
+    seconds, not minutes, and writes the verified ``tool_call`` back via
     ``model_overrides.json`` (override > generated, so the correction survives
     the next regeneration). Declared metadata is only trustworthy where the
     upstream provider declares it carefully; this closes the gap with one
@@ -963,8 +964,107 @@ async def softprobe_catalog(
     provs = catalog.get("providers", {})
 
     probed = skipped = errors = 0
-    verified_true = verified_false = verified_inconclusive = 0
     tool_records: dict[str, dict] = {}
+
+    def _is_stale(pkey: str) -> bool:
+        """True unless the sidecar shows a probe fresher than the cutoff."""
+        if not cutoff:
+            return True
+        tat = (existing.get(pkey) or {}).get("tested_at")
+        if not tat:
+            return True
+        try:
+            return datetime.fromisoformat(tat.replace("Z", "+00:00")) < cutoff
+        except Exception:  # noqa: BLE001
+            return True
+
+    def _verify_candidate(m: dict) -> bool:
+        """Stale FREE chat model (paid only with empirical_include_paid)."""
+        if m.get("type", "chat") != "chat":
+            return False
+        cost = m.get("cost") or {}
+        is_free = not any(
+            (cost.get(k) or 0) for k in ("input", "output", "cache_read", "cache_write")
+        )
+        return is_free or empirical_include_paid
+
+    # Phase 1 — empirical tool-verify, bounded-parallel (semaphore 8): an
+    # on-demand run takes seconds, not minutes (sequential was ~2-5 s/model,
+    # 150 models ≈ 10 min). Only stale models (stale_days stagger applies),
+    # by default only free ones — paid verifies cost real money.
+    verify_jobs: list[tuple] = []
+    if empirical_tools:
+        for pname, pdata in provs.items():
+            for m in pdata.get("models", []):
+                mid = m.get("id")
+                if not mid:
+                    continue
+                pkey = f"{pname}/{mid}"
+                if _is_stale(pkey) and _verify_candidate(m):
+                    verify_jobs.append(
+                        (
+                            f"{pname}@{mid}",
+                            pkey,
+                            mid,
+                            m,
+                            ProbeTarget(
+                                provider_model=f"{pname}@{mid}",
+                                api_key=ollama_key if pname == "ollama" else None,
+                                base_url=ollama_url if pname == "ollama" else None,
+                            ),
+                        )
+                    )
+    verified_true = verified_false = verified_inconclusive = 0
+    if verify_jobs:
+        sem = asyncio.Semaphore(8)
+
+        async def _verify_job(
+            pm: str, pkey: str, mid: str, m: dict, tgt: ProbeTarget
+        ) -> Optional[bool]:
+            async with sem:
+                try:
+                    verdict, evidence = await verify_tool_call(tgt)
+                except Exception as e:  # noqa: BLE001
+                    verdict, evidence = None, _short_error(e)
+            tool_records[pkey] = {
+                "verdict": "true" if verdict is True else ("false" if verdict is False else "none"),
+                "evidence": evidence,
+                "tested_at": datetime.now(timezone.utc).strftime(
+                    "%Y-%m-%dT%H:%M:%SZ"
+                ),
+            }
+            logger.info(
+                "tool-verify %s -> %s (%s)",
+                pm,
+                "true" if verdict is True else ("false" if verdict is False else "none"),
+                evidence,
+            )
+            if verdict is not None:
+                caps = dict(m.get("capabilities") or {})
+                caps["tool_call"] = verdict
+                caps["tool_call_verified"] = True
+                try:
+                    Catalog().save_override(mid, {"capabilities": caps})
+                    m["capabilities"] = caps  # keep in-memory view honest
+                except Exception:  # noqa: BLE001
+                    verdict = None  # override write failed → stays declared
+            if on_progress:
+                on_progress(
+                    pm,
+                    f"tool_call={'true' if verdict else ('false' if verdict is False else '?')} ({evidence})",
+                    "tool_verify",
+                )
+            return verdict
+
+        outcomes = await asyncio.gather(*(_verify_job(*j) for j in verify_jobs))
+        verified_true = sum(1 for v in outcomes if v is True)
+        verified_false = sum(1 for v in outcomes if v is False)
+        verified_inconclusive = sum(1 for v in outcomes if v is None)
+
+    # Phase 2 — metadata probes, sequential (local reads + Ollama /api/show;
+    # stagger-gated). Fresh models skip — probing them anyway would refresh
+    # tested_at on every run, so nothing would ever be stale again and the
+    # verify stagger would collapse to once-per-model-ever.
     for pname, pdata in provs.items():
         for m in pdata.get("models", []):
             mid = m.get("id")
@@ -972,74 +1072,13 @@ async def softprobe_catalog(
                 continue
             pm = f"{pname}@{mid}"
             pkey = f"{pname}/{mid}"
-            stale = True
-            if cutoff:
-                ent = existing.get(pkey)
-                tat = ent.get("tested_at") if ent else None
-                if tat:
-                    try:
-                        if datetime.fromisoformat(tat.replace("Z", "+00:00")) >= cutoff:
-                            skipped += 1
-                            stale = False
-                    except Exception:  # noqa: BLE001
-                        pass
             tgt = ProbeTarget(
                 provider_model=pm,
                 api_key=ollama_key if pname == "ollama" else None,
                 base_url=ollama_url if pname == "ollama" else None,
             )
-            # Empirical tool-call verification: only for stale models (so the
-            # stale_days stagger applies) and, by default, only free ones — the
-            # whole point is correcting declared metadata on the paths people
-            # actually adopt from, and paid verifies cost real money.
-            if empirical_tools and stale and m.get("type", "chat") == "chat":
-                cost = m.get("cost") or {}
-                is_free = not any(
-                    (cost.get(k) or 0)
-                    for k in ("input", "output", "cache_read", "cache_write")
-                )
-                if is_free or empirical_include_paid:
-                    try:
-                        verdict, evidence = await verify_tool_call(tgt)
-                    except Exception as e:  # noqa: BLE001
-                        verdict, evidence = None, _short_error(e)
-                    tool_records[pkey] = {
-                        "verdict": "true" if verdict is True else ("false" if verdict is False else "none"),
-                        "evidence": evidence,
-                        "tested_at": datetime.now(timezone.utc).strftime(
-                            "%Y-%m-%dT%H:%M:%SZ"
-                        ),
-                    }
-                    logger.info(
-                        "tool-verify %s -> %s (%s)",
-                        pm,
-                        "true" if verdict is True else ("false" if verdict is False else "none"),
-                        evidence,
-                    )
-                    if verdict is None:
-                        verified_inconclusive += 1
-                    else:
-                        caps = dict(m.get("capabilities") or {})
-                        caps["tool_call"] = verdict
-                        caps["tool_call_verified"] = True
-                        try:
-                            Catalog().save_override(mid, {"capabilities": caps})
-                            m["capabilities"] = caps  # keep in-memory view honest
-                            verified_true += verdict is True
-                            verified_false += verdict is False
-                        except Exception:  # noqa: BLE001
-                            verified_inconclusive += 1
-                    if on_progress:
-                        on_progress(
-                            pm,
-                            f"tool_call={'true' if verdict else ('false' if verdict is False else '?')} ({evidence})",
-                            "tool_verify",
-                        )
-            # Fresh models skip the metadata probe — the verify inherits the
-            # same stagger. Probing them anyway would refresh tested_at on
-            # every run, so nothing would ever be stale again and the verify
-            # cycle would collapse to once-per-model-ever.
-            if not stale:
+            if not _is_stale(pkey):
+                skipped += 1
                 continue
             try:
                 r = await probe_profile(tgt)  # metadata only — 0 tokens
