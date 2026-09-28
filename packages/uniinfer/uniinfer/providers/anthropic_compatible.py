@@ -3,7 +3,7 @@ import json
 import os
 from typing import Any, AsyncIterator, Optional
 
-from ..core import ChatCompletionRequest, ChatCompletionResponse, ChatMessage, ChatProvider, ModelInfo
+from ..core import ChatCompletionRequest, ChatCompletionResponse, ChatMessage, ChatProvider, ModelInfo, REASONING_OFF
 from ..errors import UniInferError, map_provider_error
 
 try:
@@ -182,6 +182,34 @@ class AnthropicCompatibleProvider(ChatProvider):
         thinking = "".join(thinking_text_parts) if thinking_text_parts else None
         return content, tool_calls or None, thinking
 
+    def _apply_reasoning_effort(self, request: ChatCompletionRequest, params: dict[str, Any]) -> None:
+        """Map the cross-provider reasoning intent to Anthropic's dialect.
+
+        SDK 1.7 exposes effort via ``output_config``: low/medium/high map 1:1.
+        REASONING_OFF values stay omitted — Anthropic defaults to thinking off.
+        """
+        effort = getattr(request, "reasoning_effort", None)
+        if effort and effort not in REASONING_OFF and effort in ("low", "medium", "high"):
+            params.setdefault("output_config", {"effort": effort})
+
+    def _adapt_sdk_params(self, params: dict[str, Any]) -> dict[str, Any]:
+        """Fit wire params to the installed anthropic SDK's ``create`` signature.
+
+        SDK 1.7 dropped typed ``temperature``/``top_p`` (sampling moved to
+        ``output_config.effort``) — passing them typed raised 'unexpected
+        keyword argument' and 500'd every default request. Unknown params
+        route through the SDK's ``extra_body`` wire passthrough instead, so
+        one param dict works across SDK generations.
+        """
+        import inspect
+
+        accepted = set(inspect.signature(self.async_client.messages.create).parameters)
+        typed = {k: v for k, v in params.items() if k in accepted}
+        extra = {k: v for k, v in params.items() if k not in accepted}
+        if extra:
+            typed.setdefault("extra_body", {}).update(extra)
+        return typed
+
     async def acomplete(
         self,
         request: ChatCompletionRequest,
@@ -205,9 +233,10 @@ class AnthropicCompatibleProvider(ChatProvider):
         if request.tool_choice:
             params["tool_choice"] = request.tool_choice
         params.update(provider_specific_kwargs)
+        self._apply_reasoning_effort(request, params)
 
         try:
-            response = await self.async_client.messages.create(**params)
+            response = await self.async_client.messages.create(**self._adapt_sdk_params(params))
             content, tool_calls, thinking = self._extract_message(response)
             usage_obj = getattr(response, "usage", None)
             input_tokens = getattr(usage_obj, "input_tokens", 0) or 0
@@ -255,9 +284,10 @@ class AnthropicCompatibleProvider(ChatProvider):
         if request.tool_choice:
             params["tool_choice"] = request.tool_choice
         params.update(provider_specific_kwargs)
+        self._apply_reasoning_effort(request, params)
 
         try:
-            stream = await self.async_client.messages.create(**params)
+            stream = await self.async_client.messages.create(**self._adapt_sdk_params(params))
             async for event in stream:
                 event_type = getattr(event, "type", None)
                 if event_type == "content_block_delta":
