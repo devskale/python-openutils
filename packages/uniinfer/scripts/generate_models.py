@@ -542,6 +542,13 @@ def main():
         help="Nur diese Provider aktualisieren (wiederholbar, z.B. --provider groq "
              "--provider gemini). Alle übrigen Katalog-Einträge bleiben "
              "unangetastet erhalten.")
+    ap.add_argument(
+        "--softprobe", action="store_true",
+        help="NUR auf Wunsch: nach dem Katalog-Refresh zusätzlich den Capability-"
+             "Softprobe laufen lassen (Metadaten lokal; mit UNIINFER_EMPIRICAL_TOOLS "
+             "(Default an) zusätzlich EIN Verify-Request pro stalem freien "
+             "Chat-Modell — dauert Minuten). Der Daily-Timer läuft OHNE diesen "
+             "Flag und bleibt schnell: nur die /models-Endpoints.")
     args = ap.parse_args()
     only = {p.lower() for p in args.provider} if args.provider else None
 
@@ -803,53 +810,48 @@ def main():
     for pid, pdata in sorted(result.items()):
         log.info("%-20s %-8s %6d", pid, pdata["kind"], len(pdata["models"]))
 
-    # Daily capability softprobe (metadata ONLY — 0 inference tokens).
-    # Refreshes declared capabilities + last-probed for every model so the
-    # /capabilities dashboard and models.json `probed` fields stay current.
-    # Only Ollama's /api/show needs a key (still 0 generation tokens).
-    try:
-        import asyncio
-
-        from uniinfer.capabilities import softprobe_catalog
-        from uniinfer.config.providers import PROVIDER_CONFIGS as _PC
-
+    # Capability softprobe — NUR auf Befehl (--softprobe): kostet Zeit (und
+    # mit empirischen Verify Requests), gehört nicht in den täglichen
+    # schnellen Katalog-Refresh. Metadaten kommen lokal aus dem Katalog, nur
+    # Ollama /api/show geht ins Netz; UNIINFER_EMPIRICAL_TOOLS (Default an)
+    # verifizert das tool_call-Bit empirisch — EIN kurzer Request pro stalem
+    # freien Chat-Modell, Write-Back via model_overrides.json.
+    if args.softprobe:
         try:
-            from credgoo import get_api_key as _get_key
+            import asyncio
 
-            _ollama_key = _get_key("ollama")
-        except Exception:  # noqa: BLE001
-            _ollama_key = None
-        _ollama_url = _PC.get("ollama", {}).get("extra_params", {}).get("base_url")
-        _interval = int(os.environ.get("UNIINFER_SOFTPROBE_INTERVAL_DAYS", "7"))
-        # Empirical tool-call verification for stale FREE chat models: one
-        # short (max_tokens=512) request each, staggering inherited from the
-        # softprobe cycle.
-        # Declared metadata lied in both directions (gemini free flash: no
-        # tool_call declared but works; mistral fim/voxtral: declared but
-        # refuses), so the catalog needs the verified bit. Write-back goes to
-        # model_overrides.json and survives regeneration. Opt out with
-        # UNIINFER_EMPIRICAL_TOOLS=0; include priced models with =paid.
-        _emp = os.environ.get("UNIINFER_EMPIRICAL_TOOLS", "1").strip().lower()
-        _empirical = _emp not in ("0", "false", "no", "off")
-        _emp_paid = _emp in ("paid", "all")
-        log.info(
-            "Softprobing catalog (0 tokens; reprobe interval %dd; empirical tool-verify %s%s)…",
-            _interval,
-            "on" if _empirical else "off",
-            ", incl. paid" if _emp_paid else " (free only)",
-        )
-        _summ = asyncio.run(
-            softprobe_catalog(
-                stale_days=_interval,
-                ollama_key=_ollama_key,
-                ollama_url=_ollama_url,
-                empirical_tools=_empirical,
-                empirical_include_paid=_emp_paid,
+            from uniinfer.capabilities import softprobe_catalog
+            from uniinfer.config.providers import PROVIDER_CONFIGS as _PC
+
+            try:
+                from credgoo import get_api_key as _get_key
+
+                _ollama_key = _get_key("ollama")
+            except Exception:  # noqa: BLE001
+                _ollama_key = None
+            _ollama_url = _PC.get("ollama", {}).get("extra_params", {}).get("base_url")
+            _interval = int(os.environ.get("UNIINFER_SOFTPROBE_INTERVAL_DAYS", "7"))
+            _emp = os.environ.get("UNIINFER_EMPIRICAL_TOOLS", "1").strip().lower()
+            _empirical = _emp not in ("0", "false", "no", "off")
+            _emp_paid = _emp in ("paid", "all")
+            log.info(
+                "Softprobing catalog (0 tokens; reprobe interval %dd; empirical tool-verify %s%s)…",
+                _interval,
+                "on" if _empirical else "off",
+                ", incl. paid" if _emp_paid else " (free only)",
             )
-        )
-        log.info("Softprobe: %s", _summ)
-    except Exception as e:  # noqa: BLE001
-        log.warning("Softprobe step skipped: %s", e)
+            _summ = asyncio.run(
+                softprobe_catalog(
+                    stale_days=_interval,
+                    ollama_key=_ollama_key,
+                    ollama_url=_ollama_url,
+                    empirical_tools=_empirical,
+                    empirical_include_paid=_emp_paid,
+                )
+            )
+            log.info("Softprobe: %s", _summ)
+        except Exception as e:  # noqa: BLE001
+            log.warning("Softprobe step skipped: %s", e)
 
 
 if __name__ == "__main__":
