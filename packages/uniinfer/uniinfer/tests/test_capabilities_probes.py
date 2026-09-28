@@ -408,6 +408,26 @@ class TestVerifyToolCall:
 class TestSoftprobeEmpiricalTools:
     """The softprobe writes verified tool_call back via model_overrides."""
 
+    @pytest.mark.asyncio
+    async def test_probe_reuses_parsed_catalog_no_reread(self, tmp_path):
+        """The softprobe passes its parsed providers dict through to
+        probe_profile — one models.json parse per run, not one per model
+        (each re-read cost ~350 ms CPU on amd's thin box)."""
+        from uniinfer.capabilities.core import probe_profile
+
+        m = {"id": "m1", "capabilities": {"tool_call": True}, "modalities": {}}
+        provs = {"gemini": {"models": [m]}}
+        t = _target(provider_model="gemini@m1")
+        r = await probe_profile(t, providers=provs)
+        assert r.status == "pass"
+        assert "tools" in r.evidence or "caps=" in r.evidence
+        # and the fallback path still works (single-target callers)
+        with patch("uniinfer.proxy_services.models_registry.Catalog") as mc:
+            mc.return_value.read_nested.return_value = {"providers": provs}
+            r2 = await probe_profile(t)
+            assert r2.status == "pass"
+            mc.return_value.read_nested.assert_called_once()
+
     def _catalog_doc(self):
         return {"providers": {"gemini": {"models": [
             {"id": "flash-free", "type": "chat", "cost": {}, "capabilities": {}},

@@ -158,14 +158,21 @@ _PROVIDERS_WITHOUT_IMAGE_FORWARD: set[str] = set()
 # --------------------------------------------------------------------------- #
 # Probe: capability profile (cheap — metadata only, no tokens)
 # --------------------------------------------------------------------------- #
-async def probe_profile(t: ProbeTarget) -> ProbeResult:
-    """Discover what the model can do from backend metadata."""
+async def probe_profile(t: ProbeTarget, providers: Optional[dict] = None) -> ProbeResult:
+    """Discover what the model can do from backend metadata.
+
+    ``providers``: an already-parsed providers dict (``{pname: {models: […]}}``)
+    to reuse instead of re-reading models.json per model. The softprobe loop
+    passes its in-memory catalog — one 2.6 MB parse per run instead of one per
+    model (~350 ms × N pure CPU on amd's thin box; deliberately NO
+    process-wide cache: the box has ~200 MB headroom).
+    """
     started = time.monotonic()
     try:
         if t.provider_name == "ollama":
             profile = await _ollama_show_profile(t)
         else:
-            profile = await _catalog_profile(t)
+            profile = await _catalog_profile(t, providers)
         caps = profile.get("capabilities", [])
         evidence = "caps=" + (",".join(caps) if caps else "?")
         if profile.get("context_length"):
@@ -201,20 +208,20 @@ async def _ollama_show_profile(t: ProbeTarget) -> dict[str, Any]:
     }
 
 
-async def _catalog_profile(t: ProbeTarget) -> dict[str, Any]:
+async def _catalog_profile(t: ProbeTarget, providers: Optional[dict] = None) -> dict[str, Any]:
     """Best-effort declared profile from the cached catalog (non-ollama).
 
     Normalises the catalog's capability dict + modalities into the same
     vocabulary Ollama's ``/api/show`` uses (``completion|tools|thinking|vision``)
-    so downstream skip-logic is uniform across providers.
+    so downstream skip-logic is uniform across providers. ``providers`` skips
+    the models.json re-read (see :func:`probe_profile`).
     """
-    try:
+    if providers is None:
         from uniinfer.proxy_services.models_registry import Catalog
 
-        catalog = Catalog().read_nested(t.provider_name)  # NOTE: takes a string, not a list
-        for m in (
-            catalog.get("providers", {}).get(t.provider_name, {}).get("models", [])
-        ):
+        providers = Catalog().read_nested(t.provider_name).get("providers", {})
+    try:
+        for m in providers.get(t.provider_name, {}).get("models", []):
             if m.get("id") == t.model_name:
                 caps = m.get("capabilities") or {}
                 mods = m.get("modalities") or {}
@@ -1081,7 +1088,7 @@ async def softprobe_catalog(
                 skipped += 1
                 continue
             try:
-                r = await probe_profile(tgt)  # metadata only — 0 tokens
+                r = await probe_profile(tgt, providers=provs)  # metadata only — 0 tokens, no re-read
                 save_probe_result(
                     CapabilityReport(
                         target=pm,
