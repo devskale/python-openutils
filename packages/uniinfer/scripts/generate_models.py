@@ -821,10 +821,29 @@ def main():
             _ollama_key = None
         _ollama_url = _PC.get("ollama", {}).get("extra_params", {}).get("base_url")
         _interval = int(os.environ.get("UNIINFER_SOFTPROBE_INTERVAL_DAYS", "7"))
-        log.info("Softprobing catalog (0 tokens; reprobe interval %dd)…", _interval)
+        # Empirical tool-call verification for stale FREE chat models: one
+        # ~48-token request each, staggering inherited from the softprobe cycle.
+        # Declared metadata lied in both directions (gemini free flash: no
+        # tool_call declared but works; mistral fim/voxtral: declared but
+        # refuses), so the catalog needs the verified bit. Write-back goes to
+        # model_overrides.json and survives regeneration. Opt out with
+        # UNIINFER_EMPIRICAL_TOOLS=0; include priced models with =paid.
+        _emp = os.environ.get("UNIINFER_EMPIRICAL_TOOLS", "1").strip().lower()
+        _empirical = _emp not in ("0", "false", "no", "off")
+        _emp_paid = _emp in ("paid", "all")
+        log.info(
+            "Softprobing catalog (0 tokens; reprobe interval %dd; empirical tool-verify %s%s)…",
+            _interval,
+            "on" if _empirical else "off",
+            ", incl. paid" if _emp_paid else " (free only)",
+        )
         _summ = asyncio.run(
             softprobe_catalog(
-                stale_days=_interval, ollama_key=_ollama_key, ollama_url=_ollama_url
+                stale_days=_interval,
+                ollama_key=_ollama_key,
+                ollama_url=_ollama_url,
+                empirical_tools=_empirical,
+                empirical_include_paid=_emp_paid,
             )
         )
         log.info("Softprobe: %s", _summ)

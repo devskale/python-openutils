@@ -786,6 +786,74 @@ def _merge_probe_into_models_json(key: str, entry: dict) -> None:
     return
 
 
+# --------------------------------------------------------------------------- #
+# Empirical tool-call verification (cheap, single request)
+# --------------------------------------------------------------------------- #
+_TOOL_VERIFY_TOOLS = [
+    {
+        "type": "function",
+        "function": {
+            "name": "get_time",
+            "description": "Returns the current time.",
+            "parameters": {"type": "object", "properties": {}, "required": []},
+        },
+    }
+]
+_TOOL_VERIFY_PROMPT = "What time is it? Call the get_time tool to answer."
+
+
+async def verify_tool_call(t: ProbeTarget) -> tuple[Optional[bool], str]:
+    """Empirically answer "can this model emit a tool call" with one request.
+
+    Distinct from :func:`probe_tool_calling` (3-facet quality matrix for the
+    dashboard): this is the cheap truth-check the catalog needs, because
+    declared capabilities have failed in BOTH directions on real providers —
+
+    - gemini free flash (3.6/3.7/3.8): Google's free-path metadata omits the
+      function-calling flag, yet the models tool-call correctly (verified live
+      through the proxy), so declared-missing wrongly excludes them from
+      tool-gated adopt filters downstream.
+    - mistral code-fim/voxtral: declared tool-capable, but the models answer
+      "I don't have access to tools" in chat — adopted, then useless.
+
+    Returns ``(True, evidence)`` when a tool call comes back, ``(False, …)``
+    when the model demonstrably will not call one (including a backend 400
+    "does not support tools"), and ``(None, error)`` when inconclusive
+    (429/5xx/timeout/auth) — the caller keeps the declared value then.
+    """
+    started = time.monotonic()
+    try:
+        resp = await asyncio.wait_for(
+            _complete_quiet(
+                t,
+                [{"role": "user", "content": _TOOL_VERIFY_PROMPT}],
+                tools=_TOOL_VERIFY_TOOLS,
+                tool_choice="auto",
+                # NOT 48: several providers ignore reasoning_effort (gemini has
+                # no thinking_config mapping at all), so thinking models keep
+                # thinking and a tiny budget comes back EMPTY — no tool call,
+                # no content, and the verify reads as inconclusive. 512 gives
+                # reasoning room to finish and still costs ~nothing on the
+                # free models this runs for (ProbeTarget defaults to 4096 for
+                # exactly this reason; 512 proved sufficient empirically).
+                max_tokens=512,
+            ),
+            min(t.timeout, 45.0),
+        )
+        tool_calls = getattr(resp.message, "tool_calls", None) or []
+        if _tool_call_names(tool_calls):
+            return True, f"emitted {_tool_call_names(tool_calls)}"
+        content = (getattr(resp.message, "content", None) or "").strip()
+        if content:
+            return False, f"answered in text ({content[:60]!r}) without calling the tool"
+        return None, "no tool_calls and no content — inconclusive"
+    except Exception as e:  # noqa: BLE001
+        msg = str(e).lower()
+        if "does not support tools" in msg:
+            return False, "backend rejects tools (400)"
+        return None, _short_error(e) + f" ({_ms(started)}ms)"
+
+
 async def softprobe_catalog(
     *,
     providers: Optional[str] = None,
@@ -794,6 +862,8 @@ async def softprobe_catalog(
     ollama_key: Optional[str] = None,
     ollama_url: Optional[str] = None,
     on_progress: Optional[Callable[[str, Any, str], None]] = None,
+    empirical_tools: bool = False,
+    empirical_include_paid: bool = False,
 ) -> dict[str, int]:
     """Probe (metadata ONLY — zero inference tokens) every catalog model.
 
@@ -802,6 +872,15 @@ async def softprobe_catalog(
     fresher than ``stale_days`` so reprobes stagger. Persists to
     ``_probe_results.json`` and updates each model's ``probed`` field in
     ``models.json``. Shared by the ``--softprobe`` CLI and the daily refresh.
+
+    With ``empirical_tools=True`` additionally runs :func:`verify_tool_call`
+    for stale FREE chat models and writes the verified ``tool_call`` back via
+    ``model_overrides.json`` (override > generated, so the correction survives
+    the next regeneration). Declared metadata is only trustworthy where the
+    upstream provider declares it carefully; this closes the gap with one
+    ~48-token request per model per cycle. ``empirical_include_paid`` extends
+    verification to priced models (each verify then costs real money — a few
+    tokens at the model's rate).
     """
     from uniinfer.proxy_services.models_registry import Catalog
 
@@ -820,6 +899,7 @@ async def softprobe_catalog(
     provs = catalog.get("providers", {})
 
     probed = skipped = errors = 0
+    verified_true = verified_false = verified_inconclusive = 0
     for pname, pdata in provs.items():
         for m in pdata.get("models", []):
             mid = m.get("id")
@@ -827,6 +907,7 @@ async def softprobe_catalog(
                 continue
             pm = f"{pname}@{mid}"
             pkey = f"{pname}/{mid}"
+            stale = True
             if cutoff:
                 ent = existing.get(pkey)
                 tat = ent.get("tested_at") if ent else None
@@ -834,7 +915,7 @@ async def softprobe_catalog(
                     try:
                         if datetime.fromisoformat(tat.replace("Z", "+00:00")) >= cutoff:
                             skipped += 1
-                            continue
+                            stale = False
                     except Exception:  # noqa: BLE001
                         pass
             tgt = ProbeTarget(
@@ -858,7 +939,48 @@ async def softprobe_catalog(
                 errors += 1
                 if on_progress:
                     on_progress(pm, e, "error")
-    return {"probed": probed, "skipped": skipped, "errors": errors}
+            # Empirical tool-call verification: only for stale models (so the
+            # stale_days stagger applies) and, by default, only free ones — the
+            # whole point is correcting declared metadata on the paths people
+            # actually adopt from, and paid verifies cost real money.
+            if empirical_tools and stale and m.get("type", "chat") == "chat":
+                cost = m.get("cost") or {}
+                is_free = not any(
+                    (cost.get(k) or 0)
+                    for k in ("input", "output", "cache_read", "cache_write")
+                )
+                if is_free or empirical_include_paid:
+                    try:
+                        verdict, evidence = await verify_tool_call(tgt)
+                    except Exception as e:  # noqa: BLE001
+                        verdict, evidence = None, _short_error(e)
+                    if verdict is None:
+                        verified_inconclusive += 1
+                    else:
+                        caps = dict(m.get("capabilities") or {})
+                        caps["tool_call"] = verdict
+                        caps["tool_call_verified"] = True
+                        try:
+                            Catalog().save_override(mid, {"capabilities": caps})
+                            m["capabilities"] = caps  # keep in-memory view honest
+                            verified_true += verdict is True
+                            verified_false += verdict is False
+                        except Exception:  # noqa: BLE001
+                            verified_inconclusive += 1
+                    if on_progress:
+                        on_progress(
+                            pm,
+                            f"tool_call={'true' if verdict else ('false' if verdict is False else '?')} ({evidence})",
+                            "tool_verify",
+                        )
+    return {
+        "probed": probed,
+        "skipped": skipped,
+        "errors": errors,
+        "tool_verified_true": verified_true,
+        "tool_verified_false": verified_false,
+        "tool_inconclusive": verified_inconclusive,
+    }
 
 
 async def run_capabilities(

@@ -290,3 +290,119 @@ class TestProbeStructuredOutput:
             mt.return_value.acomplete = AsyncMock(side_effect=RuntimeError("timeout"))
             r = await probe_structured_output(_target())
         assert r.status == "error"
+
+
+# --------------------------------------------------------------------------- #
+# verify_tool_call — the cheap empirical truth-check for the catalog
+# --------------------------------------------------------------------------- #
+from uniinfer.capabilities.core import verify_tool_call, softprobe_catalog
+
+
+class TestVerifyToolCall:
+    """One request, three outcomes: True / False / None (inconclusive)."""
+
+    @pytest.mark.asyncio
+    async def test_true_when_tool_call_emitted(self):
+        t = ProbeTarget(provider_model="p@m")
+        with patch("uniinfer.capabilities.core._complete_quiet",
+                   AsyncMock(return_value=_msg(tool_calls=[_tc("get_time", {})]))):
+            verdict, ev = await verify_tool_call(t)
+        assert verdict is True and "get_time" in ev
+
+    @pytest.mark.asyncio
+    async def test_false_when_answers_in_text(self):
+        t = ProbeTarget(provider_model="p@m")
+        with patch("uniinfer.capabilities.core._complete_quiet",
+                   AsyncMock(return_value=_msg(content="It is 3 pm."))):
+            verdict, ev = await verify_tool_call(t)
+        assert verdict is False and "text" in ev
+
+    @pytest.mark.asyncio
+    async def test_none_when_neither_tool_nor_content(self):
+        t = ProbeTarget(provider_model="p@m")
+        with patch("uniinfer.capabilities.core._complete_quiet",
+                   AsyncMock(return_value=_msg())):
+            verdict, _ = await verify_tool_call(t)
+        assert verdict is None
+
+    @pytest.mark.asyncio
+    async def test_none_on_ratelimit_style_error(self):
+        t = ProbeTarget(provider_model="p@m")
+        with patch("uniinfer.capabilities.core._complete_quiet",
+                   AsyncMock(side_effect=RuntimeError("HTTP 429: too many requests"))):
+            verdict, _ = await verify_tool_call(t)
+        assert verdict is None
+
+    @pytest.mark.asyncio
+    async def test_false_when_backend_rejects_tools(self):
+        t = ProbeTarget(provider_model="p@m")
+        with patch("uniinfer.capabilities.core._complete_quiet",
+                   AsyncMock(side_effect=RuntimeError("model does not support tools"))):
+            verdict, _ = await verify_tool_call(t)
+        assert verdict is False
+
+
+class TestSoftprobeEmpiricalTools:
+    """The softprobe writes verified tool_call back via model_overrides."""
+
+    def _catalog_doc(self):
+        return {"providers": {"gemini": {"models": [
+            {"id": "flash-free", "type": "chat", "cost": {}, "capabilities": {}},
+            {"id": "flash-paid", "type": "chat", "cost": {"input": 0.3, "output": 2.5},
+             "capabilities": {"tool_call": True}},
+            {"id": "embed", "type": "embed", "cost": {}},
+        ]}}}
+
+    @pytest.mark.asyncio
+    async def test_free_chat_model_verified_and_overridden(self, tmp_path, monkeypatch):
+        doc = self._catalog_doc()
+        cat_inst = SimpleNamespace(
+            read_nested=lambda *a, **k: doc,
+            save_override=lambda mid, fields: doc["providers"]["gemini"]["models"]
+            .__iter__().__next__() and None,  # placeholder, replaced below
+        )
+        saved = {}
+        cat_inst.save_override = lambda mid, fields: saved.update({mid: fields})
+        with patch("uniinfer.proxy_services.models_registry.Catalog",
+                   lambda: cat_inst), \
+             patch("uniinfer.capabilities.core.Catalog", lambda: cat_inst, create=True), \
+             patch("uniinfer.capabilities.core.probe_profile",
+                   AsyncMock(return_value=SimpleNamespace(detail={"profile": {}}))), \
+             patch("uniinfer.capabilities.core.save_probe_result", lambda r: None), \
+             patch("uniinfer.capabilities.core.verify_tool_call",
+                   AsyncMock(return_value=(True, "emitted ['get_time']"))):
+            summ = await softprobe_catalog(stale_days=None, empirical_tools=True)
+        assert saved["flash-free"]["capabilities"] == {
+            "tool_call": True, "tool_call_verified": True}
+        assert summ["tool_verified_true"] == 1
+
+    @pytest.mark.asyncio
+    async def test_paid_model_not_verified_by_default(self):
+        doc = self._catalog_doc()
+        cat_inst = SimpleNamespace(read_nested=lambda *a, **k: doc,
+                                   save_override=lambda mid, fields: None)
+        with patch("uniinfer.proxy_services.models_registry.Catalog", lambda: cat_inst), \
+             patch("uniinfer.capabilities.core.probe_profile",
+                   AsyncMock(return_value=SimpleNamespace(detail={"profile": {}}))), \
+             patch("uniinfer.capabilities.core.save_probe_result", lambda r: None), \
+             patch("uniinfer.capabilities.core.verify_tool_call",
+                   AsyncMock(return_value=(True, "should not be called for paid"))) as vt:
+            await softprobe_catalog(stale_days=None, empirical_tools=True)
+        # flash-paid is chat+paid → verify must not run; embed is not chat either
+        assert vt.await_count == 1  # only flash-free
+
+    @pytest.mark.asyncio
+    async def test_inconclusive_keeps_declared_and_writes_nothing(self):
+        doc = self._catalog_doc()
+        saved = {}
+        cat_inst = SimpleNamespace(read_nested=lambda *a, **k: doc,
+                                   save_override=lambda mid, fields: saved.update({mid: fields}))
+        with patch("uniinfer.proxy_services.models_registry.Catalog", lambda: cat_inst), \
+             patch("uniinfer.capabilities.core.probe_profile",
+                   AsyncMock(return_value=SimpleNamespace(detail={"profile": {}}))), \
+             patch("uniinfer.capabilities.core.save_probe_result", lambda r: None), \
+             patch("uniinfer.capabilities.core.verify_tool_call",
+                   AsyncMock(return_value=(None, "HTTP 429"))):
+            summ = await softprobe_catalog(stale_days=None, empirical_tools=True)
+        assert saved == {}  # nothing written
+        assert summ["tool_inconclusive"] == 1
