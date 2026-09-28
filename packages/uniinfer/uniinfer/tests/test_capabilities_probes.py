@@ -406,3 +406,62 @@ class TestSoftprobeEmpiricalTools:
             summ = await softprobe_catalog(stale_days=None, empirical_tools=True)
         assert saved == {}  # nothing written
         assert summ["tool_inconclusive"] == 1
+
+    @pytest.mark.asyncio
+    async def test_fresh_model_neither_probed_nor_verified(self, tmp_path, monkeypatch):
+        """Regression: fresh (tested_at within stale_days) models must skip the
+        metadata probe AND the verify — probing them anyway would refresh
+        tested_at every run, collapsing the 7-day verify stagger to
+        once-per-model-ever (the draft's removed-continue bug)."""
+        import json as _json
+        from datetime import datetime, timedelta, timezone
+
+        sidecar = tmp_path / "_probe_results.json"
+        fresh = (datetime.now(timezone.utc)).strftime("%Y-%m-%dT%H:%M:%SZ")
+        sidecar.write_text(_json.dumps(
+            {"gemini/flash-free": {"tested_at": fresh, "profile": {}}}))
+        monkeypatch.setattr("uniinfer.capabilities.core.PROBE_RESULTS_PATH", sidecar)
+
+        doc = self._catalog_doc()
+        cat_inst = SimpleNamespace(read_nested=lambda *a, **k: doc,
+                                   save_override=lambda mid, fields: None)
+        with patch("uniinfer.proxy_services.models_registry.Catalog", lambda: cat_inst), \
+             patch("uniinfer.capabilities.core.probe_profile",
+                   AsyncMock(return_value=SimpleNamespace(detail={"profile": {}}))) as pp, \
+             patch("uniinfer.capabilities.core.save_probe_result", lambda r: None), \
+             patch("uniinfer.capabilities.core.verify_tool_call",
+                   AsyncMock(return_value=(True, "emitted ['get_time']"))) as vt:
+            summ = await softprobe_catalog(stale_days=7, empirical_tools=True)
+        # flash-free is fresh → skipped entirely; flash-paid (stale+chat, paid)
+        # and embed (stale, not chat) are probed but never verified
+        assert pp.await_count == 2 and vt.await_count == 0
+        assert summ["skipped"] == 1 and summ["probed"] == 2
+
+    @pytest.mark.asyncio
+    async def test_tool_verify_evidence_persisted_to_sidecar(self, tmp_path, monkeypatch):
+        """Verdict AND evidence land under tool_verify in _probe_results.json —
+        including the inconclusive case (the 403 evidence base for the eventual
+        auto-degrade decision)."""
+        import json as _json
+
+        sidecar = tmp_path / "_probe_results.json"
+        sidecar.write_text(_json.dumps(
+            {"gemini/flash-free": {"tested_at": "2026-09-01T00:00:00Z", "profile": {}}}))
+        monkeypatch.setattr("uniinfer.capabilities.core.PROBE_RESULTS_PATH", sidecar)
+
+        doc = self._catalog_doc()
+        cat_inst = SimpleNamespace(read_nested=lambda *a, **k: doc,
+                                   save_override=lambda mid, fields: None)
+        with patch("uniinfer.proxy_services.models_registry.Catalog", lambda: cat_inst), \
+             patch("uniinfer.capabilities.core.probe_profile",
+                   AsyncMock(return_value=SimpleNamespace(detail={"profile": {}}))), \
+             patch("uniinfer.capabilities.core.save_probe_result", lambda r: None), \
+             patch("uniinfer.capabilities.core.verify_tool_call",
+                   AsyncMock(return_value=(None, "HTTP 403: Mistral API key is required"))):
+            await softprobe_catalog(stale_days=None, empirical_tools=True)
+        data = _json.loads(sidecar.read_text())
+        tv = data["gemini/flash-free"]["tool_verify"]
+        assert tv["verdict"] == "none" and "403" in tv["evidence"]
+        assert tv["tested_at"]  # stamped
+        # the pre-existing probe entry survives the merge
+        assert data["gemini/flash-free"]["profile"] == {}

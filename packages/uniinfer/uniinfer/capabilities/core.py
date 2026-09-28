@@ -786,6 +786,29 @@ def _merge_probe_into_models_json(key: str, entry: dict) -> None:
     return
 
 
+def _record_tool_verify(records: dict[str, dict]) -> None:
+    """Merge empirical tool-verify evidence into ``_probe_results.json``.
+
+    Open decision (labs-leanstral 403s et al.): repeated inconclusive
+    verdicts may later drive a status/access degrade — for now the evidence
+    base is collected here, keyed like probe entries (``provider/model``).
+    Read-modify-write so probe entries written in the same run survive; one
+    write per run.
+    """
+    if not records:
+        return
+    data: dict[str, Any] = {}
+    if PROBE_RESULTS_PATH.exists():
+        try:
+            data = json.loads(PROBE_RESULTS_PATH.read_text())
+        except Exception:  # noqa: BLE001
+            data = {}
+    for key, rec in records.items():
+        data.setdefault(key, {})["tool_verify"] = rec
+    PROBE_RESULTS_PATH.parent.mkdir(parents=True, exist_ok=True)
+    PROBE_RESULTS_PATH.write_text(json.dumps(data, indent=2, sort_keys=True))
+
+
 # --------------------------------------------------------------------------- #
 # Empirical tool-call verification (cheap, single request)
 # --------------------------------------------------------------------------- #
@@ -878,9 +901,11 @@ async def softprobe_catalog(
     ``model_overrides.json`` (override > generated, so the correction survives
     the next regeneration). Declared metadata is only trustworthy where the
     upstream provider declares it carefully; this closes the gap with one
-    ~48-token request per model per cycle. ``empirical_include_paid`` extends
-    verification to priced models (each verify then costs real money — a few
-    tokens at the model's rate).
+    short (max_tokens=512) request per model per cycle — verdict AND evidence
+    are recorded under ``tool_verify`` in ``_probe_results.json`` (including
+    inconclusive 403/429 evidence, for the eventual auto-degrade decision).
+    ``empirical_include_paid`` extends verification to priced models (each
+    verify then costs real money — a few tokens at the model's rate).
     """
     from uniinfer.proxy_services.models_registry import Catalog
 
@@ -900,6 +925,7 @@ async def softprobe_catalog(
 
     probed = skipped = errors = 0
     verified_true = verified_false = verified_inconclusive = 0
+    tool_records: dict[str, dict] = {}
     for pname, pdata in provs.items():
         for m in pdata.get("models", []):
             mid = m.get("id")
@@ -923,22 +949,6 @@ async def softprobe_catalog(
                 api_key=ollama_key if pname == "ollama" else None,
                 base_url=ollama_url if pname == "ollama" else None,
             )
-            try:
-                r = await probe_profile(tgt)  # metadata only — 0 tokens
-                save_probe_result(
-                    CapabilityReport(
-                        target=pm,
-                        profile=r.detail.get("profile", {}) or {},
-                        results=[r],
-                    )
-                )
-                probed += 1
-                if on_progress:
-                    on_progress(pm, r, "ok")
-            except Exception as e:  # noqa: BLE001
-                errors += 1
-                if on_progress:
-                    on_progress(pm, e, "error")
             # Empirical tool-call verification: only for stale models (so the
             # stale_days stagger applies) and, by default, only free ones — the
             # whole point is correcting declared metadata on the paths people
@@ -954,6 +964,13 @@ async def softprobe_catalog(
                         verdict, evidence = await verify_tool_call(tgt)
                     except Exception as e:  # noqa: BLE001
                         verdict, evidence = None, _short_error(e)
+                    tool_records[pkey] = {
+                        "verdict": "true" if verdict is True else ("false" if verdict is False else "none"),
+                        "evidence": evidence,
+                        "tested_at": datetime.now(timezone.utc).strftime(
+                            "%Y-%m-%dT%H:%M:%SZ"
+                        ),
+                    }
                     if verdict is None:
                         verified_inconclusive += 1
                     else:
@@ -973,6 +990,29 @@ async def softprobe_catalog(
                             f"tool_call={'true' if verdict else ('false' if verdict is False else '?')} ({evidence})",
                             "tool_verify",
                         )
+            # Fresh models skip the metadata probe — the verify inherits the
+            # same stagger. Probing them anyway would refresh tested_at on
+            # every run, so nothing would ever be stale again and the verify
+            # cycle would collapse to once-per-model-ever.
+            if not stale:
+                continue
+            try:
+                r = await probe_profile(tgt)  # metadata only — 0 tokens
+                save_probe_result(
+                    CapabilityReport(
+                        target=pm,
+                        profile=r.detail.get("profile", {}) or {},
+                        results=[r],
+                    )
+                )
+                probed += 1
+                if on_progress:
+                    on_progress(pm, r, "ok")
+            except Exception as e:  # noqa: BLE001
+                errors += 1
+                if on_progress:
+                    on_progress(pm, e, "error")
+    _record_tool_verify(tool_records)
     return {
         "probed": probed,
         "skipped": skipped,

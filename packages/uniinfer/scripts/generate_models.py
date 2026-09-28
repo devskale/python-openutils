@@ -822,7 +822,8 @@ def main():
         _ollama_url = _PC.get("ollama", {}).get("extra_params", {}).get("base_url")
         _interval = int(os.environ.get("UNIINFER_SOFTPROBE_INTERVAL_DAYS", "7"))
         # Empirical tool-call verification for stale FREE chat models: one
-        # ~48-token request each, staggering inherited from the softprobe cycle.
+        # short (max_tokens=512) request each, staggering inherited from the
+        # softprobe cycle.
         # Declared metadata lied in both directions (gemini free flash: no
         # tool_call declared but works; mistral fim/voxtral: declared but
         # refuses), so the catalog needs the verified bit. Write-back goes to
