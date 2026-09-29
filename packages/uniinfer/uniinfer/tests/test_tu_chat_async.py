@@ -129,7 +129,7 @@ class TestTUProviderAsync:
         from uniinfer.errors import RateLimitError
 
         class FakeClient:
-            async def post(self, url, json=None):
+            async def post(self, url, json=None, timeout=None):
                 return httpx.Response(429, json={"error": {"message": "limit"}})
 
         async def _fake_client():

@@ -44,12 +44,15 @@ def _log_outgoing_payload(model: str, payload: dict[str, Any], *, operation: str
 
 
 
-def _timeout_ctx(model: str, payload: dict[str, Any]) -> str:
+def _timeout_ctx(model: str, payload: dict[str, Any], budget: float | None = None) -> str:
     """Context-rich timeout message: empty str(httpx.ReadTimeout) produced the
     useless 'tu error: ' relays. Names the likely causes so the operator can
-    act (oversized context vs wedged replica) without log diving."""
+    act (oversized context vs wedged replica) without log diving. ``budget`` is
+    the effective wait limit that fired (stream-open vs non-streaming)."""
+    if budget is None:
+        budget = TU_STREAM_OPEN_TIMEOUT
     kb = len(json.dumps(payload, default=str)) // 1024
-    return (f"upstream timeout: no response headers within {TU_STREAM_OPEN_TIMEOUT:.0f}s "
+    return (f"upstream timeout: no response within {budget:.0f}s "
             f"(model={model}, payload={kb}KB) — "
             f"likely wedged TU replica or oversized context (compact the session)")
 
@@ -95,9 +98,11 @@ _TU_CLIENT_CACHE: dict[str, tuple[httpx.AsyncClient, asyncio.AbstractEventLoop]]
 # minute hangs. These bound that window tightly:
 #   * TU_STREAM_OPEN_TIMEOUT — max wait for response headers after POST
 #   * TU_STREAM_GAP_TIMEOUT  — max idle time between SSE lines mid-stream
+#   * TU_NONSTREAM_OPEN_TIMEOUT — max wait for a non-streaming completion
 # A stream idle longer than the gap is treated as wedged: the pooled client is
 # evicted and (if no chunk has reached the caller yet) the stream is replayed
-# on a fresh connection. Both are overridable via env for targeted tuning.
+# on a fresh connection. A non-streaming POST wedged past its open timeout is
+# evicted and retried on fresh routing the same way. All overridable via env.
 def _env_float(name: str, default: float) -> float:
     try:
         return float(os.getenv(name, ""))
@@ -106,6 +111,7 @@ def _env_float(name: str, default: float) -> float:
 
 TU_STREAM_OPEN_TIMEOUT = _env_float("TU_STREAM_OPEN_TIMEOUT", 90.0)
 TU_STREAM_GAP_TIMEOUT = _env_float("TU_STREAM_GAP_TIMEOUT", 60.0)
+TU_NONSTREAM_OPEN_TIMEOUT = _env_float("TU_NONSTREAM_OPEN_TIMEOUT", 30.0)
 
 
 class _TokenBucket:
@@ -455,12 +461,26 @@ class TUProvider(ChatProvider):
             max_retries = int(_env_float("TU_TRANSPORT_RETRIES", 4.0))
         _log_outgoing_payload(model, payload, operation="POST")
         last_exc: Exception | None = None
+        # Bound how long we wait for a non-streaming response: a wedged TU
+        # replica answers only after 45–600s (production observation) while a
+        # fresh-routing retry returns in <1s — fail this case in
+        # TU_NONSTREAM_OPEN_TIMEOUT seconds instead of the client's 300s read
+        # budget, so the evict+retry path below can heal it. Mirrors the
+        # stream-open override in _open_stream_with_ratelimit_retry.
+        base_t = getattr(client, "timeout", None)
+        if isinstance(base_t, httpx.Timeout):
+            open_timeout = httpx.Timeout(
+                connect=base_t.connect, read=TU_NONSTREAM_OPEN_TIMEOUT,
+                write=base_t.write, pool=base_t.pool,
+            )
+        else:
+            open_timeout = httpx.Timeout(TU_NONSTREAM_OPEN_TIMEOUT, connect=30.0)
         for attempt in range(max_retries + 1):
             try:
-                response = await client.post(url, json=payload)
+                response = await client.post(url, json=payload, timeout=open_timeout)
             except httpx.TimeoutException as e:
                 last_exc = e
-                logger.warning("[%s] read timeout on %s (attempt %d/%d): %s %s", self._CREDGOO_SERVICE, model, attempt + 1, max_retries + 1, e, _timeout_ctx(model, payload))
+                logger.warning("[%s] read timeout on %s (attempt %d/%d): %s %s", self._CREDGOO_SERVICE, model, attempt + 1, max_retries + 1, e, _timeout_ctx(model, payload, TU_NONSTREAM_OPEN_TIMEOUT))
                 if attempt < max_retries:
                     # A read timeout on a wedged backend poisons the pooled
                     # connection for every request on it — evict it so this
@@ -471,7 +491,7 @@ class TUProvider(ChatProvider):
                     await asyncio.sleep(min(2.0 * (attempt + 1), 8.0))
                     continue
                 raise map_provider_error(
-                    self._CREDGOO_SERVICE, Exception(_timeout_ctx(model, payload))) from e
+                    self._CREDGOO_SERVICE, Exception(_timeout_ctx(model, payload, TU_NONSTREAM_OPEN_TIMEOUT))) from e
             except httpx.TransportError as e:
                 last_exc = e
                 logger.warning("[tu] network error on %s (attempt %d/%d): %s", model, attempt + 1, max_retries + 1, e)
@@ -516,7 +536,7 @@ class TUProvider(ChatProvider):
             return response
         if last_exc is not None:
             if isinstance(last_exc, httpx.TimeoutException):
-                raise map_provider_error(self._CREDGOO_SERVICE, Exception(_timeout_ctx(model, payload)))
+                raise map_provider_error(self._CREDGOO_SERVICE, Exception(_timeout_ctx(model, payload, TU_NONSTREAM_OPEN_TIMEOUT)))
             raise map_provider_error(self._CREDGOO_SERVICE, last_exc)
         raise map_provider_error(self._CREDGOO_SERVICE, Exception("TU API error: exhausted retries"))
 
