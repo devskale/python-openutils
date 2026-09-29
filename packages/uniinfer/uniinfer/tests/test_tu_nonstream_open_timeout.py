@@ -96,3 +96,28 @@ class TestNonstreamOpenTimeout:
 
         assert f"within {TU_NONSTREAM_OPEN_TIMEOUT:.0f}s" in str(exc.value)
         assert "wedged TU replica" in str(exc.value)
+
+    @pytest.mark.asyncio
+    async def test_timeout_evicts_pool_even_without_retry(self, monkeypatch):
+        """Lean relay (TU_TRANSPORT_RETRIES=0): the request still fails fast,
+        but the poisoned pooled client is evicted — pool hygiene, not a retry.
+        The caller's own next attempt then lands on fresh routing."""
+        from uniinfer.providers.tu import _TU_TELEMETRY
+
+        provider = TUProvider(api_key="k")
+        monkeypatch.setenv("TU_TRANSPORT_RETRIES", "0")
+        mock_a = _pool_client(post_side_effect=httpx.ReadTimeout("wedged replica"))
+        mock_b = AsyncMock(spec=httpx.AsyncClient)
+        mock_b.is_closed = False
+        _TU_CLIENT_CACHE[provider.base_url] = (mock_a, asyncio.get_running_loop())
+        monkeypatch.setattr(TUProvider, "_new_async_client", lambda self: mock_b)
+        _TU_TELEMETRY.evictions = 0
+        _TU_TELEMETRY.transport_retries = 0
+
+        with pytest.raises(ProviderError):
+            await provider.acomplete(_request())
+
+        assert mock_a.post.await_count == 1
+        assert _TU_TELEMETRY.evictions == 1
+        assert _TU_TELEMETRY.transport_retries == 0
+        assert _TU_CLIENT_CACHE[provider.base_url][0] is mock_b

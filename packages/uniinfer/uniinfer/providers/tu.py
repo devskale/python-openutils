@@ -396,7 +396,7 @@ class TUProvider(ChatProvider):
         self._async_client = replacement
         self._owns_client = False
         logger.warning(
-            "[%s] read timeout — pooled client evicted, retrying on a fresh connection",
+            "[%s] wedged routing — pooled client evicted; the next request gets a fresh connection",
             self._CREDGOO_SERVICE,
         )
         return replacement
@@ -481,13 +481,16 @@ class TUProvider(ChatProvider):
             except httpx.TimeoutException as e:
                 last_exc = e
                 logger.warning("[%s] read timeout on %s (attempt %d/%d): %s %s", self._CREDGOO_SERVICE, model, attempt + 1, max_retries + 1, e, _timeout_ctx(model, payload, TU_NONSTREAM_OPEN_TIMEOUT))
+                # Evict the poisoned pooled connection even when we won't retry:
+                # pool hygiene, not a retry — a wedged backend pins the pooled
+                # h2 connection, so without eviction every LATER request (lean
+                # relay: TU_TRANSPORT_RETRIES=0 relays the failure to the
+                # caller, whose own retry then arrives) would keep hitting the
+                # wedged routing for as long as the replica stays wedged.
+                if not self._owns_client:
+                    client = self._replace_pooled_client()
                 if attempt < max_retries:
-                    # A read timeout on a wedged backend poisons the pooled
-                    # connection for every request on it — evict it so this
-                    # retry (and all concurrent requests) get fresh routing.
                     _TU_TELEMETRY.transport_retries += 1
-                    if not self._owns_client:
-                        client = self._replace_pooled_client()
                     await asyncio.sleep(min(2.0 * (attempt + 1), 8.0))
                     continue
                 raise map_provider_error(
@@ -495,13 +498,12 @@ class TUProvider(ChatProvider):
             except httpx.TransportError as e:
                 last_exc = e
                 logger.warning("[tu] network error on %s (attempt %d/%d): %s", model, attempt + 1, max_retries + 1, e)
+                # Same wedged-routing poisoning as a read timeout (an LB-killed
+                # silent connection) — evict unconditionally, retry optionally.
+                if not self._owns_client:
+                    client = self._replace_pooled_client()
                 if attempt < max_retries:
-                    # A wedged-backend hang typically ends as a TransportError
-                    # (LB kills the silent connection) — same pool poisoning as
-                    # a read timeout, so same eviction + fresh-connection retry.
                     _TU_TELEMETRY.transport_retries += 1
-                    if not self._owns_client:
-                        client = self._replace_pooled_client()
                     await asyncio.sleep(min(2.0 * (attempt + 1), 8.0))
                     continue
                 raise map_provider_error(self._CREDGOO_SERVICE, e)
@@ -577,13 +579,13 @@ class TUProvider(ChatProvider):
                 last_exc = e
                 _TU_TELEMETRY.open_stalls += 1
                 logger.warning("[%s] read timeout on %s stream (attempt %d/%d): %s %s", self._CREDGOO_SERVICE, model, attempt + 1, max_retries + 1, e, _timeout_ctx(model, payload))
+                # Same unconditional pool hygiene as the non-streaming path:
+                # evict the wedged routing even when the lean-relay config
+                # (TU_TRANSPORT_RETRIES=0) relays the failure to the caller.
+                if not self._owns_client:
+                    client = self._replace_pooled_client()
                 if attempt < max_retries:
-                    # Same wedged-backend eviction as the non-streaming path:
-                    # retry on a fresh connection instead of re-hanging on the
-                    # poisoned pooled one.
                     _TU_TELEMETRY.transport_retries += 1
-                    if not self._owns_client:
-                        client = self._replace_pooled_client()
                     await asyncio.sleep(min(2.0 * (attempt + 1), 8.0))
                     continue
                 raise map_provider_error(
@@ -591,13 +593,12 @@ class TUProvider(ChatProvider):
             except httpx.TransportError as e:
                 last_exc = e
                 logger.warning("[tu] network error on %s stream (attempt %d/%d): %s", model, attempt + 1, max_retries + 1, e)
+                # Same wedged-routing poisoning — evict unconditionally, retry
+                # optionally, mirroring the non-streaming path.
+                if not self._owns_client:
+                    client = self._replace_pooled_client()
                 if attempt < max_retries:
-                    # Wedged-backend hangs usually die as TransportError (LB
-                    # kills the silent connection) — evict + retry fresh, same
-                    # as the non-streaming path.
                     _TU_TELEMETRY.transport_retries += 1
-                    if not self._owns_client:
-                        client = self._replace_pooled_client()
                     await asyncio.sleep(min(2.0 * (attempt + 1), 8.0))
                     continue
                 raise map_provider_error(self._CREDGOO_SERVICE, e)
