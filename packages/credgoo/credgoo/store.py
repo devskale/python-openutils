@@ -119,12 +119,17 @@ def cache_api_key(backend_name, service, api_key, encryption_key, cache_dir, *, 
         logger.warning("Failed to cache API key: %s", e)
 
 
-def get_cached_api_key(backend_name, service, encryption_key, cache_dir, *, integrity=False):
+def get_cached_api_key(backend_name, service, encryption_key, cache_dir, *, integrity=False, ttl_seconds=None):
     """Retrieve and decrypt API key for a specific service from cache.
 
     When *integrity* is true, validate the stored HMAC tag and invalidate the
     entry on mismatch (e.g. credential rotation). Set from the backend's
     cache_integrity policy.
+
+    *ttl_seconds* is the entry's maximum age. An entry older than that counts as
+    a miss and is dropped, so a key added or rotated in the backend is picked up
+    without a manual ``--update``. ``None`` keeps the historic behavior (cache
+    never expires on its own).
     """
     if not encryption_key:
         logger.warning("Cannot decrypt cached key without an encryption key.")
@@ -145,6 +150,26 @@ def get_cached_api_key(backend_name, service, encryption_key, cache_dir, *, inte
             return None
 
         entry = cache[key_name]
+
+        if ttl_seconds:
+            try:
+                age = time.time() - int(entry.get("timestamp", 0))
+            except (TypeError, ValueError):
+                age = None
+            if age is not None and age > ttl_seconds:
+                logger.info(
+                    "Cache entry for %s is %.0fs old (> %ss TTL). Invalidating.",
+                    key_name, age, ttl_seconds,
+                )
+                cache.pop(key_name, None)
+                try:
+                    with open(cache_file, 'w') as f:
+                        json.dump(cache, f, indent=2)
+                    os.chmod(cache_file, 0o600)
+                except Exception:
+                    pass
+                return None
+
         encrypted_cached_key = entry.get("api_key")
         if not encrypted_cached_key:
             logger.warning("No 'api_key' field in cache for %s.", key_name)
@@ -258,6 +283,26 @@ def save_backend_creds(backend_name, backend_data, cache_dir):
     store_credentials(existing, cred_file)
 
 
+# Default maximum age of a cache entry: 7 days. A key added or rotated in the
+# backend is picked up automatically within that window, so skills never need a
+# refresh gate of their own. Override with CREDGOO_CACHE_TTL_SECONDS; 0 disables
+# the age check (cache never expires on its own).
+DEFAULT_CACHE_TTL_SECONDS = 7 * 24 * 60 * 60
+
+
+def _cache_ttl_seconds():
+    """Resolve the cache TTL from the environment (None = no age check)."""
+    raw = os.environ.get("CREDGOO_CACHE_TTL_SECONDS")
+    if raw is None:
+        return DEFAULT_CACHE_TTL_SECONDS
+    try:
+        value = int(raw)
+    except ValueError:
+        logger.warning("Invalid CREDGOO_CACHE_TTL_SECONDS=%r, using default.", raw)
+        return DEFAULT_CACHE_TTL_SECONDS
+    return value if value > 0 else None
+
+
 # ---- Backend resolution ----
 
 def _resolve_backend(creds, backend_name=None):
@@ -325,7 +370,8 @@ class CredentialStore:
         if not no_cache and self.enc_key:
             cached = get_cached_api_key(
                 self.backend_name, service, self.enc_key, self.cache_dir,
-                integrity=self.backend.cache_integrity)
+                integrity=self.backend.cache_integrity,
+                ttl_seconds=_cache_ttl_seconds())
             if cached:
                 return cached
         api_key = self.backend.fetch_key(service, self.backend_creds)

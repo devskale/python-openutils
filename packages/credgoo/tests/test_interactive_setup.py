@@ -1,14 +1,18 @@
 import json
 import logging
+import os
 import tempfile
+import time
 import unittest
 from pathlib import Path
 from unittest.mock import patch, MagicMock
 
 from credgoo import credgoo as mod
 from credgoo.store import (
+    DEFAULT_CACHE_TTL_SECONDS,
     CredentialStore,
     _cache_key_name,
+    _cache_ttl_seconds,
     _resolve_backend,
     cache_api_key,
     get_cached_api_key,
@@ -363,6 +367,82 @@ class TestCacheIntegrityMechanism(unittest.TestCase):
             self.assertEqual(result, "sk-123")
             with open(cache_dir / "api_keys.json") as f:
                 self.assertIn("hmac", json.load(f)["anyname:openai"])
+
+
+class TestCacheTTL(unittest.TestCase):
+    """A cache entry older than the TTL counts as a miss and is dropped, so a
+    key added or rotated in the backend is picked up without a manual
+    ``--update``. This is what lets skills skip their own refresh gate."""
+
+    def test_fresh_entry_is_returned(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            cache_dir = Path(tmpdir)
+            enc = AirtableBackend().cache_key({"airtable_token": "patT"})
+            cache_api_key("airtable", "openai", "sk-123", enc, cache_dir)
+            self.assertEqual(
+                get_cached_api_key("airtable", "openai", enc, cache_dir, ttl_seconds=3600),
+                "sk-123")
+
+    def test_expired_entry_is_a_miss(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            cache_dir = Path(tmpdir)
+            enc = AirtableBackend().cache_key({"airtable_token": "patT"})
+            cache_api_key("airtable", "openai", "sk-123", enc, cache_dir)
+            # age the entry well past the TTL
+            cache_file = cache_dir / "api_keys.json"
+            with open(cache_file) as f:
+                cache = json.load(f)
+            cache["airtable:openai"]["timestamp"] = str(int(time.time()) - 7200)
+            with open(cache_file, "w") as f:
+                json.dump(cache, f, indent=2)
+            self.assertIsNone(
+                get_cached_api_key("airtable", "openai", enc, cache_dir, ttl_seconds=3600))
+
+    def test_expired_entry_is_dropped_from_cache(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            cache_dir = Path(tmpdir)
+            enc = AirtableBackend().cache_key({"airtable_token": "patT"})
+            cache_api_key("airtable", "openai", "sk-123", enc, cache_dir)
+            cache_file = cache_dir / "api_keys.json"
+            with open(cache_file) as f:
+                cache = json.load(f)
+            cache["airtable:openai"]["timestamp"] = str(int(time.time()) - 7200)
+            with open(cache_file, "w") as f:
+                json.dump(cache, f, indent=2)
+            get_cached_api_key("airtable", "openai", enc, cache_dir, ttl_seconds=3600)
+            with open(cache_file) as f:
+                self.assertNotIn("airtable:openai", json.load(f))
+
+    def test_no_ttl_keeps_historic_behaviour(self):
+        # ttl_seconds=None → never expires on its own (back-compat)
+        with tempfile.TemporaryDirectory() as tmpdir:
+            cache_dir = Path(tmpdir)
+            enc = AirtableBackend().cache_key({"airtable_token": "patT"})
+            cache_api_key("airtable", "openai", "sk-123", enc, cache_dir)
+            cache_file = cache_dir / "api_keys.json"
+            with open(cache_file) as f:
+                cache = json.load(f)
+            cache["airtable:openai"]["timestamp"] = "0"  # ancient
+            with open(cache_file, "w") as f:
+                json.dump(cache, f, indent=2)
+            self.assertEqual(
+                get_cached_api_key("airtable", "openai", enc, cache_dir, ttl_seconds=None),
+                "sk-123")
+
+    def test_default_ttl_is_seven_days(self):
+        self.assertEqual(DEFAULT_CACHE_TTL_SECONDS, 7 * 24 * 60 * 60)
+
+    def test_ttl_env_override_and_disable(self):
+        os.environ["CREDGOO_CACHE_TTL_SECONDS"] = "60"
+        try:
+            self.assertEqual(_cache_ttl_seconds(), 60)
+            os.environ["CREDGOO_CACHE_TTL_SECONDS"] = "0"
+            self.assertIsNone(_cache_ttl_seconds())
+            os.environ["CREDGOO_CACHE_TTL_SECONDS"] = "not-a-number"
+            self.assertEqual(_cache_ttl_seconds(), DEFAULT_CACHE_TTL_SECONDS)
+        finally:
+            del os.environ["CREDGOO_CACHE_TTL_SECONDS"]
+        self.assertEqual(_cache_ttl_seconds(), DEFAULT_CACHE_TTL_SECONDS)
 
 
 class TestCacheIntegrityPolicy(unittest.TestCase):
