@@ -58,6 +58,25 @@ After pushing to `main`: `cd /home/ubuntu/code/python-openutils && git pull && c
 | Config | `.env` (`PROXYHOST`, `PROXY_PORT`, optional test/legacy `PROXY_KEY`) — gitignored; production auth files: `~/.config/uniinfer/auth_tokens.allow` + `.meta.json` |
 | Models refresh | `uniioai-models-refresh.timer` daily at 04:00 UTC |
 
+### TU upstream — observed behavior & knob decisions (2026-09-30)
+
+7-day amd journal forensics (`journalctl -u uniioai-proxy`): TU "wedges"
+(accepts a request, sends no response headers for ≥90 s) in **incident
+windows of 20–60 min** — uncorrelated with our request rate (wedges fired
+at 1–8 req/min) and with payload size (wedge median = traffic median; one
+0 KB request wedged). TU's **quota path works** and answers proper 429s —
+observed exactly in the one minute where local rate exceeded 25 req/min
+(once in 7 days).
+
+| Knob (amd `.env`) | Value | Why |
+|---|---|---|
+| `TU_TRANSPORT_RETRIES` | `0` (lean relay) | Retry belongs to the **agent/caller**; the proxy relays failures immediately. Pool hygiene still runs: a timeout evicts the poisoned pooled client (`da62091`) so the *next* request gets fresh routing. |
+| `TU_RATE_LIMIT_PER_MIN` | unset | Deliberate: wedges are **not** quota-driven — a local bucket would only self-throttle while TU's own 429s already arrive correctly. |
+
+Ops guidance: TU wedge windows last 20–60 min — a caller seeing a TU
+timeout/504 should prefer a provider switch or delayed retry over an
+immediate retry onto the same wedged routing.
+
 > **Naming:** the `uniioai-proxy` **command/service** runs the `uniinfer.proxy_app:main` **module** (renamed from `uniioai_proxy.py`; the command + logger name `uniioai_proxy` are intentionally kept). See [ARCHITECTURE.md](ARCHITECTURE.md#naming).
 
 ## Proxy Auth Token

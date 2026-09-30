@@ -562,7 +562,6 @@ class TUProvider(ChatProvider):
         # backend accepts but never answers; a per-request read timeout here fails
         # that case in TU_STREAM_OPEN_TIMEOUT seconds instead of the client's 300s
         # streaming budget. The injected/retry client reuses its own pool timeout.
-        _log_outgoing_payload(model, payload, operation="STREAM-OPEN")
         base_t = getattr(client, "timeout", None)
         if isinstance(base_t, httpx.Timeout):
             open_timeout = httpx.Timeout(

@@ -181,3 +181,32 @@ class TestTUPoolEvictionStream:
         assert mock_b.stream.call_count == 1
         assert _TU_CLIENT_CACHE[provider.base_url][0] is mock_b
         assert chunks and chunks[0].message.content == "ok"
+
+    @pytest.mark.asyncio
+    async def test_stream_open_logs_exactly_once(self, caplog):
+        """One stream open = ONE STREAM-OPEN audit line. The amd journal showed
+        every open logged twice (duplicate call), so log-based traffic counting
+        ran 2x hot — a regression here corrupts every rate forensics."""
+        import logging
+
+        provider = TUProvider(api_key="k")
+
+        async def aiter_lines():
+            yield 'data: {"choices": [{"delta": {"role": "assistant", "content": "ok"}}], "model": "m"}'
+            yield "data: [DONE]"
+
+        mock_response = AsyncMock()
+        mock_response.status_code = 200
+        mock_response.aiter_lines = aiter_lines
+
+        mock = AsyncMock(spec=httpx.AsyncClient)
+        mock.is_closed = False
+        mock.stream = MagicMock()
+        mock.stream.return_value.__aenter__.return_value = mock_response
+        _TU_CLIENT_CACHE[provider.base_url] = (mock, asyncio.get_running_loop())
+
+        with caplog.at_level(logging.INFO, logger="uniinfer.providers.tu"):
+            _ = [c async for c in provider.astream_complete(_request())]
+
+        opens = [r for r in caplog.records if "STREAM-OPEN" in r.getMessage()]
+        assert len(opens) == 1
