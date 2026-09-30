@@ -77,6 +77,29 @@ Ops guidance: TU wedge windows last 20–60 min — a caller seeing a TU
 timeout/504 should prefer a provider switch or delayed retry over an
 immediate retry onto the same wedged routing.
 
+### Reliability monitor (upstream pattern detection + notify)
+
+`proxy_services/reliability.py` watches every request outcome (hooked into
+`StatsCollector.record` — one seam, zero router changes) and flags a
+provider@model as **degraded** on: wedge bursts (≥3 hard 5xx within 30 min),
+slow-open crawl mode (≥3 of last 20 streams with TTFT ≥60 s), sustained
+error rate (≥10% over ≥20 req/h). 429s never count. Live state: `/health` →
+`reliability` block (degraded models flip /health to `warn`); one WARNING
+per transition in the journal; recovery notice after 10 consecutive clean
+requests. Cooldown suppresses re-alerts mid-incident.
+
+| Knob (amd `.env`) | Default | Effect |
+|---|---|---|
+| `UNIINFER_RELIABILITY_WEBHOOK` | unset | JSON POST target for alerts (Slack/Discord/generic) |
+| `UNIINFER_RELIABILITY_NTFY` | unset | ntfy topic (or full https URL) for push alerts |
+| `UNIINFER_RELIABILITY_DISABLED` | unset | `1` = detection off |
+| `UNIINFER_RELIABILITY_WEDGE_MIN` / `_WEDGE_WINDOW_S` | 3 / 1800 | wedge-burst sensitivity |
+| `UNIINFER_RELIABILITY_COOLDOWN_S` | 1800 | re-alert interval while degraded |
+
+Without WEBHOOK/NTFY configured it runs log-only (journal WARNING —
+`journalctl -u uniioai-proxy | grep reliability`). Channel wiring test:
+`POST /debug/reliability/test` (proxy bearer auth).
+
 > **Naming:** the `uniioai-proxy` **command/service** runs the `uniinfer.proxy_app:main` **module** (renamed from `uniioai_proxy.py`; the command + logger name `uniioai_proxy` are intentionally kept). See [ARCHITECTURE.md](ARCHITECTURE.md#naming).
 
 ## Proxy Auth Token

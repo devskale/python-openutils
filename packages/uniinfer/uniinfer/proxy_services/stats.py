@@ -134,6 +134,12 @@ class StatsCollector:
         if self._records_since_snapshot >= _SNAPSHOT_EVERY:
             self._records_since_snapshot = 0
             self.snapshot()
+        try:
+            from uniinfer.proxy_services.reliability import get_reliability
+
+            get_reliability().note(provider_model, status=status, latency_ms=latency_ms, ttft_ms=ttft_ms)
+        except Exception:  # noqa: BLE001 — detection must never break recording
+            pass
 
     def snapshot(self) -> None:
         """Persist current state to logs/stats.json."""

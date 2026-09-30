@@ -375,6 +375,18 @@ async def health(request: Request):
     if upstream is not None and upstream["tu"]["stuck_streams"] > 0 and status != "crit":
         status = "warn"
 
+    # Upstream unreliability patterns (wedge bursts, crawl mode, sustained
+    # error rate) — detected live by the reliability monitor.
+    reliability = None
+    try:
+        from uniinfer.proxy_services.reliability import get_reliability
+
+        reliability = get_reliability().snapshot()
+    except Exception:
+        pass
+    if reliability is not None and reliability.get("degraded_models") and status != "crit":
+        status = "warn"
+
     return {
         "status": status,
         "version": UNIINFER_VERSION,
@@ -392,6 +404,7 @@ async def health(request: Request):
         "allocator": allocator,
         "upstream": upstream,
         "models_24h": models_24h,
+        "reliability": reliability,
     }
 
 
@@ -434,6 +447,20 @@ async def debug_wedge_clear(api_bearer_token: str = Depends(validate_proxy_token
     cleared = await clear_wedge_state()
     after = _TU_TELEMETRY.snapshot(TU_STREAM_GAP_TIMEOUT)
     return {"cleared": cleared, "before": before, "after": after}
+
+
+@app.post("/debug/reliability/test", include_in_schema=False)
+async def debug_reliability_test(api_bearer_token: str = Depends(validate_proxy_token)):
+    """Exercise the reliability notification channels (operator action).
+
+    Sends a synthetic test event through every configured channel
+    (UNIINFER_RELIABILITY_WEBHOOK / _NTFY) so wiring can be verified without
+    waiting for an incident. Log-only mode (no channel configured) reports
+    exactly that. Live state is on /health ("reliability" block).
+    """
+    from uniinfer.proxy_services.reliability import get_reliability
+
+    return get_reliability().send_test_notification()
 
 
 # --- Run the API (for local development) ---
