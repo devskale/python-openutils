@@ -92,6 +92,7 @@ requests. Cooldown suppresses re-alerts mid-incident.
 |---|---|---|
 | `UNIINFER_RELIABILITY_WEBHOOK` | unset | JSON POST target for alerts (Slack/Discord/generic) |
 | `UNIINFER_RELIABILITY_NTFY` | unset | ntfy topic (or full https URL) for push alerts |
+| `UNIINFER_RELIABILITY_NTFY_TOKEN` | unset | access token (`tk_…`) for account-reserved topics (Bearer auth) |
 | `UNIINFER_RELIABILITY_DISABLED` | unset | `1` = detection off |
 | `UNIINFER_RELIABILITY_WEDGE_MIN` / `_WEDGE_WINDOW_S` | 3 / 1800 | wedge-burst sensitivity |
 | `UNIINFER_RELIABILITY_COOLDOWN_S` | 1800 | re-alert interval while degraded |

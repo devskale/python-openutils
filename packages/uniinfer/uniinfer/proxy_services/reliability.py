@@ -25,6 +25,8 @@ Channels (env, on the proxy host):
 * ``UNIINFER_RELIABILITY_WEBHOOK`` — JSON POST target (Slack/Discord/generic).
 * ``UNIINFER_RELIABILITY_NTFY``    — ntfy topic name (posts to ntfy.sh) or a
   full https URL for a self-hosted server; plain-text push.
+* ``UNIINFER_RELIABILITY_NTFY_TOKEN`` — access token (``tk_...``) for
+  account-protected reserved topics; sent as Bearer auth.
 
 State is in-memory by design: detection re-arms within minutes of real traffic
 after a restart, and nothing here should ever outvote the request path —
@@ -77,6 +79,7 @@ def _cfg() -> dict[str, Any]:
         "disabled": os.getenv("UNIINFER_RELIABILITY_DISABLED", "").lower() in {"1", "true", "yes"},
         "webhook": os.getenv("UNIINFER_RELIABILITY_WEBHOOK", "").strip() or None,
         "ntfy": os.getenv("UNIINFER_RELIABILITY_NTFY", "").strip() or None,
+        "ntfy_token": os.getenv("UNIINFER_RELIABILITY_NTFY_TOKEN", "").strip() or None,
     }
 
 
@@ -304,16 +307,20 @@ def _deliver_sync(payload: dict[str, Any], cfg: dict[str, Any]) -> list[tuple[st
         tag = {"degraded": "warning", "still_degraded": "warning", "recovered": "white_check_mark"}.get(
             str(payload.get("event")), "loudspeaker"
         )
+        headers = {
+            "Title": title,
+            "Tags": tag,
+            "Priority": "high" if payload.get("event") in {"degraded", "still_degraded"} else "default",
+        }
+        if cfg.get("ntfy_token"):
+            # Account-protected (reserved) topics: publish under an access token.
+            headers["Authorization"] = f"Bearer {cfg['ntfy_token']}"
         try:
             with httpx.Client(timeout=5.0) as client:
                 r = client.post(
                     url,
                     content=f"{payload['reason']}: {payload['detail']}".encode(),
-                    headers={
-                        "Title": title,
-                        "Tags": tag,
-                        "Priority": "high" if payload.get("event") in {"degraded", "still_degraded"} else "default",
-                    },
+                    headers=headers,
                 )
             results.append(("ntfy", r.status_code < 500, f"HTTP {r.status_code}"))
         except Exception as e:  # noqa: BLE001

@@ -18,6 +18,7 @@ _KNOB_ENVS = (
     "UNIINFER_RELIABILITY_DISABLED",
     "UNIINFER_RELIABILITY_WEBHOOK",
     "UNIINFER_RELIABILITY_NTFY",
+    "UNIINFER_RELIABILITY_NTFY_TOKEN",
     "UNIINFER_RELIABILITY_COOLDOWN_S",
     "UNIINFER_RELIABILITY_WEDGE_MIN",
 )
@@ -127,3 +128,41 @@ def test_send_test_notification_log_only(monitor):
     out = monitor.send_test_notification()
     assert out["channels"]["log"].startswith("ok")
     assert out["event"]["event"] == "test"
+
+
+def test_ntfy_token_sends_bearer_auth(monitor, monkeypatch):
+    """Reserved (account-protected) topics publish under an access token —
+    without the Bearer header ntfy.sh answers 403 and alerts silently die."""
+    import httpx
+
+    import uniinfer.proxy_services.reliability as rel
+
+    monkeypatch.setenv("UNIINFER_RELIABILITY_NTFY", "kontext-rel")
+    monkeypatch.setenv("UNIINFER_RELIABILITY_NTFY_TOKEN", "tk_secret")
+    captured = {}
+
+    class _Resp:
+        status_code = 200
+
+    class _Client:
+        def __init__(self, timeout=None):
+            pass
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *a):
+            return False
+
+        def post(self, url, content=None, headers=None, **kw):
+            captured["url"] = url
+            captured["headers"] = headers
+            return _Resp()
+
+    monkeypatch.setattr(httpx, "Client", _Client)
+    results = rel._deliver_sync(
+        {"event": "test", "model": "tu@x", "reason": "r", "detail": "d"}, rel._cfg()
+    )
+    assert results == [("ntfy", True, "HTTP 200")]
+    assert captured["url"] == "https://ntfy.sh/kontext-rel"
+    assert captured["headers"]["Authorization"] == "Bearer tk_secret"
