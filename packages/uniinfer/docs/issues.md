@@ -174,6 +174,38 @@ with the evidence collected here.
 
 ---
 
+## ⬜ 7. Foreign `tool_call_id`s in history → silent empty answer (cross-provider)
+
+**Symptom:** a model answers normally in a fresh session, but returns an
+**empty stream** — HTTP 200, `finish_reason: stop`, zero tokens, no error —
+as soon as the conversation history contains an `assistant` message with
+`tool_calls` whose ids it does not recognize. Affected: `kilo@stealth/space-bunny-alpha`
+(reproduced 2026-10-01); other strict OpenRouter-style gateways plausibly.
+
+**Root cause (two bugs, both upstream):**
+1. TU vLLM issues tool-call ids like `chatcmpl-tool-<hex>` (30 chars) — outside
+   the OpenAI `^[a-zA-Z0-9_-]{1,64}$` convention that gateways expect.
+2. Kilo's gateway **fails silently** on unknown historical tool-call ids: it
+   streams role-only + `stop`, so the client sees `content: []` and
+   `usage: {total_tokens: 0}` rather than a validation error.
+
+**Not ours to fix** (no code in this repo generates those ids — confirmed by
+grep and by the fact that upstream itself emits plain UUIDs when asked fresh):
+the same request with ids rewritten to `call_abc123` / `chatcmpl-<uuid>`
+answers normally, and dropping the `tool_calls` field from that one history
+message answers normally.
+
+**Workaround:** start a fresh session after a mid-session model/provider switch,
+or strip `tool_calls` from historical assistant messages when reusing a
+transcript across providers. A proxy-side id-sanitizing layer could universalize
+the fix, at the cost of rewriting ids in caller-visible history.
+
+**Evidence:** pi session `01a0f6e3` (210 messages, 18 tools); bisected to the
+single assistant message carrying the foreign ids; 12/12 replays of the same
+payload empty, same payload with rewritten ids 6/6 answered.
+
+---
+
 ## Reference: relevant files
 
 | File | Role |

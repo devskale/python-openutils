@@ -88,6 +88,7 @@ Unified OpenAI/OpenRouter-compatible API for 300+ models from 60+ providers (Ant
 - **Free**: 12+ models usable anonymously — 200 req/hr per IP. Notable: `tencent/hy3:free` (295B MoE, 262K ctx), `nvidia/nemotron-3-ultra-550b-a55b:free` (1M ctx), `cohere/north-mini-code:free`, `poolside/laguna-m.1:free`, `stepfun/step-3.7-flash:free`, `kwaipilot/kat-coder-pro-v2.5:free`.
 - **Auto tiers**: `kilo-auto/frontier|balanced|free|small|efficient` — server-side routing; underlying model can change.
 - **⚠️ NVIDIA free endpoints** (`nvidia/*:free`): trial use only — prompts/outputs are logged by NVIDIA for service improvement. Do not send confidential data.
+- **⚠️ Silent empty answers with foreign tool-call ids in history**: if the conversation history carries `tool_calls` with ids the gateway doesn't recognize (e.g. TU vLLM's `chatcmpl-tool-<hex>`), Kilo answers with an empty stream — HTTP 200, `stop`, zero tokens, no error. Start a fresh session after a mid-session model switch. Details + evidence: [issues.md § 7](issues.md#-7-foreign-tool_call_ids-in-history-silent-empty-answer-cross-provider).
 - **Implementation**: `OpenAICompatibleChatProvider` (`REQUIRES_API_KEY = False` — free models work without a key)
 
 ### gemini — Google Gemini
