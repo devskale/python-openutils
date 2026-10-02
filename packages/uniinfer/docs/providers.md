@@ -88,6 +88,7 @@ Unified OpenAI/OpenRouter-compatible API for 300+ models from 60+ providers (Ant
 - **Free**: 12+ models usable anonymously — 200 req/hr per IP. Notable: `tencent/hy3:free` (295B MoE, 262K ctx), `nvidia/nemotron-3-ultra-550b-a55b:free` (1M ctx), `cohere/north-mini-code:free`, `poolside/laguna-m.1:free`, `stepfun/step-3.7-flash:free`, `kwaipilot/kat-coder-pro-v2.5:free`.
 - **Auto tiers**: `kilo-auto/frontier|balanced|free|small|efficient` — server-side routing; underlying model can change.
 - **⚠️ NVIDIA free endpoints** (`nvidia/*:free`): trial use only — prompts/outputs are logged by NVIDIA for service improvement. Do not send confidential data.
+- **⚠️ LB roulette — silent empty completions**: some gateway replicas answer `finish=stop` with zero content (same request 10×: 3 empty). The proxy replays such attempts on a fresh connection (`EMPTY_COMPLETION_RETRIES=2`) — free, since the empty attempt consumed no tokens.
 - **⚠️ Foreign tool-call ids in history** (e.g. TU vLLM's `chatcmpl-tool-<hex>` after a mid-session model switch) used to produce silent empty completions — mitigated in the proxy via `NORMALIZE_TOOL_CALL_IDS` (rewrites every id to `call_<n>`, pairing preserved). Details: [issues.md § 7](issues.md#-7-foreign-tool_call_ids-in-history-silent-empty-answer-cross-provider).
 - **Implementation**: `OpenAICompatibleChatProvider` (`REQUIRES_API_KEY = False` — free models work without a key)
 

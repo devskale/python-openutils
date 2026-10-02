@@ -1,10 +1,11 @@
 """OpenCode/Zen provider: dynamic catalog, dialect routing, free-tier protocol."""
-from unittest.mock import patch
+from unittest.mock import AsyncMock, MagicMock, patch
 import json
 import re
 import time
 
 import pytest
+import httpx
 import requests
 
 import uniinfer.providers.opencode as oc_module
@@ -753,3 +754,149 @@ class TestNormalizeToolCallIds:
         call_id = messages[1]["tool_calls"][0]["id"]
         assert call_id.startswith("call_")
         assert messages[2]["tool_call_id"] == call_id
+
+
+class TestEmptyCompletionRetry:
+    """Flaky gateways (kilo LB roulette) answer finish=stop with zero content —
+    sometimes. The same request replayed on a fresh connection lands on a
+    healthy replica and the empty attempt consumed no tokens, so the replay is
+    free. Flag EMPTY_COMPLETION_RETRIES gates it (default 0 = relay as-is).
+    Tested on KiloProvider: it walks the base-class paths the retry lives in."""
+
+    @staticmethod
+    def _empty_sse():
+        return (
+            'data: {"id": "x", "object": "chat.completion.chunk", "choices": [{"index": 0, "delta": {"role": "assistant"}}]}\n'
+            'data: {"id": "x", "object": "chat.completion.chunk", "choices": [{"index": 0, "delta": {}, "finish_reason": "stop"}]}\n'
+            "data: [DONE]\n"
+        )
+
+    @staticmethod
+    def _full_sse():
+        return (
+            'data: {"id": "y", "object": "chat.completion.chunk", "choices": [{"index": 0, "delta": {"role": "assistant"}}]}\n'
+            'data: {"id": "y", "object": "chat.completion.chunk", "choices": [{"index": 0, "delta": {"content": "recovered"}}]}\n'
+            'data: {"id": "y", "object": "chat.completion.chunk", "choices": [{"index": 0, "delta": {}, "finish_reason": "stop"}], "usage": {"total_tokens": 5}}\n'
+            "data: [DONE]\n"
+        )
+
+    @staticmethod
+    def _sse_response(text):
+        import httpx as _httpx
+
+        async def lines():
+            for ln in text.split("\n"):
+                yield ln
+
+        r = AsyncMock(spec=_httpx.Response)
+        r.status_code = 200
+        r.aiter_lines = lines
+        return r
+
+    @staticmethod
+    def _cm(response):
+        class _CM:
+            async def __aenter__(self):
+                return response
+
+            async def __aexit__(self, *a):
+                return None
+
+        return _CM()
+
+    @staticmethod
+    def _stream_client(sse_text):
+        c = AsyncMock(spec=httpx.AsyncClient)
+        c.is_closed = False
+        c.stream.return_value = TestEmptyCompletionRetry._cm(
+            TestEmptyCompletionRetry._sse_response(sse_text))
+        return c
+
+    def _provider(self, retries, clients):
+        p = KiloProvider(api_key="k")
+        p.EMPTY_COMPLETION_RETRIES = retries
+        queue = list(clients)
+
+        async def fake_get():
+            return queue.pop(0)
+
+        p._get_async_client = fake_get
+        p._retry_client = lambda: queue.pop(0)
+        return p
+
+    @staticmethod
+    def _request():
+        return ChatCompletionRequest(model="stealth/space-bunny-alpha",
+                                     messages=[ChatMessage(role="user", content="hi")])
+
+    @pytest.mark.asyncio
+    async def test_stream_replays_after_empty(self):
+        dead = self._stream_client(self._empty_sse())
+        alive = self._stream_client(self._full_sse())
+        p = self._provider(retries=1, clients=[dead, alive])
+        chunks = [c async for c in p.astream_complete(self._request())]
+
+        visible = [c for c in chunks if (c.message.content or "").strip()]
+        assert [c.message.content for c in visible] == ["recovered"]
+        finishes = [c for c in chunks if c.finish_reason == "stop"]
+        assert len(finishes) == 1  # the dead attempt's terminal state never leaked
+
+    @pytest.mark.asyncio
+    async def test_stream_relay_when_retries_exhausted(self):
+        dead = self._stream_client(self._empty_sse())
+        p = self._provider(retries=0, clients=[dead])
+        chunks = [c async for c in p.astream_complete(self._request())]
+        finishes = [c for c in chunks if c.finish_reason == "stop"]
+        assert len(finishes) == 1
+        assert all(not (c.message.content or "").strip() for c in chunks)
+
+    @pytest.mark.asyncio
+    async def test_nonstream_replays_after_empty(self):
+        import httpx as _httpx
+
+        empty = MagicMock(spec=_httpx.Response)
+        empty.status_code = 200
+        empty.json.return_value = {"choices": [{"message": {"role": "assistant", "content": ""},
+                                                 "finish_reason": "stop"}]}
+        full = MagicMock(spec=_httpx.Response)
+        full.status_code = 200
+        full.json.return_value = {"choices": [{"message": {"role": "assistant", "content": "recovered"},
+                                                "finish_reason": "stop"}]}
+        dead = AsyncMock(spec=_httpx.AsyncClient)
+        dead.is_closed = False
+        dead.post.return_value = empty
+        alive = AsyncMock(spec=_httpx.AsyncClient)
+        alive.is_closed = False
+        alive.post.return_value = full
+
+        p = self._provider(retries=1, clients=[dead, alive])
+        resp = await p.acomplete(self._request())
+        assert resp.message.content == "recovered"
+        dead.post.assert_called_once()
+        alive.post.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_nonstream_no_retry_when_disabled(self):
+        import httpx as _httpx
+
+        empty = MagicMock(spec=_httpx.Response)
+        empty.status_code = 200
+        empty.json.return_value = {"choices": [{"message": {"role": "assistant", "content": ""},
+                                                 "finish_reason": "stop"}]}
+        dead = AsyncMock(spec=_httpx.AsyncClient)
+        dead.is_closed = False
+        dead.post.return_value = empty
+        p = self._provider(retries=0, clients=[dead])
+        resp = await p.acomplete(self._request())
+        assert not (resp.message.content or "").strip()
+        dead.post.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_two_empty_then_healthy(self):
+        sse = self._empty_sse()
+        full = self._full_sse()
+        clients = [self._stream_client(sse), self._stream_client(sse), self._stream_client(full)]
+        p = self._provider(retries=2, clients=clients)
+        chunks = [c async for c in p.astream_complete(self._request())]
+        visible = [c for c in chunks if (c.message.content or "").strip()]
+        assert [c.message.content for c in visible] == ["recovered"]

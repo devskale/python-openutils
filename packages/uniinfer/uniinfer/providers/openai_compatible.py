@@ -1,7 +1,9 @@
 import json
+import logging
 from pathlib import Path
 from typing import Any, AsyncIterator, Optional
 
+import httpx
 import requests
 
 from ..core import REASONING_OFF, ChatCompletionRequest, ChatCompletionResponse, ChatMessage, ChatProvider, ModelInfo
@@ -163,6 +165,27 @@ def normalize_tool_call_ids(messages: list[dict[str, Any]]) -> list[dict[str, An
     return messages
 
 
+logger = logging.getLogger(__name__)
+
+
+def _is_empty_completion(finish_reason, content, thinking, tool_calls) -> bool:
+    """True for a completion that says stop but carries nothing: no content,
+    no reasoning, no tool calls. Never a legitimate chat answer — the
+    silent-empty failure mode of flaky gateways (kilo LB roulette)."""
+    if finish_reason not in (None, "stop"):
+        return False
+    if tool_calls:
+        return False
+    if isinstance(content, str):
+        if content.strip():
+            return False
+    elif content:
+        return False
+    if thinking and str(thinking).strip():
+        return False
+    return True
+
+
 class OpenAICompatibleChatProvider(ChatProvider):
     # OpenAI params to NEVER forward even if a client sends them as extras
     # (none known yet; add here if one 400s a backend).
@@ -318,6 +341,12 @@ class OpenAICompatibleChatProvider(ChatProvider):
     # tolerate any id grammar must keep seeing it untouched.
     NORMALIZE_TOOL_CALL_IDS: bool = False
 
+    # Retry a completion that came back completely empty (finish=stop, no
+    # content, no reasoning, no tool calls). Kilo's load balancer sometimes
+    # routes to replicas that answer exactly that — the same transcript
+    # replayed lands on a healthy replica. 0 = relay the empty answer as-is.
+    EMPTY_COMPLETION_RETRIES: int = 0
+
     # Schema keywords dropped entirely when STRICT_GRAMMAR_SCHEMAS is on.
     # `pattern` is the common offender: pi's tool schemas carry it (e.g.
     # herdr_agent's `name`), and grammar folding has no way to validate a
@@ -465,6 +494,12 @@ class OpenAICompatibleChatProvider(ChatProvider):
     def _completion_endpoint(self) -> str:
         return f"{self.base_url.rstrip('/')}/chat/completions"
 
+    def _retry_client(self) -> httpx.AsyncClient:
+        """A throwaway client on a fresh connection for an empty-completion
+        retry: new TCP/TLS handshake, new load-balancer routing, own lifecycle
+        (closed by the caller). Overrides stay testable."""
+        return httpx.AsyncClient(timeout=60.0)
+
     async def acomplete(
         self,
         request: ChatCompletionRequest,
@@ -477,44 +512,65 @@ class OpenAICompatibleChatProvider(ChatProvider):
         payload = self._build_payload(request, False, provider_specific_kwargs)
         headers = self._build_headers()
 
-        client = await self._get_async_client()
-        try:
-            response = await client.post(endpoint, headers=headers, json=payload, timeout=60.0)
-            if response.status_code != 200:
-                error_msg = f"{self._error_name()} API error: {response.status_code} - {response.text}"
-                raise map_provider_error(
-                    self._error_name(),
-                    Exception(error_msg),
-                    status_code=response.status_code,
-                    response_body=response.text,
+        retries = max(0, int(getattr(self, "EMPTY_COMPLETION_RETRIES", 0) or 0))
+        for attempt in range(retries + 1):
+            if attempt == 0:
+                client = await self._get_async_client()
+                response = await client.post(endpoint, headers=headers, json=payload, timeout=60.0)
+            else:
+                # Fresh connection: new TCP/TLS, new load-balancer routing —
+                # the retry exists because the route, not the request, was bad.
+                fresh = self._retry_client()
+                try:
+                    response = await fresh.post(endpoint, headers=headers, json=payload, timeout=60.0)
+                finally:
+                    await fresh.aclose()
+            try:
+                if response.status_code != 200:
+                    error_msg = f"{self._error_name()} API error: {response.status_code} - {response.text}"
+                    raise map_provider_error(
+                        self._error_name(),
+                        Exception(error_msg),
+                        status_code=response.status_code,
+                        response_body=response.text,
+                    )
+
+                response_data = response.json()
+                choice = (response_data.get("choices") or [{}])[0]
+                message_data = choice.get("message", {})
+                message = ChatMessage(
+                    role=message_data.get("role", "assistant"),
+                    content=message_data.get("content"),
+                    tool_calls=message_data.get("tool_calls"),
+                    tool_call_id=message_data.get("tool_call_id"),
                 )
+                # Handle reasoning_content (OpenAI o1/o3, Groq R1, etc.)
+                # Also handle NGC 'reasoning' and Ollama 'thinking' fields
+                reasoning_content = message_data.get("reasoning_content") or message_data.get("reasoning") or message_data.get("thinking")
 
-            response_data = response.json()
-            choice = (response_data.get("choices") or [{}])[0]
-            message_data = choice.get("message", {})
-            message = ChatMessage(
-                role=message_data.get("role", "assistant"),
-                content=message_data.get("content"),
-                tool_calls=message_data.get("tool_calls"),
-                tool_call_id=message_data.get("tool_call_id"),
-            )
-            # Handle reasoning_content (OpenAI o1/o3, Groq R1, etc.)
-            # Also handle NGC 'reasoning' and Ollama 'thinking' fields
-            reasoning_content = message_data.get("reasoning_content") or message_data.get("reasoning") or message_data.get("thinking")
+                if attempt < retries and _is_empty_completion(
+                    choice.get("finish_reason"), message.content, reasoning_content, message.tool_calls
+                ):
+                    logger.warning(
+                        "[%s] empty completion (finish=stop, no content) — retrying on a fresh connection (attempt %d/%d)",
+                        self._error_name(), attempt + 1, retries + 1,
+                    )
+                    continue
 
-            return ChatCompletionResponse(
-                message=message,
-                provider=self.PROVIDER_ID,
-                model=response_data.get("model", request.model),
-                usage=response_data.get("usage", {}),
-                raw_response=response_data,
-                finish_reason=choice.get("finish_reason"),
-                thinking=reasoning_content,
-            )
-        except Exception as e:
-            if isinstance(e, UniInferError):
-                raise
-            raise map_provider_error(self._error_name(), e)
+                return ChatCompletionResponse(
+                    message=message,
+                    provider=self.PROVIDER_ID,
+                    model=response_data.get("model", request.model),
+                    usage=response_data.get("usage", {}),
+                    raw_response=response_data,
+                    finish_reason=choice.get("finish_reason"),
+                    thinking=reasoning_content,
+                )
+            except Exception as e:
+                if isinstance(e, UniInferError):
+                    raise
+                raise map_provider_error(self._error_name(), e)
+        raise map_provider_error(self._error_name(), Exception("unreachable: retry loop exhausted"))
 
     async def astream_complete(
         self,
@@ -528,92 +584,129 @@ class OpenAICompatibleChatProvider(ChatProvider):
         payload = self._build_payload(request, True, provider_specific_kwargs)
         headers = self._build_headers()
 
-        client = await self._get_async_client()
-        try:
-            async with client.stream(
-                "POST",
-                endpoint,
-                headers=headers,
-                json=payload,
-                timeout=60.0,
-            ) as response:
-                if response.status_code != 200:
-                    error_body = await response.aread()
-                    error_text = error_body.decode("utf-8", errors="replace")
-                    error_msg = f"{self._error_name()} API error: {response.status_code} - {error_text}"
-                    raise map_provider_error(
-                        self._error_name(),
-                        Exception(error_msg),
-                        status_code=response.status_code,
-                        response_body=error_text,
-                    )
+        retries = max(0, int(getattr(self, "EMPTY_COMPLETION_RETRIES", 0) or 0))
+        attempt = 0
+        while True:
+            # A stream that ends with finish=stop and never produced content,
+            # reasoning or tool calls is the silent-empty failure of flaky
+            # gateways (kilo LB roulette). Nothing content-wise reached the
+            # caller, so replaying the attempt on a fresh connection (new
+            # TCP/TLS, new load-balancer routing) is duplication-free.
+            # Finish/usage chunks are held until the retry decision — they
+            # would otherwise leak the dead attempt's terminal state.
+            saw_visible = False
+            held: list[ChatCompletionResponse] = []
+            if attempt == 0:
+                client = await self._get_async_client()
+            else:
+                client = self._retry_client()
+            try:
+                async with client.stream(
+                    "POST",
+                    endpoint,
+                    headers=headers,
+                    json=payload,
+                    timeout=60.0,
+                ) as response:
+                    if response.status_code != 200:
+                        error_body = await response.aread()
+                        error_text = error_body.decode("utf-8", errors="replace")
+                        error_msg = f"{self._error_name()} API error: {response.status_code} - {error_text}"
+                        raise map_provider_error(
+                            self._error_name(),
+                            Exception(error_msg),
+                            status_code=response.status_code,
+                            response_body=error_text,
+                        )
 
-                async for line in response.aiter_lines():
-                    if not line:
-                        continue
-                    if line.startswith("data: "):
-                        line = line[6:].strip()
-                    elif line.startswith("data:"):
-                        line = line[5:].strip()
-                    else:
-                        continue
-
-                    if not line or line == "[DONE]":
-                        continue
-
-                    try:
-                        data = json.loads(line)
-                    except json.JSONDecodeError:
-                        continue
-
-                    choices = data.get("choices", [])
-                    if not choices:
-                        # Terminal usage-only chunk (choices:[]). vLLM emits this
-                        # when stream_options.include_usage is set; forward it so
-                        # the proxy can emit usage to clients.
-                        if data.get("usage"):
-                            yield ChatCompletionResponse(
-                                message=ChatMessage(role="assistant", content=None),
-                                provider=self.PROVIDER_ID,
-                                model=data.get("model", request.model),
-                                usage=data["usage"],
-                                raw_response=data,
-                                finish_reason=None,
-                                thinking=None,
-                            )
-                        continue
-
-                    choice = choices[0]
-                    delta = choice.get("delta", {})
-                    finish_reason = choice.get("finish_reason")
-                    role = delta.get("role", "assistant")
-                    content = delta.get("content")
-                    # Handle reasoning_content (OpenAI o1/o3, Groq R1, etc.)
-                    # Also handle NGC 'reasoning' and Ollama 'thinking' fields
-                    reasoning_content = delta.get("reasoning_content") or delta.get("reasoning") or delta.get("thinking")
-                    tool_calls = delta.get("tool_calls")
-
-                    if content is None and reasoning_content is None and tool_calls is None and finish_reason is None:
-                        # Empty-delta chunk — but vLLM emits usage on a
-                        # choices:[{delta:{}}] chunk (not choices:[]). Forward it
-                        # when it carries usage so the proxy can emit it.
-                        if not data.get("usage"):
+                    async for line in response.aiter_lines():
+                        if not line:
+                            continue
+                        if line.startswith("data: "):
+                            line = line[6:].strip()
+                        elif line.startswith("data:"):
+                            line = line[5:].strip()
+                        else:
                             continue
 
-                    yield ChatCompletionResponse(
-                        message=ChatMessage(
-                            role=role,
-                            content=content,
-                            tool_calls=tool_calls,
-                        ),
-                        provider=self.PROVIDER_ID,
-                        model=data.get("model", request.model),
-                        usage=data.get("usage", {}),
-                        raw_response=data,
-                        finish_reason=finish_reason,
-                        thinking=reasoning_content,
+                        if not line or line == "[DONE]":
+                            continue
+
+                        try:
+                            data = json.loads(line)
+                        except json.JSONDecodeError:
+                            continue
+
+                        choices = data.get("choices", [])
+                        if not choices:
+                            # Terminal usage-only chunk (choices:[]). vLLM emits
+                            # this when stream_options.include_usage is set.
+                            # Held with the finish chunk: a retry discards it as
+                            # stale usage of a dead attempt.
+                            if data.get("usage"):
+                                held.append(ChatCompletionResponse(
+                                    message=ChatMessage(role="assistant", content=None),
+                                    provider=self.PROVIDER_ID,
+                                    model=data.get("model", request.model),
+                                    usage=data["usage"],
+                                    raw_response=data,
+                                    finish_reason=None,
+                                    thinking=None,
+                                ))
+                            continue
+
+                        choice = choices[0]
+                        delta = choice.get("delta", {})
+                        finish_reason = choice.get("finish_reason")
+                        role = delta.get("role", "assistant")
+                        content = delta.get("content")
+                        # Handle reasoning_content (OpenAI o1/o3, Groq R1, etc.)
+                        # Also handle NGC 'reasoning' and Ollama 'thinking' fields
+                        reasoning_content = delta.get("reasoning_content") or delta.get("reasoning") or delta.get("thinking")
+                        tool_calls = delta.get("tool_calls")
+
+                        if content is None and reasoning_content is None and tool_calls is None and finish_reason is None:
+                            # Empty-delta chunk — but vLLM emits usage on a
+                            # choices:[{delta:{}}] chunk (not choices:[]). Forward it
+                            # when it carries usage so the proxy can emit it.
+                            if not data.get("usage"):
+                                continue
+
+                        if content or reasoning_content or tool_calls:
+                            saw_visible = True
+
+                        chunk = ChatCompletionResponse(
+                            message=ChatMessage(
+                                role=role,
+                                content=content,
+                                tool_calls=tool_calls,
+                            ),
+                            provider=self.PROVIDER_ID,
+                            model=data.get("model", request.model),
+                            usage=data.get("usage", {}),
+                            raw_response=data,
+                            finish_reason=finish_reason,
+                            thinking=reasoning_content,
+                        )
+                        if finish_reason is not None or data.get("usage"):
+                            held.append(chunk)
+                            continue
+                        yield chunk
+
+                if attempt < retries and not saw_visible and held:
+                    logger.warning(
+                        "[%s] empty stream (finish=stop, no content) — replaying on a fresh connection (attempt %d/%d)",
+                        self._error_name(), attempt + 1, retries + 1,
                     )
-        except Exception as e:
-            if isinstance(e, UniInferError):
-                raise
-            raise map_provider_error(self._error_name(), e)
+                    attempt += 1
+                    continue
+                for chunk in held:
+                    yield chunk
+                return
+            except Exception as e:
+                if isinstance(e, UniInferError):
+                    raise
+                raise map_provider_error(self._error_name(), e)
+            finally:
+                if attempt > 0 and not client.is_closed:
+                    await client.aclose()

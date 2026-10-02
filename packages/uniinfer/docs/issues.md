@@ -189,6 +189,12 @@ as soon as the conversation history contains an `assistant` message with
    streams role-only + `stop`, so the client sees `content: []` and
    `usage: {total_tokens: 0}` rather than a validation error.
 
+**Related, distinct failure (2026-10-02):** kilo's LB roulette — the SAME
+request 10× in a row: 3 empty, 7 answered (even bare dev+user). Proxy-side
+replay: `EMPTY_COMPLETION_RETRIES` (base flag, kilo=2) detects a stream that
+ends finish=stop with no content/reasoning/tool-calls and replays it on a
+fresh connection before releasing the finish chunk.
+
 **Mitigation (proxy-side, 2026-10-02):** `NORMALIZE_TOOL_CALL_IDS` (base
 `OpenAICompatibleChatProvider` flag, on for kilo) rewrites every id to
 `call_<n>` — same mapping on the assistant calls and the matching results, so
