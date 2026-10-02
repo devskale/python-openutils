@@ -180,7 +180,7 @@ issues todo            # waiting on this machine
 issues new <slug> [to] # create in backlog
 ```
 
-Convention + full command list: [`kontext.one/.pi/skills/issues/SKILL.md`](https://github.com/devskale/kontext.one/blob/main/.pi/skills/issues/SKILL.md).
+Convention + full command list: [`skale-skills/skills/issues/SKILL.md`](https://github.com/devskale/skale-skills/blob/main/skills/issues/SKILL.md).
 
 ### Triage labels
 
