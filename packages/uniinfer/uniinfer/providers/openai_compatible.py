@@ -186,6 +186,35 @@ def _is_empty_completion(finish_reason, content, thinking, tool_calls) -> bool:
     return True
 
 
+def parse_retry_after(headers: Any) -> Optional[float]:
+    """Parse a ``Retry-After`` header (delta-seconds or HTTP-date), if present.
+
+    Mirrors tu.py's parser: gateways that throttle properly name the wait, and
+    the proxy relays it so clients can back off instead of hammering."""
+    raw = None
+    if hasattr(headers, "get"):
+        raw = headers.get("retry-after") or headers.get("Retry-After")
+    if raw is None:
+        return None
+    raw = str(raw).strip()
+    if not raw:
+        return None
+    try:
+        return float(raw)
+    except ValueError:
+        pass
+    try:
+        from datetime import datetime, timezone
+        from email.utils import parsedate_to_datetime
+        dt = parsedate_to_datetime(raw)
+        if dt is not None:
+            delta = (dt - datetime.now(timezone.utc)).total_seconds()
+            return delta if delta > 0 else None
+    except (TypeError, ValueError):
+        pass
+    return None
+
+
 class OpenAICompatibleChatProvider(ChatProvider):
     # OpenAI params to NEVER forward even if a client sends them as extras
     # (none known yet; add here if one 400s a backend).
@@ -533,6 +562,7 @@ class OpenAICompatibleChatProvider(ChatProvider):
                         Exception(error_msg),
                         status_code=response.status_code,
                         response_body=response.text,
+                        retry_after=parse_retry_after(response.headers) if response.status_code == 429 else None,
                     )
 
                 response_data = response.json()
@@ -561,7 +591,7 @@ class OpenAICompatibleChatProvider(ChatProvider):
                 ):
                     raise RateLimitError(
                         f"{self._error_name()} empty completion (finish=stop, no content after "
-                        f"{retries + 1} attempts) — gateway throttling shadow; back off and retry",
+                        f"{retries + 1} attempts) — gateway throttling shadow; wait ~60s and retry",
                         status_code=429, retry_after=60.0)
 
                 return ChatCompletionResponse(
@@ -624,6 +654,7 @@ class OpenAICompatibleChatProvider(ChatProvider):
                             Exception(error_msg),
                             status_code=response.status_code,
                             response_body=error_text,
+                            retry_after=parse_retry_after(response.headers) if response.status_code == 429 else None,
                         )
 
                     async for line in response.aiter_lines():
@@ -714,7 +745,7 @@ class OpenAICompatibleChatProvider(ChatProvider):
                     # staring at a silent empty answer.
                     raise RateLimitError(
                         f"{self._error_name()} empty completion (finish=stop, no content after "
-                        f"{retries + 1} attempts) — gateway throttling shadow; back off and retry",
+                        f"{retries + 1} attempts) — gateway throttling shadow; wait ~60s and retry",
                         status_code=429, retry_after=60.0)
                 for chunk in held:
                     yield chunk

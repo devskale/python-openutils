@@ -9,7 +9,7 @@ import json
 import logging
 import os
 import time
-from datetime import datetime
+from datetime import datetime, timezone
 
 from ..core import ChatCompletionRequest, ChatCompletionResponse, ChatMessage, ChatProvider, ModelInfo, REASONING_OFF
 
@@ -75,7 +75,7 @@ def _parse_retry_after(headers: Any) -> float | None:
         from email.utils import parsedate_to_datetime
         dt = parsedate_to_datetime(raw)
         if dt is not None:
-            delta = (dt - datetime.now()).total_seconds()
+            delta = (dt - datetime.now(timezone.utc)).total_seconds()
             return delta if delta > 0 else None
     except (TypeError, ValueError):
         pass

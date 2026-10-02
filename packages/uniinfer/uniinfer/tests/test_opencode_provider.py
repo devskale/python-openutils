@@ -975,3 +975,52 @@ class TestEmptyCompletionRateLimitShadow:
         p = self._provider(retries=0, sse_texts=[empty])
         chunks = [c async for c in p.astream_complete(TestEmptyCompletionRetry._request())]
         assert any(c.finish_reason == "stop" for c in chunks)
+
+
+class TestRetryAfterVisibility:
+    """'Wie lange warten?' — die Wartezeit muss beim Client ankommen: upstream
+    Retry-After wird geparsed, der 429-Chip traegt retry_after + Klartext."""
+
+    def test_parse_retry_after_seconds_and_date(self):
+        from email.utils import format_datetime
+        from datetime import datetime, timezone, timedelta
+
+        from uniinfer.providers.openai_compatible import parse_retry_after
+        assert parse_retry_after({"Retry-After": "30"}) == 30.0
+        assert parse_retry_after({"retry-after": "7"}) == 7.0
+        future = format_datetime(datetime.now(timezone.utc) + timedelta(seconds=90))
+        got = parse_retry_after({"Retry-After": future})
+        assert 80 <= got <= 90
+        assert parse_retry_after({}) is None
+        assert parse_retry_after({"Retry-After": "garbage"}) is None
+
+    def test_upstream_429_relay_carries_retry_after(self):
+        """acomplete on a 429: RateLimitError.retry_after comes from the header."""
+        import httpx as _httpx
+
+        limited = MagicMock(spec=_httpx.Response)
+        limited.status_code = 429
+        limited.text = "slow down"
+        limited.headers = {"Retry-After": "45"}
+        c = AsyncMock(spec=_httpx.AsyncClient)
+        c.is_closed = False
+        c.post.return_value = limited
+        p = KiloProvider(api_key="k")
+        p.EMPTY_COMPLETION_RETRIES = 1
+
+        async def fake_get():
+            return c
+
+        p._get_async_client = fake_get
+        import asyncio
+        from uniinfer import ChatCompletionRequest, ChatMessage
+        from uniinfer.errors import RateLimitError
+
+        async def main():
+            with pytest.raises(RateLimitError) as ei:
+                await p.acomplete(ChatCompletionRequest(
+                    model="stealth/space-bunny-alpha",
+                    messages=[ChatMessage(role="user", content="hi")]))
+            return ei.value.retry_after
+
+        assert asyncio.run(main()) == 45.0

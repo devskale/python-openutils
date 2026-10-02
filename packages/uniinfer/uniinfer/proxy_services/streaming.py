@@ -626,11 +626,18 @@ async def astream_response_generator(
             _code = getattr(e, "status_code", None)
             if _code is None and isinstance(e, RateLimitError):
                 _code = 429  # a rate-limit error IS a 429, whatever the ctor got
+            # Rate-limit wait budget in the chunk: the SSE stream is already
+            # committed, so a Retry-After HEADER is impossible — the body
+            # carries it, and the message names the wait in plain text.
+            _retry_after = getattr(e, "retry_after", None)
+            if _retry_after and isinstance(e, RateLimitError):
+                message = f"{message} (wait ~{int(_retry_after)}s)"
             error_chunk = {
                 "error": {
                     "message": message,
                     "type": type(e).__name__,
                     "code": _code,
+                    **({"retry_after": _retry_after} if _retry_after else {}),
                 }
             }
             yield f"data: {json.dumps(error_chunk)}\n\n"

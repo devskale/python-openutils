@@ -126,6 +126,7 @@ def create_chat_router(
                         latency_ms=(time.monotonic() - _req_t0) * 1000,
                         usage=None,
                     )
+                    _headers = {"Retry-After": str(int(e.retry_after))} if e.retry_after else {}
                     return JSONResponse(
                         status_code=429,
                         content={
@@ -133,9 +134,11 @@ def create_chat_router(
                                 "message": _detail,
                                 "type": "rate_limit",
                                 "code": 429,
+                                **({"retry_after": e.retry_after} if e.retry_after else {}),
                             },
                             "model": provider_model,
                         },
+                        headers=_headers,
                     )
 
                 async def _relay() -> AsyncGenerator[str, None]:
