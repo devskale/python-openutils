@@ -276,6 +276,8 @@ class OpenCodeProvider(OpenAICompatibleChatProvider):
         provider_specific_kwargs: dict[str, Any],
     ) -> dict[str, Any]:
         payload = super()._build_payload(request, stream, provider_specific_kwargs)
+        if payload.get("messages"):
+            payload["messages"] = self._merge_consecutive_tool_calls(payload["messages"])
         # Agent-shape the request: union caller tools with the canonical set
         # (caller definitions win by name), always stream with usage.
         canonical = self._agent_tools()
@@ -296,6 +298,83 @@ class OpenCodeProvider(OpenAICompatibleChatProvider):
     # ------------------------------------------------------------------ #
     # chat dialect (/chat/completions) — streamed, aggregated
     # ------------------------------------------------------------------ #
+    @staticmethod
+    def _merge_consecutive_tool_calls(messages: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        """Normalise the transcript shapes Zen's chat gateway refuses.
+
+        A ``role="tool"`` result must be introduced by exactly ONE assistant
+        message holding the matching ``tool_calls``; otherwise the gateway
+        answers with a bare ``400 invalid_request_error: Upstream request
+        failed`` that names neither the offending message nor the tool. Two
+        shapes violate that:
+
+        * an assistant run split by its own results — one assistant message per
+          tool call, which is what pi writes:
+          ``assistant(c1) tool(c1) assistant(c2) tool(c2)``
+        * a result whose call is unknown to the whole transcript (history
+          trimmed or partially restored)
+
+        The first is folded back into a single assistant message holding every
+        call of the run; the second is presented as a user turn. A result that
+        directly follows its assistant turn — the shape the gateway already
+        accepts — is left untouched.
+        """
+        known_ids = {
+            tc.get("id")
+            for msg in messages
+            if msg.get("role") == "assistant"
+            for tc in (msg.get("tool_calls") or [])
+            if isinstance(tc, dict)
+        }
+
+        out: list[dict[str, Any]] = []
+        index = 0
+        total = len(messages)
+        while index < total:
+            msg = messages[index]
+            split = (
+                msg.get("role") == "assistant"
+                and msg.get("tool_calls")
+                and index + 2 < total
+                and messages[index + 1].get("role") == "tool"
+                and messages[index + 2].get("role") == "assistant"
+            )
+            if split:
+                calls = list(msg["tool_calls"])
+                index += 1
+                while index < total and messages[index].get("role") == "tool":
+                    index += 1
+                while (
+                    index < total
+                    and messages[index].get("role") == "assistant"
+                    and messages[index].get("tool_calls")
+                ):
+                    calls.extend(messages[index]["tool_calls"])
+                    if messages[index].get("content") and not msg.get("content"):
+                        msg["content"] = messages[index]["content"]
+                    index += 1
+                    while index < total and messages[index].get("role") == "tool":
+                        index += 1
+                msg["tool_calls"] = calls
+                out.append(msg)
+                continue
+            if msg.get("role") == "tool" and (msg.get("tool_call_id") or msg.get("id")) not in known_ids:
+                orphans = []
+                while index < total and messages[index].get("role") == "tool":
+                    orphans.append(messages[index])
+                    index += 1
+                out.append({
+                    "role": "user",
+                    "content": "\n".join(
+                        "<tool_result>{}</tool_result>".format(o.get("content", ""))
+                        for o in orphans
+                    ),
+                })
+                continue
+            out.append(msg)
+            index += 1
+        return out
+
     async def _chat_acomplete(
         self,
         request: ChatCompletionRequest,

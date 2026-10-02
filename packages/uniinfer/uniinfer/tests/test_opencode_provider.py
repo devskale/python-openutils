@@ -496,3 +496,110 @@ def test_responses_payload_tool_items(monkeypatch):
     pos_fc = [i for i, it in enumerate(items) if it.get("type") == "function_call"]
     pos_out = [i for i, it in enumerate(items) if it.get("type") == "function_call_output"]
     assert pos_fc and pos_out and pos_fc[0] < pos_out[0]
+
+
+class TestChatDialectToolHistory:
+    """chat dialect: the transcript shapes Zen's gateway accepts — and the two it
+    rejects with a bare ``400 invalid_request_error: Upstream request failed``.
+
+    An assistant run split by its own tool results (one assistant message per
+    tool call, the shape pi writes) and a result whose call is unknown to the
+    whole transcript are both normalised before the request leaves.
+    """
+
+    @staticmethod
+    def _tc(i):
+        return {"id": i, "type": "function", "function": {"name": "bash", "arguments": "{}"}}
+
+    @staticmethod
+    def _a(*calls):
+        return {"role": "assistant", "content": None, "tool_calls": list(calls)}
+
+    @staticmethod
+    def _t(i, body):
+        return {"role": "tool", "tool_call_id": i, "content": body}
+
+    def _run(self, messages):
+        return OpenCodeProvider._merge_consecutive_tool_calls(messages)
+
+    def test_split_assistant_run_is_folded(self):
+        out = self._run([
+            {"role": "user", "content": "hi"},
+            self._a(self._tc("c1")), self._t("c1", "a"),
+            self._a(self._tc("c2")), self._t("c2", "b"),
+            {"role": "user", "content": "weiter"},
+        ])
+        assert [m["role"] for m in out] == ["user", "assistant", "user"]
+        assert [c["id"] for c in out[1]["tool_calls"]] == ["c1", "c2"]
+        # the results the model produced are not replayed as new input
+        assert "a" not in json.dumps(out[2]) and "b" not in json.dumps(out[2])
+
+    def test_three_call_run_is_folded(self):
+        out = self._run([
+            {"role": "user", "content": "hi"},
+            self._a(self._tc("c1")), self._t("c1", "a"),
+            self._a(self._tc("c2")), self._t("c2", "b"),
+            self._a(self._tc("c3")), self._t("c3", "c"),
+            {"role": "user", "content": "w"},
+        ])
+        assert [c["id"] for c in out[1]["tool_calls"]] == ["c1", "c2", "c3"]
+
+    def test_accepted_shape_passes_through_untouched(self):
+        """One assistant message with several results after it already works —
+        the normaliser must not rewrite it."""
+        msgs = [
+            {"role": "user", "content": "hi"},
+            self._a(self._tc("c1"), self._tc("c2")),
+            self._t("c1", "a"), self._t("c2", "b"),
+            {"role": "user", "content": "w"},
+        ]
+        assert self._run(msgs) == msgs
+
+    def test_single_tool_turn_passes_through_untouched(self):
+        msgs = [
+            {"role": "user", "content": "hi"},
+            self._a(self._tc("c1")),
+            self._t("c1", "a"),
+            {"role": "user", "content": "w"},
+        ]
+        assert self._run(msgs) == msgs
+
+    def test_orphan_result_becomes_user_turn(self):
+        out = self._run([
+            {"role": "user", "content": "hi"},
+            self._t("unknown-id", "output"),
+            {"role": "user", "content": "weiter"},
+        ])
+        assert [m["role"] for m in out] == ["user", "user", "user"]
+        assert "output" in out[1]["content"]
+
+    def test_plain_conversation_untouched(self):
+        msgs = [
+            {"role": "system", "content": "s"},
+            {"role": "user", "content": "hi"},
+            {"role": "assistant", "content": "hallo"},
+            {"role": "user", "content": "w"},
+        ]
+        assert self._run(msgs) == msgs
+
+    def test_build_payload_applies_the_normaliser(self):
+        """The hook is wired into the chat payload, not just a helper."""
+        provider = OpenCodeProvider(api_key="k")
+        req = ChatCompletionRequest(
+            model="space-bunny-free",
+            messages=[
+                ChatMessage(role="user", content="hi"),
+                ChatMessage(role="assistant", content=None,
+                            tool_calls=[{"id": "c1", "type": "function",
+                                         "function": {"name": "bash", "arguments": "{}"}}]),
+                ChatMessage(role="tool", tool_call_id="c1", content="a"),
+                ChatMessage(role="assistant", content=None,
+                            tool_calls=[{"id": "c2", "type": "function",
+                                         "function": {"name": "bash", "arguments": "{}"}}]),
+                ChatMessage(role="tool", tool_call_id="c2", content="b"),
+                ChatMessage(role="user", content="weiter"),
+            ],
+        )
+        messages = provider._build_payload(req, False, {})["messages"]
+        assert all(m.get("role") != "tool" for m in messages)
+        assert [c["id"] for c in messages[1]["tool_calls"]] == ["c1", "c2"]
