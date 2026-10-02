@@ -54,10 +54,13 @@ class KiloProvider(OpenAICompatibleChatProvider):
     # answer with 0 tokens / finish=stop instead of an error. Rewriting every
     # id to a neutral call_<n> keeps the pairing and dodges the id grammar.
     NORMALIZE_TOOL_CALL_IDS = True
-    # LB roulette: some replicas answer finish=stop with zero content. The
-    # same transcript replayed lands on a healthy replica (observed 7/10 ok),
-    # and the empty attempt consumed no tokens — the replay is free.
-    EMPTY_COMPLETION_RETRIES = 2
+    # Two empty-completion causes, both handled: (1) LB roulette — some
+    # replicas answer finish=stop with zero content; one replay on a fresh
+    # connection lands on a healthy replica and the empty attempt consumed no
+    # tokens. (2) The free tier throttles with 200 + empty instead of a 429 —
+    # a replay cannot beat a per-IP limit, so after the retry the empty is
+    # surfaced as a real 429 (see base astream_complete/acomplete).
+    EMPTY_COMPLETION_RETRIES = 1
 
     def __init__(self, api_key: Optional[str] = None, **kwargs):
         if not api_key:

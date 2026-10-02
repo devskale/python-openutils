@@ -7,7 +7,7 @@ import httpx
 import requests
 
 from ..core import REASONING_OFF, ChatCompletionRequest, ChatCompletionResponse, ChatMessage, ChatProvider, ModelInfo
-from ..errors import UniInferError, map_provider_error
+from ..errors import RateLimitError, UniInferError, map_provider_error
 
 _MODEL_DEFAULTS: dict[str, dict[str, Any]] | None = None
 _MODEL_DEFAULTS_PATH = Path(__file__).resolve().parent.parent / "models" / "model_defaults.json"
@@ -556,6 +556,13 @@ class OpenAICompatibleChatProvider(ChatProvider):
                         self._error_name(), attempt + 1, retries + 1,
                     )
                     continue
+                if retries > 0 and _is_empty_completion(
+                    choice.get("finish_reason"), message.content, reasoning_content, message.tool_calls
+                ):
+                    raise RateLimitError(
+                        f"{self._error_name()} empty completion (finish=stop, no content after "
+                        f"{retries + 1} attempts) — gateway throttling shadow; back off and retry",
+                        status_code=429, retry_after=60.0)
 
                 return ChatCompletionResponse(
                     message=message,
@@ -700,6 +707,15 @@ class OpenAICompatibleChatProvider(ChatProvider):
                     )
                     attempt += 1
                     continue
+                if retries > 0 and not saw_visible and held:
+                    # Retries exhausted, still empty: the gateway throttles with
+                    # 200 + empty instead of a 429 (same shadow as TU's). Relay
+                    # it as a real 429 so the client backs off instead of
+                    # staring at a silent empty answer.
+                    raise RateLimitError(
+                        f"{self._error_name()} empty completion (finish=stop, no content after "
+                        f"{retries + 1} attempts) — gateway throttling shadow; back off and retry",
+                        status_code=429, retry_after=60.0)
                 for chunk in held:
                     yield chunk
                 return

@@ -900,3 +900,78 @@ class TestEmptyCompletionRetry:
         chunks = [c async for c in p.astream_complete(self._request())]
         visible = [c for c in chunks if (c.message.content or "").strip()]
         assert [c.message.content for c in visible] == ["recovered"]
+
+
+class TestEmptyCompletionRateLimitShadow:
+    """After the retry budget, an empty completion is surfaced as a real 429 —
+    kilo's free tier throttles with 200 + empty instead of a proper 429, and a
+    silent empty answer looks like a model bug to the client. Providers without
+    the opt-in (retries=0) keep relaying empty as before."""
+
+    def _provider(self, retries, sse_texts):
+        p = KiloProvider(api_key="k")
+        p.EMPTY_COMPLETION_RETRIES = retries
+        queue = list(sse_texts)
+        clients = []
+        for t in queue:
+            c = AsyncMock(spec=httpx.AsyncClient)
+            c.is_closed = False
+            c.stream.return_value = TestEmptyCompletionRetry._cm(
+                TestEmptyCompletionRetry._sse_response(t))
+            clients.append(c)
+
+        async def fake_get():
+            return clients.pop(0)
+
+        p._get_async_client = fake_get
+        p._retry_client = lambda: clients.pop(0)
+        return p
+
+    @pytest.mark.asyncio
+    async def test_retry_exhausted_raises_rate_limit(self):
+        from uniinfer.errors import RateLimitError
+
+        def post_client(payload_content):
+            c = AsyncMock(spec=httpx.AsyncClient)
+            c.is_closed = False
+            r = MagicMock(spec=httpx.Response)
+            r.status_code = 200
+            r.json.return_value = {"choices": [{"message": {"role": "assistant", "content": payload_content},
+                                                 "finish_reason": "stop"}]}
+            c.post.return_value = r
+            return c
+
+        empty_c = post_client("")
+        second_c = post_client("")  # retry auch leer -> 429-shadow
+        p = KiloProvider(api_key="k")
+        p.EMPTY_COMPLETION_RETRIES = 1
+        queue = [empty_c, second_c]
+
+        async def fake_get():
+            return queue.pop(0)
+
+        p._get_async_client = fake_get
+        p._retry_client = lambda: queue.pop(0)
+
+        with pytest.raises(RateLimitError) as ei:
+            await p.acomplete(TestEmptyCompletionRetry._request())
+        assert ei.value.status_code == 429
+        empty_c.post.assert_called_once()
+        second_c.post.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_stream_retry_exhausted_raises_rate_limit(self):
+        from uniinfer.errors import RateLimitError
+        empty = TestEmptyCompletionRetry._empty_sse()
+        p = self._provider(retries=1, sse_texts=[empty, empty])
+        with pytest.raises(RateLimitError):
+            async for _ in p.astream_complete(TestEmptyCompletionRetry._request()):
+                pass
+
+    @pytest.mark.asyncio
+    async def test_zero_retries_still_relays(self):
+        """No opt-in (retries=0): empty relays as before — no 429 mapping."""
+        empty = TestEmptyCompletionRetry._empty_sse()
+        p = self._provider(retries=0, sse_texts=[empty])
+        chunks = [c async for c in p.astream_complete(TestEmptyCompletionRetry._request())]
+        assert any(c.finish_reason == "stop" for c in chunks)
