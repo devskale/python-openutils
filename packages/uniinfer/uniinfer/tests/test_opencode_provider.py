@@ -499,13 +499,12 @@ def test_responses_payload_tool_items(monkeypatch):
 
 
 class TestChatDialectToolHistory:
-    """chat dialect: the transcript shapes Zen's gateway accepts — and the two it
-    rejects with a bare ``400 invalid_request_error: Upstream request failed``.
-
-    An assistant run split by its own tool results (one assistant message per
-    tool call, the shape pi writes) and a result whose call is unknown to the
-    whole transcript are both normalised before the request leaves.
-    """
+    """chat dialect: Zen's gateway rejects any transcript where a tool result is
+    not introduced by exactly one assistant message carrying matching
+    tool_calls — with a bare ``400 invalid_request_error: Upstream request
+    failed`` that names nothing. Two real shapes violate it (verified against
+    the live gateway): pi's split assistant runs and results orphaned by a
+    mid-session provider switch. The normaliser rewrites only those."""
 
     @staticmethod
     def _tc(i):
@@ -523,16 +522,20 @@ class TestChatDialectToolHistory:
         return OpenCodeProvider._merge_consecutive_tool_calls(messages)
 
     def test_split_assistant_run_is_folded(self):
+        """assistant/tool/assistant/tool (pi's shape) becomes ONE assistant turn
+        with all calls, followed by all results in order — the shape the
+        gateway accepts."""
         out = self._run([
             {"role": "user", "content": "hi"},
             self._a(self._tc("c1")), self._t("c1", "a"),
             self._a(self._tc("c2")), self._t("c2", "b"),
             {"role": "user", "content": "weiter"},
         ])
-        assert [m["role"] for m in out] == ["user", "assistant", "user"]
+        assert [m["role"] for m in out] == ["user", "assistant", "tool", "tool", "user"]
         assert [c["id"] for c in out[1]["tool_calls"]] == ["c1", "c2"]
-        # the results the model produced are not replayed as new input
-        assert "a" not in json.dumps(out[2]) and "b" not in json.dumps(out[2])
+        assert [m["tool_call_id"] for m in out[2:4]] == ["c1", "c2"]
+        # ordering preserved: both results before the next user turn
+        assert out[4]["content"] == "weiter"
 
     def test_three_call_run_is_folded(self):
         out = self._run([
@@ -543,19 +546,22 @@ class TestChatDialectToolHistory:
             {"role": "user", "content": "w"},
         ])
         assert [c["id"] for c in out[1]["tool_calls"]] == ["c1", "c2", "c3"]
+        assert [m["tool_call_id"] for m in out[2:5]] == ["c1", "c2", "c3"]
+        assert out[5]["content"] == "w"
 
-    def test_accepted_shape_passes_through_untouched(self):
-        """One assistant message with several results after it already works —
-        the normaliser must not rewrite it."""
+    def test_accepted_shape_survives(self):
+        """One assistant message followed directly by its results is the shape
+        the gateway accepts — results stay in place."""
         msgs = [
             {"role": "user", "content": "hi"},
             self._a(self._tc("c1"), self._tc("c2")),
             self._t("c1", "a"), self._t("c2", "b"),
             {"role": "user", "content": "w"},
         ]
-        assert self._run(msgs) == msgs
+        out = self._run(msgs)
+        assert out == msgs
 
-    def test_single_tool_turn_passes_through_untouched(self):
+    def test_single_tool_turn_survives(self):
         msgs = [
             {"role": "user", "content": "hi"},
             self._a(self._tc("c1")),
@@ -563,6 +569,18 @@ class TestChatDialectToolHistory:
             {"role": "user", "content": "w"},
         ]
         assert self._run(msgs) == msgs
+
+    def test_tool_after_text_only_assistant_is_demoted(self):
+        """assistant(TEXT) tool(...) — a provider-switched turn without calls —
+        must not send the result as role=tool (rejected upstream)."""
+        out = self._run([
+            {"role": "user", "content": "hi"},
+            {"role": "assistant", "content": "Alles klar — Fix 1 und 2."},
+            self._t("c1", "grep output"),
+            {"role": "user", "content": "weiter"},
+        ])
+        assert all(m["role"] != "tool" for m in out)
+        assert any("grep output" in (m.get("content") or "") for m in out)
 
     def test_orphan_result_becomes_user_turn(self):
         out = self._run([
@@ -601,5 +619,7 @@ class TestChatDialectToolHistory:
             ],
         )
         messages = provider._build_payload(req, False, {})["messages"]
-        assert all(m.get("role") != "tool" for m in messages)
+        # the split run is folded: one assistant turn, both calls, both results
         assert [c["id"] for c in messages[1]["tool_calls"]] == ["c1", "c2"]
+        assert [m.get("role") for m in messages] == ["user", "assistant", "tool", "tool", "user"]
+        assert [m.get("tool_call_id") for m in messages[2:4]] == ["c1", "c2"]

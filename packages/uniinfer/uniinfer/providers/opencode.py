@@ -300,76 +300,85 @@ class OpenCodeProvider(OpenAICompatibleChatProvider):
     # ------------------------------------------------------------------ #
     @staticmethod
     def _merge_consecutive_tool_calls(messages: list[dict[str, Any]]) -> list[dict[str, Any]]:
-        """Normalise the transcript shapes Zen's chat gateway refuses.
+        """Normalise the transcript to the shape Zen's chat gateway accepts.
 
-        A ``role="tool"`` result must be introduced by exactly ONE assistant
-        message holding the matching ``tool_calls``; otherwise the gateway
-        answers with a bare ``400 invalid_request_error: Upstream request
-        failed`` that names neither the offending message nor the tool. Two
-        shapes violate that:
+        The gateway answers any transcript it dislikes with a bare ``400
+        invalid_request_error: Upstream request failed`` (no offending message,
+        no tool name). Verified shapes and their fate:
 
-        * an assistant run split by its own results — one assistant message per
-          tool call, which is what pi writes:
-          ``assistant(c1) tool(c1) assistant(c2) tool(c2)``
-        * a result whose call is unknown to the whole transcript (history
-          trimmed or partially restored)
+        * ``assistant(tool_calls) tool*`` — accepted as-is.
+        * ``assistant(text) tool*`` — a result whose introducing assistant turn
+          has no tool calls, e.g. after a mid-session provider switch (the old
+          provider's turns were flattened to text by the agent). **Rejected.**
+        * ``assistant tool assistant tool`` — split assistant run, what pi
+          writes. **Rejected.**
+        * ``tool`` with no assistant above at all — **Rejected.**
 
-        The first is folded back into a single assistant message holding every
-        call of the run; the second is presented as a user turn. A result that
-        directly follows its assistant turn — the shape the gateway already
-        accepts — is left untouched.
+        The fix rewrites only the rejected parts: a tool run that does not
+        directly follow its assistant turn is demoted to a user turn carrying
+        the result in a ``<tool_result>`` wrapper. Structurally equivalent for
+        the model (it reads the result either way), and it keeps every
+        transcript sendable regardless of how it was stitched together.
         """
-        known_ids = {
-            tc.get("id")
-            for msg in messages
-            if msg.get("role") == "assistant"
-            for tc in (msg.get("tool_calls") or [])
-            if isinstance(tc, dict)
-        }
-
-        out: list[dict[str, Any]] = []
-        index = 0
-        total = len(messages)
-        while index < total:
-            msg = messages[index]
-            split = (
+        # Pass 1 — fold split assistant runs: assistant/tool/assistant(tool_calls)
+        # becomes one assistant message holding all of the run's calls.
+        merged: list[dict[str, Any]] = []
+        pending_tools: list[dict[str, Any]] = []
+        for msg in messages:
+            if msg.get("role") == "tool":
+                pending_tools.append(msg)
+                continue
+            is_next_split_leg = (
                 msg.get("role") == "assistant"
                 and msg.get("tool_calls")
-                and index + 2 < total
-                and messages[index + 1].get("role") == "tool"
-                and messages[index + 2].get("role") == "assistant"
+                and bool(merged)
+                and merged[-1].get("role") == "assistant"
+                and merged[-1].get("tool_calls")
             )
-            if split:
-                calls = list(msg["tool_calls"])
-                index += 1
-                while index < total and messages[index].get("role") == "tool":
+            if not is_next_split_leg:
+                # Close the current assistant turn: its results come before
+                # whatever follows (a later user turn must not overtake them).
+                merged.extend(pending_tools)
+                pending_tools = []
+                merged.append(msg)
+            else:
+                # Split leg: fold the calls into the assistant turn above; the
+                # parked results stay parked (their run is not closed yet).
+                base = merged[-1]
+                base["tool_calls"] = list(base["tool_calls"]) + list(msg["tool_calls"])
+                if msg.get("content") and not base.get("content"):
+                    base["content"] = msg["content"]
+
+        # Pass 2 — a tool run survives only directly behind its assistant turn
+        # (with calls). Everything else becomes a user turn.
+        out: list[dict[str, Any]] = []
+        index = 0
+        total = len(merged)
+        while index < total:
+            msg = merged[index]
+            if msg.get("role") == "tool":
+                run = []
+                while index < total and merged[index].get("role") == "tool":
+                    run.append(merged[index])
                     index += 1
-                while (
-                    index < total
-                    and messages[index].get("role") == "assistant"
-                    and messages[index].get("tool_calls")
-                ):
-                    calls.extend(messages[index]["tool_calls"])
-                    if messages[index].get("content") and not msg.get("content"):
-                        msg["content"] = messages[index]["content"]
-                    index += 1
-                    while index < total and messages[index].get("role") == "tool":
-                        index += 1
-                msg["tool_calls"] = calls
-                out.append(msg)
-                continue
-            if msg.get("role") == "tool" and (msg.get("tool_call_id") or msg.get("id")) not in known_ids:
-                orphans = []
-                while index < total and messages[index].get("role") == "tool":
-                    orphans.append(messages[index])
-                    index += 1
-                out.append({
-                    "role": "user",
-                    "content": "\n".join(
-                        "<tool_result>{}</tool_result>".format(o.get("content", ""))
-                        for o in orphans
-                    ),
-                })
+                parent = out[-1] if out else None
+                if parent is not None and parent.get("role") == "assistant" and parent.get("tool_calls"):
+                    known = {c.get("id") for c in parent["tool_calls"]}
+                    claimed = [t for t in run if (t.get("tool_call_id") or t.get("id")) in known]
+                    orphans = [t for t in run if t not in claimed]
+                    out.extend(claimed)  # results belong here — the gateway takes this shape
+                    # Partial match: demote only what the turn above did not call.
+                    out.extend(
+                        {"role": "user",
+                         "content": "<tool_result>{}</tool_result>".format(t.get("content", ""))}
+                        for t in orphans
+                    )
+                    continue
+                out.extend(
+                    {"role": "user",
+                     "content": "<tool_result>{}</tool_result>".format(t.get("content", ""))}
+                    for t in run
+                )
                 continue
             out.append(msg)
             index += 1
