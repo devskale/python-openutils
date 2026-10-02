@@ -519,7 +519,8 @@ class TestChatDialectToolHistory:
         return {"role": "tool", "tool_call_id": i, "content": body}
 
     def _run(self, messages):
-        return OpenCodeProvider._merge_consecutive_tool_calls(messages)
+        from uniinfer.providers.openai_compatible import normalize_tool_history
+        return normalize_tool_history(messages)
 
     def test_split_assistant_run_is_folded(self):
         """assistant/tool/assistant/tool (pi's shape) becomes ONE assistant turn
@@ -623,3 +624,66 @@ class TestChatDialectToolHistory:
         assert [c["id"] for c in messages[1]["tool_calls"]] == ["c1", "c2"]
         assert [m.get("role") for m in messages] == ["user", "assistant", "tool", "tool", "user"]
         assert [m.get("tool_call_id") for m in messages[2:4]] == ["c1", "c2"]
+
+
+class TestStrictToolHistoryFlag:
+    """The normaliser is opt-in per provider (STRICT_TOOL_HISTORY): permissive
+    backends must keep receiving the transcript untouched."""
+
+    def test_base_default_is_off(self):
+        from uniinfer.providers.openai_compatible import OpenAICompatibleChatProvider as B
+        assert B.STRICT_TOOL_HISTORY is False
+
+    def test_opencode_opts_in(self):
+        assert OpenCodeProvider.STRICT_TOOL_HISTORY is True
+
+    def test_off_flag_leaves_messages_untouched(self):
+        """With the flag off (base default), a broken shape passes through as-is."""
+        from uniinfer.providers.openai_compatible import OpenAICompatibleChatProvider as B
+        import json as _json
+
+        class Permissive(B):
+            BASE_URL = "https://example.invalid/v1"
+            PROVIDER_ID = "permissive"
+
+        p = Permissive(api_key="k")
+        req = ChatCompletionRequest(
+            model="m",
+            messages=[
+                ChatMessage(role="user", content="hi"),
+                ChatMessage(role="assistant", content=None,
+                            tool_calls=[{"id": "c1", "type": "function",
+                                         "function": {"name": "bash", "arguments": "{}"}}]),
+                ChatMessage(role="tool", tool_call_id="c1", content="a"),
+                ChatMessage(role="assistant", content=None,
+                            tool_calls=[{"id": "c2", "type": "function",
+                                         "function": {"name": "bash", "arguments": "{}"}}]),
+                ChatMessage(role="tool", tool_call_id="c2", content="b"),
+                ChatMessage(role="user", content="weiter"),
+            ],
+        )
+        messages = p._build_payload(req, False, {})["messages"]
+        # untouched: the split run survives verbatim
+        assert [m.get("role") for m in messages] == ["user", "assistant", "tool", "assistant", "tool", "user"]
+
+    def test_on_flag_normalises(self):
+        import json as _json
+        p = OpenCodeProvider(api_key="k")
+        req = ChatCompletionRequest(
+            model="space-bunny-free",
+            messages=[
+                ChatMessage(role="user", content="hi"),
+                ChatMessage(role="assistant", content=None,
+                            tool_calls=[{"id": "c1", "type": "function",
+                                         "function": {"name": "bash", "arguments": "{}"}}]),
+                ChatMessage(role="tool", tool_call_id="c1", content="a"),
+                ChatMessage(role="assistant", content=None,
+                            tool_calls=[{"id": "c2", "type": "function",
+                                         "function": {"name": "bash", "arguments": "{}"}}]),
+                ChatMessage(role="tool", tool_call_id="c2", content="b"),
+                ChatMessage(role="user", content="weiter"),
+            ],
+        )
+        messages = p._build_payload(req, False, {})["messages"]
+        assert [m.get("role") for m in messages] == ["user", "assistant", "tool", "tool", "user"]
+        assert [c["id"] for c in messages[1]["tool_calls"]] == ["c1", "c2"]

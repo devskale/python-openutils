@@ -63,7 +63,10 @@ def map_provider_error(provider_name: str, original_error: Exception, status_cod
         ProviderError: A standardized UniInfer error.
     """
     error_message = str(original_error).lower()
-    
+    # str(httpx.ReadTimeout()) is often "" — classify by class name too, so a
+    # timeout never surfaces as a bare "provider error: " with no cause.
+    error_class = type(original_error).__name__.lower()
+
     # Common authentication errors
     if status_code == 401 or any(term in error_message for term in ["authentication", "auth", "unauthorized", "api key", "401"]):
         return AuthenticationError(f"{provider_name} authentication error: {str(original_error)}", status_code, response_body)
@@ -72,9 +75,14 @@ def map_provider_error(provider_name: str, original_error: Exception, status_cod
     if status_code == 429 or any(term in error_message for term in ["rate limit", "ratelimit", "too many requests", "429"]):
         return RateLimitError(f"{provider_name} rate limit error: {str(original_error)}", status_code, response_body, retry_after=retry_after)
     
-    # Timeout errors
-    if status_code in [408, 504] or any(term in error_message for term in ["timeout", "timed out"]):
-        return TimeoutError(f"{provider_name} timeout error: {str(original_error)}", status_code, response_body)
+    # Timeout errors — message text OR exception class (httpx timeout strs are empty)
+    if (status_code in [408, 504]
+            or "timeout" in error_class
+            or any(term in error_message for term in ["timeout", "timed out"])):
+        return TimeoutError(
+            f"{provider_name} timeout error: upstream sent nothing within the wait budget "
+            f"({type(original_error).__name__}: {str(original_error) or 'no detail'})",
+            status_code, response_body)
     
     # Invalid request errors
     if status_code == 400 or any(term in error_message for term in ["invalid", "validation", "bad request", "400", "not supported", "not a chat model", "not found"]):

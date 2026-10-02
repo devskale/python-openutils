@@ -41,6 +41,93 @@ def openrouter_reasoning_payload(reasoning_effort: Optional[str]) -> dict[str, A
     return {"reasoning": {"effort": effort}}
 
 
+def normalize_tool_history(messages: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Normalise the transcript shapes strict OpenAI-compatible gateways refuse.
+
+    A ``role="tool"`` result must be introduced by exactly ONE assistant
+    message holding the matching ``tool_calls``; gateways that enforce this
+    answer otherwise with a bare ``400 invalid_request_error`` (opencode zen)
+    or a silent empty completion (kilo) — neither names the offending message.
+    Two real shapes violate it, both produced by agents (pi) and by mid-session
+    provider switches:
+
+    * an assistant run split by its own results — one assistant message per
+      tool call: ``assistant(c1) tool(c1) assistant(c2) tool(c2)``
+    * a result whose introducing assistant turn has no calls at all (the old
+      provider's turns were flattened to text), or no turn above at all
+
+    The rewrite is minimal and lossless: split runs are folded into a single
+    assistant turn with every call, and results are re-emitted directly behind
+    it — the shape every OpenAI-compatible backend accepts. Results with no
+    parent call anywhere in the transcript are presented as user turns instead
+    of being dropped. Transcripts the gateway already accepts pass through
+    byte-identical; enable per provider via ``STRICT_TOOL_HISTORY``.
+    """
+    # Pass 1 — fold split assistant runs: assistant/tool/assistant(tool_calls)
+    # becomes one assistant message holding all of the run's calls.
+    merged: list[dict[str, Any]] = []
+    pending_tools: list[dict[str, Any]] = []
+    for msg in messages:
+        if msg.get("role") == "tool":
+            pending_tools.append(msg)
+            continue
+        is_next_split_leg = (
+            msg.get("role") == "assistant"
+            and msg.get("tool_calls")
+            and bool(merged)
+            and merged[-1].get("role") == "assistant"
+            and merged[-1].get("tool_calls")
+        )
+        if not is_next_split_leg:
+            # Close the current assistant turn: its results come before
+            # whatever follows (a later user turn must not overtake them).
+            merged.extend(pending_tools)
+            pending_tools = []
+            merged.append(msg)
+        else:
+            # Split leg: fold the calls into the assistant turn above; the
+            # parked results stay parked (their run is not closed yet).
+            base = merged[-1]
+            base["tool_calls"] = list(base["tool_calls"]) + list(msg["tool_calls"])
+            if msg.get("content") and not base.get("content"):
+                base["content"] = msg["content"]
+
+    # Pass 2 — a tool run survives only directly behind its assistant turn
+    # (with calls). Everything else becomes a user turn.
+    out: list[dict[str, Any]] = []
+    index = 0
+    total = len(merged)
+    while index < total:
+        msg = merged[index]
+        if msg.get("role") == "tool":
+            run = []
+            while index < total and merged[index].get("role") == "tool":
+                run.append(merged[index])
+                index += 1
+            parent = out[-1] if out else None
+            if parent is not None and parent.get("role") == "assistant" and parent.get("tool_calls"):
+                known = {c.get("id") for c in parent["tool_calls"]}
+                claimed = [t for t in run if (t.get("tool_call_id") or t.get("id")) in known]
+                orphans = [t for t in run if t not in claimed]
+                out.extend(claimed)  # results belong here — the gateway takes this shape
+                # Partial match: demote only what the turn above did not call.
+                out.extend(
+                    {"role": "user",
+                     "content": "<tool_result>{}</tool_result>".format(t.get("content", ""))}
+                    for t in orphans
+                )
+                continue
+            out.extend(
+                {"role": "user",
+                 "content": "<tool_result>{}</tool_result>".format(t.get("content", ""))}
+                for t in run
+            )
+            continue
+        out.append(msg)
+        index += 1
+    return out
+
+
 class OpenAICompatibleChatProvider(ChatProvider):
     # OpenAI params to NEVER forward even if a client sends them as extras
     # (none known yet; add here if one 400s a backend).
@@ -183,6 +270,12 @@ class OpenAICompatibleChatProvider(ChatProvider):
     # keywords, which are semantically useful where they are accepted.
     STRICT_GRAMMAR_SCHEMAS = False
 
+    # Rewrite agent transcripts that strict gateways refuse (split assistant
+    # tool-call runs, results without a calling turn) before the request
+    # leaves. Opt-in: permissive backends must see the history untouched.
+    # See normalize_tool_history() for the exact shapes and the rewrite rules.
+    STRICT_TOOL_HISTORY: bool = False
+
     # Schema keywords dropped entirely when STRICT_GRAMMAR_SCHEMAS is on.
     # `pattern` is the common offender: pi's tool schemas carry it (e.g.
     # herdr_agent's `name`), and grammar folding has no way to validate a
@@ -271,9 +364,12 @@ class OpenAICompatibleChatProvider(ChatProvider):
         if model_id in model_defaults:
             defaults = model_defaults[model_id]
 
+        messages = self._flatten_messages(request.messages)
+        if self.STRICT_TOOL_HISTORY:
+            messages = normalize_tool_history(messages)
         payload: dict[str, Any] = {
             "model": model_id,
-            "messages": self._flatten_messages(request.messages),
+            "messages": messages,
             "temperature": defaults.get("temperature", request.temperature),
             "stream": stream,
         }

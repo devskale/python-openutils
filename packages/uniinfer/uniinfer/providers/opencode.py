@@ -55,6 +55,13 @@ from .openai_compatible import OpenAICompatibleChatProvider
 _TOOLS_PATH = Path(__file__).resolve().parent / "opencode_agent_tools.json"
 _B62 = string.digits + string.ascii_uppercase + string.ascii_lowercase
 
+
+def _env_float(name: str, default: float) -> float:
+    try:
+        return float(os.getenv(name, ""))
+    except (TypeError, ValueError):
+        return default
+
 # Official docs tables (endpoints + pricing) — the authoritative, versioned
 # source for dialect mapping and free/paid detection. Parsed from the repo,
 # so model additions upstream flow through without code changes here.
@@ -63,6 +70,12 @@ _DOCS_URL = ("https://raw.githubusercontent.com/anomalyco/opencode/dev/"
 _DOCS_TTL = 3600.0
 _DOCS_CACHE: Optional[dict[str, Any]] = None
 _DOCS_CACHE_TS = 0.0
+
+# Upstream wait budget for one gateway round-trip. Big agent transcripts
+# (0.5-1MB prompts) legitimately take over a minute of prompt processing on
+# the free tiers before the first byte arrives — the previous hard 60s killed
+# exactly those with an empty "OpenCode error: " (httpx timeout str is "").
+OPENCODE_UPSTREAM_TIMEOUT = _env_float("OPENCODE_UPSTREAM_TIMEOUT", 240.0)
 
 
 def _parse_price_cell(cell: str) -> Optional[float]:
@@ -150,6 +163,9 @@ class OpenCodeProvider(OpenAICompatibleChatProvider):
     # The router forwards native OpenAI multimodal content to vision-capable
     # upstreams (e.g. big-pickle, mimo-v2.5-free).
     PRESERVE_MULTIMODAL = True
+    # pi writes one assistant message per tool call; zen's chat gateway refuses
+    # that shape (and provider-switched orphaned results) with a bare 400.
+    STRICT_TOOL_HISTORY = True
 
     # Client identity the zen gate expects. Version-pinned to the capture the
     # toolset was taken from (1.18.31) — refresh both together on upgrades.
@@ -276,8 +292,6 @@ class OpenCodeProvider(OpenAICompatibleChatProvider):
         provider_specific_kwargs: dict[str, Any],
     ) -> dict[str, Any]:
         payload = super()._build_payload(request, stream, provider_specific_kwargs)
-        if payload.get("messages"):
-            payload["messages"] = self._merge_consecutive_tool_calls(payload["messages"])
         # Agent-shape the request: union caller tools with the canonical set
         # (caller definitions win by name), always stream with usage.
         canonical = self._agent_tools()
@@ -298,92 +312,6 @@ class OpenCodeProvider(OpenAICompatibleChatProvider):
     # ------------------------------------------------------------------ #
     # chat dialect (/chat/completions) — streamed, aggregated
     # ------------------------------------------------------------------ #
-    @staticmethod
-    def _merge_consecutive_tool_calls(messages: list[dict[str, Any]]) -> list[dict[str, Any]]:
-        """Normalise the transcript to the shape Zen's chat gateway accepts.
-
-        The gateway answers any transcript it dislikes with a bare ``400
-        invalid_request_error: Upstream request failed`` (no offending message,
-        no tool name). Verified shapes and their fate:
-
-        * ``assistant(tool_calls) tool*`` — accepted as-is.
-        * ``assistant(text) tool*`` — a result whose introducing assistant turn
-          has no tool calls, e.g. after a mid-session provider switch (the old
-          provider's turns were flattened to text by the agent). **Rejected.**
-        * ``assistant tool assistant tool`` — split assistant run, what pi
-          writes. **Rejected.**
-        * ``tool`` with no assistant above at all — **Rejected.**
-
-        The fix rewrites only the rejected parts: a tool run that does not
-        directly follow its assistant turn is demoted to a user turn carrying
-        the result in a ``<tool_result>`` wrapper. Structurally equivalent for
-        the model (it reads the result either way), and it keeps every
-        transcript sendable regardless of how it was stitched together.
-        """
-        # Pass 1 — fold split assistant runs: assistant/tool/assistant(tool_calls)
-        # becomes one assistant message holding all of the run's calls.
-        merged: list[dict[str, Any]] = []
-        pending_tools: list[dict[str, Any]] = []
-        for msg in messages:
-            if msg.get("role") == "tool":
-                pending_tools.append(msg)
-                continue
-            is_next_split_leg = (
-                msg.get("role") == "assistant"
-                and msg.get("tool_calls")
-                and bool(merged)
-                and merged[-1].get("role") == "assistant"
-                and merged[-1].get("tool_calls")
-            )
-            if not is_next_split_leg:
-                # Close the current assistant turn: its results come before
-                # whatever follows (a later user turn must not overtake them).
-                merged.extend(pending_tools)
-                pending_tools = []
-                merged.append(msg)
-            else:
-                # Split leg: fold the calls into the assistant turn above; the
-                # parked results stay parked (their run is not closed yet).
-                base = merged[-1]
-                base["tool_calls"] = list(base["tool_calls"]) + list(msg["tool_calls"])
-                if msg.get("content") and not base.get("content"):
-                    base["content"] = msg["content"]
-
-        # Pass 2 — a tool run survives only directly behind its assistant turn
-        # (with calls). Everything else becomes a user turn.
-        out: list[dict[str, Any]] = []
-        index = 0
-        total = len(merged)
-        while index < total:
-            msg = merged[index]
-            if msg.get("role") == "tool":
-                run = []
-                while index < total and merged[index].get("role") == "tool":
-                    run.append(merged[index])
-                    index += 1
-                parent = out[-1] if out else None
-                if parent is not None and parent.get("role") == "assistant" and parent.get("tool_calls"):
-                    known = {c.get("id") for c in parent["tool_calls"]}
-                    claimed = [t for t in run if (t.get("tool_call_id") or t.get("id")) in known]
-                    orphans = [t for t in run if t not in claimed]
-                    out.extend(claimed)  # results belong here — the gateway takes this shape
-                    # Partial match: demote only what the turn above did not call.
-                    out.extend(
-                        {"role": "user",
-                         "content": "<tool_result>{}</tool_result>".format(t.get("content", ""))}
-                        for t in orphans
-                    )
-                    continue
-                out.extend(
-                    {"role": "user",
-                     "content": "<tool_result>{}</tool_result>".format(t.get("content", ""))}
-                    for t in run
-                )
-                continue
-            out.append(msg)
-            index += 1
-        return out
-
     async def _chat_acomplete(
         self,
         request: ChatCompletionRequest,
@@ -403,7 +331,7 @@ class OpenCodeProvider(OpenAICompatibleChatProvider):
         model_id = request.model
         last_chunks: list[dict[str, Any]] = []
         try:
-            async with client.stream("POST", endpoint, headers=headers, json=payload, timeout=60.0) as response:
+            async with client.stream("POST", endpoint, headers=headers, json=payload, timeout=OPENCODE_UPSTREAM_TIMEOUT) as response:
                 if response.status_code != 200:
                     error_body = await response.aread()
                     error_text = error_body.decode("utf-8", errors="replace")
@@ -518,7 +446,7 @@ class OpenCodeProvider(OpenAICompatibleChatProvider):
         headers = self._build_headers()
         client = await self._get_async_client()
         try:
-            response = await client.post(self._systemone_endpoint(), headers=headers, json=payload, timeout=60.0)
+            response = await client.post(self._systemone_endpoint(), headers=headers, json=payload, timeout=OPENCODE_UPSTREAM_TIMEOUT)
             if response.status_code != 200:
                 raise map_provider_error(
                     self._error_name(),
@@ -665,7 +593,7 @@ class OpenCodeProvider(OpenAICompatibleChatProvider):
         headers = self._build_headers()
         client = await self._get_async_client()
         saw_delta = False
-        async with client.stream("POST", self._responses_endpoint(), headers=headers, json=payload, timeout=60.0) as response:
+        async with client.stream("POST", self._responses_endpoint(), headers=headers, json=payload, timeout=OPENCODE_UPSTREAM_TIMEOUT) as response:
             if response.status_code != 200:
                 error_body = await response.aread()
                 error_text = error_body.decode("utf-8", errors="replace")
