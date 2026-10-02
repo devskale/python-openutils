@@ -10,6 +10,7 @@ import requests
 import uniinfer.providers.opencode as oc_module
 from uniinfer import ProviderFactory
 from uniinfer.providers.opencode import OpenCodeProvider, _parse_docs_mdx
+from uniinfer.providers.kilo import KiloProvider
 from uniinfer.core import ChatCompletionRequest, ChatMessage, ModelInfo
 
 
@@ -687,3 +688,68 @@ class TestStrictToolHistoryFlag:
         messages = p._build_payload(req, False, {})["messages"]
         assert [m.get("role") for m in messages] == ["user", "assistant", "tool", "tool", "user"]
         assert [c["id"] for c in messages[1]["tool_calls"]] == ["c1", "c2"]
+
+
+class TestNormalizeToolCallIds:
+    """kilo answers a transcript carrying ids another backend minted (TU vLLM's
+    chatcmpl-tool-*) with a silent empty completion. NORMALIZE_TOOL_CALL_IDS
+    rewrites every id to call_<n> — same mapping on both sides of each pair."""
+
+    @staticmethod
+    def _transcript():
+        return [
+            {"role": "user", "content": "hi"},
+            {"role": "assistant", "content": None, "tool_calls": [
+                {"id": "chatcmpl-tool-aba455040e1e2db3", "type": "function",
+                 "function": {"name": "bash", "arguments": "{}"}},
+                {"id": "chatcmpl-tool-a1415dddfcd65862", "type": "function",
+                 "function": {"name": "read", "arguments": "{}"}},
+            ]},
+            {"role": "tool", "tool_call_id": "chatcmpl-tool-aba455040e1e2db3", "content": "a"},
+            {"role": "tool", "tool_call_id": "chatcmpl-tool-a1415dddfcd65862", "content": "b"},
+            {"role": "assistant", "content": "fertig"},
+            {"role": "user", "content": "weiter"},
+        ]
+
+    def test_pairing_survives_the_rewrite(self):
+        from uniinfer.providers.openai_compatible import normalize_tool_call_ids
+        out = normalize_tool_call_ids(self._transcript())
+        ids = [c["id"] for c in out[1]["tool_calls"]]
+        refs = [m["tool_call_id"] for m in out if m["role"] == "tool"]
+        # every result references the rewritten id of its call
+        assert refs == ids[:2]
+        # short neutral format, no chatcmpl-tool- prefix anywhere
+        assert all(i.startswith("call_") and len(i) <= 13 for i in ids + refs)
+        assert "chatcmpl-tool-" not in json.dumps(out)
+
+    def test_deterministic(self):
+        from uniinfer.providers.openai_compatible import normalize_tool_call_ids
+        once = json.dumps(normalize_tool_call_ids(self._transcript()))
+        twice = json.dumps(normalize_tool_call_ids(self._transcript()))
+        assert once == twice
+
+    def test_unmatched_tool_call_id_left_alone(self):
+        from uniinfer.providers.openai_compatible import normalize_tool_call_ids
+        msgs = [{"role": "tool", "tool_call_id": "orphan-1", "content": "x"}]
+        assert normalize_tool_call_ids(msgs)[0]["tool_call_id"] == "orphan-1"
+
+    def test_kilo_opts_in_opencode_does_not(self):
+        assert KiloProvider.NORMALIZE_TOOL_CALL_IDS is True
+        assert OpenCodeProvider.NORMALIZE_TOOL_CALL_IDS is False
+
+    def test_kilo_payload_rewrites_ids(self):
+        p = KiloProvider(api_key="k")
+        req = ChatCompletionRequest(
+            model="stealth/space-bunny-alpha",
+            messages=[
+                ChatMessage(role="user", content="hi"),
+                ChatMessage(role="assistant", content=None,
+                            tool_calls=[{"id": "chatcmpl-tool-deadbeef", "type": "function",
+                                         "function": {"name": "bash", "arguments": "{}"}}]),
+                ChatMessage(role="tool", tool_call_id="chatcmpl-tool-deadbeef", content="out"),
+            ],
+        )
+        messages = p._build_payload(req, False, {})["messages"]
+        call_id = messages[1]["tool_calls"][0]["id"]
+        assert call_id.startswith("call_")
+        assert messages[2]["tool_call_id"] == call_id

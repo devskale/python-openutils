@@ -49,6 +49,11 @@ class KiloProvider(OpenAICompatibleChatProvider):
     # whole request with "unsupported schema keyword" for validation-only
     # keywords such as `pattern` that pi's tool schemas carry.
     STRICT_GRAMMAR_SCHEMAS = True
+    # Silent empty completions on foreign tool-call ids: a transcript carrying
+    # ids another backend minted (TU vLLM's chatcmpl-tool-*) makes the gateway
+    # answer with 0 tokens / finish=stop instead of an error. Rewriting every
+    # id to a neutral call_<n> keeps the pairing and dodges the id grammar.
+    NORMALIZE_TOOL_CALL_IDS = True
 
     def __init__(self, api_key: Optional[str] = None, **kwargs):
         if not api_key:

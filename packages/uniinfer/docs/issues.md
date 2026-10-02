@@ -174,7 +174,7 @@ with the evidence collected here.
 
 ---
 
-## ⬜ 7. Foreign `tool_call_id`s in history → silent empty answer (cross-provider)
+## 🟡 7. Foreign `tool_call_id`s in history → silent empty answer (cross-provider)
 
 **Symptom:** a model answers normally in a fresh session, but returns an
 **empty stream** — HTTP 200, `finish_reason: stop`, zero tokens, no error —
@@ -189,11 +189,14 @@ as soon as the conversation history contains an `assistant` message with
    streams role-only + `stop`, so the client sees `content: []` and
    `usage: {total_tokens: 0}` rather than a validation error.
 
-**Not ours to fix** (no code in this repo generates those ids — confirmed by
-grep and by the fact that upstream itself emits plain UUIDs when asked fresh):
-the same request with ids rewritten to `call_abc123` / `chatcmpl-<uuid>`
-answers normally, and dropping the `tool_calls` field from that one history
-message answers normally.
+**Mitigation (proxy-side, 2026-10-02):** `NORMALIZE_TOOL_CALL_IDS` (base
+`OpenAICompatibleChatProvider` flag, on for kilo) rewrites every id to
+`call_<n>` — same mapping on the assistant calls and the matching results, so
+the pairing survives; unmatched ids are left alone. Semantically transparent,
+deterministic, off by default. The upstream stopped reproducing the silent
+empty on 2026-10-02 (10/10 raw ok) — the flag stays as defense, because the
+failure was intermittent and no code in this repo generates those ids (the
+gateway itself emits plain UUIDs when asked fresh).
 
 **Workaround:** start a fresh session after a mid-session model/provider switch,
 or strip `tool_calls` from historical assistant messages when reusing a

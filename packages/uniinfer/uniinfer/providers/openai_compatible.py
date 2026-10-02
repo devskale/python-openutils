@@ -128,6 +128,41 @@ def normalize_tool_history(messages: list[dict[str, Any]]) -> list[dict[str, Any
     return out
 
 
+def normalize_tool_call_ids(messages: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Rewrite tool-call ids to a short gateway-neutral format, consistently.
+
+    Ids only need to be internally consistent within one request (assistant
+    ``tool_calls[].id`` <-> ``tool.tool_call_id``), but gateways validate what
+    they accept: a transcript carrying ids another backend minted (e.g. TU
+    vLLM's ``chatcmpl-tool-<hex>`` after a mid-session model switch to kilo)
+    gets a silent empty completion instead of an error. Renaming every id to
+    ``call_<n>`` — the same mapping applied to both sides of each pair — is
+    semantically transparent and sidesteps whatever id grammar a gateway
+    enforces. Unmatched ``tool_call_id`` entries (no assistant call above) are left
+    alone; renaming those would fabricate a pairing. Deterministic: the same
+    transcript always yields the same ids.
+    """
+    mapping: dict[str, str] = {}
+    counter = 0
+    for msg in messages:
+        if msg.get("role") == "assistant" and msg.get("tool_calls"):
+            for tc in msg["tool_calls"]:
+                if not isinstance(tc, dict):
+                    continue
+                old = tc.get("id")
+                if not old:
+                    continue
+                if old not in mapping:
+                    counter += 1
+                    mapping[old] = "call_%08x" % counter
+                tc["id"] = mapping[old]
+        elif msg.get("role") == "tool":
+            old = msg.get("tool_call_id")
+            if old and old in mapping:
+                msg["tool_call_id"] = mapping[old]
+    return messages
+
+
 class OpenAICompatibleChatProvider(ChatProvider):
     # OpenAI params to NEVER forward even if a client sends them as extras
     # (none known yet; add here if one 400s a backend).
@@ -276,6 +311,13 @@ class OpenAICompatibleChatProvider(ChatProvider):
     # See normalize_tool_history() for the exact shapes and the rewrite rules.
     STRICT_TOOL_HISTORY: bool = False
 
+    # Rewrite tool-call ids (assistant calls + matching results) to a short
+    # gateway-neutral format. For gateways that choke on ids another backend
+    # minted — kilo answers a transcript carrying TU vLLM's chatcmpl-tool-*
+    # ids with a silent empty completion. Off by default: gateways that
+    # tolerate any id grammar must keep seeing it untouched.
+    NORMALIZE_TOOL_CALL_IDS: bool = False
+
     # Schema keywords dropped entirely when STRICT_GRAMMAR_SCHEMAS is on.
     # `pattern` is the common offender: pi's tool schemas carry it (e.g.
     # herdr_agent's `name`), and grammar folding has no way to validate a
@@ -367,6 +409,8 @@ class OpenAICompatibleChatProvider(ChatProvider):
         messages = self._flatten_messages(request.messages)
         if self.STRICT_TOOL_HISTORY:
             messages = normalize_tool_history(messages)
+        if self.NORMALIZE_TOOL_CALL_IDS:
+            messages = normalize_tool_call_ids(messages)
         payload: dict[str, Any] = {
             "model": model_id,
             "messages": messages,
