@@ -362,7 +362,9 @@ class LeanHTTPMiddleware:
             log_fn("[auth-ban] 401 counted for %s (fails=%d/%d)%s", ip,
                    len(_AUTH_BANS.fails.get(ip, ())), _AUTH_BANS.threshold,
                    " — BANNED" if triggered else "")
+        model = st.get("provider_model") if isinstance(st, dict) else None
         if "text/event-stream" not in ct:
-            logger.info("[%s] END %s %s - Status: %s - Duration: %.2fms%s",
+            logger.info("[%s] END %s %s - Status: %s - Duration: %.2fms%s%s",
                         request_id, method, path, resp["status"], (time.time() - started) * 1000,
+                        f" - model={model}" if model else "",
                         f" - auth={auth_fp}" if auth_fp else "")

@@ -11,6 +11,7 @@ import requests
 import uniinfer.providers.opencode as oc_module
 from uniinfer import ProviderFactory
 from uniinfer.providers.opencode import OpenCodeProvider, _parse_docs_mdx
+from uniinfer.providers.openai_compatible import normalize_tool_history
 from uniinfer.providers.kilo import KiloProvider
 from uniinfer.core import ChatCompletionRequest, ChatMessage, ModelInfo
 
@@ -1024,3 +1025,49 @@ class TestRetryAfterVisibility:
             return ei.value.retry_after
 
         assert asyncio.run(main()) == 45.0
+
+
+class TestNormalizerSafetyProperties:
+    """The normaliser rewrites only rejected shapes; these properties must hold
+    for every input, so future rule changes cannot silently corrupt history."""
+
+    def test_idempotent_on_all_fixtures(self):
+        """normalize(normalize(x)) == normalize(x) — a second pass must be a
+        no-op, otherwise repeated requests drift."""
+        from uniinfer.providers.openai_compatible import normalize_tool_history
+
+        tc = lambda i: {"id": i, "type": "function", "function": {"name": "bash", "arguments": "{}"}}
+        A = lambda *t: {"role": "assistant", "content": None, "tool_calls": list(t)}
+        T = lambda i, c: {"role": "tool", "tool_call_id": i, "content": c}
+        U = lambda c: {"role": "user", "content": c}
+        fixtures = [
+            [U("hi"), A(tc("c1")), T("c1", "a"), A(tc("c2")), T("c2", "b"), U("w")],
+            [U("hi"), T("orphan", "x"), U("w")],
+            [U("hi"), A(tc("c1"), tc("c2")), T("c1", "a"), T("c2", "b"), U("w")],
+            [{"role": "assistant", "content": "text"}, T("c9", "y")],
+            [U("hi"), A(tc("c1")), T("c1", "a")],
+        ]
+        for msgs in fixtures:
+            once = normalize_tool_history(msgs)
+            twice = normalize_tool_history(once)
+            assert once == twice
+
+    def test_no_text_loss(self):
+        """Every text the caller sent is still present after normalising —
+        the rewrite may regroup but never drop."""
+        from uniinfer.providers.openai_compatible import normalize_tool_history
+
+        tc = lambda i: {"id": i, "type": "function", "function": {"name": "bash", "arguments": "{}"}}
+        msgs = [
+            {"role": "user", "content": "erster turn"},
+            {"role": "assistant", "content": None, "tool_calls": [tc("c1")]},
+            {"role": "tool", "tool_call_id": "c1", "content": "ergebnis-eins"},
+            {"role": "assistant", "content": "zweiter text"},
+            {"role": "user", "content": "orphan folgt"},
+            {"role": "tool", "tool_call_id": "unknown", "content": "verwaistes ergebnis"},
+            {"role": "user", "content": "schluss"},
+        ]
+        blob = json.dumps(normalize_tool_history(msgs))
+        for text in ("erster turn", "ergebnis-eins", "zweiter text",
+                     "orphan folgt", "verwaistes ergebnis", "schluss"):
+            assert text in blob

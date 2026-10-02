@@ -57,6 +57,9 @@ def create_chat_router(
     ):
         base_url = request_input.base_url
         provider_model = request_input.model
+        # The END log line (middleware) names the model — without it a mixed
+        # traffic journal cannot tell which model a status belonged to.
+        request.state.provider_model = provider_model
         _req_t0 = time.monotonic()
         target: Target | None = None
 

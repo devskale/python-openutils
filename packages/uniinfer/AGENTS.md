@@ -49,6 +49,11 @@ After pushing to `main`: `cd /home/ubuntu/code/python-openutils && git pull && c
 
 > Bare `uv sync` = lean base-only und strippt die optionalen Provider-SDKs.
 > Production (amd) immer `--all-extras` (oder `./deploy.sh --all-extras`).
+> **Runtime-Config auf Serving-Boxen ist Operator-Intent.** Die `.env` der
+> Service-Units (z.B. amd: `TU_TRANSPORT_RETRIES=0` = lean relay — der Client
+> macht seine eigenen Retries, der Proxy relaisiert nur) ist bewusst gesetzt.
+> Vorschlagen, nie eigenmächtig umstellen; die Gründe stehen hier im Repo, nicht
+> in der `.env` selbst.
 
 | Key | Value |
 |-----|-------|
@@ -168,6 +173,20 @@ Legacy allowlist-only tokens remain valid until revoked.
 - `uniinfer/ratelimit.py` — adaptive per-(provider,model) AIMD limiter (TU).
 - Provider limits: `uniinfer/config/provider_limits.json` → baked into `PROVIDER_CONFIGS[*].free_tier_limits`, served at `/v1/system/provider-limits`.
 - Live testsuite: `testsuite/run.sh` (smoke/details/perf) + `scripts/test_cli.sh`, `scripts/test_proxy.sh`.
+
+### Debugging provider requests
+
+Capture real payloads instead of reconstructing them from session files —
+`scripts/debug-capture-proxy.py` + the 4-step recipe:
+[docs/debugging.md](docs/debugging.md). The proxy journal's END lines carry
+`model=` since 2026-10-02; older journals don't.
+
+### Upstream budgets are env-tunable
+
+Provider HTTP timeouts/budgets follow the `OPENCODE_UPSTREAM_TIMEOUT` pattern
+(module `_env_float` + named constant, wired per request) — never a bare
+literal. A hardcoded 60s killed 1MB agent transcripts with a naked 500 before
+this was the rule; if a budget must exist un-tunable, say why in a comment.
 
 ### Adding a New Provider
 
