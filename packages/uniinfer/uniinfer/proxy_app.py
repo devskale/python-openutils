@@ -53,8 +53,10 @@ except Exception:  # pragma: no cover - defensive
     TU_STREAM_GAP_TIMEOUT = 60.0
     _TU_TELEMETRY = None
 
-# Load environment variables from .env file
-load_dotenv()
+# Load environment variables from .env file — never under pytest (prod .env
+# in CWD would pollute the suite; see provider_access.py for the finding)
+if "pytest" not in sys.modules:
+    load_dotenv()
 
 
 # --- Setup Logging ---

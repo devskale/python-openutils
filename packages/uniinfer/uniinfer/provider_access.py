@@ -11,6 +11,7 @@ embeddings (different factory + request type), and the list helpers.
 """
 import logging
 import os
+import sys
 from typing import Any
 
 from uniinfer import EmbeddingProviderFactory, EmbeddingRequest, EmbeddingResponse
@@ -28,10 +29,17 @@ from dotenv import load_dotenv
 logger = logging.getLogger(__name__)
 
 # Load environment variables from .env file
-dotenv_path = os.path.join(os.getcwd(), ".env")
-found_dotenv = load_dotenv(dotenv_path=dotenv_path, verbose=True, override=True)
-logger.debug(f"Attempted to load .env from: {dotenv_path}")
-logger.debug(f".env file found and loaded: {found_dotenv}")
+# Under pytest: NEVER — production boxes carry a real .env in the package CWD
+# (token allowlist, mem guard, …) and import-time loading pollutes the whole
+# suite (found 2026-10-05 by the on-machine deploy gate: 13 tests red on amd,
+# green on dev boxes without .env). Tests stay hermetic wherever they run.
+if "pytest" not in sys.modules:
+    dotenv_path = os.path.join(os.getcwd(), ".env")
+    found_dotenv = load_dotenv(dotenv_path=dotenv_path, verbose=True, override=True)
+    logger.debug(f"Attempted to load .env from: {dotenv_path}")
+    logger.debug(f".env file found and loaded: {found_dotenv}")
+else:
+    found_dotenv = False
 
 
 def _resolve_credgoo_service(provider_name: str) -> str:
