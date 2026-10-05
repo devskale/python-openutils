@@ -8,6 +8,7 @@ import requests
 
 from ..core import REASONING_OFF, ChatCompletionRequest, ChatCompletionResponse, ChatMessage, ChatProvider, ModelInfo
 from ..errors import RateLimitError, UniInferError, map_provider_error
+from ..logging_utils import audit_stream_open, capture_upstream_error
 
 _MODEL_DEFAULTS: dict[str, dict[str, Any]] | None = None
 _MODEL_DEFAULTS_PATH = Path(__file__).resolve().parent.parent / "models" / "model_defaults.json"
@@ -620,6 +621,11 @@ class OpenAICompatibleChatProvider(ChatProvider):
         endpoint = self._completion_endpoint()
         payload = self._build_payload(request, True, provider_specific_kwargs)
         headers = self._build_headers()
+        # One seam for ALL thin providers (kilo, mistral, …): every streaming
+        # request is audited here, and upstream non-200s are captured to the
+        # provider raw log — providers with fully custom stream loops (tu)
+        # keep their own instrumentation.
+        audit_stream_open(self.PROVIDER_ID, request.model, payload)
 
         retries = max(0, int(getattr(self, "EMPTY_COMPLETION_RETRIES", 0) or 0))
         attempt = 0
@@ -648,6 +654,8 @@ class OpenAICompatibleChatProvider(ChatProvider):
                     if response.status_code != 200:
                         error_body = await response.aread()
                         error_text = error_body.decode("utf-8", errors="replace")
+                        capture_upstream_error(self.PROVIDER_ID, "chat.completions.stream",
+                                               response.status_code, error_text)
                         error_msg = f"{self._error_name()} API error: {response.status_code} - {error_text}"
                         raise map_provider_error(
                             self._error_name(),

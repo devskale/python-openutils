@@ -113,7 +113,11 @@ There are two deploy targets — do not confuse them.
 
 The `uniioai-proxy` systemd service runs **on amd** from this local checkout
 (`/home/ubuntu/code/python-openutils/packages/uniinfer`). It is **not** pulled
-via git URL — it *is* this repo.
+via git URL — it *is* this repo. **System unit, not `--user`**: `sudo
+systemctl status uniioai-proxy`, `sudo journalctl -u uniioai-proxy`. Ops +
+logging gotchas + 4-level investigation schema (pi jsonl → nginx → journal →
+provider raw logs):
+[docs/gotchas/uniioai-proxy-logging.md](docs/gotchas/uniioai-proxy-logging.md).
 
 **Serving point — never hardcode ports, always discover from the live config:**
 

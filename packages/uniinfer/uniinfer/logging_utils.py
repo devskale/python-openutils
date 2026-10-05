@@ -1,4 +1,5 @@
 import json
+import logging
 import os
 import re
 from datetime import datetime
@@ -74,3 +75,31 @@ def log_raw_response(
             handle.write(json.dumps(event, ensure_ascii=True) + "\n")
     except (OSError, PermissionError):
         return
+
+
+def audit_stream_open(provider: str, model: Any, payload: dict[str, Any], operation: str = "STREAM-OPEN") -> None:
+    """Always-on INFO audit line for an outgoing streaming request (model,
+    payload keys, byte size) — enough to spot a malformed request shape in
+    the log without dumping user content. Full payload only behind
+    UNIINFER_DEBUG_RAW."""
+    log = logging.getLogger(__name__)
+    keys = ",".join(sorted(payload.keys()))
+    raw = json.dumps(payload, default=str)  # single dump; size line always, raw only when enabled
+    log.info("[%s] %s -> %s | payload keys=[%s] bytes=%d", provider, operation, model, keys, len(raw))
+    if os.getenv("UNIINFER_DEBUG_RAW", "").lower() in {"1", "true", "yes"}:
+        log.info("[%s] %s -> %s | FULL PAYLOAD: %s", provider, operation, model, raw[:4000])
+
+
+def capture_upstream_error(provider: str, operation: str, status_code: int, body: str) -> None:
+    """Capture an upstream non-200 into logs/{provider}_raw_chat.log.
+
+    Streaming relays turn provider errors into HTTP 200 + in-band SSE error —
+    without this capture the journal/nginx only ever show a bare "200 619b"
+    (incident 2026-10-05: opencode 403/400 fails left zero journal trace)."""
+    log_dir = os.getenv("UNIINFER_LOG_DIR", os.path.join(os.getcwd(), "logs"))
+    log_raw_response(
+        provider=provider,
+        operation=operation,
+        raw_response={"status_code": status_code, "body": body[:2000]},
+        log_file=os.path.join(log_dir, f"{provider}_raw_chat.log"),
+    )

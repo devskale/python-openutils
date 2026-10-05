@@ -29,10 +29,13 @@ den Fehler dort reproduziert.
    200-Response relaid. nginx zeigt nur `POST … 200 619` — kein 4xx.
    - Seit 2026-10-05 (`d5cabc1` + Nachfolger): END-Line auch für SSE
      (`… - sse`-Suffix, vorher: `if "text/event-stream" not in ct` → nie geloggt)
-     und `[opencode] STREAM-OPEN`-Audit-Line + Upstream-non-200-Capture nach
-     `logs/opencode_raw_chat.log` (Chat-Dialekt läuft im Streaming-Pfad über
-     die Parent-Klasse, NICHT über `_chat_acomplete` — Logging muss an
-     `astream_complete`!).
+     und STREAM-OPEN-Audit + Upstream-non-200-Capture als **Parent-Seam in
+     `OpenAICompatibleChatProvider.astream_complete`** (logging_utils:
+     `audit_stream_open`/`capture_upstream_error`) — jedes Thin-Provider-Modul
+     (kilo, mistral, …) erbt sie; tu behält seine eigene Instrumentierung;
+     opencode loggt zusätzlich seine Spezialpfade (`_chat_acomplete`,
+     responses-Dialekt). Regression-Test:
+     `uniinfer/tests/test_audit_logging.py`.
 
 3. **pi-Session-JSONL ist die Ground Truth für „welches Modell/Provider
    failte".** Grep: `"stopReason":"error"` → `errorMessage` enthält den
