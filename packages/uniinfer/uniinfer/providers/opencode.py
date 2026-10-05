@@ -809,8 +809,23 @@ class OpenCodeProvider(OpenAICompatibleChatProvider):
             return
         if dialect in ("anthropic", "google"):
             raise self._unsupported_dialect_error(dialect, request.model or "")
-        async for chunk in super().astream_complete(request, **provider_specific_kwargs):
-            yield chunk
+        # pi (und die meisten Clients) streamen — der Chat-Dialekt läuft hier
+        # über die generische Parent-Implementierung, NICHT über
+        # _chat_acomplete. Audit-Line + Fehler-Capture daher hier zusätzlich.
+        _log_outgoing_payload(
+            request.model,
+            self._build_payload(request, True, provider_specific_kwargs),
+            operation="STREAM-OPEN",
+        )
+        try:
+            async for chunk in super().astream_complete(request, **provider_specific_kwargs):
+                yield chunk
+        except UniInferError as e:
+            status = getattr(e, "status_code", None)
+            if status is not None:
+                _log_upstream_error(self.PROVIDER_ID, "chat.completions.stream",
+                                    status, getattr(e, "response_body", None) or str(e))
+            raise
 
     # ------------------------------------------------------------------ #
     # model listing — fully dynamic
