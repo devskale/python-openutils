@@ -5,6 +5,7 @@
 """
 
 import asyncio
+import time
 import os
 import socket as _socket
 import tempfile
@@ -102,7 +103,12 @@ async def test_mem_guard_exits_when_stays_high(monkeypatch):
     exits = []
     task = asyncio.create_task(memory_guard_task(
         get_rss_mb=lambda: 400.0, exit_fn=lambda c: exits.append(c)))
-    await asyncio.sleep(0.2)
+    # Deadline-poll statt fixem Schlaf: auf belasteten Boxen (Prod!) nehmen
+    # gc.collect + pool-clear länger als jede feste Wallclock-Budget —
+    # gefunden 2026-10-05 vom on-machine deploy-gate (amd rot, mac grün).
+    deadline = time.monotonic() + 5.0
+    while not exits and time.monotonic() < deadline:
+        await asyncio.sleep(0.02)
     task.cancel()
     assert exits == [75]  # controlled exit for clean restart
 
