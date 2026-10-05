@@ -37,6 +37,7 @@ JSON ``{"state": ..., "questions": ...}}``; the response content is the
 ``answers`` object as JSON.
 """
 import json
+import logging
 import os
 import re
 import secrets
@@ -50,7 +51,10 @@ import requests
 
 from ..core import ChatCompletionRequest, ChatCompletionResponse, ChatMessage, ModelInfo
 from ..errors import UniInferError, map_provider_error
+from ..logging_utils import log_raw_response
 from .openai_compatible import OpenAICompatibleChatProvider
+
+logger = logging.getLogger(__name__)
 
 _TOOLS_PATH = Path(__file__).resolve().parent / "opencode_agent_tools.json"
 _B62 = string.digits + string.ascii_uppercase + string.ascii_lowercase
@@ -61,6 +65,36 @@ def _env_float(name: str, default: float) -> float:
         return float(os.getenv(name, ""))
     except (TypeError, ValueError):
         return default
+
+
+def _raw_logging_enabled() -> bool:
+    return os.getenv("UNIINFER_DEBUG_RAW", "").lower() in {"1", "true", "yes"}
+
+
+def _log_outgoing_payload(model: Optional[str], payload: dict[str, Any], *, operation: str) -> None:
+    """Audit trail for outgoing OpenCode payloads (mirrors tu.py).
+
+    Always-on INFO line: model + payload keys + byte size — enough to spot a
+    malformed/mutated request shape in the log without dumping user content.
+    Full payload (messages included) only behind UNIINFER_DEBUG_RAW.
+    """
+    keys = ",".join(sorted(payload.keys()))
+    raw = json.dumps(payload, default=str)  # single dump; size line always, raw only when enabled
+    logger.info("[opencode] %s -> %s | payload keys=[%s] bytes=%d", operation, model, keys, len(raw))
+    if _raw_logging_enabled():
+        logger.info("[opencode] %s -> %s | FULL PAYLOAD: %s", operation, model, raw[:4000])
+
+
+def _log_upstream_error(provider_id: str, operation: str, status_code: int, body: str) -> None:
+    """Capture an upstream non-200 (FreeTierError gate, invalid_request, …) to
+    the provider raw log — the SSE relay turns these into 200 + in-band error,
+    so without this the journal/nginx only ever show a bare "200 619b"."""
+    log_raw_response(
+        provider=provider_id,
+        operation=operation,
+        raw_response={"status_code": status_code, "body": body[:2000]},
+        log_file=os.path.join(os.getcwd(), "logs", f"{provider_id}_raw_chat.log"),
+    )
 
 # Official docs tables (endpoints + pricing) — the authoritative, versioned
 # source for dialect mapping and free/paid detection. Parsed from the repo,
@@ -321,6 +355,7 @@ class OpenCodeProvider(OpenAICompatibleChatProvider):
         endpoint = self._completion_endpoint()
         payload = self._build_payload(request, False, provider_specific_kwargs)
         headers = self._build_headers()
+        _log_outgoing_payload(request.model, payload, operation="STREAM-OPEN")
 
         client = await self._get_async_client()
         content_parts: list[str] = []
@@ -335,6 +370,8 @@ class OpenCodeProvider(OpenAICompatibleChatProvider):
                 if response.status_code != 200:
                     error_body = await response.aread()
                     error_text = error_body.decode("utf-8", errors="replace")
+                    _log_upstream_error(self.PROVIDER_ID, "chat.completions.stream",
+                                        response.status_code, error_text)
                     raise map_provider_error(
                         self._error_name(),
                         Exception(f"{self._error_name()} API error: {response.status_code} - {error_text}"),
@@ -591,12 +628,15 @@ class OpenCodeProvider(OpenAICompatibleChatProvider):
         """Yield (content_delta, tool_call_item, usage, finish) tuples from SSE."""
         payload = self._build_responses_payload(request)
         headers = self._build_headers()
+        _log_outgoing_payload(request.model, payload, operation="STREAM-OPEN")
         client = await self._get_async_client()
         saw_delta = False
         async with client.stream("POST", self._responses_endpoint(), headers=headers, json=payload, timeout=OPENCODE_UPSTREAM_TIMEOUT) as response:
             if response.status_code != 200:
                 error_body = await response.aread()
                 error_text = error_body.decode("utf-8", errors="replace")
+                _log_upstream_error(self.PROVIDER_ID, "responses.stream",
+                                    response.status_code, error_text)
                 raise map_provider_error(
                     self._error_name(),
                     Exception(f"{self._error_name()} API error: {response.status_code} - {error_text}"),

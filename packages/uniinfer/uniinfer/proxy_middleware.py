@@ -363,8 +363,15 @@ class LeanHTTPMiddleware:
                    len(_AUTH_BANS.fails.get(ip, ())), _AUTH_BANS.threshold,
                    " — BANNED" if triggered else "")
         model = st.get("provider_model") if isinstance(st, dict) else None
-        if "text/event-stream" not in ct:
-            logger.info("[%s] END %s %s - Status: %s - Duration: %.2fms%s%s",
-                        request_id, method, path, resp["status"], (time.time() - started) * 1000,
-                        f" - model={model}" if model else "",
-                        f" - auth={auth_fp}" if auth_fp else "")
+        suffix = f" - model={model}" if model else ""
+        suffix += f" - auth={auth_fp}" if auth_fp else ""
+        if "text/event-stream" in ct:
+            # SSE carries response-start (200) before any provider error surfaces
+            # mid-stream — without an END line those failures are invisible in
+            # the journal (nginx shows only "200 619b"). Status here is the
+            # header status; in-band errors are logged by the provider itself.
+            logger.info("[%s] END %s %s - Status: %s - Duration: %.2fms%s - sse",
+                        request_id, method, path, resp["status"], (time.time() - started) * 1000, suffix)
+        else:
+            logger.info("[%s] END %s %s - Status: %s - Duration: %.2fms%s",
+                        request_id, method, path, resp["status"], (time.time() - started) * 1000, suffix)
