@@ -64,6 +64,23 @@ den Fehler dort reproduziert.
    vhost → `localhost:8124`. Scanner-Müll im access.log (leere Requests,
    130.61.x.x) nicht mit echten Fails verwechseln.
 
+8. **Prod-`.env` vergiftet die Test-Suite auf Prod-Boxen** (gefunden
+   2026-10-05 vom on-machine deploy-gate, erster Lauf): `provider_access.py`
+   lud beim IMPORT `load_dotenv(CWD/.env, override=True)` — auf amd liegt die
+   echte `.env` (Token-Allowlist, Mem-Guard) und färbte auf die Suite ab
+   (13 rot auf amd, grün auf Dev-Boxen). Fix: dotenv-Laden nur außerhalb
+   pytest. Merksatz: import-time-Umgebungsmutation = Suite niemals hermetisch.
+
+9. **deploy.sh pulled seine eigene Erneuerung mid-run:** der Lauf, der die
+   neue deploy.sh pullt, exekutiert noch die ALTE (bash lielt das geöffnete
+   Script). Erst der nächste Lauf hat den neuen Gate — kein Bug, nur
+   Erwartung: nach deploy.sh-Änderungen einmal erneut laufen lassen.
+
+10. **Deploy = der Test-Gate** (Retro 2026-10-05): kein CI im Repo, CI-Minuten
+    sind Budget → `deploy.sh` läuft `uv run pytest` VOR dem restart (rot =
+    Abbruch, Service läuft auf altem Code weiter). Vertrag bewacht von
+    `scripts/lib/uniinfer-deploy-gate.test` (Metarepo, mit Self-Test).
+
 ## Typische Ein-Blick-Queries
 
 ```bash
