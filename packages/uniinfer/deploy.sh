@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# Deploy the uniioai-proxy: git pull -> uv sync (frozen) -> restart.
+# Deploy the uniioai-proxy: git pull -> uv sync (frozen) -> test gate -> restart.
 #
 # Provider / extras selection (which optional provider SDKs to install):
 #   (no arg)        BASE only — the lean default. Ships the core providers that
@@ -73,6 +73,16 @@ if ! uv lock --check; then
     exit 1
 fi
 uv sync --frozen $EXTRAS_FLAGS
+
+# On-machine test gate: der Deploy ist der einzige Trichter, den JEDE
+# Proxy-Änderung passieren muss — hier sitzt der Guardrail (kein CI im Repo,
+# CI-Minuten sind Budget). Rot = Abbruch, Service läuft weiter auf altem Code.
+# Vertrag bewacht von scripts/lib/uniinfer-deploy-gate.test (Metarepo).
+echo "Running test gate (suite must be green before restart)..."
+if ! uv run pytest uniinfer/tests/ -q; then
+    echo "❌ Tests failed — deploy aborted, service keeps running the previous code."
+    exit 1
+fi
 
 echo "Restarting uniioai-proxy service..."
 sudo systemctl restart uniioai-proxy
