@@ -72,3 +72,67 @@ class TestGeminiFix:
         response = await self.provider.acomplete(request)
         assert response.message.content == "Hi there!"
         assert response.provider == "gemini"
+
+
+class TestGeminiSchemaSanitizer:
+    """additionalProperties in any position makes the live Gemini API 400
+    (Unknown name \"additional_properties\") — the provider must strip it
+    recursively before building FunctionDeclarations."""
+
+    TOOLS_WITH_ADDITIONAL_PROPERTIES = [
+        {
+            "type": "function",
+            "function": {
+                "name": "edit",
+                "description": "edit a file",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "path": {"type": "string"},
+                        "edits": {"type": "object", "additionalProperties": True},
+                        "closed": {"type": "object", "additionalProperties": False, "properties": {}},
+                        "union": {
+                            "anyOf": [
+                                {"type": "string"},
+                                {"type": "object", "additionalProperties": True},
+                            ]
+                        },
+                    },
+                    "required": ["path"],
+                },
+            },
+        }
+    ]
+
+    def setup_method(self):
+        self.provider = GeminiProvider(api_key="test-key")
+
+    def test_additional_properties_stripped_everywhere(self):
+        request = ChatCompletionRequest(
+            messages=[ChatMessage(role="user", content="hi")],
+            model="gemini-2.5-flash",
+            tools=self.TOOLS_WITH_ADDITIONAL_PROPERTIES,
+        )
+        _, _, tools = self.provider._prepare_content_and_config(request)
+        params = tools[0]["parameters"]
+        assert "additionalProperties" not in params["properties"]["edits"]
+        assert "additionalProperties" not in params["properties"]["closed"]
+        assert all("additionalProperties" not in alt for alt in params["properties"]["union"]["anyOf"])
+        # everything else survives untouched
+        assert params["properties"]["edits"]["type"] == "object"
+        assert params["properties"]["union"]["anyOf"][0] == {"type": "string"}
+        assert params["required"] == ["path"]
+
+    def test_schema_without_additional_properties_untouched(self):
+        clean = {
+            "type": "object",
+            "properties": {"path": {"type": "string", "pattern": "^/"}},
+            "required": ["path"],
+        }
+        request = ChatCompletionRequest(
+            messages=[ChatMessage(role="user", content="hi")],
+            model="gemini-2.5-flash",
+            tools=[{"type": "function", "function": {"name": "edit", "parameters": clean}}],
+        )
+        _, _, tools = self.provider._prepare_content_and_config(request)
+        assert tools[0]["parameters"] == clean

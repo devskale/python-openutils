@@ -42,6 +42,24 @@ def _parse_gemini_quota(error: Exception) -> dict:
     return info
 
 
+def _sanitize_gemini_schema(node: Any) -> Any:
+    """Strip schema constructs the live Gemini API rejects with 400 INVALID_ARGUMENT.
+
+    The google-genai SDK happily accepts OpenAI-style keywords (it has fields
+    for them), but the API rejects the serialized payload: ``additionalProperties``
+    (true or false) is unknown at every schema position, including inside
+    ``anyOf`` branches (verified against the live API 2026-11). Drop it
+    recursively; an open object stays open by omission, a closed one loses
+    only a constraint the API cannot express anyway.
+    """
+    if isinstance(node, dict):
+        out = {k: _sanitize_gemini_schema(v) for k, v in node.items() if k != "additionalProperties"}
+        return out
+    if isinstance(node, list):
+        return [_sanitize_gemini_schema(v) for v in node]
+    return node
+
+
 class GeminiProvider(ChatProvider):
     """
     Provider for Google Gemini API with async support.
@@ -270,7 +288,7 @@ class GeminiProvider(ChatProvider):
                         "description": func.get('description', ''),
                     }
                     if 'parameters' in func:
-                        gemini_func["parameters"] = func['parameters']
+                        gemini_func["parameters"] = _sanitize_gemini_schema(func['parameters'])
                     gemini_tools.append(gemini_func)
 
         if system_message:
