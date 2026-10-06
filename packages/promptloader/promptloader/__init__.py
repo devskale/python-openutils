@@ -18,4 +18,4 @@ __all__ = [
     "split_frontmatter",  # R7 (robotni-Review): öffentliche Fläche statt _-Importe
     "frontmatter_version",
 ]
-__version__ = "0.1.7"
+__version__ = "0.1.8"
