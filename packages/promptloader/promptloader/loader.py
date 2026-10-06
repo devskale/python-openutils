@@ -22,12 +22,12 @@ from __future__ import annotations
 
 import hashlib
 import os
-import re
 import subprocess
 import sys
 from pathlib import Path
 
 import yaml
+from frontmatter.default_handlers import YAMLHandler
 
 # ── Optional dotenv support (low-priority: shell > .env.local > .env) ──
 # Store where .env was found so _env_path can resolve relative paths.
@@ -51,13 +51,20 @@ AUTO_FIELDS = ("version", "content_sha256")  # excluded from the semantic finger
 
 
 # ── frontmatter + fingerprint (mirrors the kontext-prompts CLI) ──────────
+_FM_HANDLER = YAMLHandler()  # Parsen via etablierter Lib (python-frontmatter)
+
+
 def _split_frontmatter(text: str) -> tuple[str, str]:
-    if not text.startswith("---"):
+    """(frontmatter-rohtext, body) — geparst von python-frontmatter
+    (etablierte Jekyll-style-Lib, keine Hand-Parser mehr). Der Adapter
+    normalisiert nur auf unseren Vertrag: kein FM / ungeschlossen →
+    ("", text); beide Teile links gestript (der Handler lässt führende
+    Newlines stehen und wirft ValueError ohne Delimiter)."""
+    try:
+        front, body = _FM_HANDLER.split(text)
+    except ValueError:
         return "", text
-    end = text.find("\n---", 3)
-    if end == -1:
-        return "", text
-    return text[3:end].lstrip("\n"), text[end + 4:].lstrip("\n")
+    return front.lstrip("\n"), body.lstrip("\n")
 
 
 def _semantic_fingerprint(text: str) -> str:
@@ -247,13 +254,50 @@ def _active_prompts(pkg_dir: Path):
 
 
 # ── includes: {{> pfad.md}} — geteilte Regelblöcke, EINE Quelle ───────────
+# ── includes: {{> pfad.md}} — geteilte Regelblöcke, EINE Quelle ───────────
 # Syntax (eigene Zeile): {{> _regeln/datum-format.md}}
 # Pfad relativ zum PAKET-Root (z.B. system/agentos/). Partials tragen eigenes
 # Frontmatter (Version), das beim Einbetten GESTRIPPEN wird. Der kontext-
 # prompts-CLI spiegelt die Semantik fürs Version-Bumping (fingerprint der
 # AUFGELÖSTEN Texte) — Syntax hier ändern heißt dort ändern.
-_INCLUDE_RE = re.compile(r"^[ \t]*\{\{>\s*([^}\s]+)\s*\}\}\s*$", re.MULTILINE)
 _MAX_INCLUDE_DEPTH = 5
+
+
+def _include_path_of(line: str) -> str | None:
+    """``  {{> pfad.md}}  `` → ``pfad.md``; jede andere Zeile → None.
+
+    Reine String-Operationen — lesbar und ohne Escape-Suppe (Regex-Verbot
+    an dieser Stelle ist bewusst: die Syntax soll mit dem Auge parsbar sein)."""
+    stripped = line.strip()
+    if not (stripped.startswith("{{>") and stripped.endswith("}}")):
+        return None
+    inner = stripped[3:-2].strip()
+    return inner or None
+
+
+def _is_fence(line: str) -> bool:
+    """Code-Fence-Zeile (``` oder ~~~, auch eingerückt)?
+
+    DREI Tildes — zwei (~ ~ ohne Leerzeichen) sind Markdown-Strike-Through,
+    keine Fence."""
+    stripped = line.lstrip()
+    return stripped.startswith(("```", "~~~"))
+
+
+def _split_fences(text: str) -> list[tuple[str, bool]]:
+    """Zeilen als (zeile, auflösbar)-Paare — Zeilen INNERHALB von Code-Fences
+    sind tabu. Zweistatus-Scanner: eine Fence-Zeile schaltet um. Expliziter
+    Zustand statt Blind-Matching über den Ganzen — Prompt-Inhalte mit
+    Syntax-Beispielen bleiben unangetastet."""
+    out: list[tuple[str, bool]] = []
+    in_fence = False
+    for line in text.splitlines(keepends=True):
+        if _is_fence(line):
+            in_fence = not in_fence
+            out.append((line, False))
+            continue
+        out.append((line, not in_fence))
+    return out
 
 
 def resolve_includes(text: str, base_dir: Path, _stack: tuple = ()) -> str:
@@ -262,11 +306,21 @@ def resolve_includes(text: str, base_dir: Path, _stack: tuple = ()) -> str:
     Fail loud: fehlendes Partial → FileNotFoundError mit includierender Datei;
     Zyklus/Tiefe → ValueError. Partials unter ``_*``-Verzeichnissen bleiben vom
     aktiven Prompt-Index ausgeschlossen (``_is_excluded``) — sie sind Fragmente.
+
+    Syntax nach Handlebars-Partials-Kanon (``{{> partial}}`` — etabliert,
+    nicht erfunden). Bewusst KEIN Template-Engine-Rendering: Prompt-Bodies
+    stecken voller ``{{…}}``-Literale (str.format-Escapes für JSON-Beispiele),
+    die Jinja & Co. evaluieren würden. Fail loud: fehlendes Partial →
+    FileNotFoundError mit includierender Datei; Zyklus/Tiefe → ValueError.
+    Partials unter ``_*``-Verzeichnissen bleiben vom aktiven Prompt-Index
+    ausgeschlossen (``_is_excluded``) — sie sind Fragmente.
+
+    Code-Fences (```/~~~) werden NICHT angetastet — die Include-Syntax darf
+    in Beispielblöcken stehen, ohne aufgelöst zu werden (``_split_fences``).
     """
     base = Path(base_dir)
 
-    def _repl(m: re.Match) -> str:
-        rel = m.group(1)
+    def _resolve(rel: str) -> str:
         p = base / rel
         if not p.is_file():
             raise FileNotFoundError(
@@ -282,7 +336,11 @@ def resolve_includes(text: str, base_dir: Path, _stack: tuple = ()) -> str:
         _front, body = _split_frontmatter(part)  # Partial-Frontmatter (Version) bleibt draußen
         return resolve_includes(body, base, _stack + (key,)).rstrip("\n")
 
-    return _INCLUDE_RE.sub(_repl, text)
+    lines: list[str] = []
+    for line, resolvable in _split_fences(text):
+        rel = _include_path_of(line) if resolvable else None
+        lines.append(_resolve(rel) + "\n" if rel is not None else line)
+    return "".join(lines)
 
 
 # ── public API ───────────────────────────────────────────────────────────

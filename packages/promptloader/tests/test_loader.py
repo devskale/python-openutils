@@ -100,7 +100,7 @@ def test_uniqueness_invariant(fake_clone, monkeypatch):
     (fake_clone / "agentos" / "extract").mkdir()
     (fake_clone / "agentos" / "extract" / "dup.md").write_text("b", encoding="utf-8")
     # clear any cached index for this clone's agentos dir
-    from kontextprompts.loader import _INDEX_CACHE
+    from promptloader.loader import _INDEX_CACHE
     _INDEX_CACHE.pop(str(fake_clone / "agentos"), None)
     with pytest.raises(FileNotFoundError, match="not unique"):
         load_prompt("dup", package="agentos")
@@ -108,7 +108,7 @@ def test_uniqueness_invariant(fake_clone, monkeypatch):
 
 def test_fingerprint_excludes_version(fake_clone):
     """Bumping version must NOT change the semantic fingerprint."""
-    from kontextprompts.loader import _semantic_fingerprint
+    from promptloader.loader import _semantic_fingerprint
 
     a = "---\nversion: '1.0'\n---\nbody\n"
     b = "---\nversion: '2.0'\n---\nbody\n"

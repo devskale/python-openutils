@@ -59,3 +59,33 @@ def test_tiefe_begrenzt(tree):
 
 def test_ohne_include_unchanged(tree):
     assert resolve_includes("ganz normaler text", tree) == "ganz normaler text"
+
+
+def test_include_in_code_fence_bleibt_unangetastet(tmp_path):
+    """{{> …}} INNERHALB einer ```- oder ~~~-Fence wird NICHT aufgelöst
+    (Syntax-Beispiele in Prompts sind erlaubt)."""
+    (tmp_path / "_regeln").mkdir()
+    (tmp_path / "_regeln" / "r.md").write_text("INHALT-R", encoding="utf-8")
+    text = (
+        "Vorher.\n"
+        "```\n"
+        "{{> _regeln/r.md}}\n"
+        "```\n"
+        "~~~\n"
+        "{{> _regeln/r.md}}\n"
+        "~~~\n"
+        "{{> _regeln/r.md}}\n"
+    )
+    out = resolve_includes(text, tmp_path)
+    assert out.count("INHALT-R") == 1, "nur die Zeile AUSSERHALB der Fences löst auf"
+    assert out.count("{{>") == 2, "beide Fence-Zeilen bleiben wörtlich"
+
+
+def test_zwei_tildes_sind_keine_fence():
+    """~~ (zwei) ist Strike-Through, keine Fence — nur ~~~ (drei) zählt.
+    Inline-Includes (~~ {{> …}} ~~ in einer Zeile mit Text) lösen NIE auf:
+    die Direktive muss die ganze Zeile haben."""
+    from promptloader.loader import _is_fence
+
+    assert _is_fence("~~~\n") and _is_fence("  ~~~ rubrik\n")
+    assert not _is_fence("~~durchgestrichen~~\n")
