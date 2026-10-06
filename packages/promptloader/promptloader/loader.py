@@ -22,6 +22,7 @@ from __future__ import annotations
 
 import hashlib
 import os
+import re
 import subprocess
 import sys
 from pathlib import Path
@@ -32,7 +33,8 @@ import yaml
 # Store where .env was found so _env_path can resolve relative paths.
 _DOTENV_DIR: Path | None = None
 try:
-    from dotenv import find_dotenv, load_dotenv as _load_dotenv
+    from dotenv import find_dotenv
+    from dotenv import load_dotenv as _load_dotenv
 
     _dotenv_path = find_dotenv(usecwd=True)
     if _dotenv_path:
@@ -244,6 +246,45 @@ def _active_prompts(pkg_dir: Path):
     return [p for p in sorted(pkg_dir.rglob("*.md")) if not _is_excluded(p, pkg_dir)]
 
 
+# ── includes: {{> pfad.md}} — geteilte Regelblöcke, EINE Quelle ───────────
+# Syntax (eigene Zeile): {{> _regeln/datum-format.md}}
+# Pfad relativ zum PAKET-Root (z.B. system/agentos/). Partials tragen eigenes
+# Frontmatter (Version), das beim Einbetten GESTRIPPEN wird. Der kontext-
+# prompts-CLI spiegelt die Semantik fürs Version-Bumping (fingerprint der
+# AUFGELÖSTEN Texte) — Syntax hier ändern heißt dort ändern.
+_INCLUDE_RE = re.compile(r"^[ \t]*\{\{>\s*([^}\s]+)\s*\}\}\s*$", re.MULTILINE)
+_MAX_INCLUDE_DEPTH = 5
+
+
+def resolve_includes(text: str, base_dir: Path, _stack: tuple = ()) -> str:
+    """Löse ``{{> pfad.md}}``-Zeilen relativ zu ``base_dir`` auf (rekursiv).
+
+    Fail loud: fehlendes Partial → FileNotFoundError mit includierender Datei;
+    Zyklus/Tiefe → ValueError. Partials unter ``_*``-Verzeichnissen bleiben vom
+    aktiven Prompt-Index ausgeschlossen (``_is_excluded``) — sie sind Fragmente.
+    """
+    base = Path(base_dir)
+
+    def _repl(m: re.Match) -> str:
+        rel = m.group(1)
+        p = base / rel
+        if not p.is_file():
+            raise FileNotFoundError(
+                f"include '{{>{rel}}}' nicht gefunden unter {base} (Syntax: {{{{> pfad.md}}}} relativ zum Paket-Root)"
+            )
+        key = str(p.resolve())
+        if key in _stack:
+            _chain = " -> ".join(list(_stack[-3:]) + [key])
+            raise ValueError(f"include-Zyklus: {rel} (Stack: {_chain})")
+        if len(_stack) >= _MAX_INCLUDE_DEPTH:
+            raise ValueError(f"include-Tiefe > {_MAX_INCLUDE_DEPTH} bei {rel}")
+        part = p.read_text(encoding="utf-8")
+        _front, body = _split_frontmatter(part)  # Partial-Frontmatter (Version) bleibt draußen
+        return resolve_includes(body, base, _stack + (key,)).rstrip("\n")
+
+    return _INCLUDE_RE.sub(_repl, text)
+
+
 # ── public API ───────────────────────────────────────────────────────────
 def load_prompt(name: str, *, package: str | None = None) -> str:
     """Load a workflow prompt by basename (or literal path). First matching tier wins.
@@ -254,7 +295,8 @@ def load_prompt(name: str, *, package: str | None = None) -> str:
     # tier 1 — literal path
     p = Path(name).expanduser()
     if p.is_file():
-        return p.read_text(encoding="utf-8")
+        raw = p.read_text(encoding="utf-8")
+        return resolve_includes(raw, p.parent) if "{{>" in raw else raw
 
     # "package/name" shorthand
     if "/" in name and package is None:
@@ -262,7 +304,7 @@ def load_prompt(name: str, *, package: str | None = None) -> str:
         if head in ("agentos", "strukt2meta", "pdf2md"):
             package, name = head, tail
 
-    stem = name[:-3] if name.endswith(".md") else name
+    stem = name.removesuffix(".md")
     ns = package or ""
     env = _env_path("KONTEXT_PROMPTS_DIR")
     clone = _clone_dir()
@@ -287,7 +329,10 @@ def load_prompt(name: str, *, package: str | None = None) -> str:
         if path is not None:
             if label == "bundled":
                 _warn_bundled(stem, package)
-            return path.read_text(encoding="utf-8")
+            raw = path.read_text(encoding="utf-8")
+            # Includes relativ zum Paket-Root des jeweiligen Tiers
+            base = path.parent if path.parent.name == pkg_dir.name and path.parent != pkg_dir else pkg_dir
+            return resolve_includes(raw, base) if "{{>" in raw else raw
 
     raise FileNotFoundError(
         f"workflow prompt {stem!r} (package={package or '?'}) not found. Searched:\n  "
@@ -337,6 +382,8 @@ def get_prompt_set_info() -> dict:
                 rel = str(md.relative_to(root))
                 try:
                     text = md.read_text(encoding="utf-8")
+                    if "{{>" in text:
+                        text = resolve_includes(text, pkg_dir)
                 except OSError:
                     continue
                 head = _git_head_text(root, rel)
