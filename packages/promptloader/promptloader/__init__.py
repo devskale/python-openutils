@@ -18,4 +18,12 @@ __all__ = [
     "split_frontmatter",  # R7 (robotni-Review): öffentliche Fläche statt _-Importe
     "frontmatter_version",
 ]
-__version__ = "0.1.8"
+# Single Source: pyproject ist die einzige Versionsquelle — hier nur lesen
+# (Hardcode-Duplikat driftete: Bump erreichte pyproject, nicht __version__)
+from importlib.metadata import PackageNotFoundError
+from importlib.metadata import version as _pkg_version
+
+try:
+    __version__ = _pkg_version("promptloader")
+except PackageNotFoundError:  # Quell-Checkout ohne Installation
+    __version__ = "0.0.0+source"
