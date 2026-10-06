@@ -179,7 +179,8 @@ def create_chat_router(
             )
 
             message_obj = ChatMessageOutput(
-                role="assistant", content=content, tool_calls=tool_calls
+                role="assistant", content=content, tool_calls=tool_calls,
+                reasoning_details=getattr(full_content, "reasoning_details", None),
             )
             if thinking and not is_openai_strict_mode():
                 message_obj.reasoning_content = thinking

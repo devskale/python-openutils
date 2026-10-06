@@ -2,6 +2,7 @@ from __future__ import annotations
 """
 Google Gemini provider implementation with async support.
 """
+import base64
 import json
 from typing import Dict, Any, Optional, List, AsyncIterator
 
@@ -265,17 +266,96 @@ class GeminiProvider(ChatProvider):
         if len(messages) == 1 and messages[0].role == "user":
             content = _flatten_text(messages[0].content)
         else:
-            # For more complex exchanges, format as a conversation
+            # Map each message to its Gemini shape (2026-11):
+            # user -> user turn (text); assistant -> model turn, with tool_calls
+            # as functionCall parts (args must be an object, not a JSON string);
+            # tool results -> functionResponse parts on a USER turn, keyed by
+            # the function NAME. The previous flat mapping (everything
+            # non-user -> model text parts) silently dropped function calls and
+            # sent tool results as bare model text.
+            def _tool_name_for_call_id(call_id):
+                for m in messages:
+                    for tc in (m.tool_calls or []):
+                        if tc.get("id") == call_id:
+                            return (tc.get("function") or {}).get("name")
+                return None
+
+            def _args_object(raw):
+                """OpenAI tool arguments (JSON string) -> Gemini args object."""
+                if isinstance(raw, dict):
+                    return raw
+                if isinstance(raw, str) and raw.strip():
+                    try:
+                        value = json.loads(raw)
+                        return value if isinstance(value, dict) else {"value": value}
+                    except (json.JSONDecodeError, ValueError):
+                        return {"raw": raw}
+                return {}
+
+            def _result_object(raw):
+                """Tool-result content -> object for functionResponse.response."""
+                text = _flatten_text(raw)
+                if text.strip():
+                    try:
+                        value = json.loads(text)
+                        return value if isinstance(value, dict) else {"result": value}
+                    except (json.JSONDecodeError, ValueError):
+                        return {"result": text}
+                return {"result": ""}
+
+            def _signature_map(msg):
+                """tool_call id -> base64 thought signature (Gemini 3 requires the
+                original signature replayed on every functionCall part; without
+                it the API 400s 'Function call is missing a thought_signature').
+                Carried through the OpenAI-compat wire as reasoning.encrypted
+                reasoning_details keyed by the tool_call id."""
+                sigs = {}
+                for d in getattr(msg, "reasoning_details", None) or []:
+                    if isinstance(d, dict) and d.get("type") == "reasoning.encrypted" and d.get("id") and d.get("data"):
+                        sigs[d["id"]] = d["data"]
+                return sigs
+
             content = []
             for msg in messages:
                 if msg.role == "system":
                     continue
-                
+                if msg.role == "tool":
+                    name = _tool_name_for_call_id(msg.tool_call_id) or "unknown_function"
+                    content.append({
+                        "role": "user",
+                        "parts": [{"functionResponse": {
+                            "name": name,
+                            "response": _result_object(msg.content),
+                        }}],
+                    })
+                    continue
                 role = "user" if msg.role == "user" else "model"
-                content.append({
-                    "role": role,
-                    "parts": [{"text": _flatten_text(msg.content)}]
-                })
+                parts = []
+                if role == "model" and msg.tool_calls:
+                    if msg.content:
+                        parts.append({"text": _flatten_text(msg.content)})
+                    signatures = _signature_map(msg)
+                    for tc in msg.tool_calls:
+                        fn = tc.get("function") or {}
+                        call_part = {"functionCall": {
+                            "name": fn.get("name"),
+                            "args": _args_object(fn.get("arguments")),
+                        }}
+                        signature = signatures.get(tc.get("id"))
+                        if signature:
+                            call_part["thoughtSignature"] = signature
+                        parts.append(call_part)
+                else:
+                    parts.append({"text": _flatten_text(msg.content)})
+                content.append({"role": role, "parts": parts})
+
+            # Gemini rejects transcripts whose final turn is a model turn
+            # ("Requests ending with a model turn are not supported" —
+            # prefill-style transcripts, enforced by newer models like
+            # gemini-3.5-flash-lite; older models tolerated them). Close with a
+            # neutral user turn so generation has a turn to respond to.
+            if content and content[-1]["role"] == "model":
+                content.append({"role": "user", "parts": [{"text": "Continue."}]})
 
         # Convert OpenAI tools format to Gemini function declarations
         if request.tools:
@@ -446,8 +526,32 @@ class GeminiProvider(ChatProvider):
             usage=usage,
             raw_response=response,
             thinking=thinking_content,
+            reasoning_details=self._extract_reasoning_details(response),
             finish_reason=finish_reason
         )
+
+    def _extract_reasoning_details(self, response: Any) -> Optional[List[dict]]:
+        """Capture Gemini 3 thought signatures as reasoning.encrypted details.
+
+        The signature bytes ride on the same Part as the functionCall; they are
+        opaque and MUST come back verbatim on the next request, or the API
+        rejects the tool round (missing/corrupted thought_signature). Wire
+        shape is what pi/openrouter-style clients preserve across turns:
+        {type: reasoning.encrypted, id: <tool_call id>, data: <base64>}.
+        """
+        details = []
+        for index, part in enumerate(getattr(response, 'parts', None) or []):
+            fc = getattr(part, 'function_call', None)
+            signature = getattr(part, 'thought_signature', None)
+            if fc and isinstance(signature, (bytes, bytearray)):
+                details.append({
+                    "type": "reasoning.encrypted",
+                    "id": f"call_{fc.name}",
+                    "data": base64.b64encode(signature).decode("ascii"),
+                    "format": "gemini",
+                    "index": index,
+                })
+        return details or None
 
     def _complete_impl(
         self,
@@ -613,6 +717,7 @@ class GeminiProvider(ChatProvider):
                         usage=usage,
                         raw_response=chunk,
                         thinking=thinking_content_chunk,
+                        reasoning_details=self._extract_reasoning_details(chunk),
                         finish_reason=finish_reason
                     )
 

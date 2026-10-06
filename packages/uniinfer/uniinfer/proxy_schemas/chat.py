@@ -11,6 +11,9 @@ class ChatMessageInput(BaseModel):
     content: str | list[dict[str, Any]] | None = None
     tool_calls: list[dict] | None = None
     tool_call_id: str | None = None
+    # OpenRouter-style reasoning details on an assistant turn (opaque thought
+    # signatures etc.). Gemini 3 requires them replayed verbatim on tool rounds.
+    reasoning_details: list[dict[str, Any]] | None = None
 
 
 class ChatCompletionRequestInput(BaseModel):
@@ -66,6 +69,7 @@ class ChatMessageOutput(BaseModel):
     content: str | None = None
     reasoning_content: str | None = None
     tool_calls: list[dict] | None = None
+    reasoning_details: list[dict[str, Any]] | None = None
 
 
 class ChoiceDelta(BaseModel):
@@ -73,6 +77,7 @@ class ChoiceDelta(BaseModel):
     content: str | None = None
     reasoning_content: str | None = None
     tool_calls: list[dict] | None = None
+    reasoning_details: list[dict[str, Any]] | None = None
 
 
 class StreamingChoice(BaseModel):

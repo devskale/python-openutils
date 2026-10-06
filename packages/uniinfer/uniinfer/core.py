@@ -136,11 +136,16 @@ class ChatMessage:
         tool_call_id (str | None): ID of the tool call this message responds to.
     """
 
-    def __init__(self, role: str, content: str | list[dict] | None, tool_calls: list[dict] | None = None, tool_call_id: str | None = None):
+    def __init__(self, role: str, content: str | list[dict] | None, tool_calls: list[dict] | None = None, tool_call_id: str | None = None, reasoning_details: list[dict] | None = None):
         self.role = role
         self.content = content
         self.tool_calls = tool_calls
         self.tool_call_id = tool_call_id
+        # OpenRouter-style reasoning detail objects (e.g. Gemini thought
+        # signatures) attached to an assistant turn. Providers that need them
+        # replayed verbatim (Gemini 3 rejects tool rounds without the original
+        # signature) read them back off the assistant message.
+        self.reasoning_details = reasoning_details
 
     def to_dict(self) -> dict[str, Any]:
         """Convert to a dictionary format suitable for API requests."""
@@ -152,6 +157,8 @@ class ChatMessage:
             data["tool_calls"] = self.tool_calls
         if self.tool_call_id:
             data["tool_call_id"] = self.tool_call_id
+        if self.reasoning_details:
+            data["reasoning_details"] = self.reasoning_details
         return data
 
 
@@ -242,7 +249,8 @@ class ChatCompletionResponse:
         usage: dict,
         raw_response: Any,
         finish_reason: str | None = None,
-        thinking: str | None = None
+        thinking: str | None = None,
+        reasoning_details: list[dict] | None = None
     ):
         self.message = message
         self.provider = provider
@@ -251,6 +259,10 @@ class ChatCompletionResponse:
         self.raw_response = raw_response
         self.finish_reason = finish_reason
         self.thinking = thinking
+        # Opaque reasoning detail objects for the client to echo back on the
+        # next request (OpenAI/OpenRouter ``reasoning_details`` convention).
+        # Streaming maps them onto the chunk delta; see format_chunk_to_openai.
+        self.reasoning_details = reasoning_details
 
 
 # Process-wide shared transport used by base ChatProvider for bare-transport

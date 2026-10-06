@@ -126,6 +126,8 @@ def format_chunk_to_openai(response, provider_model: str, completion_id: str) ->
             delta["tool_calls"] = response.message.tool_calls
         if response.message.role:
             delta["role"] = response.message.role
+    if getattr(response, "reasoning_details", None):
+        delta["reasoning_details"] = response.reasoning_details
     if getattr(response, "thinking", None):
         delta["thinking"] = response.thinking
     choice_data: dict[str, Any] = {"index": 0, "delta": delta}

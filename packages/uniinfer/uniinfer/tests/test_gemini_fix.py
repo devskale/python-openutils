@@ -136,3 +136,142 @@ class TestGeminiSchemaSanitizer:
         )
         _, _, tools = self.provider._prepare_content_and_config(request)
         assert tools[0]["parameters"] == clean
+
+
+class TestGeminiTurnMapping:
+    """Newer Gemini models (gemini-3.5-flash-lite) reject requests that end
+    with a model turn, and tool calls/results have their own wire shape
+    (functionCall on model turns, functionResponse on user turns). The old
+    flat mapping dropped tool calls and sent tool results as model text."""
+
+    def setup_method(self):
+        self.provider = GeminiProvider(api_key="test-key")
+
+    def _content_for(self, messages):
+        request = ChatCompletionRequest(messages=messages, model="gemini-3.5-flash-lite")
+        content, _, _ = self.provider._prepare_content_and_config(request)
+        return content
+
+    def test_assistant_tool_calls_become_function_call_parts(self):
+        content = self._content_for([
+            ChatMessage(role="user", content="search"),
+            ChatMessage(role="assistant", content="", tool_calls=[
+                {"id": "call_1", "type": "function",
+                 "function": {"name": "web_search", "arguments": '{"query": "ESP32"}'}},
+            ]),
+        ])
+        model_turn = content[1]
+        assert model_turn["role"] == "model"
+        fc = model_turn["parts"][0]["functionCall"]
+        assert fc["name"] == "web_search"
+        assert fc["args"] == {"query": "ESP32"}
+
+    def test_tool_result_is_function_response_on_user_turn(self):
+        content = self._content_for([
+            ChatMessage(role="user", content="search"),
+            ChatMessage(role="assistant", content="", tool_calls=[
+                {"id": "call_1", "type": "function",
+                 "function": {"name": "web_search", "arguments": '{}'}},
+            ]),
+            ChatMessage(role="tool", content="10 results", tool_call_id="call_1"),
+        ])
+        result_turn = content[2]
+        assert result_turn["role"] == "user"
+        fr = result_turn["parts"][0]["functionResponse"]
+        assert fr["name"] == "web_search"
+        assert fr["response"] == {"result": "10 results"}
+
+    def test_transcript_ending_with_model_turn_gets_user_close(self):
+        content = self._content_for([
+            ChatMessage(role="user", content="hi"),
+            ChatMessage(role="assistant", content="Hello! How can I help?"),
+        ])
+        assert content[-1]["role"] == "user"
+
+    def test_transcript_ending_with_user_turn_untouched(self):
+        content = self._content_for([ChatMessage(role="user", content="hi") * 1 if False else ChatMessage(role="user", content="hi")])
+        assert content == "hi"  # single-message shortcut
+
+    def test_tool_result_without_parent_call_gets_fallback_name(self):
+        content = self._content_for([
+            ChatMessage(role="user", content="hi"),
+            ChatMessage(role="tool", content="orphan result", tool_call_id="missing"),
+        ])
+        fr = content[1]["parts"][0]["functionResponse"]
+        assert fr["name"] == "unknown_function"
+        assert fr["response"] == {"result": "orphan result"}
+
+
+class TestGeminiThoughtSignatures:
+    """Gemini 3 requires the original thought signature replayed on every
+    functionCall part of a tool round; without it the API 400s ('Function call
+    is missing a thought_signature' / 'Corrupted thought signature'). The
+    signature rides the OpenAI-compat wire as reasoning.encrypted
+    reasoning_details keyed by tool_call id (the shape pi preserves)."""
+
+    def setup_method(self):
+        self.provider = GeminiProvider(api_key="test-key")
+
+    def test_response_extracts_signatures_from_parts(self):
+        from unittest.mock import MagicMock
+        import base64
+        part = MagicMock(function_call=MagicMock(name="web_search", args={"q": "x"}),
+                         thought_signature=b"\x9a\x04", text=None, thought=None)
+        part.function_call.name = "web_search"
+        response = MagicMock(parts=[part], prompt_feedback=None)
+        details = self.provider._extract_reasoning_details(response)
+        assert details == [{
+            "type": "reasoning.encrypted",
+            "id": "call_web_search",
+            "data": base64.b64encode(b"\x9a\x04").decode(),
+            "format": "gemini",
+            "index": 0,
+        }]
+
+    def test_response_without_signatures_yields_none(self):
+        from unittest.mock import MagicMock
+        part = MagicMock(function_call=None, thought_signature=None, text="hi", thought=None)
+        response = MagicMock(parts=[part], prompt_feedback=None)
+        assert self.provider._extract_reasoning_details(response) is None
+
+    def test_request_replays_signature_on_function_call_part(self):
+        content = self._content_for = None
+        request = ChatCompletionRequest(
+            messages=[
+                ChatMessage(role="user", content="search"),
+                ChatMessage(role="assistant", content="", tool_calls=[
+                    {"id": "call_web_search", "type": "function",
+                     "function": {"name": "web_search", "arguments": '{"q": "ESP32"}'}},
+                ], reasoning_details=[
+                    {"type": "reasoning.encrypted", "id": "call_web_search",
+                     "data": "mgQ=", "format": "gemini", "index": 0},
+                ]),
+                ChatMessage(role="tool", content="3 results", tool_call_id="call_web_search"),
+            ],
+            model="gemini-3.5-flash-lite",
+        )
+        content, _, _ = self.provider._prepare_content_and_config(request)
+        model_part = content[1]["parts"][0]
+        assert model_part["functionCall"]["name"] == "web_search"
+        assert model_part["thoughtSignature"] == "mgQ="
+
+    def test_request_without_signature_leaves_part_clean(self):
+        request = ChatCompletionRequest(
+            messages=[
+                ChatMessage(role="user", content="search"),
+                ChatMessage(role="assistant", content="", tool_calls=[
+                    {"id": "call_x", "type": "function",
+                     "function": {"name": "x", "arguments": '{}'}},
+                ]),
+            ],
+            model="gemini-3.5-flash-lite",
+        )
+        content, _, _ = self.provider._prepare_content_and_config(request)
+        assert "thoughtSignature" not in content[1]["parts"][0]
+
+    def test_chat_message_reasoning_details_round_trip(self):
+        msg = ChatMessage(role="assistant", content=None,
+                          reasoning_details=[{"type": "reasoning.encrypted", "id": "a", "data": "b"}])
+        d = msg.to_dict()
+        assert d["reasoning_details"][0]["data"] == "b"
+        assert ChatMessage(**d).reasoning_details == msg.reasoning_details
