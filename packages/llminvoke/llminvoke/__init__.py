@@ -481,6 +481,30 @@ def call_llm_with_usage(
 # stream_llm — streaming with before-first-token retry (Q20)
 # ════════════════════════════════════════════════════════════════════════
 
+def _chunk_has_payload(chunk) -> bool:
+    """Erster substanzieller Token? — derselbe Zwei-Stellen-Vertrag wie
+    :func:`_chunk_events`: reasoning kann an ``chunk.message.reasoning_content``
+    (manche Provider) ODER an ``chunk.thinking`` (uniinfer-Contract: TUProvider
+    legt reasoning dort ab) ankommen. Content an ``chunk.message.content``.
+
+    Vorfall „Hilti-Reeval-Synthese 5/5 first-token" (2026-10-06): _start_stream
+    prüfte nur message.content/message.reasoning_content — während der gesamten
+    Denkphase flossen reasoning-Chunks über ``chunk.thinking`` und wurden STILL
+    KONSUMIERT, ohne zurückzukehren. iter_llm_events lieferte dadurch kein
+    Ereignis, bis das Denken endete (gemessen am exakten Synthese-Prompt: erstes
+    reasoning am TU-Gateway nach 0.9s, erster content nach 46s) — jede
+    Erst-Event-Frist des Aufrufers (agentos: 20s) feuerte, obwohl Bytes
+    flossen, und die Denkphase ging als Ereignisse komplett verloren.
+    """
+    msg = getattr(chunk, "message", None)
+    if isinstance(getattr(msg, "content", None), str) and msg.content:
+        return True
+    r = getattr(msg, "reasoning_content", None)
+    if not (isinstance(r, str) and r):
+        r = getattr(chunk, "thinking", None)
+    return isinstance(r, str) and bool(r)
+
+
 def _start_stream(
     ref: ModelRef,
     cfg: ResolvedConfig,
@@ -489,8 +513,9 @@ def _start_stream(
 ):
     """Open a stream + capture the first non-empty chunk, retrying transient errors.
 
-    Returns ``(stream_iterator, first_chunk)`` — the first chunk with content or
-    reasoning_content. Raises on exhaustion.
+    Returns ``(stream_iterator, first_chunk)`` — the first chunk with content,
+    reasoning_content ODER thinking (siehe :func:`_chunk_has_payload`).
+    Raises on exhaustion.
     This is the "before first token" phase — cheap to retry/backup (Q20).
     """
     attempts = cfg.retry.attempts
@@ -515,10 +540,7 @@ def _start_stream(
             )
             stream = prov.stream_complete(request)
             for chunk in stream:
-                _msg = getattr(chunk, "message", None)
-                _content = getattr(_msg, "content", None)
-                _reasoning = getattr(_msg, "reasoning_content", None)
-                if (isinstance(_content, str) and _content) or (isinstance(_reasoning, str) and _reasoning):
+                if _chunk_has_payload(chunk):
                     return stream, chunk
             err = RuntimeError("empty_response")  # stream yielded nothing
         except Exception as exc:
