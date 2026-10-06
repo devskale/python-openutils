@@ -55,7 +55,7 @@ models:
   tu@qwen-3.5-397b:
     context_window: 131072
     supports_thinking: true
-    description: "Qwen 3.5 397B via TU Aqueduct (kriterien/AAB-Analyse, großes Modell)"
+    description: "Qwen 3.5 397B via TU Aqueduct — DEPRECATED/EINGESTELLT (2026-10-06: aqueduct 400). Karte bleibt als Referenz, nicht mehr aktivierbar. Strukt2meta-Kriterien laufen bis zu einem Nachfolger auf tu@qwen-3.6-35b-vllm."
   tu@gemma-4-26b:
     context_window: 262000
     description: "ENTFERNT vom Gateway (Stand 2026-09-25) — nicht mehr verfügbar; Karte nur noch Referenz"
@@ -167,7 +167,7 @@ packages:
     temperature: 0.7
     tasks:
       kriterien:
-        model: tu@qwen-3.5-397b
+        model: tu@qwen-3.6-35b-vllm  # 397b eingestellt (2026-10-06) — großes Modell parkt bis Nachfolger
         max_tokens: 32768
   md2blank:
     temperature: 0.7
