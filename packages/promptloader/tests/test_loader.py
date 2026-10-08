@@ -184,3 +184,16 @@ def test_scalar_yaml_frontmatter_tolerated():
     txt = "---\nirgend ein freier Text\n---\nBody\n"
     assert _get_version(txt) is None
     _semantic_fingerprint(txt)  # darf nicht werfen
+
+
+def test_fingerprint_golden_stable():
+    # GOLDEN: Fingerprints füttern das PA-„modified"-Flag — ein Refactor darf
+    # sie für gültige Prompts NIEMALS ändern (sonst alles plötzlich modified).
+    # Wert eingefroren 2026-10-08 nach checks-Gate-Fix (33f0651-Nachfolger),
+    # äquivalenz-geprüft gegen 0.1.9 über alle 121 realen Kontext-prompts-Dateien.
+    txt = "---\nversion: '1.4'\n---\nYou are a router. Pick the best doc.\n"
+    assert (
+        _semantic_fingerprint(txt)
+        == "d2f7adc3ef2c3740723359742b258b07508a30e02a637d4e26c19cb0ba587b30"
+    )
+    assert _get_version(txt) == "1.4"

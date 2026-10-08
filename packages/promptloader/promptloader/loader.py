@@ -27,6 +27,7 @@ import sys
 from pathlib import Path
 
 import yaml
+import frontmatter as _FM
 from frontmatter.default_handlers import YAMLHandler
 
 # ── Optional dotenv support (low-priority: shell > .env.local > .env) ──
@@ -61,16 +62,17 @@ def _split_frontmatter(text: str) -> tuple[str, str]:
     ("", text); beide Teile links gestript (der Handler lässt führende
     Newlines stehen und wirft ValueError ohne Delimiter).
 
-    Guard: FM nur am DATEIANFANG — python-frontmatter splitet sonst
-    `---`-Paare mitten im Dokument (Markdown-HR!) als "Frontmatter"
-    (Fund 2026-10-08: jurisin_guide.md — Abschnitt zwischen zwei HRs
+    Detection via frontmatter.checks() (offizielle API, ANKER am
+    Dateianfang) — BaseHandler.split() allein ist UNANCHORED
+    (FM_BOUNDARY mit re.MULTILINE matcht `---`-HRs mitten im Dokument;
+    Fund 2026-10-08: jurisin_guide.md — Abschnitt zwischen zwei HRs
     wurde YAML-Str → AttributeError in _get_version → prompts-tree
     500 am Worker)."""
-    if not text.lstrip("\ufeff\n \t").startswith("---"):
-        return "", text
     try:
+        if not _FM.checks(text):
+            return "", text
         front, body = _FM_HANDLER.split(text)
-    except ValueError:
+    except (ValueError, TypeError):
         return "", text
     return front.lstrip("\n"), body.lstrip("\n")
 
