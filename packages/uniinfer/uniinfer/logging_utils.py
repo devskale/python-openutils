@@ -50,6 +50,42 @@ def redact_data(data: Any) -> Any:
     return data
 
 
+def _raw_log_cap_bytes() -> int:
+    """Cap for raw logs — ``UNIINFER_RAW_LOG_MAX_BYTES`` (default 5 MB)."""
+    try:
+        val = int(os.getenv("UNIINFER_RAW_LOG_MAX_BYTES", str(5 * 1024 * 1024)))
+        return val if val > 0 else 5 * 1024 * 1024
+    except ValueError:
+        return 5 * 1024 * 1024
+
+
+def _enforce_raw_log_cap(log_path: str, max_bytes: int = 5 * 1024 * 1024) -> None:
+    """Cap a raw log file at ~max_bytes by truncating the oldest half.
+
+    Raw response logs (tu_raw_chat.log & friends) append unconditionally on
+    error paths (non-200, preemption, empty stream) — before the 2026-06-24
+    UNIINFER_DEBUG_RAW gate this grew tu_raw_chat.log to 1.7 GB on tu / 293 MB
+    on pi5 under strukt2meta/logs/. The error paths stay always-on (they are
+    the only trace of a failed stream), so the sink itself must be bounded.
+    Simplest robust cap: when over the limit, drop the oldest half of the
+    file (keep the newest ~max_bytes/2). Not a rotation — one file, no
+    backups, good enough for diagnostics. Never raises: capping must not
+    break the caller's error path.
+    """
+    try:
+        st = os.stat(log_path)
+        if st.st_size <= max_bytes:
+            return
+        keep = max_bytes // 2
+        with open(log_path, "rb") as f:
+            f.seek(max(0, st.st_size - keep))
+            tail = f.read()
+        with open(log_path, "wb") as f:
+            f.write(tail)
+    except OSError:
+        return
+
+
 def log_raw_response(
     provider: str,
     operation: str,
@@ -73,6 +109,7 @@ def log_raw_response(
     try:
         with open(log_path, "a", encoding="utf-8") as handle:
             handle.write(json.dumps(event, ensure_ascii=True) + "\n")
+        _enforce_raw_log_cap(log_path, max_bytes=_raw_log_cap_bytes())
     except (OSError, PermissionError):
         return
 
