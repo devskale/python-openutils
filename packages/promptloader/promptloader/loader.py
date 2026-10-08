@@ -59,7 +59,15 @@ def _split_frontmatter(text: str) -> tuple[str, str]:
     (etablierte Jekyll-style-Lib, keine Hand-Parser mehr). Der Adapter
     normalisiert nur auf unseren Vertrag: kein FM / ungeschlossen →
     ("", text); beide Teile links gestript (der Handler lässt führende
-    Newlines stehen und wirft ValueError ohne Delimiter)."""
+    Newlines stehen und wirft ValueError ohne Delimiter).
+
+    Guard: FM nur am DATEIANFANG — python-frontmatter splitet sonst
+    `---`-Paare mitten im Dokument (Markdown-HR!) als "Frontmatter"
+    (Fund 2026-10-08: jurisin_guide.md — Abschnitt zwischen zwei HRs
+    wurde YAML-Str → AttributeError in _get_version → prompts-tree
+    500 am Worker)."""
+    if not text.lstrip("\ufeff\n \t").startswith("---"):
+        return "", text
     try:
         front, body = _FM_HANDLER.split(text)
     except ValueError:
@@ -74,6 +82,8 @@ def _semantic_fingerprint(text: str) -> str:
     if front.strip():
         try:
             meta = yaml.safe_load(front) or {}
+            if not isinstance(meta, dict):
+                meta = {}  # scalar/list-YAML (HR-False-Positive) — kein FM
         except yaml.YAMLError:
             meta = {}
     clean = {k: v for k, v in meta.items() if k not in AUTO_FIELDS}
@@ -89,6 +99,8 @@ def _get_version(text: str) -> str | None:
         meta = yaml.safe_load(front) or {}
     except yaml.YAMLError:
         return None
+    if not isinstance(meta, dict):
+        return None  # scalar/list-YAML (HR-False-Positive) — keine Version
     v = meta.get("version")
     return str(v) if v is not None else None
 

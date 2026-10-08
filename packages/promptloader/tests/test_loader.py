@@ -8,6 +8,11 @@ import pytest
 # allow running without install: add the package dir to sys.path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from promptloader import get_prompt_set_info, load_prompt  # noqa: E402
+from promptloader.loader import (  # noqa: E402
+    _get_version,
+    _semantic_fingerprint,
+    _split_frontmatter,
+)
 
 ROUTE = "---\nversion: '1.4'\n---\nYou are a router. Pick the best doc.\n"
 
@@ -141,3 +146,41 @@ def test_modified_drift(fake_clone):
     # version-only change (body restored) → fingerprint matches HEAD → not modified
     (fake_clone / "agentos" / "routeQuery.md").write_text(ROUTE, encoding="utf-8")
     assert route()["modified"] is False
+
+
+# ── HR-False-Positive (Fund 2026-10-08, jurisin_guide.md) ──────────────
+# python-frontmatter splitet `---`-Paare mitten im Dokument (Markdown-HR!)
+# als "Frontmatter" → Abschnitt als YAML-Str → AttributeError in
+# _get_version → prompts-tree 500 am Worker. Vertrag: FM nur am Anfang.
+
+GUIDE_WITH_HR = (
+    "# jurisin_guide.md — Leitfaden\n\n"
+    "Dieser Leitfaden richtet sich an Juristen.\n\n"
+    "---\n\n"
+    "## 1. Was ist eine FAP-Prüfspezifikation?\n\n"
+    "Eine FAP-Prüfspezifikation (`jurisin.`) beschreibt Normen.\n\n"
+    "---\n\n## 2. Workflow\n\nSchritt 1.\n"
+)
+
+
+def test_hr_pairs_midfile_are_not_frontmatter():
+    front, body = _split_frontmatter(GUIDE_WITH_HR)
+    assert front == ""
+    assert body == GUIDE_WITH_HR
+    assert _get_version(GUIDE_WITH_HR) is None
+    # Fingerprint darf nicht werfen und muss stabil sein
+    assert _semantic_fingerprint(GUIDE_WITH_HR) == _semantic_fingerprint(GUIDE_WITH_HR)
+
+
+def test_leading_frontmatter_still_detected():
+    txt = "---\nversion: '0.9'\n---\nBody mit --- drin.\n\n---\n\nmehr\n"
+    front, body = _split_frontmatter(txt)
+    assert front.strip() == "version: '0.9'"
+    assert _get_version(txt) == "0.9"
+
+
+def test_scalar_yaml_frontmatter_tolerated():
+    # echtes Leading-FM, aber scalar (yaml.safe_load → str): keine Version, kein Crash
+    txt = "---\nirgend ein freier Text\n---\nBody\n"
+    assert _get_version(txt) is None
+    _semantic_fingerprint(txt)  # darf nicht werfen
