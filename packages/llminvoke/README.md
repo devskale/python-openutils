@@ -7,7 +7,7 @@ Shared LLM invocation layer for kontext.one. Bridges uniinfer (inference) + cred
 ```python
 from llminvoke import call_llm, stream_llm, resolve_model
 
-# Recommended: resolve from package (catalog + clients.yml + env)
+# Recommended: resolve from package (catalog + box overlay + env)
 text = call_llm("Summarize this", package="pdf2md")
 
 # Streaming (before-first-token retry + backup; after first token, no backup)
@@ -37,11 +37,14 @@ text = call_llm("prompt", config=cfg)
 Model config — which model, params, backups, retry, DSGVO — resolves through `resolve_model` per a strict precedence chain:
 
 ```
-env var  >  team-settings (DB)  >  clients.yml (runtime)  >  catalog default
+env  >  team-settings (DB)  >  <box>/models.yml (overlay)  >  catalog
 ```
 
 - **`models.yml`** (ships with the package): the catalog — providers (DSGVO-flagged), models (context windows, capabilities), global default profile, per-package/task engineering defaults.
-- **`clients.yml`** (runtime, server-side): client→provider mapping. Editable without redeploy. The backend-only source.
+- **`<box>/models.yml`** (overlay, gitignored, mtime-hot-reload): the box's choice
+  (endpoints, model, task routing). Deep-merges over the catalog — dicts merge,
+  lists replace. Sampling lives catalog-side. Legacy `clients.yml` files load
+  via `KONTEXT_CLIENTS_YML` with sampling keys stripped (WP4 bridge, removable).
 - **Team settings** (klark0 DB): override for app-driven jobs.
 - **Env**: pins primary only (`PDF2MD_VLM_MODEL` etc.); backups still flow from config.
 
@@ -95,7 +98,7 @@ Empty responses and hard failures emit structured alarms (`emit_alarm`) — the 
 
 1. Add a row to `providers:` in `models.yml` (with `dsgvo: true/false`)
 2. Add model entries to `models:` if new
-3. Map the client in `clients.yml` or team settings
+3. Set the box's choice in `<box>/models.yml` (or team settings)
 
 No package code changes. Deploy openutils to ship the catalog edit.
 
