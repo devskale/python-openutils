@@ -127,7 +127,7 @@ def _resolve_call_config(
 
     Precedence within a single call:
       1. explicit ``config=`` (caller resolved already)
-      2. ``package=``/``client=``/``task=`` → resolve_model (catalog + clients.yml)
+      2. ``package=``/``task=`` → resolve_model (catalog + box overlay)
       3. explicit ``model=``+``provider=`` → single-model config (backward compat)
 
     Per-call overrides (temperature, max_tokens, max_attempts) layer on top.

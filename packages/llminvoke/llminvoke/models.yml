@@ -154,6 +154,8 @@ packages:
     temperature: 0.2
     max_tokens: 4096
   md2blank:
+    # (2026-10-09) war DOPPELT in dieser Datei — YAML last-wins hatte die
+    # tasks fnamer/blank still verworfen; zusammengeführt (einziger Block jetzt).
     max_tokens: 16384
     temperature: 0.7
     tasks:
@@ -169,9 +171,6 @@ packages:
       kriterien:
         model: tu@qwen-3.6-35b-vllm  # 397b eingestellt (2026-10-06) — großes Modell parkt bis Nachfolger
         max_tokens: 32768
-  md2blank:
-    temperature: 0.7
-    max_tokens: 4096
   agentos:
     temperature: 0.7
     max_tokens: 10000

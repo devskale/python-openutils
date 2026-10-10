@@ -1,13 +1,26 @@
 """Canonical model config — registry loading + resolution.
 
-The deep module behind ``resolve_model``. Loads the shipped registry
-(``models.yml``) + optional runtime ``clients.yml``, merges them per the
-precedence chain (ADR 0004), filters DSGVO-incompatible backups, and returns a
-``ResolvedConfig`` ready for the retry/backup loop.
+The deep module behind ``resolve_model``. Loads the shipped catalog
+(``models.yml``, packaged) + the optional box overlay (``<box>/models.yml``,
+gitignored, mtime-hot-reload), deep-merges them per the models.yml-hierarchy
+contract (issue llminvoke-models-hierarchy; ADR 0004 amendment in progress),
+filters DSGVO-incompatible backups, and returns a ``ResolvedConfig`` ready
+for the retry/backup loop.
 
 Precedence (high → low)::
 
-    env var  >  clients.yml packages.<task> (tier)  >  clients.yml <client> (business)  >  registry packages  >  catalog default
+    env (caller prefix)  >  box overlay (default/package/task)  >  catalog (default/package/task)
+
+The overlay carries the box's CHOICE (base_url, bearer, model, task routing);
+engineering sampling (temperature, max_tokens, backups, retry) lives in the
+catalog — a true overlay may still override it deliberately (deep-merge),
+but a LEGACY ``clients.yml`` (loaded via ``KONTEXT_CLIENTS_YML`` during the
+WP4 transition) has its sampling keys stripped + warned: they are
+known-drifted duplicates (audit 2026-10-09).
+
+Merge semantics: dicts deep-merge (overlay wins), lists/scalars replace
+wholesale. Only the ``default`` + ``packages`` subtrees merge — ``providers``
+(picker list, overlay-only) and ``models`` (catalog-only) never mix.
 
 This module is intentionally free of LLM-call logic — it only *resolves*. The
 retry/backup loop lives in ``__init__.call_llm`` and consumes ``ResolvedConfig``.
@@ -51,8 +64,9 @@ _REGISTRY_PATH = _PACKAGE_DIR / "models.yml"
 
 # ── caches ─────────────────────────────────────────────────────────────
 _registry_cache: dict[str, Any] | None = None
-_clients_cache: dict[str, Any] | None = None
-_clients_mtime: float | None = None
+_overlay_cache: dict[str, Any] | None = None
+_overlay_mtime: float | None = None
+_overlay_legacy: bool = False   # True while a clients.yml feeds the overlay (WP4 transition)
 
 
 # ════════════════════════════════════════════════════════════════════════
@@ -151,53 +165,101 @@ def _load_registry() -> dict[str, Any]:
     return _registry_cache
 
 
-def _clients_yml_path() -> Path | None:
-    """Locate the runtime clients.yml (env override > data dir > none)."""
-    explicit = os.environ.get("KONTEXT_CLIENTS_YML", "").strip()
-    if explicit:
-        p = Path(explicit)
-        return p if p.is_file() else None
+def _box_path() -> tuple[Path, bool] | None:
+    """Locate the box overlay: ``(path, legacy)`` or None.
+
+    ``KONTEXT_MODELS_YML`` is the true overlay; ``KONTEXT_CLIENTS_YML`` (and a
+    ``clients.yml`` in KONTEXT_DATA_DIR) loads as a LEGACY overlay with
+    sampling keys stripped — the WP4 migration bridge, removable once every
+    box carries a models.yml.
+    """
+    explicit_new = os.environ.get("KONTEXT_MODELS_YML", "").strip()
+    if explicit_new:
+        p = Path(explicit_new)
+        return (p, False) if p.is_file() else None
+    explicit_legacy = os.environ.get("KONTEXT_CLIENTS_YML", "").strip()
+    if explicit_legacy:
+        p = Path(explicit_legacy)
+        return (p, True) if p.is_file() else None
     data_dir = os.environ.get("KONTEXT_DATA_DIR", "").strip()
     if data_dir:
-        p = Path(data_dir) / "clients.yml"
-        return p if p.is_file() else None
+        for name, legacy in (("models.yml", False), ("clients.yml", True)):
+            p = Path(data_dir) / name
+            if p.is_file():
+                return p, legacy
     return None
 
 
-def _load_clients() -> dict[str, Any]:
-    """Load + cache the runtime clients.yml, reloading on mtime change.
+# Sampling keys a legacy clients.yml must NOT carry into the merge — the
+# catalog owns them (audit 2026-10-09: max_tokens 64000 vs 10000 drift etc.).
+# Choice keys (model/base_url/bearer/thinking/bare_model/dsgvo_required)
+# stay honored from legacy files; true overlays may set anything.
+_LEGACY_STRIP_KEYS = frozenset({"temperature", "max_tokens", "backups", "retry"})
 
-    The clients file is editable without redeploy, so we watch its mtime and
-    re-read when it changes (cheap stat per resolve).
+
+def _sanitize_legacy(cfg: dict[str, Any]) -> dict[str, Any]:
+    """Strip drift-prone sampling keys from a legacy overlay, warn once."""
+    stripped: list[str] = []
+
+    def _walk(node: dict[str, Any], path: str) -> None:
+        for k, v in list(node.items()):
+            here = f"{path}.{k}" if path else k
+            if k in _LEGACY_STRIP_KEYS:
+                del node[k]
+                stripped.append(here)
+            elif isinstance(v, dict):
+                _walk(v, here)
+
+    _walk(cfg, "")
+    if stripped:
+        _logger.warning(
+            "legacy clients.yml as overlay: sampling keys ignored (catalog owns "
+            "them; write a <box>/models.yml to own sampling deliberately): %s",
+            ", ".join(sorted(stripped)),
+        )
+    return cfg
+
+
+def _load_overlay() -> dict[str, Any]:
+    """Load + cache the box overlay, reloading on mtime change.
+
+    The overlay is editable without redeploy — cheap stat per resolve, re-read
+    on mtime change (unchanged behavior inherited from the clients.yml loader).
     """
-    global _clients_cache, _clients_mtime
-    path = _clients_yml_path()
-    if path is None:
+    global _overlay_cache, _overlay_mtime, _overlay_legacy
+    located = _box_path()
+    if located is None:
         return {}
+    path, legacy = located
     try:
         mtime = path.stat().st_mtime
     except OSError:
         return {}
-    if _clients_cache is not None and _clients_mtime == mtime:
-        return _clients_cache
+    if _overlay_cache is not None and _overlay_mtime == mtime:
+        return _overlay_cache
     if yaml is None:
         return {}
     try:
         with open(path, encoding="utf-8") as f:
-            _clients_cache = yaml.safe_load(f) or {}
-        _clients_mtime = mtime
+            cfg = yaml.safe_load(f) or {}
+        if legacy:
+            cfg = _sanitize_legacy(cfg)
+        _overlay_cache = cfg
+        _overlay_mtime = mtime
+        _overlay_legacy = legacy
     except (OSError, yaml.YAMLError) as exc:
-        _logger.warning("Failed to load clients.yml (%s): %s", path, exc)
-        _clients_cache = {}
-    return _clients_cache
+        _logger.warning("Failed to load overlay (%s): %s", path, exc)
+        _overlay_cache = {}
+    return _overlay_cache
 
 
 def reload_config() -> None:
-    """Force a reload of both registry + clients caches."""
-    global _registry_cache, _clients_cache, _clients_mtime
+    """Force a reload of both registry + overlay caches."""
+    global _registry_cache, _overlay_cache, _overlay_mtime, _overlay_legacy
     _registry_cache = None
-    _clients_cache = None
-    _clients_mtime = None
+    _overlay_cache = None
+    _overlay_mtime = None
+    _overlay_legacy = False
 
 
 # ── catalog queries ────────────────────────────────────────────────────
@@ -280,106 +342,80 @@ def _resolve_bearer(ref: str | None) -> str | None:
     return ref  # inline literal
 
 
+def _deep_merge(base: dict[str, Any], overlay: dict[str, Any]) -> dict[str, Any]:
+    """Merge overlay into base: dicts merge recursively (overlay wins),
+    lists and scalars replace wholesale — a backup chain is replaced, never
+    concatenated (contract: issue llminvoke-models-hierarchy)."""
+    out = dict(base)
+    for k, v in overlay.items():
+        if isinstance(v, dict) and isinstance(out.get(k), dict):
+            out[k] = _deep_merge(out[k], v)
+        else:
+            out[k] = v
+    return out
+
+
+def _chain(cfg: dict[str, Any], package: str | None, task: str | None) -> dict[str, Any]:
+    """Flatten one file's default ← package ← task into a single dict
+    (task most specific wins). The ``tasks`` container itself never leaks out."""
+    out: dict[str, Any] = dict(cfg.get("default", {}))
+    if package:
+        pkg = cfg.get("packages", {}).get(package, {})
+        out.update({k: v for k, v in pkg.items() if k != "tasks"})
+        if task:
+            out.update(pkg.get("tasks", {}).get(task, {}))
+    return out
+
+
 def resolve_model(
     package: str | None = None,
     client: str | None = None,
     task: str | None = None,
     env_prefix: str | None = None,
 ) -> ResolvedConfig:
-    """Resolve the effective model config per the ADR 0004 precedence chain.
+    """Resolve the effective model config per the models.yml hierarchy.
+
+    Layers (low → high): catalog (default/package/task) ← box overlay
+    (default/package/task — the overlay beats the catalog at ANY level,
+    deep-merged), then the caller's env prefix pins the primary on top.
+    Team settings (DB) sit above the overlay in klark0's TS port; llminvoke
+    itself sees files + env only.
 
     Args:
         package: package name (pdf2md, strukt2meta, ...) — applies package defaults.
-        client: client/deal id — applies per-client overrides from clients.yml.
-            Defaults to ``$KONTEXT_CLIENT`` env, then ``"default"``.
+        client: DEPRECATED — the per-client business layer (ADR 0004) died with
+            the clients.yml; accepted for signature compatibility, ignored.
         task: task-type within a package (e.g. strukt2meta's ``kriterien``).
 
     Returns a DSGVO-filtered ``ResolvedConfig`` ready for the retry/backup loop.
-    Env overrides (``<PREFIX>_MODEL`` etc.) are applied by the caller, not here.
     """
-    registry = _load_registry()
-    default = registry.get("default", {})
-    packages = registry.get("packages", {})
+    catalog = _chain(_load_registry(), package, task)
+    overlay = _chain(_load_overlay(), package, task)
+    eff = _deep_merge(catalog, overlay)
 
-    # ── start from catalog default ──
-    primary_spec = default.get("model", "tu@qwen-3.6-35b")
-    temperature = float(default.get("temperature", 0.7))
-    max_tokens = int(default.get("max_tokens", 4096))
-    retry = _parse_retry(default.get("retry"), RetryPolicy())
-    backups_raw: list[str] = list(default.get("backups", []))
-    dsgvo_required = False
+    primary_spec = eff.get("model", "tu@qwen-3.6-35b")
+    temperature = float(eff.get("temperature", 0.7))
+    max_tokens = int(eff.get("max_tokens", 4096))
+    retry = _parse_retry(eff.get("retry"), RetryPolicy())
+    backups_raw: list[str] = list(eff.get("backups", []))
+    dsgvo_required = bool(eff.get("dsgvo_required", False))
 
-    # ── endpoint triple: base_url + bearer (env fallback; clients.yml overrides) ─
-    base_url = os.environ.get("OPENAI_BASE_URL", "").strip() or None
-    bare_model = False
-    bearer_ref: str | None = os.environ.get("OPENAI_API_KEY", "").strip() or None
-    thinking: str | bool | None = None     # off|on|none|low|medium|high (mapped per model at return)
-
-    # ── layer 1: package defaults (engineering tuning) ──
-    task_kwargs: dict = {}
-    pkg_cfg = packages.get(package or "", {})
-    if pkg_cfg:
-        primary_spec = pkg_cfg.get("model", primary_spec)
-        temperature = float(pkg_cfg.get("temperature", temperature))
-        max_tokens = int(pkg_cfg.get("max_tokens", max_tokens))
-        backups_raw = list(pkg_cfg.get("backups", backups_raw))
-        retry = _parse_retry(pkg_cfg.get("retry"), retry)
-        # task-type override within package
-        if task:
-            task_cfg = pkg_cfg.get("tasks", {}).get(task, {})
-            primary_spec = task_cfg.get("model", primary_spec)
-            temperature = float(task_cfg.get("temperature", temperature))
-            max_tokens = int(task_cfg.get("max_tokens", max_tokens))
-            task_kwargs = task_cfg.get("request_kwargs", {})
-
-    # ── layer 2: client overrides (business choice, from clients.yml) ──
-    client_id = client or os.environ.get("KONTEXT_CLIENT", "").strip() or "default"
-    clients = _load_clients()
-    client_cfg = clients.get(client_id, {})
-    if client_cfg:
-        primary_spec = client_cfg.get("model", primary_spec)
-        temperature = float(client_cfg.get("temperature", temperature))
-        max_tokens = int(client_cfg.get("max_tokens", max_tokens))
-        backups_raw = list(client_cfg.get("backups", backups_raw))
-        retry = _parse_retry(client_cfg.get("retry"), retry)
-        dsgvo_required = bool(client_cfg.get("dsgvo_required", dsgvo_required))
-        base_url = client_cfg.get("base_url", base_url)
-        bare_model = bool(client_cfg.get("bare_model", bare_model))
-        bearer_ref = client_cfg.get("bearer", bearer_ref)
-        thinking = client_cfg.get("thinking", thinking)
-
-    # ── layer 2.5: runtime package/task tier overrides (clients.yml packages:) ─
-    # The operator's per-tier switch — editable without redeploy. Layers above the
-    # client default (a tier override beats the catch-all), below env (per-machine).
-    if package:
-        cpkg = clients.get("packages", {}).get(package, {})
-        if cpkg:
-            primary_spec = cpkg.get("model", primary_spec)
-            temperature = float(cpkg.get("temperature", temperature))
-            max_tokens = int(cpkg.get("max_tokens", max_tokens))
-            backups_raw = list(cpkg.get("backups", backups_raw))
-            retry = _parse_retry(cpkg.get("retry"), retry)
-            base_url = cpkg.get("base_url", base_url)
-            bearer_ref = cpkg.get("bearer", bearer_ref)
-            thinking = cpkg.get("thinking", thinking)
-            if task:
-                ctask = cpkg.get("tasks", {}).get(task, {})
-                primary_spec = ctask.get("model", primary_spec)
-                temperature = float(ctask.get("temperature", temperature))
-                max_tokens = int(ctask.get("max_tokens", max_tokens))
-                base_url = ctask.get("base_url", base_url)
-                bearer_ref = ctask.get("bearer", bearer_ref)
-                thinking = ctask.get("thinking", thinking)
-                task_kwargs = {**task_kwargs, **ctask.get("request_kwargs", {})}
+    # ── endpoint triple: env is the fallback, the overlay overrides ──
+    base_url = eff.get("base_url") or (os.environ.get("OPENAI_BASE_URL", "").strip() or None)
+    bare_model = bool(eff.get("bare_model", False))
+    bearer_ref: str | None = eff.get("bearer") or (
+        os.environ.get("OPENAI_API_KEY", "").strip() or None
+    )
+    thinking: str | bool | None = eff.get("thinking")     # off|on|none|low|medium|high (mapped per model at return)
+    task_kwargs: dict = dict(eff.get("request_kwargs") or {})
 
     # ── build refs + DSGVO-filter backups ──
     primary = ModelRef.parse(primary_spec)
     backup_refs = [ModelRef.parse(s) for s in backups_raw]
     backup_refs = _filter_dsgvo(backup_refs, dsgvo_required)
 
-    # ── layer 3 (highest): env override — primary only (Q12) ──
-    # Backups still flow from config so a container pinning its primary
-    # doesn't lose fallback protection.
+    # ── env pin (highest): primary only — backups still flow from config so a
+    # container pinning its primary doesn't lose fallback protection. ──
     if env_prefix:
         ep = os.environ.get(f"{env_prefix}_PROVIDER", "").strip()
         em = os.environ.get(f"{env_prefix}_MODEL", "").strip()

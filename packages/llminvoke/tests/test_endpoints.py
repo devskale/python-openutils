@@ -12,7 +12,8 @@ from llminvoke import config
 
 @pytest.fixture(autouse=True)
 def _isolate(monkeypatch):
-    for k in ("KONTEXT_CLIENTS_YML", "OPENAI_BASE_URL", "OPENAI_API_KEY", "TEST_BEARER"):
+    for k in ("KONTEXT_MODELS_YML", "KONTEXT_CLIENTS_YML", "KONTEXT_DATA_DIR",
+              "OPENAI_BASE_URL", "OPENAI_API_KEY", "TEST_BEARER", "KONTEXT_CLIENT"):
         monkeypatch.delenv(k, raising=False)
     config.reload_config()
     yield
