@@ -170,10 +170,16 @@ logger = logging.getLogger(__name__)
 
 
 def _is_empty_completion(finish_reason, content, thinking, tool_calls) -> bool:
-    """True for a completion that says stop but carries nothing: no content,
-    no reasoning, no tool calls. Never a legitimate chat answer — the
-    silent-empty failure mode of flaky gateways (kilo LB roulette)."""
-    if finish_reason not in (None, "stop"):
+    """True for a completion that carries nothing: no content, no reasoning,
+    no tool calls. Never a legitimate chat answer — the silent-empty failure
+    mode of flaky gateways (kilo LB roulette).
+
+    ``finish_reason`` may be ``stop`` *or* ``length``: the second is the
+    truncation-before-the-call failure observed on TU Aqueduct qwen
+    (finish=length, empty content, no tool_calls — the answer broke off before
+    the model could emit the call). A truncated empty answer is as dead as a
+    stopped one, and the retry path below treats both identically."""
+    if finish_reason not in (None, "stop", "length"):
         return False
     if tool_calls:
         return False

@@ -7,6 +7,7 @@
 #   perf    — is it fast?    (tok/s, TTFT, latency, context scaling)
 #   matrix  — capability probe + matrix for a provider (needs PROVIDER or MODELS)
 #   models  — direct LLM validation (alive/tool_use/thinking) for a provider
+#   tools   — repeated tool-call reliability probe (emit + result round-trip)
 #
 # The unit/mocked tests live in uniinfer/tests/ (pytest, no network). This
 # testsuite/ is the LIVE tier: it talks to a real proxy + provider, so it needs
@@ -29,6 +30,8 @@
 #   MODELS        provider@model,... for matrix/models tiers
 #   MAX           max models for the matrix tier (default 3)
 #   PROVIDER/CLI_MODEL (CLI smoke provider/model)
+#   RUNS           rounds per model for the tools tier (default 10)
+#   STREAM         =1 probes the tools tier via SSE streaming
 set -uo pipefail
 TIER="${1:-all}"
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
@@ -85,6 +88,16 @@ models() {
   fi
 }
 
+tools() {
+  echo "############ TOOLS  (repeated tool-call reliability, any provider) ############"
+  if [ -z "${MODELS:-}" ]; then
+    echo "  set MODELS (provider@model,...) to use the tools tier"
+    fail=1; return
+  fi
+  uv run python testsuite/toolcall_probe.py --models "$MODELS" --runs "${RUNS:-10}" \
+    ${STREAM:+--stream} || fail=1
+}
+
 bench() {
   echo "############ BENCH  (OpenAI-compatible probe + tok/s) ############"
   if [ -z "${BASEURL:-}" ]; then
@@ -102,9 +115,10 @@ case "$TIER" in
   perf)    perf ;;
   matrix)  matrix ;;
   models)  models ;;
+  tools)   tools ;;
   bench)   bench ;;
   all)     smoke; echo; details; echo; perf ;;
-  *) echo "usage: $0 [smoke|details|perf|matrix|models|bench|all]"; exit 2 ;;
+  *) echo "usage: $0 [smoke|details|perf|matrix|models|tools|bench|all]"; exit 2 ;;
 esac
 
 echo ""

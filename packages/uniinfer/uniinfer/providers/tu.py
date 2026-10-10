@@ -317,6 +317,13 @@ class TUProvider(ChatProvider):
     # OpenAI passthrough params to NEVER forward to vLLM even if a client sends
     # them as extras. Empty by default (vLLM ignores unknowns).
     EXTRA_FORWARD_DENY: frozenset[str] = frozenset()
+    # One replay for a completion that carried nothing at all. TU Aqueduct
+    # intermittently answers finish=length with empty content and no tool_calls
+    # (the answer broke off before the call — toolcall_probe, 2026-10-10); the
+    # same request on a fresh connection lands on a healthy replica, and the
+    # dead attempt consumed no tokens. Without this flag the empty answer is
+    # relayed as-is, which to an agent looks like a model bug.
+    EMPTY_COMPLETION_RETRIES = 1
 
     def __init__(self, api_key: str | None = None, base_url: str | None = None, supports_reasoning_effort: bool = False):
         """Initialize the TU provider.

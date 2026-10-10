@@ -903,6 +903,83 @@ class TestEmptyCompletionRetry:
         assert [c.message.content for c in visible] == ["recovered"]
 
 
+class TestEmptyCompletionLengthFinish:
+    """finish=length + empty content is the same dead answer as finish=stop +
+    empty, and must take the same retry path.
+
+    Observed on TU Aqueduct qwen (toolcall_probe, 2026-10-10): the answer breaks
+    off before the tool call — finish_reason=length, no content, no tool_calls.
+    _is_empty_completion used to accept only (None, "stop"), so this shape was
+    relayed as a legitimate (but useless) answer. See
+    aiui/docs/bug-qwen-vllm-toolcall.md §2."""
+
+    @staticmethod
+    def _empty_length_sse():
+        return (
+            'data: {"id": "x", "object": "chat.completion.chunk", "choices": [{"index": 0, "delta": {"role": "assistant"}}]}\n'
+            'data: {"id": "x", "object": "chat.completion.chunk", "choices": [{"index": 0, "delta": {}, "finish_reason": "length"}]}\n'
+            "data: [DONE]\n"
+        )
+
+    @pytest.mark.asyncio
+    async def test_stream_replays_after_empty_length(self):
+        from uniinfer.providers.openai_compatible import _is_empty_completion
+
+        assert _is_empty_completion("length", "", None, None) is True
+        assert _is_empty_completion("length", None, None, None) is True
+        # A truncated answer WITH content is a real answer — not empty.
+        assert _is_empty_completion("length", "partial", None, None) is False
+        # Reasoning that consumed the budget explains the emptiness — still not
+        # an empty completion.
+        assert _is_empty_completion("length", "", "thinking", None) is False
+
+        dead = TestEmptyCompletionRetry._stream_client(self._empty_length_sse())
+        alive = TestEmptyCompletionRetry._stream_client(TestEmptyCompletionRetry._full_sse())
+        p = KiloProvider(api_key="k")
+        p.EMPTY_COMPLETION_RETRIES = 1
+        queue = [dead, alive]
+
+        async def fake_get():
+            return queue.pop(0)
+
+        p._get_async_client = fake_get
+        p._retry_client = lambda: queue.pop(0)
+        chunks = [c async for c in p.astream_complete(TestEmptyCompletionRetry._request())]
+        visible = [c for c in chunks if (c.message.content or "").strip()]
+        assert [c.message.content for c in visible] == ["recovered"]
+
+    @pytest.mark.asyncio
+    async def test_nonstream_replays_after_empty_length(self):
+        import httpx as _httpx
+
+        empty = MagicMock(spec=_httpx.Response)
+        empty.status_code = 200
+        empty.json.return_value = {"choices": [{"message": {"role": "assistant", "content": ""},
+                                                 "finish_reason": "length"}]}
+        full = MagicMock(spec=_httpx.Response)
+        full.status_code = 200
+        full.json.return_value = {"choices": [{"message": {"role": "assistant", "content": "recovered"},
+                                                "finish_reason": "stop"}]}
+        dead = AsyncMock(spec=_httpx.AsyncClient)
+        dead.is_closed = False
+        dead.post.return_value = empty
+        alive = AsyncMock(spec=_httpx.AsyncClient)
+        alive.is_closed = False
+        alive.post.return_value = full
+
+        p = KiloProvider(api_key="k")
+        p.EMPTY_COMPLETION_RETRIES = 1
+        queue = [dead, alive]
+
+        async def fake_get():
+            return queue.pop(0)
+
+        p._get_async_client = fake_get
+        p._retry_client = lambda: queue.pop(0)
+        resp = await p.acomplete(TestEmptyCompletionRetry._request())
+        assert resp.message.content == "recovered"
+
+
 class TestEmptyCompletionRateLimitShadow:
     """After the retry budget, an empty completion is surfaced as a real 429 —
     kilo's free tier throttles with 200 + empty instead of a proper 429, and a
