@@ -22,10 +22,14 @@ from uniinfer.providers.tu import TUProvider, _TU_CLIENT_CACHE
 
 
 def _fake_credgoo(monkeypatch, key_holder: dict):
-    """Inject a fake credgoo module serving key_holder['key']."""
+    """Inject a fake credgoo module serving key_holder['key'].
+
+    Records every call's kwargs so a test can assert the recovery read went to
+    the backend (no_cache=True) instead of the cache."""
     fake = types.ModuleType("credgoo")
 
-    def get_api_key(service):
+    def get_api_key(service, **kwargs):
+        key_holder.setdefault("calls", []).append(kwargs)
         return key_holder["key"]
 
     fake.get_api_key = get_api_key
@@ -99,6 +103,29 @@ class TestTUKeyRotation:
         assert response.message.content == "recovered"
         assert provider.api_key == "fresh-key"
         assert _TU_CLIENT_CACHE[provider.base_url][0] is mock_b
+
+    @pytest.mark.asyncio
+    async def test_recovery_reads_backend_not_cache(self, monkeypatch):
+        """The 401 recovery MUST bypass the cache — it is the one moment the
+        cache is known-stale (the key it served just got rejected). A cached
+        refresh would return the same failing key and turn a recoverable
+        rotation into a permanent auth error until the TTL ages out."""
+        keys = {"key": "stale-key"}
+        _fake_credgoo(monkeypatch, keys)
+        monkeypatch.delenv("TU_API_KEY", raising=False)
+
+        provider = TUProvider(api_key=None)
+        mock_a = _pool_client(_unauthorized_response())
+        mock_b = _pool_client(_good_response("recovered"))
+        _TU_CLIENT_CACHE[provider.base_url] = (mock_a, asyncio.get_running_loop())
+        monkeypatch.setattr(TUProvider, "_new_async_client", lambda self: mock_b)
+        keys["key"] = "fresh-key"
+
+        await provider.acomplete(_request())
+
+        assert provider.api_key == "fresh-key"
+        # The refetch call carried no_cache=True — the backend, not the cache.
+        assert keys["calls"][-1].get("no_cache") is True
 
     @pytest.mark.asyncio
     async def test_unchanged_key_raises_immediately(self, monkeypatch):

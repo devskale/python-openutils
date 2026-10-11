@@ -372,7 +372,12 @@ class TUProvider(ChatProvider):
             return False
         try:
             from credgoo import get_api_key
-            fresh = get_api_key(self._CREDGOO_SERVICE)
+            # no_cache: the 401 IS the invalidation signal. A cached read would
+            # serve the very key that just failed (TTL up to 7 days), so the
+            # recovery could never see a rotation — it would raise "permanent
+            # auth error" until the entry aged out. Truth lives on the backend;
+            # the cache is only the fast path for calls that did NOT fail.
+            fresh = get_api_key(self._CREDGOO_SERVICE, no_cache=True)
         except Exception as e:
             logger.warning("[%s] credgoo key refresh failed: %s", self._CREDGOO_SERVICE, e)
             return False
