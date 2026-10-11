@@ -10,9 +10,11 @@ from unittest.mock import patch, MagicMock
 from credgoo import credgoo as mod
 from credgoo.store import (
     DEFAULT_CACHE_TTL_SECONDS,
+    DEFAULT_MEM_TTL_SECONDS,
     CredentialStore,
     _cache_key_name,
     _cache_ttl_seconds,
+    _mem_ttl_seconds,
     _resolve_backend,
     cache_api_key,
     get_cached_api_key,
@@ -473,6 +475,129 @@ class TestCacheIntegrityPolicy(unittest.TestCase):
             with patch.object(AirtableBackend, "fetch_key", return_value="sk-rotated") as mock:
                 self.assertEqual(CredentialStore(cache_dir).get("openai"), "sk-rotated")
             mock.assert_called_once()
+
+
+class TestMemCacheL1(unittest.TestCase):
+    """L1 = process-local in-memory cache in front of the L2 file cache.
+
+    The L2 file must be re-read and re-parsed (plus HMAC + XOR) on every get;
+    L1 absorbs that. The invariants that matter:
+
+    1. a hit avoids the file entirely (backend AND file untouched),
+    2. the L1 TTL is SHORT (60s default) — an L1 entry may never outlive the
+       freshness window of the L2 entry it came from,
+    3. the L1 entry is scoped to the encryption key, so rotating the backend
+       creds (PAT) invalidates it exactly like the L2 HMAC does,
+    4. no_cache=True bypasses L1 (the 401-recovery path),
+    5. add/delete/clear drop the L1 entry.
+    """
+
+    def _store(self, cache_dir, token="patT"):
+        store_credentials(
+            {"default_backend": "airtable",
+             "airtable": {"airtable_token": token, "airtable_base": "b"}},
+            cache_dir / "credgoo.txt")
+        return CredentialStore(cache_dir)
+
+    def _fresh(self, tmpdir, token="patT"):
+        """A store whose L1 is guaranteed empty (each test gets its own tmpdir,
+        but the L1 is process-global, so clear it explicitly)."""
+        from credgoo.store import _l1_clear
+        _l1_clear()
+        return self._store(Path(tmpdir), token=token)
+
+    def test_second_get_serves_from_memory(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            store = self._fresh(tmpdir)
+            with patch.object(AirtableBackend, "fetch_key", return_value="sk-1") as mock:
+                self.assertEqual(store.get("openai"), "sk-1")
+                self.assertEqual(store.get("openai"), "sk-1")
+                self.assertEqual(store.get("openai"), "sk-1")
+            self.assertEqual(mock.call_count, 1)  # backend hit once
+
+    def test_mem_hit_does_not_touch_the_file(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            store = self._fresh(tmpdir)
+            with patch.object(AirtableBackend, "fetch_key", return_value="sk-1"):
+                store.get("openai")
+            # Delete the L2 file out from under the L1: a real L1 hit must not
+            # care, because it never opens the file.
+            (store.cache_dir / "api_keys.json").unlink()
+            with patch("credgoo.store.get_cached_api_key",
+                       side_effect=AssertionError("L2 must not be read on an L1 hit")):
+                self.assertEqual(store.get("openai"), "sk-1")
+
+    def test_no_cache_bypasses_l1_and_reads_backend(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            store = self._fresh(tmpdir)
+            with patch.object(AirtableBackend, "fetch_key", return_value="sk-1"):
+                store.get("openai")  # primes L1 + L2
+            with patch.object(AirtableBackend, "fetch_key", return_value="sk-fresh") as mock:
+                self.assertEqual(store.get("openai", no_cache=True), "sk-fresh")
+            self.assertEqual(mock.call_count, 1)
+
+    def test_expired_l1_entry_falls_through_to_l2(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            store = self._fresh(tmpdir)
+            with patch.object(AirtableBackend, "fetch_key", return_value="sk-1"):
+                store.get("openai")
+            # Age the L1 entry past its TTL without touching the L2 file.
+            from credgoo.store import _L1_CACHE
+            name = store._l1_name(_cache_key_name("airtable", "openai"))
+            _L1_CACHE[name] = ("sk-1", time.time() - 10_000)
+            with patch("credgoo.store.get_cached_api_key", return_value="sk-from-l2") as l2:
+                self.assertEqual(store.get("openai"), "sk-from-l2")
+            self.assertEqual(l2.call_count, 1)
+
+    def test_l1_entry_is_scoped_to_the_encryption_key(self):
+        """Rotating the PAT changes the derived key; the L1 entry from the old
+        PAT must not be served (the L2 HMAC already enforces this — L1 has to
+        agree, or it would outlive the rotation)."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            store = self._fresh(tmpdir, token="patOLD")
+            with patch.object(AirtableBackend, "fetch_key", return_value="sk-old"):
+                self.assertEqual(store.get("openai"), "sk-old")
+            # New store, same cache dir, rotated PAT.
+            rotated = self._store(Path(tmpdir), token="patNEW")
+            with patch.object(AirtableBackend, "fetch_key", return_value="sk-new") as mock:
+                self.assertEqual(rotated.get("openai"), "sk-new")
+            self.assertEqual(mock.call_count, 1)
+
+    def test_add_delete_clear_invalidate_l1(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            store = self._fresh(tmpdir)
+            with patch.object(AirtableBackend, "fetch_key", return_value="sk-1"):
+                store.get("openai")
+            # add: the L1 entry for the service is dropped, the new value
+            # written to L2 — the next get is an L2 hit (never the backend),
+            # which is exactly what "primed the cache" means.
+            with patch.object(AirtableBackend, "add_key", return_value=True):
+                self.assertTrue(store.add("openai", "sk-2"))
+            with patch("credgoo.store.get_cached_api_key", return_value="sk-from-l2"):
+                self.assertEqual(store.get("openai"), "sk-from-l2")
+            # delete: L1 dropped too — a later get must miss both levels
+            with patch.object(AirtableBackend, "delete_key", return_value=True), \
+                 patch.object(AirtableBackend, "fetch_key", return_value=None):
+                self.assertTrue(store.delete("openai"))
+                self.assertIsNone(store.get("openai"))
+
+    def test_mem_ttl_env_override_and_disable(self):
+        os.environ["CREDGOO_MEM_TTL_SECONDS"] = "5"
+        try:
+            self.assertEqual(_mem_ttl_seconds(), 5)
+            os.environ["CREDGOO_MEM_TTL_SECONDS"] = "0"
+            self.assertIsNone(_mem_ttl_seconds())
+            os.environ["CREDGOO_MEM_TTL_SECONDS"] = "nope"
+            self.assertEqual(_mem_ttl_seconds(), DEFAULT_MEM_TTL_SECONDS)
+        finally:
+            del os.environ["CREDGOO_MEM_TTL_SECONDS"]
+        self.assertEqual(_mem_ttl_seconds(), DEFAULT_MEM_TTL_SECONDS)
+
+    def test_default_mem_ttl_is_short(self):
+        """The whole safety argument rests on this number being small: an L1
+        entry holds a plaintext key in RAM and must not extend the L2 window."""
+        self.assertEqual(DEFAULT_MEM_TTL_SECONDS, 60)
+        self.assertLess(DEFAULT_MEM_TTL_SECONDS, DEFAULT_CACHE_TTL_SECONDS)
 
 
 class TestCredentialStore(unittest.TestCase):

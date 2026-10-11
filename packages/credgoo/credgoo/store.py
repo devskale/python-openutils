@@ -16,6 +16,7 @@ import hmac as _hmac
 import json
 import logging
 import os
+import threading
 import time
 from pathlib import Path
 
@@ -289,6 +290,14 @@ def save_backend_creds(backend_name, backend_data, cache_dir):
 # the age check (cache never expires on its own).
 DEFAULT_CACHE_TTL_SECONDS = 7 * 24 * 60 * 60
 
+# Default maximum age of an L1 (in-memory) entry: 60s. The L2 file cache can be
+# stale for up to the L2 TTL (7 days); a long-running process would serve a
+# rotated key from its own RAM for that whole window. The short L1 TTL bounds
+# that to a minute while still absorbing the hot-loop pattern (the uniinfer tier
+# classifier probes many services in a row). Override with
+# CREDGOO_MEM_TTL_SECONDS; 0 disables the L1 entirely (L2-only, historic path).
+DEFAULT_MEM_TTL_SECONDS = 60
+
 
 def _cache_ttl_seconds():
     """Resolve the cache TTL from the environment (None = no age check)."""
@@ -301,6 +310,68 @@ def _cache_ttl_seconds():
         logger.warning("Invalid CREDGOO_CACHE_TTL_SECONDS=%r, using default.", raw)
         return DEFAULT_CACHE_TTL_SECONDS
     return value if value > 0 else None
+
+
+def _mem_ttl_seconds():
+    """Resolve the L1 (in-memory) TTL from the environment (None = L1 off)."""
+    raw = os.environ.get("CREDGOO_MEM_TTL_SECONDS")
+    if raw is None:
+        return DEFAULT_MEM_TTL_SECONDS
+    try:
+        value = int(raw)
+    except ValueError:
+        logger.warning("Invalid CREDGOO_MEM_TTL_SECONDS=%r, using default.", raw)
+        return DEFAULT_MEM_TTL_SECONDS
+    return value if value > 0 else None
+
+
+# ---- L1: in-memory cache (process-local, short TTL) ----
+#
+# Why a second level: every get() otherwise re-reads and re-parses the whole L2
+# JSON file (12KB / ~50 entries on a real box) plus HMAC + XOR. That is cheap
+# per call but pure waste in hot loops, and it grows linearly with entry count.
+#
+# Why the TTL is short (60s default): the L1 holds plaintext keys in this
+# process's RAM for up to that long. The L2 file can be stale for up to the L2
+# TTL (7 days) — an L1 entry must never extend that window, only shorten it.
+# The 401-recovery path (uniinfer tu._refresh_credgoo_key) reads with
+# no_cache=True, which bypasses BOTH levels and goes straight to the backend.
+_L1_CACHE: dict[str, tuple[str, float]] = {}
+_L1_LOCK = threading.Lock()
+
+
+def _l1_get(key_name: str, ttl: float | None) -> str | None:
+    """L1 hit, or None. Expired entries are dropped on read."""
+    if ttl is None:
+        return None
+    with _L1_LOCK:
+        entry = _L1_CACHE.get(key_name)
+        if entry is None:
+            return None
+        key, stored_at = entry
+        if time.time() - stored_at > ttl:
+            _L1_CACHE.pop(key_name, None)
+            return None
+        return key
+
+
+def _l1_put(key_name: str, api_key: str, ttl: float | None) -> None:
+    if ttl is None:
+        return
+    with _L1_LOCK:
+        _L1_CACHE[key_name] = (api_key, time.time())
+
+
+def _l1_invalidate(key_name: str) -> None:
+    """Drop one entry — called whenever the backend state for it changed."""
+    with _L1_LOCK:
+        _L1_CACHE.pop(key_name, None)
+
+
+def _l1_clear() -> None:
+    """Drop the whole L1 (test seam; also the escape hatch for a paranoid caller)."""
+    with _L1_LOCK:
+        _L1_CACHE.clear()
 
 
 # ---- Backend resolution ----
@@ -363,33 +434,59 @@ class CredentialStore:
         return True
 
     def get(self, service, no_cache=False):
-        """Plaintext key for *service*, or None. Cache-aware."""
+        """Plaintext key for *service*, or None. Cache-aware.
+
+        Read order when caching applies: L1 (in-memory, short TTL) -> L2 (the
+        encrypted JSON file, long TTL) -> backend. ``no_cache=True`` skips both
+        levels and always reads the backend — that is the 401-recovery path,
+        where the cached copy is known-stale because it just got rejected.
+        """
         if not self.backend:
             logger.error("No backend configured. Run 'credgoo --setup-backend'.")
             return None
+        key_name = _cache_key_name(self.backend_name, service)
+        mem_ttl = _mem_ttl_seconds()
         if not no_cache and self.enc_key:
+            hit = _l1_get(self._l1_name(key_name), mem_ttl)
+            if hit:
+                logger.debug("Using in-memory key for %s", key_name)
+                return hit
             cached = get_cached_api_key(
                 self.backend_name, service, self.enc_key, self.cache_dir,
                 integrity=self.backend.cache_integrity,
                 ttl_seconds=_cache_ttl_seconds())
             if cached:
+                _l1_put(self._l1_name(key_name), cached, mem_ttl)
                 return cached
         api_key = self.backend.fetch_key(service, self.backend_creds)
         if api_key and not no_cache and self.enc_key:
             cache_api_key(self.backend_name, service, api_key, self.enc_key, self.cache_dir,
                           integrity=self.backend.cache_integrity)
+            _l1_put(self._l1_name(key_name), api_key, mem_ttl)
         return api_key
+
+    def _l1_name(self, key_name: str) -> str:
+        """L1 cache key: the L2 entry name PLUS the encryption key's fingerprint.
+
+        The L2 entry is HMAC-stamped with a key derived from the backend creds
+        (e.g. the Airtable PAT). Rotating those creds must invalidate the cached
+        copy — L2 detects it via HMAC mismatch, and the L1 must scope its entry
+        the same way, or a rotated PAT would keep serving the old key from RAM.
+        """
+        fingerprint = hashlib.sha256(self.enc_key.encode("utf-8")).hexdigest()[:16]
+        return f"{key_name}|{fingerprint}"
 
     def add(self, service, api_key):
         """Add/update a key in the backend and prime the cache. Returns bool."""
         if not self.supports('add_key'):
             return False
         ok = self.backend.add_key(service, api_key, self.backend_creds)
-        if ok and self.enc_key:
-            cache_api_key(self.backend_name, service, api_key, self.enc_key, self.cache_dir,
-                          integrity=self.backend.cache_integrity)
+        if ok:
+            _l1_invalidate(self._l1_name(_cache_key_name(self.backend_name, service)))
+            if self.enc_key:
+                cache_api_key(self.backend_name, service, api_key, self.enc_key, self.cache_dir,
+                              integrity=self.backend.cache_integrity)
         return ok
-
     def delete(self, service):
         """Delete a key from the backend and drop its cache entry."""
         if not self.supports('delete_key'):
@@ -397,6 +494,7 @@ class CredentialStore:
         ok = self.backend.delete_key(service, self.backend_creds)
         if ok:
             _delete_cached_key(self.backend_name, service, self.cache_dir)
+            _l1_invalidate(self._l1_name(_cache_key_name(self.backend_name, service)))
         return ok
 
     def clear(self, service):
@@ -406,6 +504,7 @@ class CredentialStore:
         ok = self.backend.clear_key(service, self.backend_creds)
         if ok:
             _delete_cached_key(self.backend_name, service, self.cache_dir)
+            _l1_invalidate(self._l1_name(_cache_key_name(self.backend_name, service)))
         return ok
 
     def list(self):
