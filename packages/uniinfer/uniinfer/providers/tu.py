@@ -183,6 +183,28 @@ class StreamStalledError(Exception):
     surfaced to the caller as an upstream error."""
 
 
+def _env_int(name: str, default: int) -> int:
+    """Positive int from the environment, else *default* (0 disables)."""
+    raw = os.getenv(name)
+    if raw is None:
+        return default
+    try:
+        value = int(raw)
+    except ValueError:
+        logger.warning("Invalid %s=%r, using default %d.", name, raw, default)
+        return default
+    return value if value > 0 else 0
+
+
+# Replays for a stream that ended with NO payload at all (vLLM generation halt:
+# 200 OK, empty body — non-streaming with the identical payload succeeds,
+# vllm#52613/#49717). Safe to replay: nothing reached the caller, so there is
+# no prefix to duplicate. 0 = relay the empty stream as an error (historic
+# behaviour). The healing counters on _TU_TELEMETRY make the effect measurable
+# from /health: healed / (healed + unhealed) is the healing rate.
+TU_EMPTY_STREAM_RETRIES = _env_int("TU_EMPTY_STREAM_RETRIES", 1)
+
+
 class TUTelemetry:
     """Process-wide wedge/stall telemetry for the TU upstream, surfaced through
     the proxy /health ``upstream`` block so an operator can see at a glance how
@@ -199,6 +221,14 @@ class TUTelemetry:
         self.prime_timeouts = 0       # first token never arrived (2 windows) — 504 to caller
         self.last_prime_timeout: dict | None = None  # {model, ts(monotonic)}
         self.throttled = 0            # local 429s from the TU rate budget (TU_RATE_LIMIT_PER_MIN)
+        # Empty-stream healing: a stream that ended with NO payload at all
+        # (vLLM generation halt — non-streaming with the same payload succeeds,
+        # vllm#52613/#49717). Replayed on a fresh connection while nothing has
+        # been emitted. The counters below are the healing audit trail: they
+        # answer "does the replay actually work?" from /health alone.
+        self.empty_stream_retries = 0     # replays triggered
+        self.empty_stream_healed = 0      # replay produced payload (healing worked)
+        self.empty_stream_unhealed = 0    # every replay also empty (upstream really down)
         self.active_streams: dict[int, dict] = {}  # id -> {start,last,model}
         self._seq = 0
 
@@ -210,6 +240,18 @@ class TUTelemetry:
         """Both first-token windows elapsed — caller gets a 504 chunk."""
         self.prime_timeouts += 1
         self.last_prime_timeout = {"model": model, "ts": time.monotonic()}
+
+    def note_empty_stream_retry(self, model: str) -> None:
+        """An empty stream is being replayed (healing attempt)."""
+        self.empty_stream_retries += 1
+
+    def note_empty_stream_healed(self, model: str) -> None:
+        """The replay produced payload — the empty stream was transient."""
+        self.empty_stream_healed += 1
+
+    def note_empty_stream_unhealed(self, model: str) -> None:
+        """Every replay stayed empty — the upstream is genuinely failing."""
+        self.empty_stream_unhealed += 1
 
     def register_stream(self, model: str) -> int:
         self._seq += 1
@@ -247,6 +289,9 @@ class TUTelemetry:
             "rate_limits": self.rate_limits,
             "prime_retries": self.prime_retries,
             "prime_timeouts": self.prime_timeouts,
+            "empty_stream_retries": self.empty_stream_retries,
+            "empty_stream_healed": self.empty_stream_healed,
+            "empty_stream_unhealed": self.empty_stream_unhealed,
             "throttled": self.throttled,
             "last_prime_timeout": (
                 {
@@ -861,6 +906,7 @@ class TUProvider(ChatProvider):
         request.streaming = True
         payload = self._prepare_payload(request)
         max_retries = 4
+        empty_stream_retries = TU_EMPTY_STREAM_RETRIES
         last_stall: StreamStalledError | None = None
         for attempt in range(max_retries + 1):
             client = await self._get_async_client()
@@ -996,10 +1042,43 @@ class TUProvider(ChatProvider):
             # Stream ended: run the (unchanged) completeness guards.
             # Detect incomplete stream (preemption) - stream ended without proper completion
             if chunks_yielded == 0:
+                # Empty stream: replay while the budget lasts. vLLM's generation
+                # halt is transient per-request (the same payload succeeds on a
+                # fresh route), and nothing has been emitted, so the replay is
+                # duplication-free. Counted either way so /health shows whether
+                # the healing actually works.
+                if attempt < empty_stream_retries and not received_payload:
+                    _TU_TELEMETRY.note_empty_stream_retry(request.model)
+                    logger.info(
+                        "[tu] empty stream (0 chunks) on %s — replaying on a fresh "
+                        "connection (attempt %d/%d)",
+                        request.model, attempt + 1, empty_stream_retries + 1,
+                    )
+                    log_raw_response(
+                        provider=self._CREDGOO_SERVICE,
+                        operation="chat.completions.stream",
+                        raw_response={"error": "Empty stream - no chunks received (possible preemption)",
+                                      "healing": {"action": "replay", "attempt": attempt + 1,
+                                                  "budget": empty_stream_retries + 1}},
+                        log_file=os.path.join(os.getcwd(), "logs", "tu_raw_chat.log"),
+                    )
+                    if not self._owns_client:
+                        client = self._replace_pooled_client()
+                    await asyncio.sleep(min(2.0 * (attempt + 1), 8.0))
+                    continue
+                if attempt > 0:
+                    _TU_TELEMETRY.note_empty_stream_unhealed(request.model)
+                    logger.warning(
+                        "[tu] empty stream on %s persisted across %d attempts — "
+                        "upstream is genuinely failing",
+                        request.model, attempt + 1,
+                    )
                 log_raw_response(
                     provider=self._CREDGOO_SERVICE,
                     operation="chat.completions.stream",
-                    raw_response={"error": "Empty stream - no chunks received (possible preemption)"},
+                    raw_response={"error": "Empty stream - no chunks received (possible preemption)",
+                                  "healing": {"action": "give_up", "attempts": attempt + 1,
+                                              "budget": empty_stream_retries + 1}},
                     log_file=os.path.join(os.getcwd(), "logs", "tu_raw_chat.log"),
                 )
                 # Yield error response instead of raising - exception would be swallowed by StopAsyncIteration
@@ -1016,8 +1095,6 @@ class TUProvider(ChatProvider):
 
             # Detect premature stream termination - stream had chunks but no finish_reason or [DONE]
             if not received_done and not received_finish_reason:
-                import sys
-                print(f"[DEBUG] PREEMPTION DETECTED: {chunks_yielded} chunks, no finish_reason or [DONE]", file=sys.stderr, flush=True)
                 log_raw_response(
                     provider=self._CREDGOO_SERVICE,
                     operation="chat.completions.stream",
@@ -1042,10 +1119,41 @@ class TUProvider(ChatProvider):
             # preemption above) instead of an empty "success" the caller
             # would retry blindly.
             if not received_payload:
+                # Completed stream, zero payload — the silent rate-limit shadow
+                # (200, empty). Same healing shape as the 0-chunk case above:
+                # replay while the budget lasts, then surface the error.
+                if attempt < empty_stream_retries:
+                    _TU_TELEMETRY.note_empty_stream_retry(request.model)
+                    logger.info(
+                        "[tu] stream completed with empty content on %s — replaying "
+                        "on a fresh connection (attempt %d/%d)",
+                        request.model, attempt + 1, empty_stream_retries + 1,
+                    )
+                    log_raw_response(
+                        provider=self._CREDGOO_SERVICE,
+                        operation="chat.completions.stream",
+                        raw_response={"error": "Stream completed with empty content (suspected rate-limit shadow)",
+                                      "healing": {"action": "replay", "attempt": attempt + 1,
+                                                  "budget": empty_stream_retries + 1}},
+                        log_file=os.path.join(os.getcwd(), "logs", "tu_raw_chat.log"),
+                    )
+                    if not self._owns_client:
+                        client = self._replace_pooled_client()
+                    await asyncio.sleep(min(2.0 * (attempt + 1), 8.0))
+                    continue
+                if attempt > 0:
+                    _TU_TELEMETRY.note_empty_stream_unhealed(request.model)
+                    logger.warning(
+                        "[tu] empty content on %s persisted across %d attempts — "
+                        "upstream is genuinely failing",
+                        request.model, attempt + 1,
+                    )
                 log_raw_response(
                     provider=self._CREDGOO_SERVICE,
                     operation="chat.completions.stream",
-                    raw_response={"error": "Stream completed with empty content (suspected rate-limit shadow)"},
+                    raw_response={"error": "Stream completed with empty content (suspected rate-limit shadow)",
+                                  "healing": {"action": "give_up", "attempts": attempt + 1,
+                                              "budget": empty_stream_retries + 1}},
                     log_file=os.path.join(os.getcwd(), "logs", "tu_raw_chat.log"),
                 )
                 yield ChatCompletionResponse(
@@ -1058,6 +1166,15 @@ class TUProvider(ChatProvider):
                     thinking=None
                 )
                 return  # Exit generator cleanly
+
+            # Reached here with payload: if this attempt followed empty-stream
+            # replays, the healing worked — record it so /health shows a rate.
+            if attempt > 0 and received_payload:
+                _TU_TELEMETRY.note_empty_stream_healed(request.model)
+                logger.info(
+                    "[tu] empty stream on %s healed on attempt %d — payload arrived",
+                    request.model, attempt + 1,
+                )
 
             return
         raise map_provider_error(
