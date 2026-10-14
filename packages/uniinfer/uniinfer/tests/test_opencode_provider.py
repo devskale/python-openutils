@@ -595,6 +595,49 @@ class TestChatDialectToolHistory:
         assert [m["role"] for m in out] == ["user", "user", "user"]
         assert "output" in out[1]["content"]
 
+    def test_dangling_trailing_tool_call_is_dropped(self):
+        """A transcript ending on an assistant turn whose calls were never
+        answered (aborted round — pi ctrl+c mid-call). The gateway rejects the
+        whole request: "An assistant message with 'tool_calls' must be followed
+        by a tool message answering each call". The call is removed; a turn
+        that carried nothing but the call disappears entirely."""
+        out = self._run([
+            {"role": "user", "content": "hi"},
+            self._a(self._tc("c1")), self._t("c1", "a"),
+            {"role": "user", "content": "and now?"},
+            self._a(self._tc("c2")),  # <-- never answered
+        ])
+        assert [m["role"] for m in out] == ["user", "assistant", "tool", "user"]
+        assert [c["id"] for c in out[1]["tool_calls"]] == ["c1"]
+        assert out[-1]["content"] == "and now?"
+
+    def test_dangling_trailing_call_keeps_its_text(self):
+        """The dangling turn announced something in prose alongside the call —
+        the text stays (the model should still see what it said), only the
+        unanswered call attribute goes."""
+        out = self._run([
+            {"role": "user", "content": "hi"},
+            {"role": "assistant", "content": "Ich schaue nach.",
+             "tool_calls": [self._tc("c1")]},
+        ])
+        assert [m["role"] for m in out] == ["user", "assistant"]
+        assert "tool_calls" not in out[-1]
+        assert out[-1]["content"] == "Ich schaue nach."
+
+    def test_dangling_call_is_the_only_message(self):
+        """Degenerate case: the whole transcript is one unanswered call."""
+        out = self._run([self._a(self._tc("c1"))])
+        assert out == []
+
+    def test_answered_call_is_not_touched(self):
+        """Regression guard: the trailing cleanup must not eat a call whose
+        result IS present."""
+        msgs = [
+            {"role": "user", "content": "hi"},
+            self._a(self._tc("c1")), self._t("c1", "a"),
+        ]
+        assert self._run(msgs) == msgs
+
     def test_plain_conversation_untouched(self):
         msgs = [
             {"role": "system", "content": "s"},

@@ -58,6 +58,11 @@ def normalize_tool_history(messages: list[dict[str, Any]]) -> list[dict[str, Any
       tool call: ``assistant(c1) tool(c1) assistant(c2) tool(c2)``
     * a result whose introducing assistant turn has no calls at all (the old
       provider's turns were flattened to text), or no turn above at all
+    * a transcript that ENDS on an assistant turn holding ``tool_calls`` whose
+      results never arrived — the agent emitted the call and the round was
+      aborted before the tool ran (pi: ctrl+c mid-call). Strict gateways reject
+      the whole request: "An assistant message with 'tool_calls' must be
+      followed by a tool message answering each call" (opencode zen 400).
 
     The rewrite is minimal and lossless: split runs are folded into a single
     assistant turn with every call, and results are re-emitted directly behind
@@ -95,6 +100,13 @@ def normalize_tool_history(messages: list[dict[str, Any]]) -> list[dict[str, Any
             if msg.get("content") and not base.get("content"):
                 base["content"] = msg["content"]
 
+    # A transcript may END on tool results (the common accepted shape
+    # ``assistant(calls) tool(result)``). Pass 1 only flushes the parked results
+    # when a following non-tool message arrives, so flush the tail here —
+    # otherwise a trailing result would be dropped and Pass 3 would then
+    # misread its (now result-less) assistant turn as a dangling call.
+    merged.extend(pending_tools)
+
     # Pass 2 — a tool run survives only directly behind its assistant turn
     # (with calls). Everything else becomes a user turn.
     out: list[dict[str, Any]] = []
@@ -128,8 +140,21 @@ def normalize_tool_history(messages: list[dict[str, Any]]) -> list[dict[str, Any
             continue
         out.append(msg)
         index += 1
-    return out
 
+    # Pass 3 — a dangling trailing tool call. The transcript ends on an
+    # assistant turn whose calls were never answered (aborted round). No
+    # gateway accepts that shape, and there is nothing to replay it against:
+    # the result does not exist. Drop the tool_calls attribute and keep the
+    # turn's text (if any) so the model still sees what it announced; a turn
+    # that carried nothing but calls is removed entirely.
+    while out and out[-1].get("role") == "assistant" and out[-1].get("tool_calls"):
+        trailing = out[-1]
+        if trailing.get("content"):
+            trailing = {k: v for k, v in trailing.items() if k != "tool_calls"}
+            out[-1] = trailing
+        else:
+            out.pop()
+    return out
 
 def normalize_tool_call_ids(messages: list[dict[str, Any]]) -> list[dict[str, Any]]:
     """Rewrite tool-call ids to a short gateway-neutral format, consistently.
