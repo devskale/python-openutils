@@ -45,3 +45,4 @@ packages/uniinfer/.env
 packages/uniinfer/.env.*
 packages/uniinfer/!.env.example
 .env.local
+\.work
