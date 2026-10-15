@@ -1,6 +1,6 @@
 # AGENTS.md — Python Open Utils
 
-> **Meta repo**: [kontext.one](https://github.com/devskale/kontext.one) — deploy, release, cross-repo orchestration. [`../AGENTS.md`](../AGENTS.md) ist kanonisch für Dev-Methodik; Issues-Kanban + Triage-Vokabular: [`../docs/agents/`](../docs/agents/) (`.handoff/kontext.one/issues/`, `module:`-Feld, Signatur `<machine>@<openutils>`).
+> **Meta repo**: [kontext.one](https://github.com/devskale/kontext.one) — deploy, release, cross-repo orchestration. [`../AGENTS.md`](../AGENTS.md) ist kanonisch für Dev-Methodik; Issues-Kanban + Triage-Vokabular: [`../docs/agents/`](../docs/agents/) (`.work/issues/`, `module:`-Feld, Signatur `<machine>@<openutils>`).
 
 ## Tooling
 
