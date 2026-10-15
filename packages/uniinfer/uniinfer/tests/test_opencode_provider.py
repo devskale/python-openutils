@@ -946,6 +946,25 @@ class TestEmptyCompletionRetry:
         assert [c.message.content for c in visible] == ["recovered"]
 
 
+class TestOpenCodeEmptyRetryOptIn:
+    """opencode opts into the empty-completion replay.
+
+    The zen relay fails per-request, not per-key: LB roulette answers
+    finish=stop with zero content, and intermittently a 400 whose body carries
+    no error object at all (logs/opencode_raw_chat.log 2026-10-15:
+    {"model":"deepseek-v4.1-flash-free"} — ~1% of requests while the same
+    model served 200s for 80s+). One replay on a fresh connection is the only
+    thing that separates a bad route from a bad request. 0 would relay the
+    dead answer as-is."""
+
+    def test_opencode_opts_into_the_replay(self):
+        assert OpenCodeProvider.EMPTY_COMPLETION_RETRIES == 1
+
+    def test_base_default_stays_off(self):
+        from uniinfer.providers.openai_compatible import OpenAICompatibleChatProvider as B
+        assert B.EMPTY_COMPLETION_RETRIES == 0
+
+
 class TestEmptyCompletionLengthFinish:
     """finish=length + empty content is the same dead answer as finish=stop +
     empty, and must take the same retry path.

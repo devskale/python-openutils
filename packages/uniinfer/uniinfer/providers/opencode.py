@@ -167,6 +167,16 @@ class OpenCodeProvider(OpenAICompatibleChatProvider):
     # pi writes one assistant message per tool call; zen's chat gateway refuses
     # that shape (and provider-switched orphaned results) with a bare 400.
     STRICT_TOOL_HISTORY = True
+    # One replay for a completion that came back empty. Two observed causes on
+    # the zen relay, both per-request rather than per-key: (1) the LB routes to
+    # a replica that answers finish=stop with zero content — the same request
+    # on a fresh connection lands on a healthy one, and the dead attempt cost
+    # no tokens; (2) the relay intermittently rejects with a 400 whose body
+    # carries no error object at all (just the model name echoed back,
+    # logs/opencode_raw_chat.log 2026-10-15: {"model":"deepseek-v4.1-flash-free"}
+    # at ~1% of requests while the same model served 200s for 80s+). A replay
+    # is the only thing that distinguishes a bad route from a bad request.
+    EMPTY_COMPLETION_RETRIES = 1
 
     # Client identity the zen gate expects. Version-pinned to the capture the
     # toolset was taken from (1.18.31) — refresh both together on upgrades.
