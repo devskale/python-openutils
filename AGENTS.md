@@ -1,195 +1,82 @@
 # AGENTS.md — Python Open Utils
 
-> **Meta repo**: [kontext.one](https://github.com/devskale/kontext.one) — deploy, release, cross-repo orchestration. See [GUIDE.md](https://github.com/devskale/kontext.one/blob/main/GUIDE.md).
+> **Meta repo**: [kontext.one](https://github.com/devskale/kontext.one) — deploy, release, cross-repo orchestration. [`../AGENTS.md`](../AGENTS.md) ist kanonisch für Dev-Methodik; Issues-Kanban + Triage-Vokabular: [`../docs/agents/`](../docs/agents/) (`.handoff/kontext.one/issues/`, `module:`-Feld, Signatur `<machine>@<openutils>`).
 
 ## Tooling
 
-- Python 3.9+, **uv** for package management (not pip)
-- Monorepo: `packages/credgoo/` and `packages/uniinfer/` — each has own `pyproject.toml` + `uv.lock`
-
-## Commands
-
-```bash
-# Per-package sync (creates venv, installs from lockfile)
-cd packages/<pkg> && uv sync
-
-# Tests
-cd packages/<pkg> && uv run pytest
-cd packages/<pkg> && uv run pytest -k "test_name"          # single test
-
-# Optional provider extras (uniinfer only)
-cd packages/uniinfer && uv sync --extra anthropic --extra gemini
-cd packages/uniinfer && uv sync --extra all
-```
-
-## Repo Modes
-
-**Meta setup** (`../repos.yml` exists):
-
-| Repo | Path |
-|------|------|
-| kontext.one (meta) | `..` |
-| klark0 | `../klark0` |
-| python-utils | `../python-utils` |
-| kontext-prompts | `../kontext-prompts` |
-
-**Standalone**: no siblings. Packages install via `uv sync`.
+- Python 3.9+ · **uv** (nie pip) · Monorepo: `packages/credgoo/`, `packages/uniinfer/` — je eigene `pyproject.toml` + `uv.lock`
+- Setup/Tests: `cd packages/<pkg> && uv sync` · `uv run pytest [-k …]` · uniinfer-Extras: `uv sync --extra anthropic --extra gemini` (oder `--extra all`)
+- Repo-Modus: Meta-Setup liegt vor, wenn `../repos.yml` existiert (Siblings = Metarepo-Layout); standalone sonst — Packages installieren via `uv sync`.
 
 ## Consumers
 
-- python-utils imports credgoo/uniinfer via **git URL** from GitHub (not local path)
-- klark0 calls uniinfer proxy via `/api/ai/uniinfer/stream` — see `../klark0/lib/ai/uniinferApi.ts`
+- python-utils importiert credgoo/uniinfer via **git URL** von GitHub (nie lokaler Pfad, nie PyPI)
+- klark0 spricht den uniinfer-Proxy via `/api/ai/uniinfer/stream` (Frontend-Verbrauch: klark0 `lib/ai/` — siehe [`../klark0/AGENTS.md`](../klark0/AGENTS.md))
 - External install: `uv pip install -r https://skale.dev/credgoo` / `uniinfer`
-
-## Frontend Code
-
-| Backend | Frontend (klark0) | GitHub |
-|---------|-------------------|--------|
-| Uniinfer streaming | `../klark0/app/api/ai/uniinfer/stream/route.ts` | [route.ts](https://github.com/devskale/klark0/blob/main/app/api/ai/uniinfer/stream/route.ts) |
-| Uniinfer client | `../klark0/lib/ai/uniinferApi.ts` | [uniinferApi.ts](https://github.com/devskale/klark0/blob/main/lib/ai/uniinferApi.ts) |
-| AI settings | `../klark0/lib/ai/settings.ts` | [settings.ts](https://github.com/devskale/klark0/blob/main/lib/ai/settings.ts) |
 
 ## Critical Rules
 
-- ✅ **Always** run `uv run pytest` in the relevant package before committing
-- ✅ **Always** make atomic commits with descriptive messages
-- ⚠️ **Ask first** before adding dependencies or changing pyproject.toml
-- ⚠️ **Ask first** before modifying database schema or CI config
-- 🚫 **Never** commit secrets or API keys
-- 🚫 **Never** log plaintext credentials (credgoo: XOR + Base64 only)
-- 🚫 **Never** use file permissions looser than `0o600` for cached credentials
+- ✅ **Always** `uv run pytest` im betroffenen Package vor dem Commit · atomare Commits mit beschreibender Message
+- ⚠️ **Ask first** bei neuen Dependencies, pyproject-Änderungen, DB-Schema oder CI-Config
+- 🚫 Nie Secrets/API-Keys committen · nie Plaintext-Credentials loggen (credgoo: XOR + Base64 only) · nie Dateirechte lockerer als `0o600` für gecachte Credentials
 
-## Dev methodology (metarepo-indexed)
+## Version Bumps
 
-Single source of truth: [metarepo AGENTS.md](../AGENTS.md) — rules→gates ladder + test discipline. What applies here:
+Nach Änderungen an credgoo/uniinfer:
 
-- **Gates after lockfile/source changes:** `cd .. && ./k.sh test scripts` (hermetic, seconds) + `./k.sh deps check-locks`. The `git-deps` gate enforces `rev = "main"` on internal git sources; the `llm-gate` enforces llminvoke-routed provider clients — new violations fail, tracked debt warns.
-- **Releasing an openutils package:** `cd .. && ./k.sh deps release <pkg>` (version-bump + push + bump dependents) — never hand-roll the chain.
-- **A gotcha that recurs → Gotchas above; once objectively checkable → a `*.test` gate** in the metarepo (auto-discovered).
+1. Commit + push auf `main` (python-openutils)
+2. Vom Metarepo: `./k.sh deps bump <pkg>` (enuminiert Locks, `-P`'t alle internen Packages + `--refresh`, Producer + alle Consumer), dann `python-utils` auf `dev` pushen
+
+Version in `pyproject.toml`: patch `0.1.5→0.1.6` (default) / minor `0.1.5→0.2.0`. **Die komplette Kette** (inkl. dependents) macht `./k.sh deps release <pkg>` — nie hand-gerollt. uv-Cache-Interna (silent no-op, single-commit-unification, `--refresh`-Semantik) kanonisch: [`../docs/dependency-bumps.md`](../docs/dependency-bumps.md) — **vor jedem Bump lesen**.
+
+## Deploy — zwei Ziele, nicht verwechseln
+
+### 1. uniioai-Proxy auf `amd` (dieses Repo)
+
+`uniioai-proxy` läuft **auf amd aus diesem Checkout** (kein git-URL-Pull — das Repo IST die Deployment-Quelle). **System-Unit, nicht `--user`**: `sudo systemctl status uniioai-proxy` · `sudo journalctl -u uniioai-proxy`. Logging-Forensik (4-Ebenen-Schema): [docs/gotchas/uniioai-proxy-logging.md](docs/gotchas/uniioai-proxy-logging.md).
+
+**Ports/Vhosts/Timer NIEMALS hier ablesen — immer aus der Live-Config discovern** (und bei Drift DIE anpassen, nie umgekehrt):
+
+```bash
+ssh amd 'systemctl cat uniioai-proxy | grep ExecStart'        # Backend-Port (uvicorn)
+ssh amd 'sudo nginx -T | grep -B3 -A8 "server_name.*uniinfer"' # öffentlicher TLS-Vhost
+./scripts/lib/repos                                            # Registry: server amd in repos.yml
+```
+
+Deploy einer uniinfer-Änderung:
+
+```bash
+ssh amd 'cd code/python-openutils/packages/uniinfer && ./deploy.sh --all-extras'
+# ⚠️ Immer --all-extras auf amd: bare ./deploy.sh strippt die optionalen Provider-SDKs
+#    (anthropic, gemini, mistral, …) aus der venv — diese Provider brechen dann live.
+```
+
+Verwandte Units auf amd: `uniioai-proxy.service` (always-on), `uniioai-models-refresh.timer` (täglicher Model-List-Refresh).
+
+### 2. Consumer-Apps (python-utils)
+
+Pickup neuer Versionen läuft über die gepinnten `uv.lock`s (git URL) — Rollout auf Hosts (`deployto` → `uvinit.sh`) **nur auf explizite Anfrage**, nie automatisch.
+
+## Package-Docs
+
+- **UniInfer**: [`packages/uniinfer/AGENTS.md`](packages/uniinfer/AGENTS.md) — Provider-Patterns, API-Kompatibilität, async/sync · [`packages/uniinfer/CONTEXT.md`](packages/uniinfer/CONTEXT.md)
+- **Credgoo**: [`packages/credgoo/AGENTS.md`](packages/credgoo/AGENTS.md) — Security, Encryption, File-Permissions · [`packages/credgoo/CONTEXT.md`](packages/credgoo/CONTEXT.md)
 
 ## Within This Repo: Local Paths
 
-uniinfer depends on credgoo via editable path source:
+uniinfer hängt von credgoo per editable path source ab:
+
 ```toml
 [tool.uv.sources]
 credgoo = { path = "../credgoo", editable = true }
 ```
 
-External repos use git URLs — see README.md for the pattern.
+Externe Repos nutzen git URLs — Pattern: [README.md](README.md).
 
-## Version Bumps
+## Dev methodology
 
-After changing credgoo or uniinfer:
-1. Commit and push to `main` on python-openutils
-2. From the metarepo: `./k.sh deps bump <pkg>`, then push `python-utils` to `dev`
-
-> **Reliable bump internals** (grounded in uv 0.12.1's cache docs + verified empirically):
-> uv caches git deps **by commit hash** and unifies every subdirectory source from one
-> git repo to a **single commit**. So bumping one python-openutils package means
-> advancing that shared repo commit, which requires:
->   - **`--refresh`** — `--upgrade-package` implies `--refresh-package`, which revalidates a
->     package for its *current* pinned commit but does not re-resolve the branch ref to
->     discover a *new* commit (silent no-op on stale cache). `--refresh` forces a `git fetch`.
->   - **`-P` every python-openutils package in the lock** (direct *and* transitive) — `-P`-ing
->     just one ignores only its pin; the siblings' pins hold the repo commit.
->
-> `./k.sh deps bump <pkg>` does both (enumerates the lock, -P's all internal packages +
-> `--refresh`, across producer + every consumer). Manual equivalent:
-> `cd packages/THAT && uv lock -P <p1> -P <p2> … --refresh` for every python-openutils package.
->
-> Internal git sources MUST declare `rev = "main"` (a moving ref); rev-less sources refreeze
-> at a commit and defeat targeted bumps. (`uv lock -U` also works — it implies `--refresh` —
-> but upgrades every package, not just the internal ones.)
-
-Version in `pyproject.toml`:
-- **Patch** (default): `0.1.5` → `0.1.6`
-- **Minor**: `0.1.5` → `0.2.0`
-
-## Deploy
-
-There are two deploy targets — do not confuse them.
-
-### 1. The uniioai proxy on `amd` (this host)
-
-The `uniioai-proxy` systemd service runs **on amd** from this local checkout
-(`/home/ubuntu/code/python-openutils/packages/uniinfer`). It is **not** pulled
-via git URL — it *is* this repo. **System unit, not `--user`**: `sudo
-systemctl status uniioai-proxy`, `sudo journalctl -u uniioai-proxy`. Ops +
-logging gotchas + 4-level investigation schema (pi jsonl → nginx → journal →
-provider raw logs):
-[docs/gotchas/uniioai-proxy-logging.md](docs/gotchas/uniioai-proxy-logging.md).
-
-**Serving point — never hardcode ports, always discover from the live config:**
-
-- **Backend port (uvicorn):** read from the systemd unit, not from here:
-  `ssh amd 'systemctl cat uniioai-proxy | grep ExecStart'` → `--port 8124`
-- **Public exposure (nginx):** find the vhost from nginx config, not from a
-  fixed port:
-  `ssh amd 'sudo nginx -T | grep -B3 -A8 "server_name.*uniinfer"'` → the TLS
-  vhost `uniinfer.skale.dev` on 443 with `proxy_pass http://localhost:<port>`
-- **Registry (metarepo):** server `amd` in `repos.yml` (note: "unii proxy
-  (uniinfer.skale.dev)") — query via `./scripts/lib/repos`.
-
-If these drift from anything written here, the live config wins — update this
-file to match, never the reverse.
-
-To deploy a uniinfer change to the live proxy:
-```bash
-ssh amd 'cd code/python-openutils/packages/uniinfer && ./deploy.sh --all-extras'
-# deploy.sh = git pull → uv sync --frozen --all-extras → sudo systemctl restart uniioai-proxy
-# ⚠️ Immer --all-extras für amd: ein bare `./deploy.sh` wählt den lean base-only
-# Default und STRIPPT die optionalen Provider-SDKs (anthropic, gemini, mistral,
-# cohere, huggingface, …) aus der venv — diese Provider brechen dann live.
-```
-If you're already on amd editing in-place, the equivalent is:
-```bash
-cd packages/uniinfer && uv sync --all-extras && sudo systemctl restart uniioai-proxy
-```
-Related systemd units on amd: `uniioai-proxy.service` (always-on),
-`uniioai-models-refresh.timer` (daily model-list refresh at 04:00 UTC).
-
-### 2. Consumer apps (python-utils)
-
-`python-utils` packages import uniinfer via **git URL** from GitHub, so they
-pick up new versions through their pinned `uv.lock` after step 2 above.
-
-Rolling those changes out to the hosts that run those apps
-(`deployto` → `uvinit.sh` → `uv sync`) is **only done on explicit request** —
-do not run it automatically.
-
-## Package-Specific Docs
-
-- **UniInfer**: `packages/uniinfer/AGENTS.md` — provider patterns, API compatibility, async/sync
-- **Credgoo**: `packages/credgoo/AGENTS.md` — security, encryption, file permissions
+Kanonisch: [`../AGENTS.md`](../AGENTS.md). Hier gilt: Gates nach Lockfile-/Source-Änderungen (`cd .. && ./k.sh test scripts` + `./k.sh deps check-locks`); `git-deps`-Gate erzwingt `rev = "main"` auf internen git-Sources, `llm-gate` erzwingt llminvoke-routing; rekurrenter Gotcha → hier; objektiv prüfbar → `*.test`-Gate im Metarepo.
 
 ## Code Style
 
-- **No comments** unless explicitly requested
-- **Docstrings** required for all public functions/classes/modules
-- **Type hints** where appropriate
-- Imports: stdlib → third-party → local (use `isort`)
-
-## Agent skills
-
-### Issue tracker
-
-Issues live in the **cross-machine kanban** (`.handoff/kontext.one/issues/`), not
-GitHub Issues — one pool for the whole ecosystem, discriminated by `module:`
-(e.g. `credgoo`, `uniinfer`). Run from anywhere in this repo:
-
-```bash
-issues board           # overview
-issues ls active       # in progress
-issues todo            # waiting on this machine
-issues new <slug> [to] # create in backlog
-```
-
-Convention + full command list: [`skale-skills/skills/issues/SKILL.md`](https://github.com/devskale/skale-skills/blob/main/skills/issues/SKILL.md).
-
-### Triage labels
-
-Five canonical roles, each label string equals its role name. See `docs/agents/triage-labels.md`.
-
-### Domain docs
-
-Per-package `CONTEXT.md` files: `packages/credgoo/CONTEXT.md`, `packages/uniinfer/CONTEXT.md`. See `docs/agents/domain.md`.
+- **No comments** unless explicitly requested · **Docstrings** für alle öffentlichen Funktionen/Klassen/Module · **Type hints** wo passend · Imports: stdlib → third-party → local (isort)
