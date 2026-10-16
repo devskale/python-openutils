@@ -150,6 +150,23 @@ def test_auto_unknown_selector_400(app_client):
     assert r.status_code == 400
 
 
+def test_auto_free_listed_in_v1_models(app_client):
+    """auto@free taucht in /v1/models auf — Clients entdecken das virtuelle
+    Modell wie jedes konkrete."""
+    r = app_client.get("/v1/models")
+    assert r.status_code == 200
+    ids = [m["id"] for m in r.json()["data"]]
+    assert "auto@free" in ids
+    entry = next(m for m in r.json()["data"] if m["id"] == "auto@free")
+    assert entry["provider"] == "auto"
+    assert entry["type"] == "chat"
+    # type-filter chat laesst es drin, embedding-filter wirft es raus
+    r_chat = app_client.get("/v1/models", params={"type": "chat"})
+    assert "auto@free" in [m["id"] for m in r_chat.json()["data"]]
+    r_embed = app_client.get("/v1/models", params={"type": "embedding"})
+    assert "auto@free" not in [m["id"] for m in r_embed.json()["data"]]
+
+
 def test_auto_quota_hit_falls_through_to_next_model(app_client, monkeypatch):
     """Kernszenario: Tokens des gewaehlten Modells sind verbraucht (429) —
     der Router parkt es und bedient den Request vom naechsten Kandidaten."""

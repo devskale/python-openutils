@@ -5,6 +5,10 @@ v0 ships `auto@free` (chat completions only).
 
 ## Usage
 
+`auto@free` ist ein virtuelles Modell — in `/v1/models` gelistet wie ein
+konkretes (`provider: auto`), also über jeden OpenAI-kompatiblen Client
+auswählbar:
+
 ```bash
 curl -X POST http://localhost:<port>/v1/chat/completions \
   -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \

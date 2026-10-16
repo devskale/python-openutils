@@ -376,3 +376,31 @@ def resolve_auto_candidates(provider_model: str) -> list[str]:
         return []
     mid, meta = resolved
     return [mid] + meta.get("fallbacks", [])
+
+
+def virtual_model_entries() -> list[dict]:
+    """Synthetic catalog entries for the routable virtual models (auto@free).
+
+    Injected into /v1/models so clients discover the virtual id like any
+    concrete model. Keeps the selector list derived from the same source the
+    resolver uses — one place defines what auto@<name> exists.
+    """
+    entries = []
+    for name in sorted(_SELECTOR_ALIASES - {"", "auto"}):
+        entries.append(
+            {
+                "id": f"auto@{name}",
+                "object": "model",
+                "owned_by": "skaledev",
+                "provider": "auto",
+                "type": "chat",
+                "access": "free",
+                "name": f"Auto-Routing: best available {name} model",
+                "description": (
+                    "Virtual model — resolved at request time to a concrete "
+                    "free provider@model (pin/weight/exclude via overrides, "
+                    "fallback chain on quota/dead upstream)."
+                ),
+            }
+        )
+    return entries

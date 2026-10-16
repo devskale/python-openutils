@@ -127,9 +127,14 @@ def create_models_router(version: str) -> APIRouter:
     ):
         """List models. Defaults to accessible (free/granted) only — ~300 models
         instead of ~1500. Use ?all=true for everything, ?provider=X / ?type=X
-        to narrow further. Catalog is mtime-cached (instant after first call)."""
+        to narrow further. Catalog is mtime-cached (instant after first call).
+        Virtual routing models (auto@free) are appended — clients discover
+        them like concrete models."""
         await ensure_fresh_models_file()  # stale (>REFETCHTIME, default 24h) → background regen
         models = Catalog().list_resolved()
+        from uniinfer.proxy_services.router import virtual_model_entries
+
+        models = models + virtual_model_entries()
         if not show_all:
             models = [m for m in models if m.get("access") in ("free", "granted", "")]
         if provider:

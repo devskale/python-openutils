@@ -25,6 +25,10 @@ adheres to [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   to 6h, never shortens) and the request falls through to the next candidate
   (up to 3 fallbacks, re-resolved live so parked models drop out of the
   chain). Non-routed requests keep the original single-target behavior.
+- **`auto@free` in `/v1/models`.** The virtual model is listed like a concrete
+  one (`provider: auto`, `type: chat`) with a description — clients that
+  discover models via the OpenAI listing see and can pick it. Type filters
+  apply (chat: yes, embedding: no).
 - **Model deprecation, manuell + auto.** `POST /v1/models/deprecate/{id}`
   (body `{"reason": …}`) / `POST /v1/models/undeprecate/{id}` markieren ein
   Modell deprecated über den Override-Seam (status + deprecation_date/
