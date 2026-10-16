@@ -25,6 +25,15 @@ adheres to [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   to 6h, never shortens) and the request falls through to the next candidate
   (up to 3 fallbacks, re-resolved live so parked models drop out of the
   chain). Non-routed requests keep the original single-target behavior.
+- **Model deprecation, manuell + auto.** `POST /v1/models/deprecate/{id}`
+  (body `{"reason": …}`) / `POST /v1/models/undeprecate/{id}` markieren ein
+  Modell deprecated über den Override-Seam (status + deprecation_date/
+  reason/source) — es verschwindet aus aktiven Listen und Router-Kandidaten,
+  bleibt aber mit Grund unter `/v1/models/deprecated` sichtbar. Auto: ein
+  geroutetes Modell mit wiederholtem dead-upstream ("Model is unavailable"/
+  404) wird je 1h geparkt und nach 3 Parks automatisch deprecated
+  (`deprecation_source: "auto"`); dead-upstream-Fälle fallen sofort auf den
+  nächsten Kandidaten durch.
 
 ## [0.8.61] - 2026-09-27
 

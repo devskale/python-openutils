@@ -1,16 +1,16 @@
-import os
-import sys
-import json
-import time
-import fcntl
 import asyncio
-import logging
 import dataclasses
-from typing import Any
+import fcntl
+import json
+import logging
+import os
+import subprocess
+import sys
+import time
 from contextlib import contextmanager
+from typing import Any
 
 from starlette.concurrency import run_in_threadpool
-import subprocess
 
 logger = logging.getLogger("uniioai_proxy")
 
@@ -68,7 +68,10 @@ async def refresh_models_file() -> dict[str, Any]:
     flock, so even an overlap with the systemd timer is a harmless no-op.
     """
     if _refresh_lock.locked():
-        return {"status": "skipped", "message": "A models refresh is already in progress"}
+        return {
+            "status": "skipped",
+            "message": "A models refresh is already in progress",
+        }
     async with _refresh_lock:
         scripts_dir = os.path.join(PACKAGE_ROOT, "scripts")
         if not os.path.exists(scripts_dir):
@@ -109,7 +112,7 @@ async def ensure_fresh_models_file() -> None:
         # Fresh enough, or a refresh is already running (on-demand or timer).
         return
     task = asyncio.create_task(_refresh_in_background())
-    _background_refresh_tasks.add(task)          # keep a ref so it isn't GC'd
+    _background_refresh_tasks.add(task)  # keep a ref so it isn't GC'd
     task.add_done_callback(_background_refresh_tasks.discard)
 
 
@@ -488,13 +491,19 @@ class Catalog:
 
         type_overrides = self._load_type_overrides_doc().get("models", {})
         model_overrides = self._load_overrides().get("models", {})
-        provider_overrides = {**self._load_provider_overrides(), **model_overrides.get("_providers", {})}  # curated < runtime; per-model still wins
+        provider_overrides = {
+            **self._load_provider_overrides(),
+            **model_overrides.get("_providers", {}),
+        }  # curated < runtime; per-model still wins
 
         generated_date = data.get("_meta", {}).get("generated", "")[:10]
         result: list[dict] = []
         for provider_id, provider_data in data.get("providers", {}).items():
             for model in provider_data.get("models", []):
-                override = {**provider_overrides.get(provider_id, {}), **model_overrides.get(model["id"], {})}
+                override = {
+                    **provider_overrides.get(provider_id, {}),
+                    **model_overrides.get(model["id"], {}),
+                }
                 entry = {
                     "id": f"{provider_id}@{model['id']}",
                     "object": "model",
@@ -515,10 +524,20 @@ class Catalog:
                 entry["type"] = model_type
                 # Fields: override > models.json > skip.
                 for field in (
-                    "context_window", "max_output", "dimensions", "cost",
-                    "capabilities", "modalities", "first_seen",
-                    "deprecation_date", "deprecation_replacement", "status",
-                    "release_date", "knowledge_cutoff", "name", "speed",
+                    "context_window",
+                    "max_output",
+                    "dimensions",
+                    "cost",
+                    "capabilities",
+                    "modalities",
+                    "first_seen",
+                    "deprecation_date",
+                    "deprecation_replacement",
+                    "status",
+                    "release_date",
+                    "knowledge_cutoff",
+                    "name",
+                    "speed",
                     "access",
                 ):
                     val = override.get(field) if field in override else model.get(field)
@@ -551,7 +570,10 @@ class Catalog:
         fresh fetch. Precedence: per-model > provider-level (curated < runtime).
         """
         model_overrides = self._load_overrides().get("models", {})
-        pov = {**self._load_provider_overrides(), **model_overrides.get("_providers", {})}.get(provider_id, {})
+        pov = {
+            **self._load_provider_overrides(),
+            **model_overrides.get("_providers", {}),
+        }.get(provider_id, {})
         for m in models:
             mid = m.get("id") if isinstance(m, dict) else getattr(m, "id", None)
             ov = {**pov, **model_overrides.get(mid, {})}
@@ -573,7 +595,8 @@ class Catalog:
         but skipped overrides). Elements may be ModelInfo or dict; the same type
         comes back.
         """
-        from uniinfer.config.instances import resolve_instance, instance_allows
+        from uniinfer.config.instances import instance_allows, resolve_instance
+
         spec = resolve_instance(alias)
         models = self.apply_overrides(spec.provider, models)
         return [m for m in models if instance_allows(spec, m)]
@@ -589,9 +612,7 @@ class Catalog:
     def save_history(self, history: dict[str, dict]) -> None:
         """Persist _model_history.json (atomic, sorted keys)."""
         with self._write_lock():
-            self._atomic_write(
-                self._history_path, history, indent=2, sort_keys=True
-            )
+            self._atomic_write(self._history_path, history, indent=2, sort_keys=True)
 
     # ------------------------------------------------------------------ #
     # overrides CRUD                                                     #
@@ -634,7 +655,53 @@ class Catalog:
                 td["models"][model_id] = fields["type"]
                 self._atomic_write(self._type_overrides_path, td, indent=2)
 
-        logger.info("Saved override for %s: %s", model_id, list(fields.keys()))
+    def deprecate_model(
+        self, model_id: str, reason: str, *, source: str = "manual"
+    ) -> dict:
+        """Mark a model deprecated via the override seam (idempotent).
+
+        Writes ``status: "deprecated"`` + ``deprecation_date`` + ``deprecation_reason``
+        + ``deprecation_source`` into model_overrides.json. The catalog merge
+        (list_resolved) applies the override on top of models.json, so the
+        model disappears from active listings and the auto-router candidates
+        while /v1/models/deprecated still shows it with its reason.
+
+        Returns the override entry as persisted.
+        """
+        from datetime import datetime, timezone
+
+        model_id = self._bare_override_key(model_id)
+        today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+        entry = {
+            "status": "deprecated",
+            "deprecation_date": today,
+            "deprecation_reason": reason,
+            "deprecation_source": source,
+        }
+        self.save_override(model_id, entry)
+        logger.info("Deprecated model %s (%s): %s", model_id, source, reason)
+        return self.read_overrides().get("models", {}).get(model_id, entry)
+
+    def undeprecate_model(self, model_id: str) -> bool:
+        """Remove the deprecation mark (restore active). Returns True if changed."""
+        model_id = self._bare_override_key(model_id)
+        with self._write_lock():
+            data = self._load_overrides()
+            entry = data.get("models", {}).get(model_id)
+            if not entry or entry.get("status") != "deprecated":
+                return False
+            for key in (
+                "status",
+                "deprecation_date",
+                "deprecation_reason",
+                "deprecation_source",
+            ):
+                entry.pop(key, None)
+            if not any(k for k in entry if not k.startswith("_")):
+                data["models"].pop(model_id, None)
+            self._atomic_write(self.overrides_path, data, indent=2)
+        logger.info("Undeprecated model %s", model_id)
+        return True
 
     def delete_override(self, model_id: str) -> bool:
         """Delete all overrides for a model. Returns True if anything was deleted."""

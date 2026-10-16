@@ -13,7 +13,7 @@ from fastapi.testclient import TestClient
 
 from uniinfer.config.instances import InstanceSpec
 from uniinfer.core import ChatCompletionResponse, ChatMessage, ChatProvider, ModelInfo
-from uniinfer.errors import RateLimitError
+from uniinfer.errors import InvalidRequestError, RateLimitError
 from uniinfer.factory import ProviderFactory
 from uniinfer.proxy_services import router as routing
 
@@ -23,8 +23,16 @@ class _FakeFreeProvider(ChatProvider):
     REQUIRES_API_KEY = False
     BASE_URL = ""
     fail_first_n = 0
+    dead_first = False
 
     def complete(self, request, **kwargs):
+        if _FakeFreeProvider.dead_first and request.model == "fake-free-1":
+            raise InvalidRequestError(
+                'OpenCode API error: 400 - {"message":'
+                '"Upstream request failed: Model is unavailable."}',
+                status_code=400,
+                response_body='{"message":"Upstream request failed: Model is unavailable."}',
+            )
         if _FakeFreeProvider.fail_first_n > 0:
             _FakeFreeProvider.fail_first_n -= 1
             raise RateLimitError(
@@ -198,3 +206,47 @@ def test_auto_all_candidates_quota_hit_503(app_client, monkeypatch):
     finally:
         _FakeFreeProvider.fail_first_n = 0
         routing._QuotaCooldown._parked = {}
+
+
+def test_auto_dead_upstream_falls_through_and_parks(app_client, monkeypatch):
+    """Dead-upstream ("Model is unavailable"): naechster Kandidat bedient, das
+    tote Modell wird lang geparkt (nicht nur 15 min)."""
+    from uniinfer.proxy_services import router as routing
+
+    def _two_catalog_models():
+        return [
+            {
+                "id": "fakefreeprov@fake-free-1",
+                "provider": "fakefreeprov",
+                "type": "chat",
+                "access": "free",
+                "status": "active",
+            },
+            {
+                "id": "fakefreeprov@fake-free-2",
+                "provider": "fakefreeprov",
+                "type": "chat",
+                "access": "free",
+                "status": "active",
+            },
+        ]
+
+    monkeypatch.setattr(
+        routing,
+        "Catalog",
+        lambda: type("C", (), {"list_resolved": staticmethod(_two_catalog_models)})(),
+    )
+    routing._QuotaCooldown._parked = {}
+    routing._QuotaCooldown._dead_parks = {}
+    _FakeFreeProvider.dead_first = True
+    try:
+        r = _post_chat(app_client, "auto@free")
+        assert r.status_code == 200, r.text
+        assert r.json()["model"] == "fakefreeprov@fake-free-2"
+        snap = routing._QuotaCooldown.snapshot()
+        assert "fakefreeprov@fake-free-1" in snap
+        assert snap["fakefreeprov@fake-free-1"] > 3000  # ~1h, nicht 15 min
+    finally:
+        _FakeFreeProvider.dead_first = False
+        routing._QuotaCooldown._parked = {}
+        routing._QuotaCooldown._dead_parks = {}

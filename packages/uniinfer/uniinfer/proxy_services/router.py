@@ -44,6 +44,16 @@ _ROUTER_OVERRIDES_PATH = "model_overrides.json"
 _QUOTA_COOLDOWN_S = 15 * 60
 _QUOTA_COOLDOWN_MAX_S = 6 * 3600
 
+# Dead-upstream cooldown: "Model is unavailable" / 404-not-found class. These
+# are not quota (retrying in 15 min will not help) — the model is gone from
+# the upstream. Parked long, and after _DEAD_PARKS consecutive long parks the
+# model is auto-deprecated via the override seam (operator can undeprecate).
+_DEAD_COOLDOWN_S = 60 * 60
+_DEAD_PARKS_TO_DEPRECATE = 3
+
+# Substrings marking an upstream answer as "model gone" (not quota, not flaky).
+_DEAD_MARKERS = ("model is unavailable", "model not found", "does not exist")
+
 
 class _QuotaCooldown:
     """Parked models: upstream said tokens/quota are spent (429 with
@@ -53,6 +63,7 @@ class _QuotaCooldown:
     """
 
     _parked: ClassVar[dict[str, float]] = {}
+    _dead_parks: ClassVar[dict[str, int]] = {}
     _lock: ClassVar[threading.Lock] = threading.Lock()
 
     @classmethod
@@ -98,6 +109,64 @@ def note_quota_hit(provider_model: str, retry_after: float | None = None) -> Non
     if retry_after and retry_after > seconds:
         seconds = min(retry_after, _QUOTA_COOLDOWN_MAX_S)
     _QuotaCooldown.park(provider_model, seconds)
+
+
+def is_dead_upstream(provider_model: str, exc: Exception) -> bool:
+    """True if the failure means the model is GONE upstream (not quota/flaky).
+
+    Matches the "Model is unavailable" 400/404 class observed on dead free
+    models (step-5-preview-free on both kilo and opencode, 2026-10-16).
+    """
+    body = getattr(exc, "response_body", None) or ""
+    msg = f"{exc} {body}".lower()
+    status = getattr(exc, "status_code", None)
+    if status == 404:
+        return True
+    return any(marker in msg for marker in _DEAD_MARKERS)
+
+
+def note_dead_upstream(provider_model: str, exc: Exception) -> None:
+    """A routed model answered dead-upstream: park it long, deprecate after
+    _DEAD_PARKS_TO_DEPRECATE consecutive parks (auto-deprecation).
+
+    Auto-deprecation writes status=deprecated through the override seam, so
+    the model leaves the candidate set until an operator undeprecates it (or
+    the upstream revives it and the catalog refresh re-lists it active — the
+    override still wins, so undeprecate is the deliberate path back).
+    """
+    _QuotaCooldown.park(provider_model, _DEAD_COOLDOWN_S)
+    with _QuotaCooldown._lock:
+        _QuotaCooldown._dead_parks[provider_model] = (
+            _QuotaCooldown._dead_parks.get(provider_model, 0) + 1
+        )
+        parks = _QuotaCooldown._dead_parks[provider_model]
+    if parks >= _DEAD_PARKS_TO_DEPRECATE:
+        try:
+            Catalog().deprecate_model(
+                provider_model,
+                reason=f"auto: upstream answered '{str(exc)[:120]}' {parks}x",
+                source="auto",
+            )
+            logger.warning(
+                "[auto-route] auto-deprecated %s after %d dead-upstream parks",
+                provider_model,
+                parks,
+            )
+        except Exception as e:  # noqa: BLE001
+            logger.warning("auto-deprecation of %s failed: %s", provider_model, e)
+    else:
+        logger.warning(
+            "[auto-route] dead-upstream %s (%d/%d parks before deprecation)",
+            provider_model,
+            parks,
+            _DEAD_PARKS_TO_DEPRECATE,
+        )
+
+
+def clear_dead_parks(provider_model: str) -> None:
+    """A model served successfully again: forget its dead-park streak."""
+    with _QuotaCooldown._lock:
+        _QuotaCooldown._dead_parks.pop(provider_model, None)
 
 
 def _router_overrides_path() -> str:
@@ -208,6 +277,20 @@ def _candidates(selector: str) -> list[dict]:
     return out
 
 
+def _deprecated_models() -> set[str]:
+    """Bare model ids with a status=deprecated override (excluded from routing)."""
+    try:
+        overrides = Catalog().read_overrides().get("models", {})
+        return {
+            mid
+            for mid, ov in overrides.items()
+            if isinstance(ov, dict) and ov.get("status") == "deprecated"
+        }
+    except Exception as e:  # noqa: BLE001
+        logger.warning("overrides read failed during routing: %s", e)
+        return set()
+
+
 def resolve_auto(provider_model: str) -> tuple[str, dict] | None:
     """Resolve ``auto@<selector>`` to a concrete ``provider@model``.
 
@@ -227,6 +310,7 @@ def resolve_auto(provider_model: str) -> tuple[str, dict] | None:
     prefs = _RoutingPrefs.load()
     degraded = _degraded_models()
     parked = _QuotaCooldown.parked()
+    deprecated = _deprecated_models()
 
     ranked: list[tuple[float, int, dict]] = []
     skipped: dict[str, list[str]] = {
@@ -241,6 +325,9 @@ def resolve_auto(provider_model: str) -> tuple[str, dict] | None:
         bare = mid.split("@", 1)[1]
         p = prefs.get(bare) or prefs.get(mid) or {}
         if p.get("exclude"):
+            skipped["excluded"].append(mid)
+            continue
+        if bare in deprecated or mid in deprecated:
             skipped["excluded"].append(mid)
             continue
         if mid in degraded or bare in degraded:

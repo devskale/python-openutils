@@ -60,6 +60,32 @@ curl -X PUT .../v1/models/overrides/mistral-small-latest \
 - **Cold start.** A model with no traffic history has no stats penalty in v0
   (there is no scoring); ordering is deterministic regardless of traffic.
 
+## Deprecation (manuell + auto)
+
+Ein Modell kann aus dem Routing und den aktiven Listen genommen werden, ohne
+es zu löschen — mit Grund und Datum, sichtbar unter `/v1/models/deprecated`:
+
+**Manuell:**
+
+```bash
+curl -X POST .../v1/models/deprecate/step-5-preview-free \
+  -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
+  -d '{"reason": "upstream removed the free tier"}'
+
+curl -X POST .../v1/models/undeprecate/step-5-preview-free -H "Authorization: Bearer $TOKEN"
+```
+
+**Auto:** antwortet ein geroutetes Modell wiederholt „Model is unavailable" /
+404 (dead upstream — das Modell ist upstream *weg*, nicht flaky), wird es
+für 1h geparkt; nach 3 solchen Parks schreibt der Router automatisch ein
+`status: deprecated`-Override (`deprecation_source: "auto"` mit dem
+Upstream-Fehler als Grund). Der Operator sieht das in
+`/v1/models/deprecated` und kann gezielt undeprecaten, wenn das Modell
+zurückkomt.
+
+Deprecation läuft immer über den Override-Seam (`model_overrides.json`) —
+persistiert, auditierbar, operator-überschreibbar.
+
 ## Quota cooldown (parking)
 
 Free-tier tokens run out. When an auto-routed model answers 429 (or a

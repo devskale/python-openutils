@@ -387,6 +387,30 @@ def create_models_router(version: str) -> APIRouter:
         deleted = Catalog().delete_override(model_id)
         return {"status": "ok", "deleted": deleted}
 
+    @router.post("/v1/models/deprecate/{model_id:path}")
+    async def deprecate_model(
+        model_id: str, body: dict, api_bearer_token: str = Depends(validate_proxy_token)
+    ):
+        """Mark a model deprecated (manual). Body: {"reason": "..."}.
+
+        Writes status=deprecated + deprecation_date/reason/source=manual via
+        the override seam: the model leaves active listings and the
+        auto-router candidates; /v1/models/deprecated shows it with reason.
+        """
+        reason = str(body.get("reason") or "").strip()
+        if not reason:
+            raise HTTPException(status_code=400, detail="'reason' is required")
+        entry = Catalog().deprecate_model(model_id, reason, source="manual")
+        return {"status": "ok", "deprecated": model_id, "entry": entry}
+
+    @router.post("/v1/models/undeprecate/{model_id:path}")
+    async def undeprecate_model(
+        model_id: str, api_bearer_token: str = Depends(validate_proxy_token)
+    ):
+        """Remove the deprecation mark (restore active)."""
+        changed = Catalog().undeprecate_model(model_id)
+        return {"status": "ok", "undeprecated": model_id, "changed": changed}
+
     @router.get("/v1/system/info")
     async def get_system_info():
         return {"version": version}

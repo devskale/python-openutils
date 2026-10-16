@@ -204,6 +204,28 @@ def create_chat_router(
                         },
                         headers=_headers,
                     )
+                except ProviderError as e:
+                    # Dead upstream ("Model is unavailable" / 404): the model
+                    # is gone, not flaky — park long, auto-deprecate after
+                    # repeats, fall through to the next candidate.
+                    from uniinfer.proxy_services.router import (
+                        is_dead_upstream,
+                        note_dead_upstream,
+                    )
+
+                    if _auto_chain and is_dead_upstream(provider_model, e):
+                        note_dead_upstream(provider_model, e)
+                        _next = _auto_chain.pop(0)
+                        logger.warning(
+                            "[auto-route] stream dead-upstream on %s, "
+                            "falling through to %s",
+                            provider_model,
+                            _next,
+                        )
+                        return await chat_completions(
+                            request, request_input, api_bearer_token
+                        )
+                    raise
 
                 async def _relay() -> AsyncGenerator[str, None]:
                     yield _first  # the primed (welcome) chunk
@@ -243,6 +265,32 @@ def create_chat_router(
                     _next = _auto_chain.pop(0)
                     logger.warning(
                         "[auto-route] 429 on %s, falling through to %s",
+                        provider_model,
+                        _next,
+                    )
+                    provider_model = _next
+                    provider_name, _ = parse_provider_model(provider_model)
+                    request.state.provider_model = provider_model
+                    request.state.routed_model = provider_model
+                    provider_api_key = verify_provider_access(
+                        api_bearer_token, provider_name
+                    )
+                    target = Target(provider_model, provider_api_key, base_url)
+                except ProviderError as e:
+                    # Dead upstream ("Model is unavailable" / 404): the model
+                    # is gone, not flaky — park long, auto-deprecate after
+                    # repeats, fall through to the next candidate.
+                    from uniinfer.proxy_services.router import (
+                        is_dead_upstream,
+                        note_dead_upstream,
+                    )
+
+                    if not _auto_chain or not is_dead_upstream(provider_model, e):
+                        raise
+                    note_dead_upstream(provider_model, e)
+                    _next = _auto_chain.pop(0)
+                    logger.warning(
+                        "[auto-route] dead-upstream on %s, falling through to %s",
                         provider_model,
                         _next,
                     )
