@@ -65,6 +65,24 @@ def create_chat_router(
 
         try:
             provider_name, _ = parse_provider_model(provider_model)
+            # Auto-routing: resolve a virtual auto@<selector> model to a concrete
+            # provider@model BEFORE provider access / Target dispatch. The rest
+            # of the pipeline (stats, reliability, response shaping) then sees
+            # the concrete model; the original request is echoed in x-routed-model.
+            if provider_name == "auto":
+                from uniinfer.proxy_services.router import resolve_auto
+
+                _resolved = resolve_auto(provider_model)
+                if _resolved is None:
+                    raise HTTPException(
+                        status_code=503,
+                        detail="auto-routing found no available free model "
+                        "(all excluded, degraded, or over quota)",
+                    )
+                provider_model, _route_meta = _resolved
+                provider_name, _ = parse_provider_model(provider_model)
+                request.state.routed_model = provider_model
+                request.state.provider_model = provider_model
             messages_dict = [msg.model_dump() for msg in request_input.messages]
             # OpenAI-compat: 'developer' is OpenAI's newer system-instructions role
             # (reasoning models; emitted by the official SDKs). Most backends
@@ -204,6 +222,11 @@ def create_chat_router(
                 ],
                 usage=usage,
             )
+            _routed_headers = (
+                {"x-routed-model": str(getattr(request.state, "routed_model", ""))}
+                if getattr(request.state, "routed_model", None)
+                else None
+            )
             if is_openai_strict_mode():
                 get_stats().record(
                     provider_model,
@@ -211,14 +234,14 @@ def create_chat_router(
                     latency_ms=(time.monotonic() - _req_t0) * 1000,
                     usage=usage,
                 )
-                return JSONResponse(content=response_data.model_dump(exclude_none=True))
+                return JSONResponse(content=response_data.model_dump(exclude_none=True), headers=_routed_headers)
             get_stats().record(
                 provider_model,
                 status=200,
                 latency_ms=(time.monotonic() - _req_t0) * 1000,
                 usage=usage,
             )
-            return JSONResponse(content=response_data.model_dump())
+            return JSONResponse(content=response_data.model_dump(), headers=_routed_headers)
 
         except ValueError as e:
             raise HTTPException(status_code=400, detail=str(e))

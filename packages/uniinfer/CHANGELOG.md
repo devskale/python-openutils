@@ -4,6 +4,23 @@ All notable changes to **uniinfer** are documented in this file.
 Versions follow [Semantic Versioning](https://semver.org/); this file
 adheres to [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [Unreleased]
+
+### Added
+
+- **Auto-Routing `auto@free` (v0).** Virtual model id for chat completions:
+  resolves to a concrete free `provider@model` at request time (chat router,
+  before dispatch — stats/reliability/response see the concrete model; the
+  chosen target is echoed in the response `model` field + `x-routed-model`
+  header, every decision logged as `[auto-route]`). Candidate filter: active
+  free chat models from the catalog, minus operator-excluded, minus degraded
+  (ReliabilityMonitor), minus providers ≥ 80% of their documented free-tier
+  request quota. Ordering: `pin` > `weight` > catalog order — both new operator
+  override fields on the existing `model_overrides.json` seam
+  (`PUT /v1/models/overrides/{id}` accepts `weight`/`pin`/`exclude`). Design:
+  `docs/routing.md`; stats-based scoring + judged quality are v1/v2
+  (kanban `auto-free-router`).
+
 ## [0.8.61] - 2026-09-27
 
 ### Fixed

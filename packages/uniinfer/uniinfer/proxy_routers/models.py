@@ -359,7 +359,7 @@ def create_models_router(version: str) -> APIRouter:
     async def put_model_override(
         model_id: str, body: dict, api_bearer_token: str = Depends(validate_proxy_token)
     ):
-        """Save a model override. Fields: type, context_window, max_output, dimensions, cost, capabilities, name."""
+        """Save a model override. Fields: type, context_window, max_output, dimensions, cost, capabilities, name, weight, pin, exclude."""
         allowed = {
             "type",
             "context_window",
@@ -369,6 +369,9 @@ def create_models_router(version: str) -> APIRouter:
             "capabilities",
             "name",
             "modalities",
+            "weight",
+            "pin",
+            "exclude",
         }
         override = {k: v for k, v in body.items() if k in allowed and v is not None}
         if not override:
