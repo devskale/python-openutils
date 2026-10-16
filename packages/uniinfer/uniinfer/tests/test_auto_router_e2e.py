@@ -13,6 +13,7 @@ from fastapi.testclient import TestClient
 
 from uniinfer.config.instances import InstanceSpec
 from uniinfer.core import ChatCompletionResponse, ChatMessage, ChatProvider, ModelInfo
+from uniinfer.errors import RateLimitError
 from uniinfer.factory import ProviderFactory
 from uniinfer.proxy_services import router as routing
 
@@ -21,8 +22,17 @@ class _FakeFreeProvider(ChatProvider):
     PROVIDER_ID = "fakefreeprov"
     REQUIRES_API_KEY = False
     BASE_URL = ""
+    fail_first_n = 0
 
     def complete(self, request, **kwargs):
+        if _FakeFreeProvider.fail_first_n > 0:
+            _FakeFreeProvider.fail_first_n -= 1
+            raise RateLimitError(
+                "fake quota spent",
+                status_code=429,
+                response_body="{}",
+                retry_after=900.0,
+            )
         return ChatCompletionResponse(
             message=ChatMessage(role="assistant", content="hello from fake free"),
             model="fake-free-1",
@@ -130,3 +140,61 @@ def test_auto_free_no_candidates_503(app_client, monkeypatch):
 def test_auto_unknown_selector_400(app_client):
     r = _post_chat(app_client, "auto@paid")
     assert r.status_code == 400
+
+
+def test_auto_quota_hit_falls_through_to_next_model(app_client, monkeypatch):
+    """Kernszenario: Tokens des gewaehlten Modells sind verbraucht (429) —
+    der Router parkt es und bedient den Request vom naechsten Kandidaten."""
+    from uniinfer.proxy_services import router as routing
+
+    def _two_catalog_models():
+        return [
+            {
+                "id": "fakefreeprov@fake-free-1",
+                "provider": "fakefreeprov",
+                "type": "chat",
+                "access": "free",
+                "status": "active",
+            },
+            {
+                "id": "fakefreeprov@fake-free-2",
+                "provider": "fakefreeprov",
+                "type": "chat",
+                "access": "free",
+                "status": "active",
+            },
+        ]
+
+    monkeypatch.setattr(
+        routing,
+        "Catalog",
+        lambda: type("C", (), {"list_resolved": staticmethod(_two_catalog_models)})(),
+    )
+    routing._QuotaCooldown._parked = {}
+    _FakeFreeProvider.fail_first_n = 1  # fake-free-1 antwortet 429
+    try:
+        r = _post_chat(app_client, "auto@free")
+        assert r.status_code == 200, r.text
+        body = r.json()
+        # durchgefallen auf kandidat 2
+        assert body["model"] == "fakefreeprov@fake-free-2"
+        assert r.headers.get("x-routed-model") == "fakefreeprov@fake-free-2"
+        # und kandidat 1 ist geparkt
+        assert "fakefreeprov@fake-free-1" in routing._QuotaCooldown.parked()
+    finally:
+        _FakeFreeProvider.fail_first_n = 0
+        routing._QuotaCooldown._parked = {}
+
+
+def test_auto_all_candidates_quota_hit_503(app_client, monkeypatch):
+    """Alle Kandidaten verbraucht: sauberer 503/429 statt Endlos-Loop."""
+    from uniinfer.proxy_services import router as routing
+
+    routing._QuotaCooldown._parked = {}
+    _FakeFreeProvider.fail_first_n = 99  # alles 429t
+    try:
+        r = _post_chat(app_client, "auto@free")
+        assert r.status_code in (429, 503)
+    finally:
+        _FakeFreeProvider.fail_first_n = 0
+        routing._QuotaCooldown._parked = {}

@@ -20,6 +20,11 @@ adheres to [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   (`PUT /v1/models/overrides/{id}` accepts `weight`/`pin`/`exclude`). Design:
   `docs/routing.md`; stats-based scoring + judged quality are v1/v2
   (kanban `auto-free-router`).
+- **Quota cooldown for auto-routed models.** When an auto-routed model answers
+  429/quota-spent, it is parked for 15 min (upstream `Retry-After` extends up
+  to 6h, never shortens) and the request falls through to the next candidate
+  (up to 3 fallbacks, re-resolved live so parked models drop out of the
+  chain). Non-routed requests keep the original single-target behavior.
 
 ## [0.8.61] - 2026-09-27
 

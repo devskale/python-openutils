@@ -7,14 +7,15 @@ from fastapi.responses import JSONResponse, StreamingResponse
 from starlette.concurrency import run_in_threadpool
 
 from uniinfer.auth import get_optional_proxy_token, verify_provider_access
+from uniinfer.completion import Target
 from uniinfer.config.instances import instance_requires_api_key
-from uniinfer.provider_access import _resolve_credgoo_service
 from uniinfer.errors import (
     AuthenticationError,
     ProviderError,
     RateLimitError,
     UniInferError,
 )
+from uniinfer.provider_access import _resolve_credgoo_service, get_embeddings
 from uniinfer.proxy_schemas.chat import (
     ChatCompletionRequestInput,
     ChatMessageOutput,
@@ -24,14 +25,12 @@ from uniinfer.proxy_schemas.chat import (
     NonStreamingChatCompletion,
     NonStreamingChoice,
 )
+from uniinfer.proxy_services.stats import get_stats
 from uniinfer.proxy_services.streaming import (
     astream_response_generator,
     is_openai_strict_mode,
     normalize_nonstream_content,
 )
-from uniinfer.proxy_services.stats import get_stats
-from uniinfer.completion import Target
-from uniinfer.provider_access import get_embeddings
 
 logger = logging.getLogger("uniioai_proxy")
 
@@ -40,6 +39,9 @@ logger = logging.getLogger("uniioai_proxy")
 # universally accepted) so they don't 422. Add a provider here only once its API
 # is confirmed to accept 'developer'.
 _DEVELOPER_ROLE_PROVIDERS = frozenset({"openai", "openrouter"})
+
+# Auto-routing: max fallback candidates tried after the first choice fails.
+_AUTO_MAX_FALLBACKS = 3
 
 
 def create_chat_router(
@@ -77,12 +79,22 @@ def create_chat_router(
                     raise HTTPException(
                         status_code=503,
                         detail="auto-routing found no available free model "
-                        "(all excluded, degraded, or over quota)",
+                        "(all excluded, degraded, parked, or over quota)",
                     )
                 provider_model, _route_meta = _resolved
                 provider_name, _ = parse_provider_model(provider_model)
                 request.state.routed_model = provider_model
                 request.state.provider_model = provider_model
+                # Fallback chain minus the already-tried head; re-resolved on
+                # every retry so parked models drop out of the chain live.
+                if not hasattr(request.state, "auto_chain"):
+                    from uniinfer.proxy_services.router import resolve_auto_candidates
+
+                    chain = resolve_auto_candidates(request_input.model)
+                    tried = {provider_model}
+                    request.state.auto_chain = [c for c in chain if c not in tried][
+                        :_AUTO_MAX_FALLBACKS
+                    ]
             messages_dict = [msg.model_dump() for msg in request_input.messages]
             # OpenAI-compat: 'developer' is OpenAI's newer system-instructions role
             # (reasoning models; emitted by the official SDKs). Most backends
@@ -102,6 +114,12 @@ def create_chat_router(
             # (if provided) still wins as an explicit override.
 
             provider_api_key = verify_provider_access(api_bearer_token, provider_name)
+
+            # Auto-routed requests carry a fallback chain: on a quota-spent
+            # upstream (429/402) the failed model is parked (cooldown) and the
+            # next candidate is tried, up to _AUTO_MAX_FALLBACKS. Non-routed
+            # requests keep the original single-target behavior.
+            _auto_chain = list(getattr(request.state, "auto_chain", []) or [])
 
             # Thinking control now lives in each provider (it reads
             # reasoning_effort off the request). The router only forwards the
@@ -135,11 +153,28 @@ def create_chat_router(
                 # Prime the stream: an open-time upstream 429 (RateLimitError)
                 # surfaces here as a real HTTP 429 (transparent rate-limit
                 # transport) instead of a 200 SSE with a body error chunk.
+                # Auto-routed: a 429 here parks the model and falls through to
+                # the next candidate instead of failing the request.
                 try:
                     _first = await _stream_gen.__anext__()
                 except RateLimitError as e:
+                    if _auto_chain:
+                        from uniinfer.proxy_services.router import note_quota_hit
+
+                        note_quota_hit(provider_model, getattr(e, "retry_after", None))
+                        _next = _auto_chain.pop(0)
+                        logger.warning(
+                            "[auto-route] stream 429 on %s, falling through to %s",
+                            provider_model,
+                            _next,
+                        )
+                        return await chat_completions(
+                            request, request_input, api_bearer_token
+                        )
                     _detail = (
-                        f"{e} | Response: {e.response_body}" if e.response_body else str(e)
+                        f"{e} | Response: {e.response_body}"
+                        if e.response_body
+                        else str(e)
                     )
                     get_stats().record(
                         provider_model,
@@ -147,7 +182,11 @@ def create_chat_router(
                         latency_ms=(time.monotonic() - _req_t0) * 1000,
                         usage=None,
                     )
-                    _headers = {"Retry-After": str(int(e.retry_after))} if e.retry_after else {}
+                    _headers = (
+                        {"Retry-After": str(int(e.retry_after))}
+                        if e.retry_after
+                        else {}
+                    )
                     return JSONResponse(
                         status_code=429,
                         content={
@@ -155,7 +194,11 @@ def create_chat_router(
                                 "message": _detail,
                                 "type": "rate_limit",
                                 "code": 429,
-                                **({"retry_after": e.retry_after} if e.retry_after else {}),
+                                **(
+                                    {"retry_after": e.retry_after}
+                                    if e.retry_after
+                                    else {}
+                                ),
                             },
                             "model": provider_model,
                         },
@@ -177,16 +220,40 @@ def create_chat_router(
                     },
                 )
 
-            full_content = await target.acomplete(
-                messages_dict,
-                temperature=request_input.temperature,
-                max_tokens=request_input.get_effective_max_tokens(),
-                tools=request_input.tools,
-                tool_choice=request_input.tool_choice,
-                reasoning_effort=reasoning_effort,
-                chat_template_kwargs=request_input.chat_template_kwargs,
-                extra=extras,
-            )
+            full_content = None
+            while True:
+                try:
+                    full_content = await target.acomplete(
+                        messages_dict,
+                        temperature=request_input.temperature,
+                        max_tokens=request_input.get_effective_max_tokens(),
+                        tools=request_input.tools,
+                        tool_choice=request_input.tool_choice,
+                        reasoning_effort=reasoning_effort,
+                        chat_template_kwargs=request_input.chat_template_kwargs,
+                        extra=extras,
+                    )
+                    break
+                except RateLimitError as e:
+                    if not _auto_chain:
+                        raise
+                    from uniinfer.proxy_services.router import note_quota_hit
+
+                    note_quota_hit(provider_model, getattr(e, "retry_after", None))
+                    _next = _auto_chain.pop(0)
+                    logger.warning(
+                        "[auto-route] 429 on %s, falling through to %s",
+                        provider_model,
+                        _next,
+                    )
+                    provider_model = _next
+                    provider_name, _ = parse_provider_model(provider_model)
+                    request.state.provider_model = provider_model
+                    request.state.routed_model = provider_model
+                    provider_api_key = verify_provider_access(
+                        api_bearer_token, provider_name
+                    )
+                    target = Target(provider_model, provider_api_key, base_url)
 
             raw_content = full_content.message.content
             tool_calls = full_content.message.tool_calls
@@ -197,7 +264,9 @@ def create_chat_router(
             )
 
             message_obj = ChatMessageOutput(
-                role="assistant", content=content, tool_calls=tool_calls,
+                role="assistant",
+                content=content,
+                tool_calls=tool_calls,
                 reasoning_details=getattr(full_content, "reasoning_details", None),
             )
             if thinking and not is_openai_strict_mode():
@@ -234,14 +303,19 @@ def create_chat_router(
                     latency_ms=(time.monotonic() - _req_t0) * 1000,
                     usage=usage,
                 )
-                return JSONResponse(content=response_data.model_dump(exclude_none=True), headers=_routed_headers)
+                return JSONResponse(
+                    content=response_data.model_dump(exclude_none=True),
+                    headers=_routed_headers,
+                )
             get_stats().record(
                 provider_model,
                 status=200,
                 latency_ms=(time.monotonic() - _req_t0) * 1000,
                 usage=usage,
             )
-            return JSONResponse(content=response_data.model_dump(), headers=_routed_headers)
+            return JSONResponse(
+                content=response_data.model_dump(), headers=_routed_headers
+            )
 
         except ValueError as e:
             raise HTTPException(status_code=400, detail=str(e))

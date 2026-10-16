@@ -25,6 +25,8 @@ from __future__ import annotations
 
 import logging
 import threading
+import time
+from typing import ClassVar
 
 from uniinfer.config.providers import get_provider_limits
 from uniinfer.proxy_services.models_registry import Catalog
@@ -35,6 +37,67 @@ DEFAULT_SELECTOR = "free"
 _QUOTA_SKIP_PCT = 80.0
 _SELECTOR_ALIASES = {"", "free", "auto"}
 _ROUTER_OVERRIDES_PATH = "model_overrides.json"
+
+# Quota cooldown: a model whose upstream answers 429/402 (tokens/quota spent)
+# is parked for this long before the router considers it again. Upstream
+# Retry-After (when sent) wins if it is longer.
+_QUOTA_COOLDOWN_S = 15 * 60
+_QUOTA_COOLDOWN_MAX_S = 6 * 3600
+
+
+class _QuotaCooldown:
+    """Parked models: upstream said tokens/quota are spent (429 with
+    retry_after, or 402-style quota errors) — do not route here until the
+    cooldown expires. In-memory (a restart re-arms on the first real 429,
+    same philosophy as the ReliabilityMonitor). Thread-safe.
+    """
+
+    _parked: ClassVar[dict[str, float]] = {}
+    _lock: ClassVar[threading.Lock] = threading.Lock()
+
+    @classmethod
+    def park(cls, model: str, seconds: float) -> None:
+        until = time.monotonic() + max(0.0, seconds)
+        with cls._lock:
+            cls._parked[model] = until
+        logger.warning(
+            "[auto-route] parking %s for %.0fs (quota spent)", model, seconds
+        )
+
+    @classmethod
+    def release(cls, model: str) -> None:
+        with cls._lock:
+            cls._parked.pop(model, None)
+
+    @classmethod
+    def parked(cls) -> set[str]:
+        now = time.monotonic()
+        with cls._lock:
+            expired = [m for m, until in cls._parked.items() if until <= now]
+            for m in expired:
+                del cls._parked[m]
+            return set(cls._parked)
+
+    @classmethod
+    def snapshot(cls) -> dict[str, float]:
+        """Remaining park time per model, in seconds (for /health + tests)."""
+        now = time.monotonic()
+        with cls._lock:
+            return {m: max(0.0, until - now) for m, until in cls._parked.items()}
+
+
+def note_quota_hit(provider_model: str, retry_after: float | None = None) -> None:
+    """A routed model answered quota-spent: park it for the cooldown.
+
+    Called by the chat router when an auto-routed request fails with 429/402.
+    An upstream Retry-After (seconds) extends the park if it is longer than
+    the default; it never shortens it below the default (a Retry-After of 1s
+    on a daily quota is lying).
+    """
+    seconds = _QUOTA_COOLDOWN_S
+    if retry_after and retry_after > seconds:
+        seconds = min(retry_after, _QUOTA_COOLDOWN_MAX_S)
+    _QuotaCooldown.park(provider_model, seconds)
 
 
 def _router_overrides_path() -> str:
@@ -163,9 +226,15 @@ def resolve_auto(provider_model: str) -> tuple[str, dict] | None:
 
     prefs = _RoutingPrefs.load()
     degraded = _degraded_models()
+    parked = _QuotaCooldown.parked()
 
     ranked: list[tuple[float, int, dict]] = []
-    skipped: dict[str, list[str]] = {"excluded": [], "degraded": [], "quota": []}
+    skipped: dict[str, list[str]] = {
+        "excluded": [],
+        "degraded": [],
+        "quota": [],
+        "parked": [],
+    }
     order = 0
     for m in _candidates(selector):
         mid = m["id"]
@@ -176,6 +245,9 @@ def resolve_auto(provider_model: str) -> tuple[str, dict] | None:
             continue
         if mid in degraded or bare in degraded:
             skipped["degraded"].append(mid)
+            continue
+        if mid in parked or bare in parked:
+            skipped["parked"].append(mid)
             continue
         provider_id = m.get("provider") or mid.split("@", 1)[0]
         util = _provider_utilization_pct(provider_id)

@@ -51,11 +51,25 @@ curl -X PUT .../v1/models/overrides/mistral-small-latest \
 ## Known limits (by design, v0)
 
 - **Chat only.** Images/audio/embeddings do not auto-route.
-- **No mid-stream rescue.** Streaming requests that die after the first chunk
-  cannot re-route; only failures before the first chunk can fall through to
-  the next candidate (non-streaming path).
+- **Mid-stream failures are not rescued.** Failures before the first chunk
+  fall through to the next candidate; once a stream is flowing, the request
+  stands or dies with its model.
 - **No quality signal yet.** v0 orders by operator preference only; live
   stats scoring (error rate, TTFT) is v1, judged quality weights v2 — see
   the `auto-free-router` issue in the kanban.
 - **Cold start.** A model with no traffic history has no stats penalty in v0
   (there is no scoring); ordering is deterministic regardless of traffic.
+
+## Quota cooldown (parking)
+
+Free-tier tokens run out. When an auto-routed model answers 429 (or a
+quota-class error), the router:
+
+1. **parks** the model for 15 minutes (upstream `Retry-After` extends the park
+   if longer, capped at 6h; it never shortens below the default),
+2. **falls through** to the next candidate in the chain (up to 3 fallbacks),
+3. re-resolves the chain on every retry, so parked models drop out live.
+
+Parking is in-memory (a restart re-arms on the first real 429). The parked
+set is visible in `[auto-route] parking …` log lines and via
+`_QuotaCooldown.snapshot()` (surfaced in /health in a follow-up).

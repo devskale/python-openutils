@@ -110,7 +110,7 @@ def test_resolve_auto_free_filters_and_orders(fakes):
     # only alpha survives.
     assert mid == "provA@alpha"
     assert meta["candidates"] == 1
-    assert meta["skipped"] == {"excluded": 1, "degraded": 1, "quota": 1}
+    assert meta["skipped"] == {"excluded": 1, "degraded": 1, "quota": 1, "parked": 0}
 
 
 def test_resolve_auto_pin_wins_over_weight(fakes, monkeypatch):
@@ -157,3 +157,46 @@ def test_prefs_cache_invalidates_on_mtime(fakes, monkeypatch):
     routing._RoutingPrefs._cache = None  # simulate fresh process
     second = routing._RoutingPrefs.load()
     assert second["alpha"]["exclude"] is True
+
+
+# --- Quota-Cooldown: Modell parken, bis die Zeit um ist ----------------------
+
+
+@pytest.fixture(autouse=True)
+def _reset_cooldown():
+    routing._QuotaCooldown._parked = {}
+    yield
+    routing._QuotaCooldown._parked = {}
+
+
+def test_quota_hit_parks_model(fakes):
+    routing.note_quota_hit("provA@alpha")
+    assert "provA@alpha" in routing._QuotaCooldown.parked()
+    # ...und wird aus der Kandidatenliste gefiltert
+    resolved = routing.resolve_auto("auto@free")
+    assert resolved is None  # alpha war der einzige Kandidat
+
+
+def test_quota_hit_retry_after_extends_park(fakes):
+    routing.note_quota_hit("provA@alpha", retry_after=3600.0)
+    snap = routing._QuotaCooldown.snapshot()
+    assert 3000 < snap["provA@alpha"] <= 3600
+
+
+def test_quota_hit_retry_after_never_shortens(fakes):
+    routing.note_quota_hit("provA@alpha", retry_after=5.0)
+    snap = routing._QuotaCooldown.snapshot()
+    assert snap["provA@alpha"] > 600  # Default-Cooldown bleibt
+
+
+def test_park_expires(fakes, monkeypatch):
+    import time as _time
+
+    routing.note_quota_hit("provA@alpha")
+    assert "provA@alpha" in routing._QuotaCooldown.parked()
+    # Zeit 20 Minuten vorspulen
+    real_monotonic = _time.monotonic
+    monkeypatch.setattr(routing.time, "monotonic", lambda: real_monotonic() + 1200)
+    assert "provA@alpha" not in routing._QuotaCooldown.parked()
+    resolved = routing.resolve_auto("auto@free")
+    assert resolved is not None and resolved[0] == "provA@alpha"
