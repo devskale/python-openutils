@@ -40,17 +40,22 @@ class Handler(http.server.BaseHTTPRequestHandler):
             parsed = json.loads(body)
         except Exception:
             parsed = None
+        # Request headers verbatim — rebuilding a client/gate signature needs
+        # the exact header set (UA, x-session-*, auth scheme), not just bodies.
+        # Proven 2026-10-17: the opencode zen gate rebuild lived or died on this.
+        req_headers = {k: v for k, v in self.headers.items()
+                       if k.lower() not in ("host", "content-length", "connection")}
         # Relay verbatim, Authorization INCLUDED (the client's real token).
         req = urllib.request.Request(UPSTREAM + self.path, data=body, method="POST")
-        for k, v in self.headers.items():
-            if k.lower() not in ("host", "content-length", "connection"):
-                req.add_header(k, v)
+        for k, v in req_headers.items():
+            req.add_header(k, v)
         try:
             up = urllib.request.urlopen(req, timeout=300)
             data, code, ct = up.read(), up.status, up.headers.get("content-type", "application/json")
         except urllib.error.HTTPError as e:
             data, code, ct = e.read(), e.code, e.headers.get("content-type", "application/json")
-        record({"path": self.path, "req": parsed, "resp_status": code,
+        record({"path": self.path, "req_headers": req_headers, "req": parsed,
+                "resp_status": code,
                 "resp": data.decode("utf-8", "replace")})
         self.send_response(code)
         self.send_header("content-type", ct)
