@@ -102,20 +102,27 @@ def test_opencode_ids_unique():
 
 
 def test_build_headers_agent_shape():
+    """Header set per the 1.18.32 capture (2026-10-17): x-session-id and
+    x-session-affinity carry the SAME ses_ id; the old x-opencode-request/
+    session/client/project headers no longer exist upstream."""
     p = OpenCodeProvider(api_key="test")
     h1 = p._build_headers()
     h2 = p._build_headers()
-    assert h1["User-Agent"].startswith("opencode/")
-    assert h1["x-opencode-client"] == "cli"
-    assert h1["x-opencode-project"] == "global"
-    assert h1["x-opencode-request"] != h2["x-opencode-request"]
-    assert h1["x-opencode-session"] != h2["x-opencode-session"]
+    assert h1["User-Agent"].startswith("opencode/1.18.32")
+    assert h1["x-session-id"] == h1["x-session-affinity"]
+    assert h1["x-session-id"].startswith("ses_")
+    assert h1["x-session-id"] != h2["x-session-id"]
+    for gone in ("x-opencode-request", "x-opencode-session",
+                 "x-opencode-client", "x-opencode-project"):
+        assert gone not in h1
 
 
 def test_build_headers_session_env_override(monkeypatch):
     monkeypatch.setenv("UNIINFER_OPENCODE_SESSION", "ses_pinned123")
     p = OpenCodeProvider(api_key="test")
-    assert p._build_headers()["x-opencode-session"] == "ses_pinned123"
+    h = p._build_headers()
+    assert h["x-session-id"] == "ses_pinned123"
+    assert h["x-session-affinity"] == "ses_pinned123"
 
 
 def test_agent_tools_canonical_set():

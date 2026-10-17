@@ -179,12 +179,15 @@ class OpenCodeProvider(OpenAICompatibleChatProvider):
     EMPTY_COMPLETION_RETRIES = 1
 
     # Client identity the zen gate expects. Version-pinned to the capture the
-    # toolset was taken from (1.18.31) — refresh both together on upgrades.
-    CLIENT_USER_AGENT = "opencode/1.18.31 ai-sdk/provider-utils/4.0.23 runtime/bun/1.3.14"
-    CLIENT_ID = os.environ.get("UNIINFER_OPENCODE_CLIENT", "cli")
-    PROJECT_ID = os.environ.get("UNIINFER_OPENCODE_PROJECT", "global")
-
-    # Monotonic per-process id counter (mirrors id.ts state)
+    # header set was taken from (1.18.32) — refresh both together on upgrades.
+    # Capture 2026-10-17 (scripts/debug-capture-proxy.py against the real CLI):
+    # the client sends x-session-id + x-session-affinity (BOTH the same ses_ id)
+    # and NO x-opencode-request/session/client/project headers — the 1.18.31
+    # header set was renamed upstream. The toolset is NOT gate-relevant (a
+    # captured tool-less request passed identically).
+    CLIENT_USER_AGENT = "opencode/1.18.32 ai-sdk/provider-utils/4.0.23 runtime/bun/1.3.14"
+    # NOTE: the 1.18.32 client sends no client/project headers (capture
+    # 2026-10-17); UNIINFER_OPENCODE_CLIENT/_PROJECT are no longer read.
     _id_lock = threading.Lock()
     _id_last_ms = 0
     _id_counter = 0
@@ -253,16 +256,18 @@ class OpenCodeProvider(OpenAICompatibleChatProvider):
         return f"{prefix}_{hexpart}{rand}"
 
     def _get_extra_headers(self) -> dict[str, str]:
-        # Fresh per-request ids: request id always new; session id too unless
-        # pinned via UNIINFER_OPENCODE_SESSION (keeps zen's sticky-provider
-        # routing on one conversation).
-        session = os.environ.get("UNIINFER_OPENCODE_SESSION")
+        # The 1.18.32 client sends x-session-id and x-session-affinity, both
+        # carrying the SAME ses_ id (session affinity: children share the
+        # parent's id — one id per conversation is the honest equivalent).
+        # Pinnable via UNIINFER_OPENCODE_SESSION for zen's sticky-provider
+        # routing across one conversation. Header set verified live
+        # 2026-10-17: both old and new names pass today, but the gate has
+        # tightened before (FreeTierError bursts) — stay on the current shape.
+        session = os.environ.get("UNIINFER_OPENCODE_SESSION") or self._opencode_id("ses", descending=True)
         return {
             "User-Agent": self.CLIENT_USER_AGENT,
-            "x-opencode-client": self.CLIENT_ID,
-            "x-opencode-project": self.PROJECT_ID,
-            "x-opencode-request": self._opencode_id("msg", descending=False),
-            "x-opencode-session": session or self._opencode_id("ses", descending=True),
+            "x-session-id": session,
+            "x-session-affinity": session,
         }
 
     @classmethod
