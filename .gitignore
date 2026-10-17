@@ -46,3 +46,6 @@ packages/uniinfer/.env.*
 packages/uniinfer/!.env.example
 .env.local
 \.work
+
+# Local clone symlinks for agent reference (machine-specific, see metarepo .gitignore)
+.links/
