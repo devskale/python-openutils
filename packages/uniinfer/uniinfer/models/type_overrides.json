@@ -30,6 +30,14 @@
         "voxtral-mini-transcribe-2507": "stt",
         "voxtral-mini-2507": "stt",
         "voxtral-mini-tts-2603": "tts",
-        "voxtral-mini-tts-latest": "tts"
+        "voxtral-mini-tts-latest": "tts",
+        "vllm-sr/d3-mini": "decision",
+        "cf/cloudflare/clef": "decision",
+        "cf/cloudflare/clef-omni": "decision",
+        "cf/cloudflare/clef-flash": "decision",
+        "jev-1.13": "decision",
+        "jev-1.13-free": "decision",
+        "community/kreggscode/jev-test-triage": "decision",
+        "autotrust/JEV-27B-VL": "decision"
     }
 }
