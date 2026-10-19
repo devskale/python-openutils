@@ -22,6 +22,7 @@
         "sora-2-pro": "image",
         "kokoro": "tts",
         "piper-thorsten": "tts",
+        "vllm-sr/d3-mini": "decision",
         "whisper-large": "stt",
         "qwen3.5:0.8b": "chat",
         "voxtral-mini-2602": "stt",
