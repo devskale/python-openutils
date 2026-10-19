@@ -5,6 +5,7 @@ import sys
 import enum
 import dataclasses
 import os
+import time
 import fcntl
 import tempfile
 from uniinfer.core import ModelInfo
@@ -135,6 +136,25 @@ def _json_safe(obj):
     return str(obj)
 
 
+def carry_forward_empty_providers(
+    result: dict, existing_providers: dict, empty_providers: set
+) -> int:
+    """Keep last catalog entries for providers that came up empty this run.
+
+    A transient provider failure (SDK exception caught to [], rate-limited
+    empty list) must not drop the provider from the listing for 24h — same
+    protection the --provider filter gives non-updated providers. Genuine
+    model death decays via the history/stale system (last_seen, PRUNE_DAYS);
+    this only prevents listing flap. Returns the number of carried entries.
+    """
+    carried = 0
+    for pid, entry in existing_providers.items():
+        if pid in empty_providers and pid not in result:
+            result[pid] = entry
+            carried += 1
+    return carried
+
+
 def model_info_to_dict(m, default_access: str = "") -> dict:
     """Serialize a ModelInfo to a JSON-safe dict."""
     d = {"id": m.id}
@@ -216,23 +236,59 @@ def load_type_overrides() -> dict:
         return {}
 
 
-def fetch_models_dev() -> dict:
-    """Load models.dev data from cache, or fetch fresh."""
-    if MODELS_DEV_CACHE.exists():
-        log.info("Using cached models.dev data")
-        with open(MODELS_DEV_CACHE) as f:
-            return json.load(f)
+MODELS_DEV_TTL_SECONDS = 7 * 24 * 3600
 
-    log.info("Fetching models.dev ...")
+
+def fetch_models_dev() -> dict:
+    """Load models.dev data: fresh cache > refetch > stale cache > empty.
+
+    The cache used to be write-once-forever: enrichment (pricing,
+    context_window, modalities) silently froze at the first-ever fetch (prod
+    was 4 months stale). Now the cache has a TTL — on refetch failure or a
+    corrupt cache the stale copy is served (stale beats none, same pattern as
+    the opencode docs tables). The write is atomic so a crash mid-write can
+    never leave a truncated cache that bricks every future run.
+    """
+    data = None
+    if MODELS_DEV_CACHE.exists():
+        try:
+            with open(MODELS_DEV_CACHE) as f:
+                data = json.load(f)
+        except Exception as e:
+            log.warning("models.dev cache unreadable (ignored, refetching): %s", e)
+            data = None
+
+    age = None
+    if data is not None and MODELS_DEV_CACHE.exists():
+        age = time.time() - MODELS_DEV_CACHE.stat().st_mtime
+    if data is not None and age is not None and age < MODELS_DEV_TTL_SECONDS:
+        log.info("Using cached models.dev data")
+        return data
+
+    reason = f"stale ({age / 86400:.0f}d old)" if data is not None else "missing/unreadable"
+    log.info("Fetching models.dev ... (cache %s)", reason)
     import urllib.request
 
-    req = urllib.request.Request(
-        MODELS_DEV_URL, headers={"User-Agent": "uniinfer-generate/1.0"}
-    )
-    with urllib.request.urlopen(req, timeout=30) as resp:
-        raw = resp.read()
-    MODELS_DEV_CACHE.write_bytes(raw)
-    return json.loads(raw)
+    try:
+        req = urllib.request.Request(
+            MODELS_DEV_URL, headers={"User-Agent": "uniinfer-generate/1.0"}
+        )
+        with urllib.request.urlopen(req, timeout=30) as resp:
+            raw = resp.read()
+        parsed = json.loads(raw)  # validate before replacing the good copy
+        tmp = MODELS_DEV_CACHE.with_suffix(".json.tmp")
+        tmp.write_bytes(raw)
+        os.replace(tmp, MODELS_DEV_CACHE)
+        return parsed
+    except Exception as e:
+        if data is not None:
+            log.warning("models.dev fetch failed (%s); serving stale cache", e)
+            return data
+        log.warning(
+            "models.dev fetch failed and no usable cache: %s — continuing "
+            "without enrichment (live provider APIs carry the catalog)", e
+        )
+        return {}
 
 
 import re
@@ -577,6 +633,7 @@ def main():
     new_models_count = 0
 
     result = {}
+    empty_providers: set[str] = set()
     total_models = 0
 
     for provider_id, cls, credgoo_service, kind in providers:
@@ -671,6 +728,7 @@ def main():
                 log.info("  → %d models", len(models))
         else:
             log.info("  → 0 models (skipped)")
+            empty_providers.add(provider_id)
 
     # Track first_seen / last_seen, detect stale and pruned models
     model_history, stale_models, pruned_models = update_model_history(
@@ -739,8 +797,9 @@ def main():
 
     # Write stale models list (for /v1/models/stale endpoint)
     stale_output_path = PROJECT_ROOT / "uniinfer" / "models" / "_stale_models.json"
-    with open(stale_output_path, "w") as f:
-        json.dump(stale_models, f, indent=2, ensure_ascii=False)
+    _stale_tmp = stale_output_path.with_suffix(".json.tmp")
+    _stale_tmp.write_text(json.dumps(stale_models, indent=2, ensure_ascii=False))
+    os.replace(_stale_tmp, stale_output_path)
 
     save_model_history(model_history)
     log.info("Saved model history (%d entries)", len(model_history))
@@ -770,6 +829,16 @@ def main():
             for pid, entry in existing_providers.items():
                 if pid not in only:
                     result.setdefault(pid, entry)
+        # Voll-Run: Provider mit transientem Ausfall (leerer Fetch) aus dem
+        # bestehenden Katalog übernehmen statt für 24h aus dem Listing zu
+        # werfen — Listing-Flap-Schutz, symmetrisch zum --provider-Fall.
+        elif empty_providers:
+            carried = carry_forward_empty_providers(result, existing_providers, empty_providers)
+            if carried:
+                log.info(
+                    "Carried %d empty-fetch providers from previous catalog: %s",
+                    carried, ", ".join(sorted(empty_providers & set(existing_providers))),
+                )
         total_models = sum(len(v.get("models", [])) for v in result.values())
     except Exception as e:
         log.warning("Could not preserve custom-alias entries: %s", e)
