@@ -82,6 +82,19 @@ def test_dialect_routing_from_docs(monkeypatch):
     assert OpenCodeProvider._dialect_for("brand-new-model") == "chat"
 
 
+def test_dialect_fallback_without_docs(monkeypatch):
+    """Docs source down (zen.mdx 404) → known families still route correctly."""
+    monkeypatch.setattr(oc_module, "_DOCS_CACHE", {"endpoints": {}, "pricing": {}})
+    monkeypatch.setattr(oc_module, "_DOCS_CACHE_TS", time.time())
+    assert OpenCodeProvider._dialect_for("jev-1.13-free") == "systemone"
+    assert OpenCodeProvider._dialect_for("jev-1.13") == "systemone"
+    assert OpenCodeProvider._dialect_for("muse-spark-1.3-contributor-free") == "responses"
+    # table entries still win over the fallback
+    _prime_docs(monkeypatch)
+    assert OpenCodeProvider._dialect_for("big-pickle") == "chat"
+    assert OpenCodeProvider._dialect_for("brand-new-model") == "chat"
+
+
 # ------------------------------------------------------------------ #
 # free-tier imitation protocol: IDs, headers, tools, stream
 # ------------------------------------------------------------------ #

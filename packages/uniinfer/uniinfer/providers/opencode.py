@@ -70,6 +70,12 @@ _DOCS_URL = ("https://raw.githubusercontent.com/anomalyco/opencode/dev/"
              "packages/web/src/content/docs/zen.mdx")
 _DOCS_TTL = 3600.0
 _DOCS_CACHE: Optional[dict[str, Any]] = None
+
+# (id-prefix, dialect) — see _dialect_for docs-table fallback.
+_FALLBACK_DIALECTS: tuple[tuple[str, str], ...] = (
+    ("jev", "systemone"),
+    ("muse", "responses"),
+)
 _DOCS_CACHE_TS = 0.0
 
 # Upstream wait budget for one gateway round-trip. Big agent transcripts
@@ -221,6 +227,13 @@ class OpenCodeProvider(OpenAICompatibleChatProvider):
             return "anthropic"
         if "/models/" in endpoint:
             return "google"
+        # Docs-table fallback: zen.mdx (the table's source) was removed from
+        # the opencode repo in the v2 restructure; models.dev and the gateway
+        # listing expose no protocol metadata. Known model families keep
+        # routing while the docs are down — the table wins again once back.
+        for prefix, dialect in _FALLBACK_DIALECTS:
+            if (model_id or "").startswith(prefix):
+                return dialect
         return "chat"  # unknown/docs unavailable → the common case
 
     def _unsupported_dialect_error(self, dialect: str, model_id: str):
