@@ -251,3 +251,39 @@ def test_systemone_path_override(monkeypatch):
         r = c.post("/v1/systemone", json={"model": "clef@x", "state": {}, "questions": {}})
         assert r.status_code == 200, r.text
         assert captured["url"] == expected_url, (so_path, captured["url"])
+
+
+def test_cf_result_wrapper_unwrapped(monkeypatch):
+    """CF {success, result:{answers}} → flacher {answers}-Shape für Consumer."""
+    import httpx
+    spec = InstanceSpec(alias="clef-flash", provider="cloudflare", is_builtin=False,
+                        base_url="https://cf.example/ai/run/clef-flash",
+                        requires_api_key=False, systemone_path="")
+    monkeypatch.setattr("uniinfer.proxy_routers.systemone.resolve_instance",
+                        lambda a: spec)
+    monkeypatch.setattr("uniinfer.proxy_routers.systemone.instance_requires_api_key",
+                        lambda a: False)
+    monkeypatch.setattr("uniinfer.proxy_routers.systemone._resolve_credgoo_service",
+                        lambda a: (_ for _ in ()).throw(Exception("no key")))
+
+    class Resp:
+        status_code = 200
+        def json(self):
+            return {"success": True, "errors": [],
+                    "result": {"model": "clef-flash",
+                               "answers": {"team": {"type": "choice", "choice": "billing"}},
+                               "usage": {"input_tokens": 10}}}
+
+    async def fake_post(self, url, json=None, headers=None, timeout=None):
+        return Resp()
+
+    monkeypatch.setattr(httpx.AsyncClient, "post", fake_post)
+    monkeypatch.setattr("uniinfer.core._shared_async_client",
+                        lambda: httpx.AsyncClient())
+    c = _app(spec)
+    r = c.post("/v1/systemone", json={"model": "clef-flash@clef-flash",
+                                      "state": {}, "questions": {}})
+    assert r.status_code == 200
+    body = r.json()
+    assert body["answers"]["team"]["choice"] == "billing"
+    assert "result" not in body and "success" not in body

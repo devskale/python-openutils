@@ -110,6 +110,12 @@ def create_systemone_router(
             payload = resp.json()
         except Exception:
             payload = {"raw": resp.text[:2000]}
+        # CF Workers AI wickelt System-One-Antworten in {success, result: …} —
+        # für Consumer-Einheitlichkeit heben: flacher {answers, usage}-Shape
+        # wie native vLLM/jev-Endpoints.
+        if (isinstance(payload, dict) and payload.get("success") is True
+                and isinstance(payload.get("result"), dict)):
+            payload = payload["result"]
         return JSONResponse(payload, status_code=resp.status_code)
 
     async def _chat_wrap(alias, bare_model, body, api_key):
