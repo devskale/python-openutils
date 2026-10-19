@@ -212,3 +212,42 @@ def test_chat_wrap_non_json_content_502(monkeypatch):
                json={"model": "opencode@jev-1.13", "state": {}, "questions": {}})
     assert r.status_code == 502
     assert "Systemone dialect" in r.json()["error"]
+
+
+def test_systemone_path_override(monkeypatch):
+    """systemone_path: None → /systemone-Suffix; "" → base AS-IS; custom → Suffix."""
+    import httpx
+
+    for so_path, expected_url in [
+        (None, "https://clef.example/v1/systemone"),
+        ("", "https://clef.example/v1"),
+        ("/ai/run/clef", "https://clef.example/v1/ai/run/clef"),
+    ]:
+        spec = InstanceSpec(alias="clef", provider="openai-compat", is_builtin=False,
+                            base_url="https://clef.example/v1",
+                            requires_api_key=False,
+                            systemone_path=so_path)
+        monkeypatch.setattr("uniinfer.proxy_routers.systemone.resolve_instance",
+                            lambda a: spec)
+        monkeypatch.setattr("uniinfer.proxy_routers.systemone.instance_requires_api_key",
+                            lambda a: False)
+        captured = {}
+
+        class Resp:
+            status_code = 200
+            def json(self):
+                return {"answers": {}}
+
+        async def fake_post(self, url, json=None, headers=None, timeout=None):
+            captured["url"] = url
+            return Resp()
+
+        monkeypatch.setattr(httpx.AsyncClient, "post", fake_post)
+        monkeypatch.setattr("uniinfer.core._shared_async_client",
+                            lambda: httpx.AsyncClient())
+        monkeypatch.setattr("uniinfer.proxy_routers.systemone._resolve_credgoo_service",
+                            lambda a: (_ for _ in ()).throw(Exception("no key")))
+        c = _app(spec)
+        r = c.post("/v1/systemone", json={"model": "clef@x", "state": {}, "questions": {}})
+        assert r.status_code == 200, r.text
+        assert captured["url"] == expected_url, (so_path, captured["url"])

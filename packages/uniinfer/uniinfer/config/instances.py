@@ -32,6 +32,7 @@ _ENTRY_FIELDS = (
     "requires_api_key",
     "enabled",
     "default_model",
+    "systemone_path",
 )
 
 
@@ -65,6 +66,10 @@ class InstanceSpec:
     enabled: bool = True
     default_model: Optional[str] = None
     is_builtin: bool = False
+    # Systemone-Pfad-Suffix für /v1/systemone: None → "/systemone" (Default,
+    # native vLLM/jev-Endpoints), "" → base_url wird AS-IS angesprochen
+    # (z.B. CF Workers AI /ai/run/@cf/…-URLs), sonst custom Suffix.
+    systemone_path: Optional[str] = None
     # Open, forward-adoptable access metadata: {keytype, models, budget, …}.
     # keytype = free-form label; models = optional selective spec (list today,
     # filter object later). Code reads what it knows; the rest is preserved.
@@ -281,6 +286,7 @@ def upsert_instance(
     requires_api_key: Optional[bool] = None,
     enabled: Optional[bool] = None,
     default_model: Optional[str] = None,
+    systemone_path: Optional[str] = None,
     access: Optional[dict] = None,
     path: Optional[str] = None,
 ) -> dict[str, Any]:
@@ -295,6 +301,7 @@ def upsert_instance(
         ("requires_api_key", requires_api_key),
         ("enabled", enabled),
         ("default_model", default_model),
+        ("systemone_path", systemone_path),
     ):
         if v is not None:
             entry[k] = v

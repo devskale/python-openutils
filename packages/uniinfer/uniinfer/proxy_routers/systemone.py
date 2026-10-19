@@ -92,7 +92,12 @@ def create_systemone_router(
             headers["Authorization"] = f"Bearer {upstream_key}"
 
         from uniinfer.core import _shared_async_client
-        url = f"{base}/systemone"
+        # Systemone-Ziel: Default /systemone-Suffix; Overlay kann pro Instanz
+        # überschreiben ("" = base_url AS-IS, z.B. CF Workers AI /ai/run/…).
+        so_path = getattr(spec, "systemone_path", None)
+        if so_path is None:
+            so_path = "/systemone"
+        url = f"{base}{so_path}"
         try:
             client = _shared_async_client()
             resp = await client.post(url, json=forward, headers=headers, timeout=60)
