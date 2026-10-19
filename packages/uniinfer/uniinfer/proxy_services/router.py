@@ -126,13 +126,15 @@ def is_dead_upstream(provider_model: str, exc: Exception) -> bool:
 
 
 def note_dead_upstream(provider_model: str, exc: Exception) -> None:
-    """A routed model answered dead-upstream: park it long, deprecate after
-    _DEAD_PARKS_TO_DEPRECATE consecutive parks (auto-deprecation).
+    """A routed model answered dead-upstream: park it long, exclude from
+    ROUTING after _DEAD_PARKS consecutive parks.
 
-    Auto-deprecation writes status=deprecated through the override seam, so
-    the model leaves the candidate set until an operator undeprecates it (or
-    the upstream revives it and the catalog refresh re-lists it active — the
-    override still wins, so undeprecate is the deliberate path back).
+    Auto-exclusion writes a ROUTING-scoped exclude (``routing_exclude``) —
+    NOT a catalog deprecation: auto@free is virtual, and excluding a model
+    from it must not touch the model's catalog status or block direct calls.
+    The operator can lift the exclusion (delete the field or via the
+    overrides API); catalog deprecate/undeprecate stay separate, deliberate
+    catalog operations.
     """
     _QuotaCooldown.park(provider_model, _DEAD_COOLDOWN_S)
     with _QuotaCooldown._lock:
@@ -142,21 +144,21 @@ def note_dead_upstream(provider_model: str, exc: Exception) -> None:
         parks = _QuotaCooldown._dead_parks[provider_model]
     if parks >= _DEAD_PARKS_TO_DEPRECATE:
         try:
-            Catalog().deprecate_model(
+            _set_routing_exclude(
                 provider_model,
                 reason=f"auto: upstream answered '{str(exc)[:120]}' {parks}x",
-                source="auto",
             )
             logger.warning(
-                "[auto-route] auto-deprecated %s after %d dead-upstream parks",
+                "[auto-route] auto-excluded %s from routing after %d "
+                "dead-upstream parks",
                 provider_model,
                 parks,
             )
         except Exception as e:  # noqa: BLE001
-            logger.warning("auto-deprecation of %s failed: %s", provider_model, e)
+            logger.warning("auto-exclusion of %s failed: %s", provider_model, e)
     else:
         logger.warning(
-            "[auto-route] dead-upstream %s (%d/%d parks before deprecation)",
+            "[auto-route] dead-upstream %s (%d/%d parks before exclusion)",
             provider_model,
             parks,
             _DEAD_PARKS_TO_DEPRECATE,
@@ -169,6 +171,29 @@ def clear_dead_parks(provider_model: str) -> None:
         _QuotaCooldown._dead_parks.pop(provider_model, None)
 
 
+def _set_routing_exclude(
+    provider_model: str, *, reason: str, source: str = "auto"
+) -> None:
+    """Write a ROUTING-scoped exclude for a model into model_overrides.json.
+
+    Sets ``routing_exclude: true`` + reason/source on the model's override
+    entry — scoped to auto-routing only: the catalog status stays untouched,
+    direct calls keep working. Uses the Catalog's locked writer (same file,
+    same serialization as every other override write) instead of a private
+    write path that could race the CRUD endpoints.
+    """
+    bare = provider_model.split("@", 1)[1] if "@" in provider_model else provider_model
+    Catalog().save_override(
+        bare,
+        {
+            "routing_exclude": True,
+            "routing_exclude_reason": reason,
+            "routing_exclude_source": source,
+        },
+    )
+    _RoutingPrefs.invalidate()
+
+
 def _router_overrides_path() -> str:
     import os
 
@@ -176,16 +201,23 @@ def _router_overrides_path() -> str:
 
 
 class _RoutingPrefs:
-    """Operator routing preferences from model_overrides.json (weight/pin/exclude).
+    """Operator routing preferences from model_overrides.json
+    (weight/pin/exclude/routing_exclude).
 
     Read-through with a short mtime-keyed cache: the overrides file is small
     and read once per routing decision; the cache keeps repeated auto@free
     requests off the disk. Thread-safe.
     """
 
-    _cache: dict | None = None
-    _cache_mtime: float | None = None
-    _lock = threading.Lock()
+    _cache: ClassVar[dict | None] = None
+    _cache_mtime: ClassVar[float | None] = None
+    _lock: ClassVar[threading.Lock] = threading.Lock()
+
+    @classmethod
+    def invalidate(cls) -> None:
+        with cls._lock:
+            cls._cache = None
+            cls._cache_mtime = None
 
     @classmethod
     def load(cls) -> dict:
@@ -209,11 +241,14 @@ class _RoutingPrefs:
             for mid, ov in models.items():
                 if not isinstance(ov, dict):
                     continue
-                if any(k in ov for k in ("weight", "pin", "exclude")):
+                if any(
+                    k in ov for k in ("weight", "pin", "exclude", "routing_exclude")
+                ):
                     prefs[mid] = {
                         "weight": float(ov.get("weight", 1.0)),
                         "pin": bool(ov.get("pin", False)),
-                        "exclude": bool(ov.get("exclude", False)),
+                        "exclude": bool(ov.get("exclude", False))
+                        or bool(ov.get("routing_exclude", False)),
                     }
         except (OSError, ValueError) as e:
             logger.warning(

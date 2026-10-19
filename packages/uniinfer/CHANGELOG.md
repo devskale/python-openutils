@@ -35,9 +35,11 @@ adheres to [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   reason/source) — es verschwindet aus aktiven Listen und Router-Kandidaten,
   bleibt aber mit Grund unter `/v1/models/deprecated` sichtbar. Auto: ein
   geroutetes Modell mit wiederholtem dead-upstream ("Model is unavailable"/
-  404) wird je 1h geparkt und nach 3 Parks automatisch deprecated
-  (`deprecation_source: "auto"`); dead-upstream-Fälle fallen sofort auf den
-  nächsten Kandidaten durch.
+  404) wird je 1h geparkt und nach 3 aufeinanderfolgenden Parks mit einem
+  routing-scoped `routing_exclude`-Override aus NUR dem Routing genommen
+  (Katalog + direkte Calls unberührt); der Streak resettet bei erfolgreichen
+  Requests; dead-upstream-Fälle fallen sofort auf den nächsten Kandidaten
+  durch.
 
 ## [0.8.61] - 2026-09-27
 

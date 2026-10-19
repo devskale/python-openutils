@@ -81,14 +81,14 @@ curl -X POST .../v1/models/undeprecate/step-5-preview-free -H "Authorization: Be
 
 **Auto:** antwortet ein geroutetes Modell wiederholt „Model is unavailable" /
 404 (dead upstream — das Modell ist upstream *weg*, nicht flaky), wird es
-für 1h geparkt; nach 3 solchen Parks schreibt der Router automatisch ein
-`status: deprecated`-Override (`deprecation_source: "auto"` mit dem
-Upstream-Fehler als Grund). Der Operator sieht das in
-`/v1/models/deprecated` und kann gezielt undeprecaten, wenn das Modell
-zurückkomt.
-
-Deprecation läuft immer über den Override-Seam (`model_overrides.json`) —
-persistiert, auditierbar, operator-überschreibbar.
+für 1h geparkt; nach 3 solchen Parks (in Folge — ein erfolgreicher Request
+setzt den Streak zurück) schreibt der Router automatisch ein
+**routing-scoped** `routing_exclude`-Override (`routing_exclude_source:
+"auto"` mit dem Upstream-Fehler als Grund). Das ist bewusst KEINE
+Katalog-Deprecation: `auto@free` ist ein virtuelles Modell — der Ausschluss
+gilt nur fürs Routing, Katalog-Status und direkte Calls bleiben unberührt.
+Lösen lässt sich der Ausschluss per Overrides-API (Feld löschen), die
+Katalog-Endpoints deprecate/undeprecate bleiben reine Katalog-Operationen.
 
 ## Quota cooldown (parking)
 

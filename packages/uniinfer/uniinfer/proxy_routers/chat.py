@@ -118,8 +118,13 @@ def create_chat_router(
             # Auto-routed requests carry a fallback chain: on a quota-spent
             # upstream (429/402) the failed model is parked (cooldown) and the
             # next candidate is tried, up to _AUTO_MAX_FALLBACKS. Non-routed
-            # requests keep the original single-target behavior.
-            _auto_chain = list(getattr(request.state, "auto_chain", []) or [])
+            # requests keep the original single-target behavior. None marks
+            # "not auto-routed" (vs [] = routed, chain exhausted).
+            _auto_chain = (
+                list(getattr(request.state, "auto_chain", []) or [])
+                if hasattr(request.state, "auto_chain")
+                else None
+            )
 
             # Thinking control now lives in each provider (it reads
             # reasoning_effort off the request). The router only forwards the
@@ -255,6 +260,10 @@ def create_chat_router(
                         chat_template_kwargs=request_input.chat_template_kwargs,
                         extra=extras,
                     )
+                    if _auto_chain is not None:
+                        from uniinfer.proxy_services.router import clear_dead_parks
+
+                        clear_dead_parks(provider_model)
                     break
                 except RateLimitError as e:
                     if not _auto_chain:

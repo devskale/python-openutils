@@ -165,8 +165,10 @@ def test_prefs_cache_invalidates_on_mtime(fakes, monkeypatch):
 @pytest.fixture(autouse=True)
 def _reset_cooldown():
     routing._QuotaCooldown._parked = {}
+    routing._QuotaCooldown._dead_parks = {}
     yield
     routing._QuotaCooldown._parked = {}
+    routing._QuotaCooldown._dead_parks = {}
 
 
 def test_quota_hit_parks_model(fakes):
@@ -225,6 +227,11 @@ def catalog_tmp(monkeypatch, tmp_path):
         def read_overrides(self):
             return _json.loads(self._ov.read_text())
 
+        def save_override(self, mid, fields):
+            doc = _json.loads(self._ov.read_text())
+            doc["models"].setdefault(mid, {}).update(fields)
+            self._ov.write_text(_json.dumps(doc))
+
         def deprecate_model(self, mid, reason, *, source="manual"):
             doc = _json.loads(self._ov.read_text())
             entry = {
@@ -281,9 +288,25 @@ def test_auto_deprecation_after_repeated_dead_parks(catalog_tmp, monkeypatch):
     )
     for _ in range(routing._DEAD_PARKS_TO_DEPRECATE):
         routing.note_dead_upstream("provA@alpha", e)
-    # ...und das deprecated-override ist gesetzt und filtert das Modell
+    # Auto-Exclusion schreibt routing_exclude (NICHT Katalog-Deprecation)
     ov = catalog_tmp().read_overrides()["models"]
-    assert ov["alpha"]["status"] == "deprecated"
-    assert ov["alpha"]["deprecation_source"] == "auto"
+    assert ov["alpha"].get("routing_exclude") is True
+    assert "auto" in ov["alpha"].get("routing_exclude_source", "")
+    assert ov["alpha"].get("status") != "deprecated"  # Katalog unberuehrt
     resolved = routing.resolve_auto("auto@free")
     assert resolved is None
+
+
+def test_dead_park_streak_resets_on_success(catalog_tmp, monkeypatch):
+    from uniinfer.errors import InvalidRequestError
+
+    e = InvalidRequestError(
+        "Model is unavailable", 400, '{"message":"Model is unavailable"}'
+    )
+    routing.note_dead_upstream("provA@alpha", e)
+    routing.note_dead_upstream("provA@alpha", e)
+    # Erfolg: Streak zuruecksetzen
+    routing.clear_dead_parks("provA@alpha")
+    routing.note_dead_upstream("provA@alpha", e)
+    ov = catalog_tmp().read_overrides()["models"]
+    assert "alpha" not in ov or not ov["alpha"].get("routing_exclude")
