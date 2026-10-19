@@ -7,6 +7,10 @@ Der Alias entscheidet das Ziel — kein Provider-Hardcode: funktioniert für
 Custom-Aliase auf vLLM-PR-#57250-Endpunkten (DiffusionGemma, …) genauso wie
 für built-ins mit Systemone-Dialekt (opencode jev). Das ``alias@``-Präfix wird
 vom weitergeleiteten ``model``-Feld abgestreift (Upstreams kennen nur bare IDs).
+Instanzen MIT ``base_url`` werden durchgereicht (natives ``/systemone``);
+Instanzen OHNE (built-ins) gehen durch den Chat-Wrap: Payload als letzte
+user-Nachricht über den Chat-Pfad des Providers, Antwort-Content als JSON
+zurück — eine Tür für alle Decision-Modelle, egal welcher Wire-Dialekt.
 
 Auth folgt dem Chat-Muster: keyless Instanzen (``requires_api_key: false``)
 kommen ohne Proxy-Token aus; alles andere verlangt Provider-Zugang — und der
@@ -78,9 +82,7 @@ def create_systemone_router(
 
         base = (spec.base_url or "").rstrip("/")
         if not base:
-            return JSONResponse(
-                {"error": f"instance '{alias}' has no base_url for systemone"},
-                status_code=400)
+            return await _chat_wrap(alias, bare_model, body, upstream_key)
 
         forward = {k: v for k, v in body.items() if k != "model"}
         forward["model"] = bare_model  # bare id — Upstreams kennen kein alias@
@@ -104,5 +106,42 @@ def create_systemone_router(
         except Exception:
             payload = {"raw": resp.text[:2000]}
         return JSONResponse(payload, status_code=resp.status_code)
+
+    async def _chat_wrap(alias, bare_model, body, api_key):
+        """Fallback für Instanzen ohne natives /systemone (built-ins wie
+        opencode/pollinations): {state, questions} als letzte user-Nachricht
+        durch den Chat-Pfad des Providers (Target), Antwort-Content als JSON
+        zurück im Systemone-Shape. Content = {answers: …} ODER direkt das
+        Answers-Objekt (Jev-Dialekt)."""
+        from uniinfer.completion import Target
+
+        wrap_payload = {"state": body.get("state"), "questions": body.get("questions")}
+        try:
+            target = Target(f"{alias}@{bare_model}", api_key)
+            resp = await target.acomplete(
+                [{"role": "user", "content": json.dumps(wrap_payload)}])
+        except Exception as e:
+            return JSONResponse(
+                {"error": f"chat-wrap upstream error: {e}"}, status_code=502)
+
+        content = getattr(getattr(resp, "message", None), "content", None)
+        if not content or not isinstance(content, str):
+            return JSONResponse(
+                {"error": "chat-wrap: upstream returned no content"},
+                status_code=502)
+        try:
+            parsed = json.loads(content)
+        except json.JSONDecodeError:
+            return JSONResponse(
+                {"error": "chat-wrap: upstream content is not JSON "
+                          "(model speaks no Systemone dialect)",
+                 "content": content[:200]}, status_code=502)
+
+        answers = parsed.get("answers") if isinstance(parsed, dict) and "answers" in parsed else parsed
+        out = {"model": f"{alias}@{bare_model}", "answers": answers}
+        usage = getattr(resp, "usage", None)
+        if isinstance(usage, dict) and usage:
+            out["usage"] = usage
+        return JSONResponse(out)
 
     return router

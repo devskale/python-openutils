@@ -137,3 +137,78 @@ def test_keyed_instance_forwards_upstream_bearer(monkeypatch):
                json={"model": "d3mini@vllm-sr/d3-mini", "state": {}, "questions": {}})
     assert r.status_code == 200
     assert captured["headers"]["Authorization"] == "Bearer sk-dgxp-upstream-token"
+
+
+def _wrap_setup(monkeypatch, content, usage=None):
+    """Instanz ohne base_url (built-in) + gefaktes Target für den Chat-Pfad."""
+    spec = _spec("opencode", keyless=False)
+    spec = InstanceSpec(alias="opencode", provider="opencode", is_builtin=True,
+                        base_url=None, requires_api_key=True)
+    monkeypatch.setattr("uniinfer.proxy_routers.systemone.resolve_instance",
+                        lambda a: spec)
+    monkeypatch.setattr("uniinfer.proxy_routers.systemone.instance_requires_api_key",
+                        lambda a: True)
+    monkeypatch.setattr("uniinfer.proxy_routers.systemone.verify_provider_access",
+                        lambda token, alias: "sk-upstream")
+
+    captured = {}
+
+    class FakeTarget:
+        def __init__(self, provider_model, api_key=None, **kw):
+            captured["provider_model"] = provider_model
+            captured["api_key"] = api_key
+
+        async def acomplete(self, messages, **kw):
+            captured["messages"] = messages
+            from types import SimpleNamespace
+            msg = SimpleNamespace(content=content)
+            return SimpleNamespace(message=msg, usage=usage or {})
+
+    monkeypatch.setattr("uniinfer.completion.Target", FakeTarget)
+    return captured
+
+
+def test_chat_wrap_fallback_answers_object(monkeypatch):
+    """Built-in ohne base_url: Chat-Wrap, Content = direktes Answers-Objekt."""
+    import json as _json
+    content = _json.dumps({"team": {"type": "choice", "choice": "billing",
+                                    "probabilities": {"billing": 0.9, "tech": 0.1}}})
+    captured = _wrap_setup(monkeypatch, content)
+    c = _app(None)
+    r = c.post("/v1/systemone",
+               headers={"authorization": "Bearer caller"},
+               json={"model": "opencode@jev-1.13-free",
+                     "state": {"s": "x"}, "questions": {"team": {}}})
+    assert r.status_code == 200, r.text
+    body = r.json()
+    assert body["answers"]["team"]["choice"] == "billing"
+    assert body["model"] == "opencode@jev-1.13-free"
+    # Wrap-Payload: letzte user-Nachricht = JSON mit state+questions
+    sent = _json.loads(captured["messages"][0]["content"])
+    assert sent["state"] == {"s": "x"} and "team" in sent["questions"]
+    assert captured["provider_model"] == "opencode@jev-1.13-free"
+    assert captured["api_key"] == "sk-upstream"
+
+
+def test_chat_wrap_fallback_answers_key(monkeypatch):
+    """Content = {"answers": {...}} → inneres Objekt wird gehoben."""
+    import json as _json
+    content = _json.dumps({"answers": {"ok": {"type": "noul", "noul": 0.8}},
+                           "usage": {"input_tokens": 5}})
+    _wrap_setup(monkeypatch, content)
+    c = _app(None)
+    r = c.post("/v1/systemone",
+               headers={"authorization": "Bearer caller"},
+               json={"model": "opencode@jev-1.13", "state": {}, "questions": {}})
+    assert r.status_code == 200
+    assert r.json()["answers"]["ok"]["noul"] == 0.8
+
+
+def test_chat_wrap_non_json_content_502(monkeypatch):
+    _wrap_setup(monkeypatch, "Ich bin kein JSON, nur Text.")
+    c = _app(None)
+    r = c.post("/v1/systemone",
+               headers={"authorization": "Bearer caller"},
+               json={"model": "opencode@jev-1.13", "state": {}, "questions": {}})
+    assert r.status_code == 502
+    assert "Systemone dialect" in r.json()["error"]
