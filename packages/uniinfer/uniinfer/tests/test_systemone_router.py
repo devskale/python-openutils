@@ -100,3 +100,40 @@ def test_api_key_instance_requires_token(monkeypatch):
     c = _app(spec)
     r = c.post("/v1/systemone", json={"model": "gated@m", "state": {}, "questions": {}})
     assert r.status_code == 401
+
+
+def test_keyed_instance_forwards_upstream_bearer(monkeypatch):
+    """Keyed-Instanz: der von verify_provider_access aufgelöste Key wandert
+    als Upstream-Bearer in den Forward (Gateway-Auth am Ziel, z.B. dgx
+    model-proxy hinter einem Tunnel) — nicht nur als Caller-Gate."""
+    spec = _spec("d3mini", keyless=False)
+    monkeypatch.setattr("uniinfer.proxy_routers.systemone.resolve_instance",
+                        lambda a: spec)
+    monkeypatch.setattr("uniinfer.proxy_routers.systemone.instance_requires_api_key",
+                        lambda a: True)
+    monkeypatch.setattr("uniinfer.proxy_routers.systemone.verify_provider_access",
+                        lambda token, alias: "sk-dgxp-upstream-token")
+
+    captured = {}
+
+    class Resp:
+        status_code = 200
+        def json(self):
+            return {"answers": {"team": {"type": "choice", "choice": "billing"}}}
+
+    async def fake_post(self, url, json=None, headers=None, timeout=None):
+        captured["url"] = url
+        captured["headers"] = headers
+        return Resp()
+
+    import httpx
+    monkeypatch.setattr(httpx.AsyncClient, "post", fake_post)
+    monkeypatch.setattr("uniinfer.core._shared_async_client",
+                        lambda: httpx.AsyncClient())
+
+    c = _app(spec)
+    r = c.post("/v1/systemone",
+               headers={"authorization": "Bearer caller-combo-token"},
+               json={"model": "d3mini@vllm-sr/d3-mini", "state": {}, "questions": {}})
+    assert r.status_code == 200
+    assert captured["headers"]["Authorization"] == "Bearer sk-dgxp-upstream-token"

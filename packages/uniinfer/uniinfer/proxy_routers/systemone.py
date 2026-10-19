@@ -9,7 +9,9 @@ für built-ins mit Systemone-Dialekt (opencode jev). Das ``alias@``-Präfix wird
 vom weitergeleiteten ``model``-Feld abgestreift (Upstreams kennen nur bare IDs).
 
 Auth folgt dem Chat-Muster: keyless Instanzen (``requires_api_key: false``)
-kommen ohne Proxy-Token aus; alles andere verlangt Provider-Zugang.
+kommen ohne Proxy-Token aus; alles andere verlangt Provider-Zugang — und der
+dabei aufgelöste Key wird als Upstream-Bearer weitergereicht (Gateway-Auth am
+Ziel, z.B. dgx model-proxy hinter einem Tunnel).
 """
 from __future__ import annotations
 
@@ -58,19 +60,21 @@ def create_systemone_router(
                                 status_code=404)
 
         # Auth: keyless Instanzen (public vLLM) brauchen keinen Proxy-Key;
-        # alles andere verlangt Provider-Zugang wie im Chat-Flow.
+        # alles andere verlangt Provider-Zugang wie im Chat-Flow. Der dabei
+        # aufgelöste Key wird als Upstream-Bearer weitergereicht (Gateway-Auth
+        # am Ziel, z.B. dgx model-proxy hinter einem Tunnel) statt verworfen.
+        upstream_key = None
         if instance_requires_api_key(alias):
             try:
-                verify_provider_access(api_bearer_token, alias)
+                upstream_key = verify_provider_access(api_bearer_token, alias)
             except Exception as e:
                 return JSONResponse({"error": str(e)}, status_code=401)
         else:
-            api_key = None
             try:
                 from credgoo import get_api_key as _gk
-                api_key = _gk(_resolve_credgoo_service(alias))
+                upstream_key = _gk(_resolve_credgoo_service(alias))
             except Exception:
-                api_key = None
+                upstream_key = None
 
         base = (spec.base_url or "").rstrip("/")
         if not base:
@@ -82,14 +86,8 @@ def create_systemone_router(
         forward["model"] = bare_model  # bare id — Upstreams kennen kein alias@
 
         headers = {"Content-Type": "application/json"}
-        if not instance_requires_api_key(alias):
-            try:
-                from credgoo import get_api_key as _gk
-                key = _gk(_resolve_credgoo_service(alias))
-            except Exception:
-                key = None
-            if key:
-                headers["Authorization"] = f"Bearer {key}"
+        if upstream_key:
+            headers["Authorization"] = f"Bearer {upstream_key}"
 
         from uniinfer.core import _shared_async_client
         url = f"{base}/systemone"
