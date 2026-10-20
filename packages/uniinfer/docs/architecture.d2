@@ -14,7 +14,8 @@ routers: "proxy_routers" {
   style.fill: "#f1f5f9"
   models: "models.py\n/v1/models · /v1/catalog"
   chat: "chat.py\n/v1/chat/completions"
-  media: "media.py\nimages · TTS · STT"
+  systemone: "systemone.py\n/v1/systemone\ndecision + extraction"
+  audio: "audio.py + images.py\nTTS · STT · image gen"
 }
 
 services: "proxy_services" {
@@ -43,6 +44,8 @@ proxy_app -> routers
 routers.models -> services.catalog: "/v1/models/:alias"
 routers.chat -> providers: "provider@model"
 services.catalog -> config.instances: "resolve_instance"
+routers.systemone -> config.instances: "resolve_instance + dialect"
+routers.systemone -> backends: "native forward / chat-wrap"
 services.catalog -> providers.base: "list_models"
 providers.base -> providers.dialect: "_model_info (B)" { style.stroke: "#16a34a"; style.bold: true }
 providers -> backends: "complete / GET /models"

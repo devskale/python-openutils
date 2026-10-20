@@ -131,12 +131,27 @@ Legacy allowlist-only tokens remain valid until revoked.
 | File | Owns |
 |------|------|
 | `README.md` | User-facing usage, installation, provider table |
-| `ARCHITECTURE.md` | Proxy router/service/schema layout |
-| `AGENTS.md` | This file — contributor rules |
+| `ARCHITECTURE.md` | Proxy router/service layout + naming + change guidelines |
+| `AGENTS.md` | This file — contributor rules + vollständige Doc-Map |
+| `CONTEXT.md` | Domain-Glossar (Nouns/Verbs/Contracts) — bei neuen Begriffen pflegen |
+| `docs/systemone.md` | System-One: decision/extraction-Dialekte, Transporte, Instanz-Muster |
+| `docs/routing.md` | `auto@free`-Routing: Kandidaten, Parken, Deprecation |
 | `docs/models.md` | Model catalog, types, metadata richness |
+| `docs/catalog.md` | `/v1/catalog`-Endpoint (roher Katalog) |
+| `docs/daily-model-refresh.md` | Timer + Freshness/History-Mechanik |
 | `docs/providers.md` | Full provider index with base URLs, defaults |
-| `docs/systemone.md` | System-One architecture: decision/extraction dialects, transports, instance config |
-| `docs/integration.md` | How to integrate: Python module + uniioai proxy API |
+| `docs/provider-instances-design.md` | Instanz-Aliase (`provider_instances.json`), Feld-Semantik |
+| `docs/integration.md` | How to integrate: Python module + uniioai proxy API + agent discovery |
+| `docs/debugging.md` | Log-Forensik, bekannte Fehlerbilder |
+| `docs/issues.md` | Historisch: GLM-5.2-Vorfall — NEUE Issues → Metarepo-Kanban |
+| `docs/allocator-and-ratelimit-decisions.md` | AIMD-Rate-Limit-Entscheidungen |
+| `notes.md` | Datierte Findings (append-only; implementierte → Statuszeile) |
+| `CHANGELOG.md` | Release-Historie |
+
+**Drift-Regeln:** jede Tatsache lebt GENAU EINMAL — Zweitvorkommen sind
+Pointer. Das ausführlichste Doc zu einem Thema ist die Instanz; alles andere
+verweist. `ARCHITECTURE.md` führt die Modul-Listen als Tabellen mit Ownership
+(bei neuen Routers/Services mitpflegen).
 
 ## Code Style
 

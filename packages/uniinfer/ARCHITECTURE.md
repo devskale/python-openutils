@@ -42,34 +42,30 @@ or reference them. Tests import `from uniinfer.proxy_app import app`.
 
 Keep this file thin. Prefer adding endpoint logic in routers/services.
 
-## Routers
+## Routers (`uniinfer/proxy_routers/` — je Endpoint-Familie ein Modul)
 
-- `uniinfer/proxy_routers/models.py`
-  - `/v1/models`
-  - `/v1/system/update-models`
-  - `/v1/providers`
-  - `/v1/models/{provider}`
-  - embedding model/provider listing
-  - `/v1/system/info`
+| Modul | Endpoints / Ownership |
+|---|---|
+| `chat.py` | `/v1/chat/completions`, `/v1/embeddings` (+ Input-Normalisierung, s.u.) |
+| `models.py` | `/v1/models`, `/v1/catalog`, `/v1/providers`, Overrides/Deprecate-APIs, `/v1/system/*` |
+| `systemone.py` | `/v1/systemone` — decision + extraction; [docs/systemone.md](docs/systemone.md) |
+| `audio.py`, `images.py` | TTS/STT (`/v1/audio/*`), Bildgenerierung (`/v1/images/generations`) |
+| `capabilities.py` | Capability-/Perf-Probe-Endpoints |
+| `stats.py`, `system.py`, `tools.py`, `smoke.py` | Usage-Dashboard/Systeminfo/Tool- und Smoke-Endpoints |
 
-- `uniinfer/proxy_routers/media.py`
-  - image model listing + image generation
-  - TTS (`/v1/audio/speech`)
-  - STT (`/v1/audio/transcriptions`)
+## Services (`uniinfer/proxy_services/` — wiederverwendbare Logik, kein HTTP)
 
-- `uniinfer/proxy_routers/chat.py`
-  - chat completions (`/v1/chat/completions`)
-  - embeddings (`/v1/embeddings`)
-
-## Services
-
-- `uniinfer/proxy_services/models_registry.py`
-  - `models.json` catalog: load / refresh / staleness, model overrides, new / deprecated / stale diffs
-
-- `uniinfer/proxy_services/streaming.py`
-  - SSE streaming shaping
-  - `thinking -> reasoning_content` normalization
-  - strict/non-strict compatibility helpers
+| Modul | Ownership |
+|---|---|
+| `models_registry.py` | `models.json`-Katalog: Laden, Typ-/Override-Auflösung, Freshness (`Catalog`) |
+| `token_registry.py` | Gateway-Token-Allowlist + Metadaten: mint/list/revoke, Scope-Constraints |
+| `router.py` | `auto@free`-Routing: Kandidaten, Parken, Fallback — [docs/routing.md](docs/routing.md) |
+| `discovery.py` | Instanz-/Alias-Discovery für Consumer |
+| `reliability.py` | ReliabilityMonitor (Degraded-Flags fürs Routing) |
+| `stats.py` | Usage-Erfassung + Dashboards (`stats_dashboard.html`) |
+| `streaming.py` | SSE-Shaping, `thinking → reasoning_content`-Normalisierung |
+| `glm_leak_repair.py` | GLM-Tool-Call-Leak-Interceptor — [docs/issues.md](docs/issues.md) |
+| `sd_notify.py` | systemd-Watchdog-Anbindung |
 
 ## Schemas
 

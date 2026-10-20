@@ -79,6 +79,11 @@ Field defaults (when omitted): inherit the underlying class attrs
 - Agent discovery: public `/v1/providers` summarizes enabled aliases (builtin/
   custom, cached count, default model, follow-up URLs). It never exposes
   `base_url`, `credgoo_service`, or credentials.
+
+**`systemone_path`** (seit 2026-10): Suffix für `/v1/systemone`-Forwards —
+`null` → `/systemone` (vLLM/jev), `""` → base_url AS-IS (Instanz-pro-Modell,
+clef), `"/{model}"` → bare model im Pfad (Familien-Instanz `cfrun`).
+Dialekte + Transporte: [systemone.md](systemone.md).
 - `/v1/models/{alias}` resolves via the shared `resolve_instance()` and lists
   through the underlying class's `list_models` with the instance's base_url/key.
   The raw list then passes through **`Catalog.resolve_for_instance(alias, models)`**

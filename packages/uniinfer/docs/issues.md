@@ -11,6 +11,10 @@ vLLM-Ascend, model `asc_amd/zai-org/GLM-5.2-FP8`) and their partial fixes.
 
 Status legend: ✅ done · 🟡 partial / work-in-progress · ⬜ open
 
+> **Abgeschlossen und historisch** — dieses Doc trackt den GLM-5.2-Vorfall
+> 2026-09. NEUE Issues leben im Metarepo-Kanban (`.work/issues/`,
+> `./k.sh issues board`) — hier nichts Neues anlegen.
+
 ---
 
 ## ✅ 1. Streaming tool-call leak — interceptor (fixed + deployed)

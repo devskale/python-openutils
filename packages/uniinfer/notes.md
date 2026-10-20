@@ -6,6 +6,9 @@ Findings and discoveries that don't fit elsewhere. Dated, append-only.
 
 ## 2026-07-17 — OpenCode/Zen: a richer model catalog exists at pi.dev
 
+> **Status: implemented** — `OpenCodeProvider` reichert sein Listing mit
+> dem pi.dev-Katalog an (`uniinfer/providers/opencode.py`, `_pi_catalog`).
+
 ### Background
 
 `opencode`'s own `GET https://opencode.ai/zen/v1/models` returns a **bare**

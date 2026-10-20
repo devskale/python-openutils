@@ -335,11 +335,13 @@ Full layout + the **Naming** table (`uniioai_proxy.py` → `proxy_app.py`):
 ## Docs
 
 - [ARCHITECTURE.md](ARCHITECTURE.md) — proxy layout + naming
-- [AGENTS.md](AGENTS.md) — contributor rules, provider patterns
+- [AGENTS.md](AGENTS.md) — contributor rules, provider patterns, doc map
 - [docs/providers.md](docs/providers.md) — provider index (URLs, free tiers, limits)
 - [docs/models.md](docs/models.md) — model catalog
 - [docs/systemone.md](docs/systemone.md) — System-One (decision + extraction) architecture
-- [docs/integration.md](docs/integration.md) — integration guide (Python + proxy)
+- [docs/routing.md](docs/routing.md) — `auto@free` routing
+- [docs/integration.md](docs/integration.md) — integration guide (Python + proxy, agent discovery)
+- [docs/debugging.md](docs/debugging.md) — log forensics
 - [CHANGELOG.md](CHANGELOG.md)
 
 ## Contributing

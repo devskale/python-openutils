@@ -2,7 +2,9 @@
 
 ## Problem
 
-`models.json` is regenerated on-demand when stale (controlled by `REFETCHTIME`, default 24h).
+`models.json` wird täglich per Timer regeneriert; On-demand-Refresh bei
+Staleness steuert heute die models.dev-Cache-TTL (7d, "stale beats none"
+bei Refetch-Fehler) in `scripts/generate_models.py`.
 This means:
 - No guaranteed daily refresh
 - No visibility into model freshness per provider

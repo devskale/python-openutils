@@ -202,10 +202,13 @@ port) and `ssh amd 'sudo nginx -T | grep -B3 -A8 "server_name.*uniinfer"'`
 | `/v1` | GET | progressive discovery manifest (no auth) |
 | `/v1/providers` | GET | enabled provider instances, catalog-only (no auth) |
 | `/v1/chat/completions` | POST | chat (stream + non-stream, tools, thinking) |
+| `/v1/systemone` | POST | System-One structured reads — decision (`questions`) + extraction (`fields`): [systemone.md](systemone.md) |
 | `/v1/embeddings` | POST | embeddings |
 | `/v1/models` | GET | catalog (with `speed` + `probed` fields when present; `fields=` projection) |
 | `/v1/models/{provider}` | GET | live models for a provider/instance (auth) |
+| `/v1/catalog` | GET | raw nested catalog (no auth, daily refresh) |
 | `/v1/images/generations` | POST | image gen |
+| `/v1/audio/speech` / `/v1/audio/transcriptions` | POST | TTS / STT |
 | `/v1/system/version` | GET | health / version |
 | `/v1/system/smoke` | POST | reachability smoke (`?providers=tu`) |
 | `/v1/system/capabilities` | GET | capability matrix `?model=provider@x[&save=true]` |
