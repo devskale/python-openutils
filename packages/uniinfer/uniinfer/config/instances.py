@@ -68,7 +68,9 @@ class InstanceSpec:
     is_builtin: bool = False
     # Systemone-Pfad-Suffix für /v1/systemone: None → "/systemone" (Default,
     # native vLLM/jev-Endpoints), "" → base_url wird AS-IS angesprochen
-    # (z.B. CF Workers AI /ai/run/@cf/…-URLs), sonst custom Suffix.
+    # (z.B. CF Workers AI /ai/run/@cf/…-URLs), "/{model}" → bare model im
+    # Pfad (eine Instanz pro Endpoint für ganze Modell-Familien), sonst
+    # custom Suffix.
     systemone_path: Optional[str] = None
     # Open, forward-adoptable access metadata: {keytype, models, budget, …}.
     # keytype = free-form label; models = optional selective spec (list today,

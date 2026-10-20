@@ -1,21 +1,32 @@
-"""Systemone decision-reads: generischer Pass-Through für Instanz-Aliase.
+"""Systemone: eine Tür für System-One-Modelle — decision UND extraction.
 
-``POST /v1/systemone`` mit ``{"model": "alias@model", "state": …, "questions": …}``
-leitet an ``{instance.base_url}/systemone`` weiter und relayt die Antwort.
+``POST /v1/systemone`` leitet an Instanz-Aliase weiter, dialekt-agnostisch:
 
-Der Alias entscheidet das Ziel — kein Provider-Hardcode: funktioniert für
-Custom-Aliase auf vLLM-PR-#57250-Endpunkten (DiffusionGemma, …) genauso wie
-für built-ins mit Systemone-Dialekt (opencode jev). Das ``alias@``-Präfix wird
-vom weitergeleiteten ``model``-Feld abgestreift (Upstreams kennen nur bare IDs).
-Instanzen MIT ``base_url`` werden durchgereicht (natives ``/systemone``);
-Instanzen OHNE (built-ins) gehen durch den Chat-Wrap: Payload als letzte
-user-Nachricht über den Chat-Pfad des Providers, Antwort-Content als JSON
-zurück — eine Tür für alle Decision-Modelle, egal welcher Wire-Dialekt.
+- **decision** (``{"model", "state", "questions"}`` → ``{answers}``):
+  jev, clef, d3-mini (dgx), …
+- **extraction** (``{"model", "state", "fields"}`` → typisierte Feldwerte
+  mit Confidence): clairic, … — Forward-Pass, keine Output-Tokens.
 
-Auth folgt dem Chat-Muster: keyless Instanzen (``requires_api_key: false``)
-kommen ohne Proxy-Token aus; alles andere verlangt Provider-Zugang — und der
-dabei aufgelöste Key wird als Upstream-Bearer weitergereicht (Gateway-Auth am
-Ziel, z.B. dgx model-proxy hinter einem Tunnel).
+Zwei deklarative Achsen, kein Provider-Hardcode:
+
+1. **Dialekt** ist eine Modell-Eigenschaft: ``type_overrides.json`` typed
+   Modelle als ``decision``/``extraction`` (Katalog-Typ ist Autorität); der
+   Payload-Shape (``questions`` vs. ``fields``) ist Fallback für Ungetypte
+   und wird bei Typ-Konflikt mit klarer 400 abgelehnt.
+
+2. **Transport** ist eine Instanz-Eigenschaft: Instanzen MIT ``base_url``
+   werden nativ durchgereicht (Body 1:1, beide Dialekte); Instanzen OHNE
+   (built-ins) gehen durch den Chat-Wrap, der NUR decision bedienen kann —
+   Extraction-Modelle generieren keine Output-Tokens, Chat-Wrap ist dafür
+   physikalisch unmöglich → 400 statt kryptischem 502.
+
+``systemone_path``-Suffix pro Instanz: ``None`` → ``/systemone`` (native
+vLLM/jev), ``""`` → base_url AS-IS, ``"/{model}"`` → Modell im Pfad (eine
+Instanz pro Endpoint, z.B. CF Workers AI ``/ai/run`` für ALLE CF-Modelle).
+
+Auth folgt dem Chat-Muster: keyless Instanzen kommen ohne Proxy-Token aus;
+alles andere verlangt Provider-Zugang — der aufgelöste Key wird als
+Upstream-Bearer weitergereicht.
 """
 from __future__ import annotations
 
@@ -29,6 +40,70 @@ from fastapi.responses import JSONResponse
 from uniinfer.auth import get_optional_proxy_token, verify_provider_access
 from uniinfer.config.instances import instance_requires_api_key, resolve_instance
 from uniinfer.provider_access import _resolve_credgoo_service
+
+
+# ── Dialekt-Layer: Modell-Eigenschaft, deklarativ aus dem Katalog ────────
+
+_SYSTEMONE_TYPES = {"decision", "extraction"}
+_type_overrides_cache: tuple[float, dict] | None = None
+
+
+def _catalog_systemone_type(bare_model: str) -> str | None:
+    """``decision``/``extraction`` aus type_overrides.json (mtime-gecacht).
+
+    Gleiche kuratierte Quelle wie der Katalog (``/v1/models``-Typ-Auflösung):
+    Neu Modelle werden deklarativ getyped, kein Router-/Provider-Code nötig.
+    """
+    global _type_overrides_cache
+    import os
+    import time
+    path = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                        "..", "models", "type_overrides.json")
+    try:
+        mtime = os.path.getmtime(path)
+    except OSError:
+        return None
+    if _type_overrides_cache is not None and _type_overrides_cache[0] == mtime:
+        doc = _type_overrides_cache[1]
+    else:
+        try:
+            import json as _json
+            with open(path) as f:
+                doc = _json.load(f).get("models", {})
+            _type_overrides_cache = (mtime, doc)
+        except (OSError, ValueError):
+            return None
+    t = doc.get(bare_model)
+    return t if t in _SYSTEMONE_TYPES else None
+
+
+def _dialect_from_body(body: dict) -> str | None:
+    """``extraction`` wenn ``fields`` am Root, ``decision`` wenn ``questions``."""
+    if isinstance(body.get("fields"), (dict, list)):
+        return "extraction"
+    if isinstance(body.get("questions"), dict):
+        return "decision"
+    return None
+
+
+def _resolve_dialect(bare_model: str, body: dict) -> tuple[str | None, JSONResponse | None]:
+    """Dialekt-Auflösung: Katalog-Typ ist Autorität, Payload-Shape Fallback.
+
+    Rückgabe (Dialekt | None, Fehler-Response | None).
+    """
+    payload_dialect = _dialect_from_body(body)
+    if payload_dialect is None:
+        return None, JSONResponse(
+            {"error": "systemone body must contain 'questions' (decision) "
+                      "or 'fields' (extraction)"}, status_code=400)
+    catalog_type = _catalog_systemone_type(bare_model)
+    if catalog_type is not None and catalog_type != payload_dialect:
+        return None, JSONResponse(
+            {"error": f"model '{bare_model}' is typed '{catalog_type}' in the "
+                      f"catalog; body carries a {payload_dialect} payload "
+                      f"({'fields' if payload_dialect == 'extraction' else 'questions'})"},
+            status_code=400)
+    return payload_dialect, None
 
 
 def create_systemone_router(
@@ -63,6 +138,10 @@ def create_systemone_router(
             return JSONResponse({"error": f"unknown instance '{alias}': {e}"},
                                 status_code=404)
 
+        dialect, dialect_err = _resolve_dialect(bare_model, body)
+        if dialect_err is not None:
+            return dialect_err
+
         # Auth: keyless Instanzen (public vLLM) brauchen keinen Proxy-Key;
         # alles andere verlangt Provider-Zugang wie im Chat-Flow. Der dabei
         # aufgelöste Key wird als Upstream-Bearer weitergereicht (Gateway-Auth
@@ -82,6 +161,12 @@ def create_systemone_router(
 
         base = (spec.base_url or "").rstrip("/")
         if not base:
+            if dialect != "decision":
+                return JSONResponse(
+                    {"error": f"extraction models need a native instance "
+                              f"(base_url); chat-wrap only serves decision — "
+                              f"extraction generates no output tokens"},
+                    status_code=400)
             return await _chat_wrap(alias, bare_model, body, upstream_key)
 
         forward = {k: v for k, v in body.items() if k != "model"}
@@ -93,10 +178,13 @@ def create_systemone_router(
 
         from uniinfer.core import _shared_async_client
         # Systemone-Ziel: Default /systemone-Suffix; Overlay kann pro Instanz
-        # überschreiben ("" = base_url AS-IS, z.B. CF Workers AI /ai/run/…).
+        # überschreiben ("" = base_url AS-IS, "/{model}" = Modell im Pfad —
+        # eine Instanz pro Endpoint, z.B. CF Workers AI /ai/run).
         so_path = getattr(spec, "systemone_path", None)
         if so_path is None:
             so_path = "/systemone"
+        if "{model}" in so_path:
+            so_path = so_path.replace("{model}", bare_model.lstrip("/"))
         url = f"{base}{so_path}"
         try:
             client = _shared_async_client()
@@ -123,7 +211,8 @@ def create_systemone_router(
         opencode/pollinations): {state, questions} als letzte user-Nachricht
         durch den Chat-Pfad des Providers (Target), Antwort-Content als JSON
         zurück im Systemone-Shape. Content = {answers: …} ODER direkt das
-        Answers-Objekt (Jev-Dialekt)."""
+        Answers-Objekt (Jev-Dialekt). Nur für Decision-Modelle — der Router
+        lehnt Extraction-Dialekt vor diesem Wrap ab."""
         from uniinfer.completion import Target
 
         wrap_payload = {"state": body.get("state"), "questions": body.get("questions")}

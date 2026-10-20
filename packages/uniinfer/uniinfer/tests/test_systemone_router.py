@@ -287,3 +287,119 @@ def test_cf_result_wrapper_unwrapped(monkeypatch):
     body = r.json()
     assert body["answers"]["team"]["choice"] == "billing"
     assert "result" not in body and "success" not in body
+
+
+# ── Dialekt-Layer: decision (questions) vs. extraction (fields) ──────────
+
+def _native_setup(monkeypatch, alias, so_path):
+    """Native Instanz mit base_url + optionalem systemone_path."""
+    spec = InstanceSpec(alias=alias, provider="cloudflare", is_builtin=False,
+                        base_url=f"https://{alias}.example/ai/run",
+                        requires_api_key=False,
+                        systemone_path=so_path)
+    monkeypatch.setattr("uniinfer.proxy_routers.systemone.resolve_instance",
+                        lambda a: spec)
+    monkeypatch.setattr("uniinfer.proxy_routers.systemone.instance_requires_api_key",
+                        lambda a: False)
+
+    captured = {}
+
+    class Resp:
+        status_code = 200
+        def json(self):
+            return {"fields": {"urgency": {"value": 4, "confidence": 0.9}}}
+
+    async def fake_post(self, url, json=None, headers=None, timeout=None):
+        captured["url"] = url
+        captured["json"] = json
+        return Resp()
+
+    import httpx
+    monkeypatch.setattr(httpx.AsyncClient, "post", fake_post)
+    monkeypatch.setattr("uniinfer.core._shared_async_client",
+                        lambda: httpx.AsyncClient())
+    return captured
+
+
+def test_extraction_native_passthrough(monkeypatch):
+    """ Clairic-Fall: fields-Payload geht 1:1 an die native Instanz —
+    systemone_path '/{model}' baut die URL aus EINER Familien-Instanz."""
+    captured = _native_setup(monkeypatch, "cfrun", "/{model}")
+    c = _app(None)
+    r = c.post("/v1/systemone", json={
+        "model": "cfrun@cf/cloudflare/clairic",
+        "state": {"ticket": "Paket seit 5 Tagen weg"},
+        "fields": {"urgency": {"type": "estimate", "unit": "1-5"},
+                   "team": {"type": "enum", "options": ["billing", "versand"]}},
+    })
+    assert r.status_code == 200, r.text
+    assert captured["url"] == "https://cfrun.example/ai/run/cf/cloudflare/clairic"
+    fwd = captured["json"]
+    assert fwd["model"] == "cf/cloudflare/clairic"  # alias@ gestrippt
+    assert "fields" in fwd and "state" in fwd and "questions" not in fwd
+
+
+def test_untyped_model_extraction_passthrough(monkeypatch):
+    """Forward-kompatibel: ungetyptes Modell + fields → nativer Passthrough
+    (Typisierung im Katalog kann nachgezogen werden)."""
+    captured = _native_setup(monkeypatch, "futurebox", None)
+    c = _app(None)
+    r = c.post("/v1/systemone", json={
+        "model": "futurebox@some/new-extractor",
+        "state": {"s": 1}, "fields": {"x": {"type": "boolean"}}})
+    assert r.status_code == 200
+    assert captured["url"] == "https://futurebox.example/ai/run/systemone"
+    assert "fields" in captured["json"]
+
+
+def test_extraction_on_chatwrap_400(monkeypatch):
+    """Extraction auf built-in ohne base_url: klarer 400 (Chat-Wrap kann kein
+    Extraction — keine Output-Tokens), NICHT der kryptische 502."""
+    spec = InstanceSpec(alias="cloudflare", provider="cloudflare", is_builtin=True,
+                        base_url=None, requires_api_key=True)
+    monkeypatch.setattr("uniinfer.proxy_routers.systemone.resolve_instance",
+                        lambda a: spec)
+    monkeypatch.setattr("uniinfer.proxy_routers.systemone.instance_requires_api_key",
+                        lambda a: True)
+    monkeypatch.setattr("uniinfer.proxy_routers.systemone.verify_provider_access",
+                        lambda token, alias: "sk-upstream")
+    c = _app(None)
+    r = c.post("/v1/systemone",
+               headers={"authorization": "Bearer caller"},
+               json={"model": "cloudflare@@cf/cloudflare/clairic",
+                     "state": {"s": 1}, "fields": {"x": {"type": "boolean"}}})
+    assert r.status_code == 400
+    assert "native instance" in r.json()["error"]
+
+
+def test_body_without_questions_or_fields_400(monkeypatch):
+    captured = _native_setup(monkeypatch, "cfrun", "/{model}")
+    c = _app(None)
+    r = c.post("/v1/systemone", json={"model": "cfrun@cf/cloudflare/clairic",
+                                      "state": {}})
+    assert r.status_code == 400
+    assert "questions" in r.json()["error"] and "fields" in r.json()["error"]
+
+
+def test_dialect_mismatch_catalog_400(monkeypatch):
+    """Katalog-Typ ist Autorität: d3-mini ist 'decision' getyped — ein
+    fields-Payload wird abgelehnt statt falsch durchgereicht."""
+    captured = _native_setup(monkeypatch, "d3mini", None)
+    c = _app(None)
+    r = c.post("/v1/systemone", json={
+        "model": "d3mini@vllm-sr/d3-mini",
+        "state": {}, "fields": {"x": {"type": "boolean"}}})
+    assert r.status_code == 400
+    assert "decision" in r.json()["error"]
+
+
+def test_clairic_typed_extraction_in_catalog(monkeypatch):
+    """type_overrides.json typed clairic als 'extraction' — questions-Payload
+    auf ein Extraction-Modell wird abgelehnt."""
+    captured = _native_setup(monkeypatch, "cfrun", "/{model}")
+    c = _app(None)
+    r = c.post("/v1/systemone", json={
+        "model": "cfrun@cf/cloudflare/clairic",
+        "state": {}, "questions": {"q": {"type": "noul"}}})
+    assert r.status_code == 400
+    assert "extraction" in r.json()["error"]
