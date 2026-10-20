@@ -97,7 +97,7 @@ def test_no_systemd_uses_legacy_without_spawning(client, monkeypatch):
 
 def test_status_reports_running_and_catalog_age(client, monkeypatch):
     monkeypatch.setattr(reg, "systemd_refresh_available", lambda: True)
-    _, run = _fake_subprocess_run([_Result(0, stdout="active\n")])
+    _, run = _fake_subprocess_run([_Result(0, stdout="activating\n")])
     monkeypatch.setattr(reg.subprocess, "run", run)
 
     def _lock_locked():
@@ -109,7 +109,7 @@ def test_status_reports_running_and_catalog_age(client, monkeypatch):
     assert resp.status_code == 200
     body = resp.json()
     assert body["running"] is True
-    assert body["service_state"] == "active"
+    assert body["service_state"] == "activating"  # oneshot gather in start-up
     assert isinstance(body["catalog_mtime"], float)  # repo ships a models.json
     assert isinstance(body["catalog_age_seconds"], float)
     assert body["catalog_age_seconds"] >= 0

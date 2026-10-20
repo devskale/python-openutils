@@ -172,7 +172,7 @@ async def models_refresh_status() -> dict[str, Any]:
         state = result.stdout.strip()
         status["service"] = REFRESH_SERVICE
         status["service_state"] = state
-        status["running"] = status["running"] or state == "active"
+        status["running"] = status["running"] or state in ("activating", "active", "reloading")
     return status
 
 
