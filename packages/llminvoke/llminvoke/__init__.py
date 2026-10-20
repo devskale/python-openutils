@@ -5,7 +5,8 @@ one small interface. Three invocation levels, all config-aware::
 
     call_llm   — retry + backoff + backup chain + extract → str   (recommended)
     invoke_llm — one-shot → raw response                        (escape hatch)
-    stream_llm — streaming → Iterator[str]                      (before-first-token retry)
+    stream_llm — streaming → Iterator[str]                      (before-first-token retry;
+                  include_reasoning=True → StreamPiece-Stücke mit .kind, Denkphase live)
 
 Model config (which model, params, backups, retry, DSGVO) resolves through
 ``resolve_model`` per the ADR 0004 precedence chain::
@@ -42,13 +43,14 @@ from llminvoke.config import (
     resolve_model,
 )
 
-__version__ = "0.2.0"
+__version__ = "0.2.8"
 
 __all__ = [
     # invocation
     "invoke_llm",
     "call_llm",
     "stream_llm",
+    "StreamPiece",
     "iter_llm_events",
     "create_provider",
     # fo-t7: empty-chain failure signal
@@ -481,6 +483,24 @@ def call_llm_with_usage(
 # stream_llm — streaming with before-first-token retry (Q20)
 # ════════════════════════════════════════════════════════════════════════
 
+class StreamPiece(str):
+    """Markiertes Stream-Stück: ``kind`` ∈ {"reasoning", "content"}.
+
+    str-Subclass, damit der Iterator[str]-Contract von ``stream_llm`` bestehen
+    bleibt — join()/isinstance(str) funktionieren unverändert. Consumer mit
+    ``include_reasoning=True`` verzweigen auf ``.kind`` (Denkphase als Progress
+    zeigen, Antwort separat akkumulieren), ohne die Tupel-API von
+    ``iter_llm_events`` zu brauchen.
+    """
+
+    kind: str
+
+    def __new__(cls, text: str, kind: str) -> "StreamPiece":
+        obj = super().__new__(cls, text)
+        obj.kind = kind
+        return obj
+
+
 def _chunk_has_payload(chunk) -> bool:
     """Erster substanzieller Token? — derselbe Zwei-Stellen-Vertrag wie
     :func:`_chunk_events`: reasoning kann an ``chunk.message.reasoning_content``
@@ -571,6 +591,7 @@ def stream_llm(
     max_tokens: int | None = None,
     max_attempts: int | None = None,
     env_prefix: str | None = None,
+    include_reasoning: bool = False,
     **request_kwargs,
 ) -> Iterator[str]:
     """Streaming invocation. Yields chunk texts as they arrive.
@@ -580,7 +601,11 @@ def stream_llm(
     the stream runs to completion with no retry/backup (cannot un-stream).
 
     Args: same resolution shape as ``call_llm`` (minus ``fail_fast``).
-    Yields: str chunk texts.
+        include_reasoning: True → liefert ``StreamPiece``-Stücke (str-Subclass
+            mit ``.kind`` ∈ {"reasoning", "content"}) statt nur Content-Text —
+            die Denkphase wird live sichtbar, der str-Contract bleibt intakt.
+            Reasoning+usage als Events: ``iter_llm_events``.
+    Yields: str chunk texts (StreamPiece bei include_reasoning=True).
     """
     cfg = _resolve_call_config(
         config=config, package=package, client=client, task=task,
@@ -604,14 +629,20 @@ def stream_llm(
             continue  # next backup
 
         # first token obtained — drain the rest, no backup (Q20)
-        _c0 = getattr(getattr(first, "message", None), "content", None)
-        if isinstance(_c0, str) and _c0:
-            yield _c0
+        def _emit(chunk):
+            if include_reasoning:
+                for kind, text in _chunk_events(chunk):
+                    if kind != "usage":
+                        yield StreamPiece(text, kind)
+                return
+            content = getattr(getattr(chunk, "message", None), "content", None)
+            if isinstance(content, str) and content:
+                yield content
+
+        yield from _emit(first)
         try:
             for chunk in stream:
-                content = getattr(getattr(chunk, "message", None), "content", None)
-                if isinstance(content, str) and content:
-                    yield content
+                yield from _emit(chunk)
         except Exception as exc:
             emit_alarm(
                 "alarm", ref.provider, ref.model,
