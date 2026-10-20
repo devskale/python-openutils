@@ -84,6 +84,31 @@ if ! uv run pytest uniinfer/tests/ -q; then
     exit 1
 fi
 
+# Idempotent: allow the proxy user to trigger the models-refresh oneshot
+# (POST /v1/system/update-models delegates to it so the gather runs in the
+# refresh service's own cgroup instead of throttling the proxy's MemoryMax —
+# issue: uniinfer-update-models-watchdog-kill). Best effort: wheel-only hosts
+# without polkit keep the in-process fallback.
+echo "Ensuring polkit rule for models-refresh trigger..."
+POLKIT_RULE=/etc/polkit-1/rules.d/40-uniinfer-models-refresh.rules
+POLKIT_BODY='polkit.addRule(function(action, subject) {
+    if (action.id == "org.freedesktop.systemd1.manage-units"
+        && subject.user == "'"$USER"'"
+        && action.lookup("unit") == "uniioai-models-refresh.service") {
+        return polkit.Result.YES;
+    }
+});'
+if sudo test -d /etc/polkit-1/rules.d; then
+    if ! sudo test -f "$POLKIT_RULE" || [ "$(sudo cat "$POLKIT_RULE")" != "$POLKIT_BODY" ]; then
+        printf '%s\n' "$POLKIT_BODY" | sudo tee "$POLKIT_RULE" >/dev/null
+        echo "  installed $POLKIT_RULE"
+    else
+        echo "  already present"
+    fi
+else
+    echo "  /etc/polkit-1/rules.d missing — skipping (in-process fallback stays active)"
+fi
+
 echo "Restarting uniioai-proxy service..."
 sudo systemctl restart uniioai-proxy
 

@@ -4,6 +4,7 @@ import fcntl
 import json
 import logging
 import os
+import shutil
 import subprocess
 import sys
 import time
@@ -92,6 +93,87 @@ async def refresh_models_file() -> dict[str, Any]:
 
 
 _background_refresh_tasks: set[asyncio.Task] = set()
+
+
+# --------------------------------------------------------------------------- #
+# explicit refresh trigger (POST /v1/system/update-models)                    #
+# --------------------------------------------------------------------------- #
+
+REFRESH_SERVICE = os.getenv("UNIINFER_REFRESH_SERVICE", "uniioai-models-refresh.service")
+
+_systemd_available: bool | None = None
+
+
+def systemd_refresh_available() -> bool:
+    """True when running under systemd with systemctl on PATH (cached)."""
+    global _systemd_available
+    if _systemd_available is None:
+        _systemd_available = os.path.isdir("/run/systemd/system") and shutil.which("systemctl") is not None
+    return _systemd_available
+
+
+async def trigger_models_refresh() -> dict[str, Any]:
+    """Start a full catalog gather OUTSIDE the proxy's cgroup.
+
+    First choice is the refresh oneshot service (the daily timer's unit, own
+    cgroup) via ``systemctl start --no-block`` — polkit must allow the proxy
+    user to start exactly that unit (deploy.sh installs the rule). This is the
+    watchdog-safe path: an in-cgroup gather subprocess pushes the shared
+    MemoryMax (~350MB) over memory.high, kernel reclaim throttles the whole
+    cgroup, the event loop stops pinging WATCHDOG=1 and systemd kills the
+    proxy mid-gather (2026-10-20, restart counter 2). Falls back to the
+    in-process threadpool subprocess (refresh_models_file) on wheel installs
+    or wherever polkit denies the start.
+    """
+    if systemd_refresh_available():
+        result = await run_in_threadpool(
+            subprocess.run,
+            ["systemctl", "start", "--no-block", REFRESH_SERVICE],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        if result.returncode == 0:
+            return {
+                "status": "triggered",
+                "via": "systemd",
+                "service": REFRESH_SERVICE,
+                "message": "Gather started in the refresh service cgroup; poll GET /v1/system/update-models",
+            }
+        logger.warning(
+            "systemctl start %s denied (rc=%s) — falling back to in-process gather",
+            REFRESH_SERVICE,
+            result.returncode,
+        )
+    return await refresh_models_file()
+
+
+async def models_refresh_status() -> dict[str, Any]:
+    """Gather state for GET /v1/system/update-models: running flag + catalog age."""
+    models_json = os.path.join(PACKAGE_ROOT, "models", "models.json")
+    mtime: float | None = None
+    try:
+        mtime = os.path.getmtime(models_json)
+    except OSError:
+        pass
+    status: dict[str, Any] = {
+        "running": _refresh_lock.locked(),
+        "catalog_mtime": mtime,
+        "catalog_age_seconds": None if mtime is None else round(time.time() - mtime, 1),
+    }
+    if systemd_refresh_available():
+        result = await run_in_threadpool(
+            subprocess.run,
+            ["systemctl", "is-active", REFRESH_SERVICE],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        state = result.stdout.strip()
+        status["service"] = REFRESH_SERVICE
+        status["service_state"] = state
+        status["running"] = status["running"] or state == "active"
+    return status
 
 
 async def _refresh_in_background() -> None:

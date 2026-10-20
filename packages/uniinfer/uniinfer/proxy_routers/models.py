@@ -28,7 +28,8 @@ from uniinfer.proxy_services.discovery import (
 from uniinfer.proxy_services.models_registry import (
     Catalog,
     ensure_fresh_models_file,
-    refresh_models_file,
+    models_refresh_status,
+    trigger_models_refresh,
 )
 
 _logger = logging.getLogger("uniioai_proxy")
@@ -162,10 +163,28 @@ def create_models_router(version: str) -> APIRouter:
 
     @router.post("/v1/system/update-models")
     async def update_models():
+        """Trigger a full catalog gather without freezing or killing the proxy.
+
+        systemd hosts delegate to the refresh oneshot service (own cgroup,
+        202 + status polling); everywhere else the in-process threadpool
+        subprocess runs synchronously (legacy 200). Never blocks the event
+        loop long enough to starve the WATCHDOG pings — that exact freeze got
+        the proxy SIGABRT-killed by systemd before (issue: watchdog-kill).
+        """
         try:
-            return await refresh_models_file()
+            result = await trigger_models_refresh()
+            code = 202 if result.get("via") == "systemd" else 200
+            return JSONResponse(result, status_code=code)
         except Exception as e:
             raise HTTPException(status_code=500, detail=f"Failed to update models: {e}")
+
+    @router.get("/v1/system/update-models")
+    async def get_update_models_status():
+        """Gather status: running (service or in-process) + catalog age."""
+        try:
+            return await models_refresh_status()
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"Failed to read status: {e}")
 
     @router.get("/v1/catalog")
     async def get_catalog(
