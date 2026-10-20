@@ -38,6 +38,24 @@ reviews. Keep this current when concepts are named or sharpened.
   diagnostic callers pass False. The single home for "reach a model and
   complete" — formerly six duplicated copies across provider_access.py + capabilities.
 - **Model resolution** — the per-instance listing pipeline (`Catalog.resolve_for_instance`).
+- **System-One** — die Modellfamilie strukturierter Reads: ein Forward-Pass
+  über `state` liefert typisierte Antworten, keine freie Textgenerierung.
+  Zwei Dialekte (Eigenschaft des MODELLS, deklariert in
+  `models/type_overrides.json`): **decision** (`{state, questions}` →
+  `{answers}` mit Wahrscheinlichkeiten; jev, clef, d3-mini) und
+  **extraction** (`{state, fields}` → typisierte Werte + Confidence;
+  clairic). Ein Endpoint (`/v1/systemone`), Transport = Instanz-Eigenschaft:
+  `base_url` → nativer 1:1-Forward, ohne → chat-wrap (nur decision).
+  Architektur-Doc: [docs/systemone.md](docs/systemone.md).
+- **chat-wrap** — der Decision-Fallback für Instanzen ohne natives
+  `/systemone`: Router wickelt `{state, questions}` als JSON in der letzten
+  user-message durch den Chat-Pfad des Providers und hebt den Antwort-Content
+  als `{answers}` zurück. Physikalisch unmöglich für extraction (keine
+  Output-Tokens) → klarer 400.
+- **Dialekt-Lookup-Normalisierung** — Katalog-IDs können mit `@` beginnen
+  (`@cf/cloudflare/clairic`), `type_overrides`-Keys nicht: Lookups strippen
+  das führende `@` (Katalog-Resolver und Router; sonst fällt der Typ stumm
+  auf chat zurück).
   Given a raw model list + an alias, applies provider-level + per-model overrides
   (keyed by the instance's **underlying provider**, not the alias), then the
   instance's selective/only access filter. Element-type-agnostic (ModelInfo or
