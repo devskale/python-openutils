@@ -32,7 +32,7 @@ Tokens, chat-wrap ist physikalisch unmöglich) — nicht 502.
 
 | Wert | URL | Nutzung |
 |---|---|---|
-| `null` (Default) | `{base}/systemone` | native vLLM/jev-Endpoints (d3mini, dgemma) |
+| `null` (Default) | `{base}/systemone` | native vLLM/jev-Endpoints (hab/d3-mini) |
 | `""` | `{base}` AS-IS | Instanz-pro-Modell mit vollständiger Run-URL (clef, clef-flash, clef-omni) |
 | `"/{model}"` | `{base}/{bare_model}` | **Instanz-pro-Endpoint** für Familien: `cfrun` bedient JEDES CF-System-One-Modell |
 
