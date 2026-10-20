@@ -49,15 +49,28 @@ def create_audio_router(
         api_bearer_token: Optional[str] = Depends(get_optional_proxy_token),
     ):
         try:
-            provider_name, _ = parse_model(request_input.model)
-            api_key = verify_provider_access(api_bearer_token, provider_name)
-            if not api_key:
-                raise HTTPException(status_code=401, detail=f"API key required for {provider_name}")
-
+            inst = None
             try:
-                target = TTSTarget(request_input.model, api_key=api_key)
-            except ValueError as e:
-                raise HTTPException(status_code=400, detail=str(e))
+                from uniinfer.config.instances import resolve_instance
+                spec = resolve_instance(parse_model(request_input.model)[0])
+                if (getattr(spec, "base_url", None) or "").rstrip("/"):
+                    inst = spec
+            except Exception:
+                pass
+            if inst is not None:
+                api_key = verify_provider_access(api_bearer_token, inst.alias)
+                target = TTSTarget(
+                    f"{inst.provider}@{parse_model(request_input.model)[1]}",
+                    api_key=api_key, base_url=inst.base_url)
+            else:
+                provider_name, _ = parse_model(request_input.model)
+                api_key = verify_provider_access(api_bearer_token, provider_name)
+                if not api_key:
+                    raise HTTPException(status_code=401, detail=f"API key required for {provider_name}")
+                try:
+                    target = TTSTarget(request_input.model, api_key=api_key)
+                except ValueError as e:
+                    raise HTTPException(status_code=400, detail=str(e))
 
             result = await target.asynthesize(
                 request_input.input,
@@ -85,17 +98,33 @@ def create_audio_router(
         api_bearer_token: Optional[str] = Depends(get_optional_proxy_token),
     ):
         try:
-            provider_name, _ = parse_model(model)
-            api_key = verify_provider_access(api_bearer_token, provider_name)
-            if not api_key:
-                raise HTTPException(status_code=401, detail=f"API key required for {provider_name}")
-
             audio_content = await file.read()
 
+            inst = None
             try:
-                target = STTTarget(model, api_key=api_key)
-            except ValueError as e:
-                raise HTTPException(status_code=400, detail=str(e))
+                from uniinfer.config.instances import resolve_instance
+                spec = resolve_instance(parse_model(model)[0])
+                if (getattr(spec, "base_url", None) or "").rstrip("/"):
+                    inst = spec
+            except Exception:
+                pass
+            if inst is not None:
+                api_key = verify_provider_access(api_bearer_token, inst.alias)
+                try:
+                    target = STTTarget(
+                        f"{inst.provider}@{parse_model(model)[1]}",
+                        api_key=api_key, base_url=inst.base_url)
+                except ValueError as e:
+                    raise HTTPException(status_code=400, detail=str(e))
+            else:
+                provider_name, _ = parse_model(model)
+                api_key = verify_provider_access(api_bearer_token, provider_name)
+                if not api_key:
+                    raise HTTPException(status_code=401, detail=f"API key required for {provider_name}")
+                try:
+                    target = STTTarget(model, api_key=api_key)
+                except ValueError as e:
+                    raise HTTPException(status_code=400, detail=str(e))
 
             result = await target.atranscribe(
                 audio_content,

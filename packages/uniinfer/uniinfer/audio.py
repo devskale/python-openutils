@@ -25,9 +25,11 @@ _TTS_REGISTRY: dict[str, str] = {
     "tu": "uniinfer.providers.tu_tts.TuAITTSProvider",
     "openai": "uniinfer.providers.openai_tts.OpenAITTSProvider",
     "openaitts": "uniinfer.providers.openai_tts.OpenAITTSProvider",
+    "openai-compat": "uniinfer.providers.openai_compat_audio.OpenAICompatTTSProvider",
 }
 _STT_REGISTRY: dict[str, str] = {
     "tu": "uniinfer.providers.tu_stt.TuAISTTProvider",
+    "openai-compat": "uniinfer.providers.openai_compat_audio.OpenAICompatSTTProvider",
 }
 
 
@@ -77,9 +79,11 @@ class TTSTarget:
         ValueError: provider unknown or has no TTS implementation.
     """
 
-    def __init__(self, provider_model: str, api_key: Optional[str] = None):
+    def __init__(self, provider_model: str, api_key: Optional[str] = None,
+                 base_url: Optional[str] = None):
         self.provider_name, self.model_name = parse_provider_model(provider_model)
         self.api_key = api_key
+        self.base_url = base_url
         dotted = _TTS_REGISTRY.get(self.provider_name)
         if not dotted:
             raise ValueError(f"TTS not supported for provider '{self.provider_name}'")
@@ -96,7 +100,10 @@ class TTSTarget:
     ) -> TTSResult:
         from uniinfer import TTSRequest
 
-        provider = self._provider_cls(api_key=self.api_key)
+        if self.base_url:
+            provider = self._provider_cls(api_key=self.api_key, base_url=self.base_url)
+        else:
+            provider = self._provider_cls(api_key=self.api_key)
         request = TTSRequest(
             input=text,
             model=self.model_name,
@@ -121,9 +128,11 @@ class STTTarget:
         ValueError: provider unknown or has no STT implementation.
     """
 
-    def __init__(self, provider_model: str, api_key: Optional[str] = None):
+    def __init__(self, provider_model: str, api_key: Optional[str] = None,
+                 base_url: Optional[str] = None):
         self.provider_name, self.model_name = parse_provider_model(provider_model)
         self.api_key = api_key
+        self.base_url = base_url
         dotted = _STT_REGISTRY.get(self.provider_name)
         if not dotted:
             raise ValueError(f"STT not supported for provider '{self.provider_name}'")
@@ -140,7 +149,10 @@ class STTTarget:
     ) -> STTResult:
         from uniinfer import STTRequest
 
-        provider = self._provider_cls(api_key=self.api_key)
+        if self.base_url:
+            provider = self._provider_cls(api_key=self.api_key, base_url=self.base_url)
+        else:
+            provider = self._provider_cls(api_key=self.api_key)
         request = STTRequest(
             file=audio_content,
             model=self.model_name,
