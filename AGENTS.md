@@ -6,6 +6,7 @@
 
 - Python 3.9+ · **uv** (nie pip) · Monorepo: `packages/credgoo/`, `packages/uniinfer/` — je eigene `pyproject.toml` + `uv.lock`
 - Setup/Tests: `cd packages/<pkg> && uv sync` · `uv run pytest [-k …]` · uniinfer-Extras: `uv sync --extra anthropic --extra gemini` (oder `--extra all`)
+- Pre-commit (einmal pro Klon verdrahten: `git config core.hooksPath .githooks`): auto-synced `uv.lock` bei gestagtem pyproject-Change und verifiziert via `scripts/check-locks`; manueller Voll-Check: `scripts/check-locks --all`
 - Repo-Modus: Meta-Setup liegt vor, wenn `../repos.yml` existiert (Siblings = Metarepo-Layout); standalone sonst — Packages installieren via `uv sync`.
 
 ## Consumers

@@ -62,6 +62,7 @@ After pushing to `main`: `cd /home/ubuntu/code/python-openutils && git pull && c
 | Binary | `.venv/bin/python .venv/bin/uniioai-proxy --port <quoted from systemd unit>` |
 | Config | `.env` (`PROXYHOST`, `PROXY_PORT`, optional test/legacy `PROXY_KEY`) — gitignored; production auth files: `~/.config/uniinfer/auth_tokens.allow` + `.meta.json` |
 | Models refresh | `uniioai-models-refresh.timer` daily at 04:00 UTC |
+| Ops probes | via `ssh amd 'curl -s -w "\n%{http_code}\n" http://127.0.0.1:8124/v1/models'` — die Public-URL von außen maskiert Service-Tod als HTTP 000; HTTP-Code ansehen, bevor Output in einen JSON-Parser geht |
 
 ### TU upstream — observed behavior & knob decisions (2026-09-30)
 
@@ -121,6 +122,8 @@ cd /home/ubuntu/code/python-openutils/packages/uniinfer
 The token is printed once; only its SHA-256 hash and non-secret metadata are
 stored. TTL and exact provider/instance scopes are enforced by the gateway.
 Canonical runbook: [docs/integration.md — Operator token minting](docs/integration.md#operator-token-minting).
+Bei Transfer über ssh/Datei immer `| tr -d '[:space:]'` — Transport-Whitespace
+im Bearer erzeugt "Unknown or revoked token".
 Legacy allowlist-only tokens remain valid until revoked.
 
 - **In test code**: `headers={"Authorization": f"Bearer {os.getenv('PROXY_KEY')}"}`

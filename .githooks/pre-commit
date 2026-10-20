@@ -1,12 +1,18 @@
 #!/usr/bin/env bash
+# Auto-sync uv.lock when a staged pyproject.toml changes (version bumps etc.),
+# then verify consistency via scripts/check-locks — a stale lock would abort
+# deploy.sh only ON THE SERVER, after the push (that happened twice on
+# 2026-10-20: the hook existed but core.hooksPath was never set).
+# Wiring (once per clone): git config core.hooksPath .githooks
+set -uo pipefail
+cd "$(dirname "$0")/.."
 
-# Auto-sync uv.lock when pyproject.toml version changes
 for pkg in packages/*/; do
-    if git diff --cached --name-only | grep -q "${pkg}pyproject.toml$"; then
-        if [ -f "${pkg}pyproject.toml" ]; then
-            echo "🔄 Syncing uv.lock for ${pkg%/}..."
-            (cd "$pkg" && uv lock --quiet)
-            git add "${pkg}uv.lock"
-        fi
-    fi
+  [ -f "${pkg}pyproject.toml" ] || continue
+  if git diff --cached --name-only -- "${pkg}pyproject.toml" | grep -q .; then
+    echo "🔄 Syncing uv.lock for ${pkg%/}..."
+    (cd "$pkg" && uv lock --quiet) || exit 1
+    git add "${pkg}uv.lock"
+  fi
 done
+exec scripts/check-locks

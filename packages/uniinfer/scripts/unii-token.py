@@ -121,7 +121,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                 file=sys.stderr,
             )
             print("Save this token now; it will not be shown again.", file=sys.stderr)
-            print(token)
+            print(token.strip())
             return 0
 
         if args.command == "list":

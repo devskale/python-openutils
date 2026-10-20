@@ -17,6 +17,19 @@ This means:
 
 Runs `generate_models.py` once per day at 04:00 UTC.
 
+### 1b. HTTP-Trigger (on demand, watchdog-safe)
+
+`POST /v1/system/update-models` delegiert an `systemctl start --no-block
+uniioai-models-refresh.service` → **202** `{"via": "systemd"}`; der Gather
+läuft in der Service-eigenen cgroup. `GET /v1/system/update-models` liefert
+`running` (inkl. `activating`) + `catalog_mtime`/`catalog_age_seconds`.
+
+> Historie: bis 2026-10-20 lief der Trigger als Subprocess in der Proxy-cgroup
+> (MemoryMax ~350M) — der Gather-Peak (~255M) drosselte die ganze cgroup, die
+> WATCHDOG-Pings stockten, systemd killte den Proxy (Issue
+> `uniinfer-update-models-watchdog-kill`, Fix 0.8.71). Ohne systemd/polkit
+> greift der In-Process-Fallback.
+
 ### 2. Freshness tracking in `_model_history.json`
 
 **Before** (flat string):

@@ -1,0 +1,31 @@
+#!/usr/bin/env bash
+# check-locks — blockt Commits, deren gepinnte uv.lock stale ist.
+#
+# pyproject-Änderung (v.a. version bump) ohne `uv lock` ist der häufigste
+# Deploy-Abbruch: deploy.sh feuert `uv lock --check` erst auf dem Server,
+# NACH dem Push. Dieser Check läuft als pre-commit-Hook davor (Setup einmal
+# pro Klon: `git config core.hooksPath .githooks`).
+#
+# Ohne Argumente: nur Packages mit gestagten pyproject.toml/uv.lock.
+# --all: jedes Package mit uv.lock (manueller Voll-Check).
+set -uo pipefail
+cd "$(dirname "$0")/.."
+
+if [ "${1:-}" = "--all" ]; then
+  paths=$(find packages -mindepth 2 -maxdepth 2 -name uv.lock | sed 's|/[^/]*$||' | sort -u)
+else
+  paths=$(git diff --cached --name-only -- 'packages/*/pyproject.toml' 'packages/*/uv.lock' \
+    | sed 's|/[^/]*$||' | sort -u)
+fi
+
+[ -n "$paths" ] || exit 0
+
+fail=0
+while IFS= read -r p; do
+  [ -f "$p/uv.lock" ] || continue
+  if ! (cd "$p" && uv lock --check >/dev/null 2>&1); then
+    echo "❌ $p/uv.lock ist stale — (cd $p && uv lock), committen, dann erneut." >&2
+    fail=1
+  fi
+done <<< "$paths"
+exit $fail
