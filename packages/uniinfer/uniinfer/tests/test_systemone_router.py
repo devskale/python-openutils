@@ -403,3 +403,16 @@ def test_clairic_typed_extraction_in_catalog(monkeypatch):
         "state": {}, "questions": {"q": {"type": "noul"}}})
     assert r.status_code == 400
     assert "extraction" in r.json()["error"]
+
+
+def test_catalog_lookup_normalizes_leading_at(monkeypatch):
+    """Live-Format: CF-Modell-ids tragen führendes '@' ('@cf/…'), die
+    type_overrides-Keys nicht — der Typ-Lookup normalisiert, damit die
+    Katalog-Autorität greift (sonst fällt clairic auf chat/Payload-Fallback)."""
+    captured = _native_setup(monkeypatch, "cfrun", "/{model}")
+    c = _app(None)
+    r = c.post("/v1/systemone", json={
+        "model": "cfrun@@cf/cloudflare/clairic",
+        "state": {}, "questions": {"q": {"type": "noul"}}})
+    assert r.status_code == 400
+    assert "extraction" in r.json()["error"]

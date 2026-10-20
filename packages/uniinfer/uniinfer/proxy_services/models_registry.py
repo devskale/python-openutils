@@ -511,11 +511,15 @@ class Catalog:
                     "provider": provider_id,
                 }
                 # Resolve type: overrides > type_overrides > stored > derive.
+                # type_overrides-Keys sind bare ids ohne führendes "@" (CF:
+                # "@cf/…" im Katalog, Override "cf/…") — Lookup normalisiert.
                 model_type = None
                 if override.get("type"):
                     model_type = override["type"]
                 elif model["id"] in type_overrides:
                     model_type = type_overrides[model["id"]]
+                elif model["id"].lstrip("@") in type_overrides:
+                    model_type = type_overrides[model["id"].lstrip("@")]
                 elif model.get("type") and model["type"] != "chat":
                     model_type = model["type"]
                 if not model_type:

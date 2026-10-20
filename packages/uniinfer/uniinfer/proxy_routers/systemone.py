@@ -73,7 +73,7 @@ def _catalog_systemone_type(bare_model: str) -> str | None:
             _type_overrides_cache = (mtime, doc)
         except (OSError, ValueError):
             return None
-    t = doc.get(bare_model)
+    t = doc.get(bare_model, doc.get(bare_model.lstrip("@")))
     return t if t in _SYSTEMONE_TYPES else None
 
 
