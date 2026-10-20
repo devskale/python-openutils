@@ -362,17 +362,19 @@ def check_token_constraints(
             )
     providers = record.get("providers")
     if providers is not None and provider_name not in providers:
-        # Alias → Provider normalisieren: Instanz-Aliase (cfrun, clef, …) sind
-        # reines Routing; der Scope gehört dem Provider, der den Key liefert
-        # (spec.provider, z.B. 'cloudflare'). Ein cloudflare-Token darf jede
-        # Cloudflare-Instanz bedienen, sonst müsste pro Alias gescoped werden.
+        # Alias → Entitäts-Kette normalisieren: Instanz-Aliase (cfrun, clef,
+        # d3mini, …) sind reines Routing; der Scope gehört der Entität, die den
+        # Key liefert. Match-Kette: alias → spec.provider → spec.credgoo_service
+        # (z.B. d3mini: provider 'openai-compat' generisch, credgoo 'dgxp').
         try:
             from uniinfer.config.instances import resolve_instance
             spec = resolve_instance(provider_name)
-            resolved = getattr(spec, "provider", None) or provider_name
+            candidates = {provider_name,
+                          getattr(spec, "provider", None),
+                          getattr(spec, "credgoo_service", None)}
         except Exception:
-            resolved = provider_name
-        if resolved not in providers:
+            candidates = {provider_name}
+        if not (candidates & set(providers)):
             raise TokenRegistryError(
                 "Token is not authorized for this provider. Request a scoped token."
             )

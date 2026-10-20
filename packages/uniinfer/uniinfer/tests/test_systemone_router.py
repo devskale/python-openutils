@@ -427,11 +427,15 @@ def test_token_scope_resolves_alias_to_provider(monkeypatch):
     spec = InstanceSpec(alias="cfrun", provider="cloudflare", is_builtin=False,
                         base_url="https://x.example", requires_api_key=True,
                         systemone_path="/{model}")
-    specs = {"cfrun": spec,
+    d3 = InstanceSpec(alias="d3mini", provider="openai-compat", is_builtin=False,
+                      base_url="http://127.0.0.1:18020/v1", requires_api_key=True,
+                      credgoo_service="dgxp")
+    specs = {"cfrun": spec, "d3mini": d3,
              "tu": InstanceSpec(alias="tu", provider="tu", is_builtin=True)}
     monkeypatch.setattr("uniinfer.config.instances.resolve_instance",
                         lambda a: specs[a])
-    meta = {"tokens": {"deadbeef": {"providers": ["cloudflare"], "name": "t"}}}
-    check_token_constraints("deadbeef", "cfrun", meta)  # kein Raise
+    meta = {"tokens": {"deadbeef": {"providers": ["cloudflare", "dgxp"], "name": "t"}}}
+    check_token_constraints("deadbeef", "cfrun", meta)    # cloudflare via provider
+    check_token_constraints("deadbeef", "d3mini", meta)    # dgxp via credgoo_service
     with _pytest.raises(TokenRegistryError):
         check_token_constraints("deadbeef", "tu", meta)  # fremder Provider
