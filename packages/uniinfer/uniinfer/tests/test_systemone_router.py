@@ -416,3 +416,22 @@ def test_catalog_lookup_normalizes_leading_at(monkeypatch):
         "state": {}, "questions": {"q": {"type": "noul"}}})
     assert r.status_code == 400
     assert "extraction" in r.json()["error"]
+
+
+def test_token_scope_resolves_alias_to_provider(monkeypatch):
+    """Ein cloudflare-Token bedient ALLE Cloudflare-Instanz-Aliase (cfrun,
+    clef, …): der Constraint-Check normalisiert Alias → spec.provider."""
+    from uniinfer.proxy_services.token_registry import TokenRegistryError, check_token_constraints
+    import pytest as _pytest
+
+    spec = InstanceSpec(alias="cfrun", provider="cloudflare", is_builtin=False,
+                        base_url="https://x.example", requires_api_key=True,
+                        systemone_path="/{model}")
+    specs = {"cfrun": spec,
+             "tu": InstanceSpec(alias="tu", provider="tu", is_builtin=True)}
+    monkeypatch.setattr("uniinfer.config.instances.resolve_instance",
+                        lambda a: specs[a])
+    meta = {"tokens": {"deadbeef": {"providers": ["cloudflare"], "name": "t"}}}
+    check_token_constraints("deadbeef", "cfrun", meta)  # kein Raise
+    with _pytest.raises(TokenRegistryError):
+        check_token_constraints("deadbeef", "tu", meta)  # fremder Provider

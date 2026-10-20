@@ -362,9 +362,20 @@ def check_token_constraints(
             )
     providers = record.get("providers")
     if providers is not None and provider_name not in providers:
-        raise TokenRegistryError(
-            "Token is not authorized for this provider. Request a scoped token."
-        )
+        # Alias → Provider normalisieren: Instanz-Aliase (cfrun, clef, …) sind
+        # reines Routing; der Scope gehört dem Provider, der den Key liefert
+        # (spec.provider, z.B. 'cloudflare'). Ein cloudflare-Token darf jede
+        # Cloudflare-Instanz bedienen, sonst müsste pro Alias gescoped werden.
+        try:
+            from uniinfer.config.instances import resolve_instance
+            spec = resolve_instance(provider_name)
+            resolved = getattr(spec, "provider", None) or provider_name
+        except Exception:
+            resolved = provider_name
+        if resolved not in providers:
+            raise TokenRegistryError(
+                "Token is not authorized for this provider. Request a scoped token."
+            )
 
 
 def load_metadata_for_auth(path: Path) -> dict[str, Any]:
