@@ -47,7 +47,7 @@ models:
     context_window: 131072
     max_output_tokens: 64000
     supports_thinking: true
-    description: "Qwen 3.6 35B via TU Aqueduct — DEPLOYMENT EINGESTELLT 2026-09-24 (404; historisch: wedged-Replica-Backup). Karte bleibt als Referenz, nicht mehr als aktivierbares backup verwenden."
+    description: "Qwen 3.6 35B via TU Aqueduct — WIEDER LIVE (verifiziert 2026-10-21: Completion + Streaming OK; war 2026-09-24 bis 10/21 eingestellt/404). Als Primary- oder Backup-Ziel wieder nutzbar."
   tu@qwen-3.8-27b:
     context_window: 131072
     max_output_tokens: 32768
