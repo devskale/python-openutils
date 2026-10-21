@@ -48,6 +48,16 @@ models:
     max_output_tokens: 64000
     supports_thinking: true
     description: "Qwen 3.6 35B via TU Aqueduct — DEPLOYMENT EINGESTELLT 2026-09-24 (404; historisch: wedged-Replica-Backup). Karte bleibt als Referenz, nicht mehr als aktivierbares backup verwenden."
+  tu@qwen-3.8-27b:
+    context_window: 131072
+    max_output_tokens: 32768
+    supports_thinking: true
+    description: "Qwen 3.8 27B via TU Aqueduct — live verifiziert 2026-10-21 (Completion, Streaming 78 chunks, enable_thinking an/aus)"
+  hab@qwen3.6-35b:
+    context_window: 131072
+    max_output_tokens: 32768
+    supports_thinking: true
+    description: "Qwen 3.6 35B A3B auf DGX lokal (vLLM NVFP4, amd:18020) via uniinfer-Proxy hab — live verifiziert 2026-10-21 (Streaming, reasoning_content bei enable_thinking, default no-think)"
   tu@qwen-3.6-30b:
     context_window: 131072
     supports_thinking: true
