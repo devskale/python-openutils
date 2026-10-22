@@ -57,7 +57,7 @@ models:
     context_window: 131072
     max_output_tokens: 32768
     supports_thinking: true
-    description: "Qwen 3.6 35B A3B auf DGX lokal (vLLM NVFP4, amd:18020) via uniinfer-Proxy hab — live verifiziert 2026-10-21 (Streaming, reasoning_content bei enable_thinking, default no-think)"
+    description: "Qwen 3.6 35B A3B auf DGX lokal (vLLM NVFP4, amd:18020) via uniinfer-Proxy hab — PRODUCTION-DEFAULT seit 2026-10-22 (Messreihe: ttfb ~40x schneller als Aqueduct; bekannt: ein Synthese-Prompt lief 5x leer → Aqueduct-Backup)"
   tu@qwen-3.6-30b:
     context_window: 131072
     supports_thinking: true
@@ -136,16 +136,20 @@ models:
 # The fallback when nothing else is specified. Per-client overrides live in
 # clients.yml / team settings. See ADR 0004 for the full precedence chain.
 default:
-  model: tu@qwen-3.6-35b-vllm
+  # 2026-10-22 (User): hab@DGX Production-Default — Dreier-Messreihe: DGX ttfb
+  # 0,5-0,7 s / ~340 chars/s vs. Aqueduct ttfb 20-31 s / Trickle-Bis 19 min.
+  # BEKANNTES RISIKO (22.10.): eine Synthese (10,7k-Token-Prompt) bekam 5x LEER
+  # von der DGX — Aqueduct-Backup faengt (erster Backup-Eintrag, invers).
+  model: hab@qwen3.6-35b
   # Backup-Kette (ADR 0004 §4): transient erschöpft / permanent → nächstes Glied.
   # Der Schnell-Schalter ist die runtime clients.yml (`model:`-Zeile, mtime-Reload,
   # kein Restart); Backups fließen aus jeder Schicht, env pinnt nur den Primary.
   backups:
-    # 2026-09-24: tu@qwen-3.6-35b (plain deployment) auf tu EINGESTELLT (404-alarm)
-    # — cross-provider-backup stattdessen: gemini-flash (live getestet OK).
-    # 2026-09-24 gateway-sweep: die volle flash-generation (3.5-3.8, latest-alias)
-    # steht haeufig unter 503-high-demand — als BACKUP unbrauchbar. flash-lite
-    # antwortet zuverlaessig (live: korrekt, sauber). Alias = auto-aktuell.
+    # 2026-10-22: Aqueduct erster Backup (invers — DGX-Primary, Aqueduct faengt,
+    # inkl. des bekannten DGX-Synthese-Leerfalls).
+    - tu@qwen-3.6-35b-vllm
+    # 2026-09-24: cross-provider-backup gemini-flash (flash-lite zuverlaessig,
+    # volle flash-generation 503-anfaellig). Alias = auto-aktuell.
     - gemini@models/gemini-flash-lite-latest
   temperature: 0.7
   max_tokens: 10000
@@ -172,14 +176,14 @@ packages:
       fnamer:
         model: openrouter@google/gemma-3-27b-it:free
       blank:
-        model: tu@qwen-3.6-35b-vllm
+        model: hab@qwen3.6-35b
 
   strukt2meta:
     max_tokens: 16384
     temperature: 0.7
     tasks:
       kriterien:
-        model: tu@qwen-3.6-35b-vllm  # 397b eingestellt (2026-10-06) — großes Modell parkt bis Nachfolger
+        model: hab@qwen3.6-35b  # 2026-10-22 Default-Wechsel (397b parkt weiter)
         max_tokens: 32768
   agentos:
     temperature: 0.7
