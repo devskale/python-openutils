@@ -26,8 +26,14 @@ from uniinfer.proxy_schemas.chat import (
     NonStreamingChoice,
 )
 from uniinfer.proxy_services.stats import get_stats
+from uniinfer.proxy_services.stream_guard import (
+    astream_guarded,
+    emit_guard_alarm,
+    empty_guard_enabled,
+    empty_guard_retry_budget,
+    nonstream_masked_empty,
+)
 from uniinfer.proxy_services.streaming import (
-    astream_response_generator,
     is_openai_strict_mode,
     normalize_nonstream_content,
 )
@@ -143,7 +149,7 @@ def create_chat_router(
             target = Target(provider_model, provider_api_key, base_url)
 
             if request_input.stream:
-                _stream_gen = astream_response_generator(
+                _stream_gen = astream_guarded(
                     target=target,
                     messages=messages_dict,
                     temp=request_input.temperature,
@@ -248,6 +254,13 @@ def create_chat_router(
                 )
 
             full_content = None
+            # Empty-stream guard, non-stream variant: a 200 completion with no
+            # content (and no tool_calls/thinking that legitimize it) is a masked
+            # provider failure — retry once, then a real HTTP 502 so backup
+            # chains route around the upstream instead of parsing nothing.
+            _empty_guard_left = (
+                empty_guard_retry_budget() if empty_guard_enabled() else 0
+            )
             while True:
                 try:
                     full_content = await target.acomplete(
@@ -264,6 +277,36 @@ def create_chat_router(
                         from uniinfer.proxy_services.router import clear_dead_parks
 
                         clear_dead_parks(provider_model)
+                    if nonstream_masked_empty(full_content):
+                        _attempts = empty_guard_retry_budget() + 1
+                        if _empty_guard_left > 0:
+                            _empty_guard_left -= 1
+                            emit_guard_alarm(
+                                "empty_stream",
+                                provider_model,
+                                f"EMPTY-STREAM: non-stream completion empty "
+                                f"(retrying, attempt {empty_guard_retry_budget() - _empty_guard_left}/{_attempts})",
+                            )
+                            continue
+                        emit_guard_alarm(
+                            "empty_stream",
+                            provider_model,
+                            f"EMPTY-STREAM: non-stream completion empty after {_attempts} attempt(s)",
+                        )
+                        get_stats().record(
+                            provider_model,
+                            status=502,
+                            latency_ms=(time.monotonic() - _req_t0) * 1000,
+                            usage=None,
+                        )
+                        raise HTTPException(
+                            status_code=502,
+                            detail=(
+                                f"Provider Error ({provider_name}): empty completion "
+                                f"after {_attempts} attempt(s) — upstream returned "
+                                f"200 with no content"
+                            ),
+                        )
                     break
                 except RateLimitError as e:
                     if not _auto_chain:

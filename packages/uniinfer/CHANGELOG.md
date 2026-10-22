@@ -8,6 +8,29 @@ adheres to [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- **Leerstrom-Erkennung (Guard am Relay-Seam).** Upstreams, die unter Last
+  SSE-Streams mit HTTP 200 und NULL Content beenden (vLLM instant-EOS,
+  2026-10-22: Synthese-Payloads 52 kB endeten nach ~2 s leer — Clients
+  verbrannten Retries auf einen maskierten Provider-Fehler), werden am Proxy
+  erkannt und behandelt: `uniinfer/proxy_services/stream_guard.py` wrappt den
+  Streaming-Relay ohne dessen Interna zu berühren (`astream_guarded`, im Chat-
+  Router eingesetzte Stelle). Eine Relay-Passage ohne ein einziges contentful
+  Event (content/reasoning/tool_calls) ⇒ 1 interner Retry gegen denselben
+  Provider, danach Error-Chunk `empty_stream`/502 — oder eine ECHTE HTTP 502
+  (ProviderError), solange noch nichts Richtung Client ging (der Guard hält
+  First-Event und `[DONE]` zurück, bis die Passage Leben zeigt; das Fenster
+  überlebt damit auch die Prime-Phase des Relays). Ergänzend: First-Token-
+  Stall (`UNIINFER_FIRST_TOKEN_STALL_S`, Default 30 s — serverseitige Sicht
+  neben agentos' 20-s-Client-Watchdog) ⇒ Pass-Abbruch + Retry/502. Nicht-
+  Stream-Pfad: leere Completion ohne tool_calls/thinking ⇒ Retry, dann echte
+  HTTP 502 (llminvoke-Backup-Kette hab→tu→gemini sieht den Fehler endlich).
+  Telemetrie je Detektion: `ALARM {json}`-Zeile im robotni-alarms-Schema
+  (`error_type: empty_stream`/`first_token_stall`). Env:
+  `UNIINFER_EMPTY_STREAM_DETECT` (Default an), `UNIINFER_EMPTY_STREAM_RETRIES`
+  (Default 1), `UNIINFER_FIRST_TOKEN_STALL_S` (Default 30, 0=aus). Hermetisch
+  getestet (`test_stream_guard.py`, 14 Fälle inkl. Router-E2E über HTTP).
+  Issue: `uniinfer-proxy-leerstrom-erkennung`.
+
 - **Auto-Routing `auto@free` (v0).** Virtual model id for chat completions:
   resolves to a concrete free `provider@model` at request time (chat router,
   before dispatch — stats/reliability/response see the concrete model; the
