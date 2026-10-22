@@ -422,6 +422,17 @@ def resolve_model(
         if ep and em:
             primary = ModelRef(provider=ep, model=em)
 
+    # ── GLOBAL process pin (2026-10-22, User: „Standard-Pfad-Steps auch fixen,
+    #    smart und dauerhaft"): LLMINVOKE_PIN_PROVIDER + LLMINVOKE_PIN_MODEL
+    #    pinnen den Primary für JEDE resolve_model-Auflösung dieses Prozesses —
+    #    der eine Haken für Replay-/A-B-Läufe (CLI -m), statt je Callsite.
+    #    Übersteuert auch env_prefix-Pins; Task-Profile (temperature,
+    #    request_kwargs wie no-think) und Backups bleiben erhalten. ──
+    gp = os.environ.get("LLMINVOKE_PIN_PROVIDER", "").strip()
+    gm = os.environ.get("LLMINVOKE_PIN_MODEL", "").strip()
+    if gp and gm:
+        primary = ModelRef(provider=gp, model=gm)
+
     # ── map `thinking` → the provider's reasoning knob (per model) ──
     # qwen-3.x: chat_template_kwargs.enable_thinking (off=False). reasoning_effort
     # models (o-series-style): minimal/low/medium/high. 'on'/None = default.
