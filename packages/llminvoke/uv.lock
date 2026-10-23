@@ -1,5 +1,5 @@
 version = 1
-revision = 3
+revision = 5
 requires-python = ">=3.9"
 resolution-markers = [
     "python_full_version >= '3.14'",
@@ -1372,7 +1372,7 @@ wheels = [
 
 [[package]]
 name = "llminvoke"
-version = "0.2.8"
+version = "0.3.0"
 source = { editable = "." }
 dependencies = [
     { name = "credgoo" },

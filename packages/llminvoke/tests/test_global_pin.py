@@ -48,7 +48,9 @@ def test_task_request_kwargs_bleiben(_pin):
 def test_halber_pin_wirkt_nicht(monkeypatch):
     from llminvoke.config import resolve_model
 
-    monkeypatch.setenv("LLMINVOKE_PIN_PROVIDER", "hab")
+    # Pin-Provider bewusst != Default-Provider, sonst bewiese der Test nichts
+    # (Default ist seit 2026-10-22 hab@qwen3.6-35b).
+    monkeypatch.setenv("LLMINVOKE_PIN_PROVIDER", "gemini")
     monkeypatch.delenv("LLMINVOKE_PIN_MODEL", raising=False)
     cfg = resolve_model(package="agentos")
-    assert str(cfg.primary).startswith("tu@")  # Default unangetastet
+    assert str(cfg.primary) == "hab@qwen3.6-35b"  # Default unangetastet

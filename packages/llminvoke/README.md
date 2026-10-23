@@ -28,9 +28,30 @@ text = call_llm("prompt", config=cfg)
 | function | returns | retry | backup | use when |
 |---|---|---|---|---|
 | `call_llm` | `str` | ✅ backoff | ✅ chain | **default** — most callers |
+| `call_llm_with_meta` | `(str, meta)` | ✅ backoff | ✅ chain | need to know WHICH model served |
+| `call_llm_with_usage` | `(str, usage)` | ✅ backoff | ✅ chain | token accounting |
 | `stream_llm` | `Iterator[str]` | before first token | before first token | streaming output |
 | `invoke_llm` | raw response | ❌ | ❌ | escape hatch (tool-calling, custom loops) |
 | `create_provider` | `ChatProvider` | — | — | raw provider (tool-calling, custom loops) |
+
+### Which model served the call
+
+`call_llm_with_meta` returns the served model alongside the text — relevant
+when the chain resolves through a gateway: the proxy echoes the concrete
+model in the response body (a virtual `auto@free` resolves proxy-side; a
+fallback that served from a backup is visible too).
+
+```python
+text, meta = call_llm_with_meta(package="pdf2md", prompt="...")
+# meta = {"requested": "hab@qwen3.6-35b",      # chain member the call landed on
+#         "model": "mistral@codestral-2508",    # echoed by the gateway (else = requested)
+#         "provider": "mistral",                # parsed from the echo (else = requested's)
+#         "usage": {"prompt_tokens": ..., ...}} # None if unavailable
+```
+
+To preview what a virtual auto model would serve RIGHT NOW (no call, no
+token cost), the gateway exposes `GET /v1/routing/auto` — chosen target,
+fallback chain, filter breakdown, active cooldowns.
 
 ## Config resolution (ADR 0004)
 

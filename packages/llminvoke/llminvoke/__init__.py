@@ -43,7 +43,7 @@ from llminvoke.config import (
     resolve_model,
 )
 
-__version__ = "0.2.8"
+__version__ = "0.3.0"
 
 __all__ = [
     # invocation
@@ -65,6 +65,7 @@ __all__ = [
     "classify_error",
     "emit_alarm",
     "call_llm_with_usage",
+    "call_llm_with_meta",
 ]
 
 
@@ -437,6 +438,72 @@ def _extract_usage(response: object) -> dict | None:
     if isinstance(usage, dict):
         return usage
     return None
+
+
+def _extract_served_meta(ref: ModelRef, response: object) -> dict:
+    """Which model actually answered: gateway echo > requested ref.
+
+    The gateway echoes the concrete model in the response body (auto@free
+    resolves proxy-side; fallback chains can serve a backup) — so the echo
+    wins. The requested ref is the fallback for providers that don't echo.
+    ``provider`` is parsed from the echoed ``provider@model`` when possible
+    (an auto@free echo serves from a concrete provider, not "auto").
+    """
+    served = getattr(response, "model", None)
+    served = served if isinstance(served, str) and served else str(ref)
+    provider = served.split("@", 1)[0] if "@" in served else ref.provider
+    return {
+        "requested": str(ref),
+        "model": served,
+        "provider": provider,
+    }
+
+
+def call_llm_with_meta(
+    prompt: str | None = None,
+    *,
+    config: ResolvedConfig | None = None,
+    package: str | None = None,
+    client: str | None = None,
+    task: str | None = None,
+    model: str | None = None,
+    provider: str | None = None,
+    messages: list[ChatMessage] | None = None,
+    system_prompt: str | None = None,
+    temperature: float | None = None,
+    max_tokens: int | None = None,
+    max_attempts: int | None = None,
+    fail_fast: bool = False,
+    env_prefix: str | None = None,
+    **request_kwargs,
+) -> tuple[str, dict | None]:
+    """Same as call_llm but also returns WHICH model served the call.
+
+    Returns ``(text, meta)`` with ``meta = {"requested", "model", "provider",
+    "usage"}``: ``requested`` is the chain member the call landed on (a backup
+    that served shows up here, not the configured primary), ``model`` is that
+    call's echoed id — the gateway echoes the concrete model in the response
+    body (auto@free resolves proxy-side), falling back to ``requested`` when
+    the provider doesn't echo. ``meta`` is ``None`` when the entire chain
+    fails.
+    """
+    cfg = _resolve_call_config(
+        config=config, package=package, client=client, task=task,
+        model=model, provider=provider,
+        temperature=temperature, max_tokens=max_tokens,
+        max_attempts=max_attempts, env_prefix=env_prefix,
+    )
+    msgs = _build_messages(prompt, messages, system_prompt)
+    pkg = package or _package_from_env()
+    cli = client or os.environ.get("KONTEXT_CLIENT", "").strip() or None
+
+    for ref in cfg.chain:
+        text, response = _try_model(ref, cfg, msgs, fail_fast, request_kwargs, package=pkg, client=cli)
+        if text is not None:
+            meta = _extract_served_meta(ref, response)
+            meta["usage"] = _extract_usage(response)
+            return text, meta
+    return "", None
 
 
 def call_llm_with_usage(
