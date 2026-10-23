@@ -14,12 +14,23 @@ from uniinfer.proxy_services import router as routing
 
 
 @pytest.fixture(autouse=True)
-def _reset_prefs_cache():
+def _reset_prefs_cache(monkeypatch, tmp_path):
     routing._RoutingPrefs._cache = None
     routing._RoutingPrefs._cache_mtime = None
-    yield
-    routing._RoutingPrefs._cache = None
-    routing._RoutingPrefs._cache_mtime = None
+    # Hermetic personal prefs: a dev-machine routing_preferences.json must not
+    # leak into tests — point the loader at an (absent) tmp file.
+    prefs_file = tmp_path / "routing_preferences.json"
+    monkeypatch.setattr(routing, "_routing_prefs_path", lambda: str(prefs_file))
+    monkeypatch.delenv("UNIINFER_AUTH_TOKENS_FILE", raising=False)
+    _clear_personal_caches()
+    yield prefs_file
+    _clear_personal_caches()
+
+
+def _clear_personal_caches():
+    routing._PersonalPrefs._cache = None
+    routing._PersonalPrefs._cache_mtime = None
+    routing._TokenNames._cache = None
 
 
 def _fake_catalog_models():
@@ -110,7 +121,13 @@ def test_resolve_auto_free_filters_and_orders(fakes):
     # only alpha survives.
     assert mid == "provA@alpha"
     assert meta["candidates"] == 1
-    assert meta["skipped"] == {"excluded": 1, "degraded": 1, "quota": 1, "parked": 0}
+    assert meta["skipped"] == {
+        "excluded": 1,
+        "avoided": 0,
+        "degraded": 1,
+        "quota": 1,
+        "parked": 0,
+    }
 
 
 def test_resolve_auto_pin_wins_over_weight(fakes, monkeypatch):

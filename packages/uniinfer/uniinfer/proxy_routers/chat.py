@@ -1,3 +1,4 @@
+import hashlib
 import logging
 import time
 from typing import Any, AsyncGenerator, Callable
@@ -73,6 +74,15 @@ def create_chat_router(
 
         try:
             provider_name, _ = parse_provider_model(provider_model)
+            # Caller identity for personal routing preferences: the bearer's
+            # sha256 maps to a token name (auth metadata sidecar) whose
+            # prefer/avoid section in routing_preferences.json steers the
+            # resolve. Computed once, threaded through resolve + chain.
+            _token_hash = (
+                hashlib.sha256(api_bearer_token.encode()).hexdigest()
+                if api_bearer_token
+                else None
+            )
             # Auto-routing: resolve a virtual auto@<selector> model to a concrete
             # provider@model BEFORE provider access / Target dispatch. The rest
             # of the pipeline (stats, reliability, response shaping) then sees
@@ -80,7 +90,7 @@ def create_chat_router(
             if provider_name == "auto":
                 from uniinfer.proxy_services.router import resolve_auto
 
-                _resolved = resolve_auto(provider_model)
+                _resolved = resolve_auto(provider_model, token_hash=_token_hash)
                 if _resolved is None:
                     raise HTTPException(
                         status_code=503,
@@ -96,7 +106,9 @@ def create_chat_router(
                 if not hasattr(request.state, "auto_chain"):
                     from uniinfer.proxy_services.router import resolve_auto_candidates
 
-                    chain = resolve_auto_candidates(request_input.model)
+                    chain = resolve_auto_candidates(
+                        request_input.model, token_hash=_token_hash
+                    )
                     tried = {provider_model}
                     request.state.auto_chain = [c for c in chain if c not in tried][
                         :_AUTO_MAX_FALLBACKS
@@ -243,14 +255,17 @@ def create_chat_router(
                     async for _item in _stream_gen:
                         yield _item
 
+                _stream_headers = {
+                    "Cache-Control": "no-cache",
+                    "X-Accel-Buffering": "no",
+                    "Connection": "keep-alive",
+                }
+                if getattr(request.state, "routed_model", None):
+                    _stream_headers["x-routed-model"] = str(request.state.routed_model)
                 return StreamingResponse(
                     _relay(),
                     media_type="text/event-stream",
-                    headers={
-                        "Cache-Control": "no-cache",
-                        "X-Accel-Buffering": "no",
-                        "Connection": "keep-alive",
-                    },
+                    headers=_stream_headers,
                 )
 
             full_content = None

@@ -3,6 +3,12 @@
 Virtual model ids that resolve to a concrete `provider@model` at request time.
 v0 ships `auto@free` (chat completions only).
 
+> **v1 note:** the per-model usability index (`GET /v1/health/models` —
+> Apdex TTFT zones × Laplace-smoothed error rate × traffic confidence) now
+> provides the data layer for the planned v1 stats-based ordering. Wiring it
+> into the router is a separate, deliberate decision after the numbers have
+> baked against real traffic.
+
 ## Usage
 
 `auto@free` ist ein virtuelles Modell — in `/v1/models` gelistet wie ein
@@ -16,8 +22,32 @@ curl -X POST http://localhost:<port>/v1/chat/completions \
 ```
 
 The response `model` field and the `x-routed-model` response header carry the
-concrete `provider@model` that served the request. Every routing decision is
+concrete `provider@model` that served the request — der Header steht auf BEIDEN
+Pfaden (non-stream JSONResponse + SSE StreamingResponse); im SSE-Fall ist der
+Resolve zusätzlich in jedem Chunk (`chunk.model`). Every routing decision is
 logged: `[auto-route] auto@free -> provA@model (reason; N candidates, skipped: …)`.
+
+### Routing-Preview (trocken, ohne Call)
+
+`GET /v1/routing/auto` beantwortet „Welches Modell würde auto@free JETZT
+bedienen?" ohne Upstream-Call und ohne Token-Kosten:
+
+```bash
+curl http://localhost:<port>/v1/routing/auto
+# {"object": "routing", "model": "auto@free",
+#  "resolved": "mistral@codestral-2508", "reason": "weight",
+#  "candidates": 259,
+#  "skipped": {"excluded": 0, "degraded": 0, "quota": 0, "parked": 2},
+#  "fallbacks": ["mistral@codestral-latest", "..."],
+#  "parked": {"kilo@step-5-preview-free": 812.3},   # Rest-Cooldown-Sekunden
+#  "dead_parks": {"kilo@step-5-preview-free": 2}}   # Streak bis zur Auto-Exclusion
+```
+
+`resolved: null` = der Router hätte gerade nichts verfügbar (ein echter
+Request würde 503 geben) — die Antwort bleibt 200 und zeigt im
+`skipped`-Breakdown, WARUM jeder Kandidat rausgefallen ist. Das ist der
+Health-Check für „funktioniert auto@free gerade sauber?"; `?model=` nimmt
+einen anderen virtuellen Selektor, Nicht-Auto-Modelle → 400.
 
 ## How a model is chosen (v0 — deterministic, no scoring)
 
@@ -32,8 +62,52 @@ Filters, in order:
    average vs its documented `provider_limits.json` free-tier request limit)
    is ≥ 80% is skipped entirely.
 
-Ordering of what survives: `pin` first, then operator `weight` (default 1.0,
-higher first), then catalog order as the stable tiebreak.
+Ordering of what survives: operator `pin` first, then personal `prefer`
+(per caller, see below), then operator `weight` (default 1.0, higher first),
+then catalog order as the stable tiebreak.
+
+## Personal preferences (per caller)
+
+`routing_preferences.json` (default `~/.config/uniinfer/routing_preferences.json`,
+override via `UNIINFER_ROUTING_PREFS_FILE`) — mtime-hot-reloaded, edit takes
+effect on the next request, no restart. Keyed by token NAME (stable,
+human-editable): the request bearer's sha256 maps to a name via the auth-token
+metadata sidecar (`auth_tokens.meta.json` next to the allowlist). Anonymous
+callers and unknown tokens get the `default` section.
+
+```json
+{
+  "version": 1,
+  "default": {
+    "prefer": { "providers": [], "models": [] },
+    "avoid":  { "providers": ["kilo"], "models": [] }
+  },
+  "tokens": {
+    "johann-cli":  { "avoid":  { "providers": ["mistral"] } },
+    "klark0-web":  { "prefer": { "models": ["mistral@codestral-2508"] } }
+  }
+}
+```
+
+Semantics:
+
+- **`avoid` = harter persönlicher Filter** — eigener Skip-Grund `avoided` im
+  Breakdown (Logs, 503-Pfad, Preview); gilt für die ganze Kette, Fallbacks
+  routen nie in etwas Vermiedenes. Alles vermieden → 503 mit `avoided: N`.
+- **`prefer` = Boost-Tier zwischen Operator-Pin und weight** — operator `pin`
+  bleibt darüber (Zuverlässigkeits-Entscheidung schlägt Geschmack).
+- Modell-Einträge matchen bare und `provider@model`-Form; Provider
+  case-insensitive. Ein model-level `avoid` schlägt ein provider-level
+  `prefer` (Filter > Boost).
+- Token-Sektionen **addieren** (Union) auf die `default`-Sektion — entfernen
+  kann man einen Default-Eintrag nur per Datei-Edit, nicht per Token.
+- Prefer/avoid-Modellnamen, die kein Katalogmodell matchen, warnen einmal
+  pro Datei-Revision ins Log (Typo-Schutz).
+- **Direkte (non-auto) Calls sind unberührt** — Preferences steuern nur das
+  Auto-Routing (gleiche Philosophie wie `routing_exclude`).
+
+`GET /v1/routing/auto` mit `Authorization`-Header zeigt DIESE Caller-Sicht:
+`preferences: {caller: "johann-cli", active: true, avoided: 14}`.
 
 ## Operator controls (the existing override seam)
 

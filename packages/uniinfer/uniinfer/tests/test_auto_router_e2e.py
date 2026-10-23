@@ -73,6 +73,10 @@ def app_client(monkeypatch, tmp_path):
     ProviderFactory.register_provider("fakefreeprov", _FakeFreeProvider)
     routing._RoutingPrefs._cache = None
     routing._RoutingPrefs._cache_mtime = None
+    _clear_personal_caches()
+    prefs_file = tmp_path / "routing_preferences.json"
+    monkeypatch.setattr(routing, "_routing_prefs_path", lambda: str(prefs_file))
+    monkeypatch.delenv("UNIINFER_AUTH_TOKENS_FILE", raising=False)
 
     def _fake_catalog():
         return [
@@ -113,6 +117,13 @@ def app_client(monkeypatch, tmp_path):
     ProviderFactory._providers.pop("fakefreeprov", None)
     routing._RoutingPrefs._cache = None
     routing._RoutingPrefs._cache_mtime = None
+    _clear_personal_caches()
+
+
+def _clear_personal_caches():
+    routing._PersonalPrefs._cache = None
+    routing._PersonalPrefs._cache_mtime = None
+    routing._TokenNames._cache = None
 
 
 def _post_chat(client, model, **extra):
@@ -148,6 +159,132 @@ def test_auto_free_no_candidates_503(app_client, monkeypatch):
 def test_auto_unknown_selector_400(app_client):
     r = _post_chat(app_client, "auto@paid")
     assert r.status_code == 400
+
+
+def test_routing_preview_endpoint(app_client):
+    """GET /v1/routing/auto: trockene Resolver-Sicht — gewaehltes Ziel, keine
+    Upstream-Kosten, inkl. Cooldown-Snapshots."""
+    r = app_client.get("/v1/routing/auto")
+    assert r.status_code == 200, r.text
+    body = r.json()
+    assert body["object"] == "routing"
+    assert body["model"] == "auto@free"
+    assert body["resolved"] == "fakefreeprov@fake-free-1"
+    assert body["reason"] in ("pin", "weight")
+    assert body["candidates"] == 1
+    assert isinstance(body["parked"], dict)
+    assert isinstance(body["dead_parks"], dict)
+
+
+def test_routing_preview_reports_unusable_router(app_client, monkeypatch):
+    """Keine ueberlebenden Kandidaten: Preview bleibt 200 und berichtet
+    resolved=null + Skipped-Breakdown (ein Request wuerde 503 geben)."""
+    monkeypatch.setattr(
+        routing, "_degraded_models", lambda: {"fakefreeprov@fake-free-1"}
+    )
+    r = app_client.get("/v1/routing/auto")
+    assert r.status_code == 200
+    body = r.json()
+    assert body["resolved"] is None
+    assert body["candidates"] == 0
+    assert body["skipped"]["degraded"] == 1
+
+
+def test_routing_preview_non_auto_and_unknown_selector_400(app_client):
+    r = app_client.get("/v1/routing/auto", params={"model": "mistral@x"})
+    assert r.status_code == 400
+    r = app_client.get("/v1/routing/auto", params={"model": "auto@paid"})
+    assert r.status_code == 400
+
+
+def test_auto_free_stream_carries_routed_header(app_client):
+    """Auch der Streaming-Pfad traegt x-routed-model — davor war der Resolve
+    im SSE-Fall nur aus chunk.model lesbar (Header existierte nur non-stream)."""
+    r = app_client.post(
+        "/v1/chat/completions",
+        headers={"Authorization": "Bearer test@fake"},
+        json={
+            "model": "auto@free",
+            "messages": [{"role": "user", "content": "Say hi"}],
+            "stream": True,
+        },
+    )
+    assert r.status_code == 200, r.text
+    assert "text/event-stream" in r.headers.get("content-type", "")
+    assert r.headers.get("x-routed-model") == "fakefreeprov@fake-free-1"
+    assert "fakefreeprov@fake-free-1" in r.text
+
+
+def test_personal_prefs_route_per_caller(app_client, monkeypatch):
+    """Der gleiche auto@free-Call routet je nach Bearer anders: alice (via
+    Token-Metadaten-Sidecar identifiziert) preferiert fake-free-2, anonym
+    bleibt es bei der Katalogordnung (fake-free-1)."""
+    import hashlib
+
+    def _two_catalog_models():
+        return [
+            {
+                "id": "fakefreeprov@fake-free-1",
+                "provider": "fakefreeprov",
+                "type": "chat",
+                "access": "free",
+                "status": "active",
+            },
+            {
+                "id": "fakefreeprov@fake-free-2",
+                "provider": "fakefreeprov",
+                "type": "chat",
+                "access": "free",
+                "status": "active",
+            },
+        ]
+
+    monkeypatch.setattr(
+        routing,
+        "Catalog",
+        lambda: type("C", (), {"list_resolved": staticmethod(_two_catalog_models)})(),
+    )
+    prefs_path = routing._routing_prefs_path()
+    from pathlib import Path
+
+    prefs_path = Path(prefs_path)
+    prefs_path.write_text(
+        json.dumps(
+            {"tokens": {"alice": {"prefer": {"models": ["fake-free-2"]}}}}
+        )
+    )
+    routing._PersonalPrefs.invalidate()
+    h = hashlib.sha256(b"test@fake").hexdigest()
+    allow = prefs_path.parent / "auth_tokens.allow"
+    meta = prefs_path.parent / "auth_tokens.meta.json"
+    allow.write_text(h + "\n")
+    meta.write_text(json.dumps({"version": 1, "tokens": {h: {"name": "alice"}}}))
+    monkeypatch.setenv("UNIINFER_AUTH_TOKENS_FILE", str(allow))
+    routing._TokenNames.invalidate()
+
+    r = _post_chat(app_client, "auto@free")
+    assert r.status_code == 200, r.text
+    assert r.json()["model"] == "fakefreeprov@fake-free-2"
+    assert r.headers.get("x-routed-model") == "fakefreeprov@fake-free-2"
+
+    # Preview: mit Alices Bearer wird ihre Sicht sichtbar, anonym die Default-
+    # Sicht (Katalogordnung)
+    r = app_client.get(
+        "/v1/routing/auto", headers={"Authorization": "Bearer test@fake"}
+    )
+    assert r.status_code == 200
+    body = r.json()
+    assert body["preferences"]["caller"] == "alice"
+    assert body["preferences"]["active"] is True
+    assert body["resolved"] == "fakefreeprov@fake-free-2"
+
+    r_anon = app_client.get("/v1/routing/auto")
+    assert r_anon.json()["preferences"] == {
+        "caller": None,
+        "active": False,
+        "avoided": 0,
+    }
+    assert r_anon.json()["resolved"] == "fakefreeprov@fake-free-1"
 
 
 def test_auto_free_listed_in_v1_models(app_client):
@@ -267,3 +404,61 @@ def test_auto_dead_upstream_falls_through_and_parks(app_client, monkeypatch):
         _FakeFreeProvider.dead_first = False
         routing._QuotaCooldown._parked = {}
         routing._QuotaCooldown._dead_parks = {}
+
+
+def test_health_models_endpoint_and_listing_block(app_client, monkeypatch, tmp_path):
+    """Health-Telemetrie E2E: nach echten Requests (fake provider) liefert
+    /v1/health/models die gerankte Index-Zeile, und /v1/models traegt den
+    kompakten health-Block am Katalog-Eintrag."""
+    from uniinfer.proxy_services import stats as stats_mod
+    from uniinfer.proxy_services.stats import StatsCollector
+
+    monkeypatch.setattr(stats_mod, "_SNAPSHOT_PATH", str(tmp_path / "stats.json"))
+    StatsCollector._instance = None
+    try:
+        # /v1/models listet aus dem models_router-eigenen Catalog-Import — für
+        # den listing-Teil auf den Fake-Katalog zeigen (die Routing-Fixture
+        # patcht nur das routing-Modul).
+        import uniinfer.proxy_routers.models as models_router
+
+        def _one_fake_model():
+            return [
+                {
+                    "id": "fakefreeprov@fake-free-1",
+                    "provider": "fakefreeprov",
+                    "type": "chat",
+                    "access": "free",
+                    "status": "active",
+                }
+            ]
+
+        monkeypatch.setattr(
+            models_router,
+            "Catalog",
+            lambda: type(
+                "C", (), {"list_resolved": staticmethod(_one_fake_model)}
+            )(),
+        )
+        for _ in range(3):
+            r = _post_chat(app_client, "fakefreeprov@fake-free-1")
+            assert r.status_code == 200, r.text
+
+        r = app_client.get("/v1/health/models")
+        assert r.status_code == 200, r.text
+        body = r.json()
+        assert body["object"] == "list"
+        row = next(x for x in body["data"] if x["model"] == "fakefreeprov@fake-free-1")
+        assert row["n_observed"] == 3
+        assert row["trust_tier"] == "cold"  # 3 < 20
+        assert row["insufficient_data"] is True
+        assert 0 < row["score"] < 1
+
+        r = app_client.get("/v1/models")
+        assert r.status_code == 200
+        entry = next(
+            m for m in r.json()["data"] if m["id"] == "fakefreeprov@fake-free-1"
+        )
+        assert entry["health"]["verdict"] in ("A", "B", "C", "D")
+        assert isinstance(entry["health"]["score"], float)
+    finally:
+        StatsCollector._instance = None

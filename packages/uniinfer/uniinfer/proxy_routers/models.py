@@ -136,6 +136,16 @@ def create_models_router(version: str) -> APIRouter:
         from uniinfer.proxy_services.router import virtual_model_entries
 
         models = models + virtual_model_entries()
+        try:
+            from uniinfer.proxy_services.health_index import health_map
+
+            hmap = health_map()
+            for m in models:
+                h = hmap.get(m.get("id", ""))
+                if h:
+                    m["health"] = h
+        except Exception:  # noqa: BLE001 — health must never break the listing
+            _logger.debug("health block attach failed", exc_info=True)
         if not show_all:
             models = [m for m in models if m.get("access") in ("free", "granted", "")]
         if provider:
@@ -151,6 +161,78 @@ def create_models_router(version: str) -> APIRouter:
             "data": models,
             "version": version,
         }
+
+    @router.get("/v1/health/models")
+    async def get_model_health(
+        provider: str | None = Query(
+            None, description="Filter by provider prefix (e.g. 'mistral')."
+        ),
+        min_n: int = Query(
+            0, ge=0, description="Only models with at least N observed requests."
+        ),
+        limit: int = Query(
+            50, ge=1, le=500, description="Max rows (ranked by score desc)."
+        ),
+    ):
+        """Per-model usability index (0..1) from logged request outcomes —
+        which models are actually usable, ranked.
+
+        Score = availability (Laplace-smoothed error rate; 429 counts half)
+        × latency (Apdex TTFT zones: <5s satisfied, <20s tolerating)
+        × trust (hot/warm/cold traffic confidence). Components are exposed so
+        a bad score is explainable; ``insufficient_data`` marks models with
+        too little traffic for a meaningful number. Read-only telemetry —
+        routing is not (yet) driven by it.
+        """
+        from uniinfer.proxy_services.health_index import health_snapshot
+
+        rows = health_snapshot()
+        if provider:
+            rows = [r for r in rows if r["model"].split("@", 1)[0] == provider]
+        if min_n:
+            rows = [r for r in rows if r["n_observed"] >= min_n]
+        return {"object": "list", "total": len(rows), "data": rows[:limit]}
+
+    @router.get("/v1/routing/auto")
+    async def get_routing_preview(
+        model: str = Query(
+            "auto@free",
+            description="Virtual auto model to preview (e.g. 'auto@free').",
+        ),
+        api_bearer_token: str | None = Depends(get_optional_proxy_token),
+    ):
+        """Dry-run auto-routing: which concrete model would this virtual model
+        serve on RIGHT NOW — without any upstream call or token cost.
+
+        Returns the chosen target + reason, the ordered fallback chain, the
+        filter breakdown (excluded/avoided/degraded/quota/parked) and the
+        active cooldowns. With an Authorization header the preview applies
+        THAT caller's personal preferences (routing_preferences.json) and
+        reports them in the ``preferences`` block. ``resolved: null`` means
+        the router currently has no usable candidate (the same state a real
+        request would answer with 503). Unknown selectors and non-auto
+        models are a 400.
+        """
+        import hashlib
+
+        from uniinfer.proxy_services.router import routing_preview
+
+        provider = model.split("@", 1)[0] if "@" in model else ""
+        if provider != "auto":
+            raise HTTPException(
+                status_code=400,
+                detail=f"'{model}' is not a virtual auto model — preview supports auto@<selector>.",
+            )
+        token_hash = (
+            hashlib.sha256(api_bearer_token.encode()).hexdigest()
+            if api_bearer_token
+            else None
+        )
+        try:
+            preview = routing_preview(model, token_hash=token_hash)
+        except ValueError as e:
+            raise HTTPException(status_code=400, detail=str(e))
+        return {"object": "routing", **preview}
 
     @router.get("/v1/providers")
     async def discover_providers():

@@ -83,6 +83,8 @@ def discovery_manifest(version: str) -> dict[str, Any]:
             "chat_completions": "/v1/chat/completions",
             "embeddings": "/v1/embeddings",
             "images": "/v1/images/generations",
+            "routing_preview": "/v1/routing/auto",
+            "model_health": "/v1/health/models",
             "openapi": "/openapi.json",
             "guide": "/guide.md",
             "health": "/health",

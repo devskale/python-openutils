@@ -8,6 +8,55 @@ adheres to [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- **Model-Usability-Index (`GET /v1/health/models`).** Eine Zahl (0..1) pro
+  Modell, beantwortet „wie benutzbar ist dieses Modell wirklich" aus den
+  geloggten Request-Outcomes — SOTA-gegroundet (Recherche 2026-10-24):
+  **Apdex**-TTFT-Zonen (satisfied <5s, tolerating <20s, frustrated darüber —
+  Zonen-Counter werden bereits beim Ingest in StatsCollector geschrieben),
+  **Laplace-Glättung** gegen das Low-Traffic-Problem (1/1 Erfolge = 0.67,
+  kein Traffic = neutral 0.5 statt fake 0/1), **429 zählt halb** (Rate-Limit
+  ist keine Unzuverlässigkeit — LiteLLM/OpenRouter-Konsens), und ein
+  **Confidence-Tier** (hot ≥20 req/1h = 1.0, warm ≥20/7d = 0.9, kalt = 0.5 +
+  `insufficient_data`). Ein vom ReliabilityMonitor als degraded markiertes
+  Modell wird auf halben Score gekappt (Incident outvotet geglättete
+  Counter). Alle Komponenten bleiben einzeln sichtbar
+  (availability/latency/trust/tier/n) — ein schlechter Score ist erklärbar;
+  Verdict-Buckets A ≥0.95 / B ≥0.85 / C ≥0.7 / D. `/v1/models`-Einträge
+  tragen einen kompakten `health: {score, verdict}`-Block (nur bei
+  beobachtetem Traffic). Read-only-Telemetrie v0 — Router-Ordering per Score
+  bleibt die separate v1-Entscheidung (docs/routing.md). Counter überleben
+  Restarts (persistiertes stats.json); alte Snapshots ohne die neuen Keys
+  laden als Nullen (Schema-Drift-sicher). Endpunkt in `/v1`-Discovery
+  verlinkt (`model_health`).
+
+- **Persönliche Routing-Präferenzen pro Caller (routing_preferences.json).**
+  `prefer`/`avoid` für Provider und Modelle, als Datei (Default
+  `~/.config/uniinfer/routing_preferences.json`, Env
+  `UNIINFER_ROUTING_PREFS_FILE`, mtime-hot-reload). Caller-Identifikation
+  über den Bearer: sha256 → Token-NAME via Auth-Token-Metadaten-Sidecar;
+  anonyme/unbekannte Token bekommen die `default`-Sektion, Token-Sektionen
+  addieren (Union) darauf. Semantik: `avoid` = harter persönlicher Filter mit
+  eigenem Skip-Grund `avoided` (gilt für die ganze Fallback-Kette; alles
+  vermieden → 503 mit `avoided: N`), `prefer` = Boost-Tier zwischen
+  Operator-Pin und weight (Pin bleibt darüber). Modell-Einträge matchen bare
+  + `provider@model`; Provider case-insensitiv; model-level avoid schlägt
+  provider-level prefer. Unbekannte Modell-Einträge warnen einmal pro
+  Datei-Revision (Typo-Schutz). Direkte Calls unberührt — steuert nur
+  Auto-Routing. `GET /v1/routing/auto` wendet mit Authorization-Header DIESE
+  Caller-Sicht an und berichtet `preferences: {caller, active, avoided}`.
+  Hermetisch getestet (test_routing_prefs.py + E2E mit zwei Callern).
+
+- **Routing-Preview `GET /v1/routing/auto`.** Trockene Sicht auf den
+  Auto-Router: welches konkrete Modell `auto@free` JETZT bedienen würde
+  (chosen + reason), die geordnete Fallback-Kette, der Filter-Breakdown
+  (excluded/degraded/quota/parked) und die aktiven Cooldowns (Rest-Sekunden
+  pro geparktem Modell + Dead-Park-Streaks) — ohne Upstream-Call und ohne
+  Token-Kosten. `resolved: null` berichtet einen unbenutzbaren Router (200
+  mit Grund statt 503); Nicht-Auto-Modelle/unbekannte Selektoren → 400. Ein
+  leerer Kandidaten-Pool zeigt den vollen Skipped-Breakdown (die Aufteilung
+  des Filter-Loops in `_rank_candidates` macht den Grund sichtbar, nicht nur
+  das Resultat). Endpoint ist in `/v1`-Discovery verlinkt.
+
 - **Leerstrom-Erkennung (Guard am Relay-Seam).** Upstreams, die unter Last
   SSE-Streams mit HTTP 200 und NULL Content beenden (vLLM instant-EOS,
   2026-10-22: Synthese-Payloads 52 kB endeten nach ~2 s leer — Clients
@@ -63,6 +112,14 @@ adheres to [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   (Katalog + direkte Calls unberührt); der Streak resettet bei erfolgreichen
   Requests; dead-upstream-Fälle fallen sofort auf den nächsten Kandidaten
   durch.
+
+### Changed
+
+- **`x-routed-model` auch auf Streaming-Antworten.** Der SSE-Pfad des Chat-
+  Routers schickte den Resolve bisher nur im Body (`chunk.model`) — der
+  Header existierte nur non-stream. Streaming-Clients (klark0
+  `/api/ai/uniinfer/stream`) können den Resolve jetzt header-seitig lesen,
+  bevor der erste Chunk ankommt.
 
 ## [0.8.61] - 2026-09-27
 

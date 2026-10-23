@@ -30,9 +30,26 @@ _DAILY_KEEP = 7 * _DAY         # 7d of daily buckets
 _SNAPSHOT_EVERY = 50           # persist after this many records
 _SNAPSHOT_PATH = os.path.join("logs", "stats.json")
 
+# Health-index zone thresholds (Apdex-style, recorded at ingest so the index
+# stays a cheap counter merge): satisfied TTFT below the first, tolerating
+# below the second (= 4T), frustrated above. Defaults from the Aqueduct
+# forensics (20-31s ttfb was the crawl-mode bad case).
+def _env_float_local(name: str, default: float) -> float:
+    try:
+        return float(os.getenv(name, ""))
+    except (TypeError, ValueError):
+        return default
+
+_TTFT_SATISFIED_MS = int(_env_float_local("UNIINFER_HEALTH_TTFT_SATISFIED_S", 5.0) * 1000)
+_TTFT_TOLERATING_MS = int(_env_float_local("UNIINFER_HEALTH_TTFT_TOLERATING_S", 20.0) * 1000)
+
 
 def _empty_counters() -> dict[str, int]:
-    return {"req": 0, "errors": 0, "prompt": 0, "completion": 0, "total": 0, "latency_sum": 0, "latency_n": 0, "ttft_sum": 0, "ttft_n": 0}
+    return {
+        "req": 0, "errors": 0, "soft_errors": 0, "prompt": 0, "completion": 0,
+        "total": 0, "latency_sum": 0, "latency_n": 0, "ttft_sum": 0, "ttft_n": 0,
+        "ttft_ok": 0, "ttft_slow": 0,
+    }
 
 
 def _merged_counters(v: Any) -> dict[str, int]:
@@ -103,10 +120,12 @@ class StatsCollector:
         self._status_daily[day][code] += 1
         self._status_total[code] += 1
 
+        is_soft = 1 if status == 429 else 0
         for store, key in ((self._hourly, hour), (self._daily, day)):
             c = store[key][provider_model]
             c["req"] += 1
             c["errors"] += is_error
+            c["soft_errors"] += is_soft
             c["prompt"] += prompt
             c["completion"] += completion
             c["total"] += total
@@ -116,10 +135,15 @@ class StatsCollector:
             if ttft is not None:
                 c["ttft_sum"] += ttft
                 c["ttft_n"] += 1
+                if ttft < _TTFT_SATISFIED_MS:
+                    c["ttft_ok"] += 1
+                elif ttft < _TTFT_TOLERATING_MS:
+                    c["ttft_slow"] += 1
 
         t = self._totals[provider_model]
         t["req"] += 1
         t["errors"] += is_error
+        t["soft_errors"] += is_soft
         t["prompt"] += prompt
         t["completion"] += completion
         t["total"] += total
@@ -129,6 +153,10 @@ class StatsCollector:
         if ttft is not None:
             t["ttft_sum"] += ttft
             t["ttft_n"] += 1
+            if ttft < _TTFT_SATISFIED_MS:
+                t["ttft_ok"] += 1
+            elif ttft < _TTFT_TOLERATING_MS:
+                t["ttft_slow"] += 1
 
         self._records_since_snapshot += 1
         if self._records_since_snapshot >= _SNAPSHOT_EVERY:
@@ -166,6 +194,29 @@ class StatsCollector:
             "status_total": dict(self._status_total),
         }
 
+    def merged_per_model(self, last_hours: float) -> dict[str, dict[str, int]]:
+        """Counters per model merged over the trailing window (for the health
+        index). ``last_hours`` <= 24 merges hourly buckets, else daily ones —
+        the collector has no finer resolution beyond that.
+        """
+        now = int(time.time())
+        self._prune(now)
+        if last_hours <= 24:
+            buckets = self._hourly
+            cutoff = now - int(last_hours * _HOUR)
+        else:
+            buckets = self._daily
+            cutoff = now - int(last_hours * _DAY)
+        out: dict[str, dict[str, int]] = {}
+        for ts in buckets:
+            if ts < cutoff:
+                continue
+            for model, c in buckets[ts].items():
+                agg = out.setdefault(model, _empty_counters())
+                for k, v in c.items():
+                    agg[k] = agg.get(k, 0) + v
+        return out
+
     # --- internals ---
 
     def _prune(self, now: int) -> None:
@@ -191,7 +242,7 @@ class StatsCollector:
             bucket_req = bucket_err = bucket_prompt = bucket_completion = bucket_total = 0
             for model, c in models.items():
                 agg = per_model[model]
-                for k in ("req", "errors", "prompt", "completion", "total", "latency_sum", "latency_n", "ttft_sum", "ttft_n"):
+                for k in ("req", "errors", "soft_errors", "prompt", "completion", "total", "latency_sum", "latency_n", "ttft_sum", "ttft_n", "ttft_ok", "ttft_slow"):
                     agg[k] += c[k]
                 bucket_req += c["req"]
                 bucket_err += c["errors"]
@@ -220,11 +271,12 @@ class StatsCollector:
                 "requests": c["req"],
                 "errors": c["errors"],
                 "error_rate": round(c["errors"] / c["req"], 4) if c["req"] else 0.0,
+                "soft_errors": c["soft_errors"],
                 "prompt_tokens": c["prompt"],
                 "completion_tokens": c["completion"],
                 "total_tokens": c["total"],
                 "avg_latency_ms": round(c["latency_sum"] / lat_n) if c["latency_n"] else 0,
-                "avg_ttft_ms": round(c["ttft_sum"] / c["ttft_n"]) if c["ttft_n"] else 0,
+                "avg_ttft_ms": round(c["ttft_sum"] / lat_n) if c["ttft_n"] else 0,
             })
         out.sort(key=lambda r: r["requests"], reverse=True)
         return out
