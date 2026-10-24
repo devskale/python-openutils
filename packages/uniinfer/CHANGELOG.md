@@ -8,6 +8,32 @@ adheres to [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- **Exploration für `auto@free` (optional, Default off).** `UNIINFER_AUTO_
+  EXPLORE=on|least-served|random` rotiert den "egal"-Pool (Plain-Tier) statt
+  immer denselben Kopf zu bedienen — least-served first (7d-Beobachtungs-
+  zähler, Random-Tiebreak) oder uniform random INNERHALB der Pool-Zone
+  (`UNIINFER_AUTO_EXPLORE_POOL`, Default 50 — die K am wenigsten beobachteten
+  Kandidaten; stark genutzte kehren nie in die Ziehung zurück). **Smart
+  Randomness / Cache-Schutz:** das Erkundungsziel wird pro Fenster gehalten
+  (`UNIINFER_AUTO_EXPLORE_HOLD_S`, Default 900s) — aufeinanderfolgende
+  Requests treffen dasselbe Modell, Provider-Prompt-Caches bleiben warm
+  (naive Per-Request-Rotation würde sie thrashen) und der Health-Index
+  bekommt kohärente Samples; Hold invalidiert sich selbst (Park/Degrade/
+  Exclude/avoid lässt das Ziel fallen). Pin + persönliches `prefer`
+  übersteuern Exploration, `avoid` filtert weiter; reason="explore" im
+  Journal, Preview zeigt `{mode, pool, held_s}` und setzt niemals einen Hold
+  (auch die Kettenkonstruktion nicht). Bogen: explore → measure → exploit
+  (v1-Score-Ordering löst least-served natürlich ab). Sicherheit für die
+  Erkundung: Stream-only-400er ("stream:true is required" / "stream:false is
+  not supported") klassifizieren jetzt als dead-upstream — Request fällt
+  durch die Kette, Modell parkt 1h + auto-excludet nach 3 Parks (direkte
+  Streaming-Calls unberührt). Tests: +13 (Hold/Stickiness, Rotation, Pool-
+  Bound, Pin/Prefer-übersteuern, Seiteneffekt-Freiheit, Marker, E2E).
+
+## [0.9.1] - 2026-10-24
+
+### Added
+
 - **Model-Usability-Index (`GET /v1/health/models`).** Eine Zahl (0..1) pro
   Modell, beantwortet „wie benutzbar ist dieses Modell wirklich" aus den
   geloggten Request-Outcomes — SOTA-gegroundet (Recherche 2026-10-24):

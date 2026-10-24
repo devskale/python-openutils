@@ -462,3 +462,22 @@ def test_health_models_endpoint_and_listing_block(app_client, monkeypatch, tmp_p
         assert isinstance(entry["health"]["score"], float)
     finally:
         StatsCollector._instance = None
+
+
+def test_explore_e2e_hold_visible_in_header_and_preview(app_client, monkeypatch):
+    """Explore-Mode E2E: env an -> auto@free exploriert (least-served), der
+    Hold haelt aufeinanderfolgende Requests auf demselben Ziel (Cache warm),
+    Preview zeigt den Explore-Zustand."""
+    monkeypatch.setenv("UNIINFER_AUTO_EXPLORE", "1")
+    monkeypatch.setenv("UNIINFER_AUTO_EXPLORE_HOLD_S", "600")
+    routing._ExploreHold.clear()
+    r1 = _post_chat(app_client, "auto@free")
+    assert r1.status_code == 200, r1.text
+    first = r1.headers.get("x-routed-model")
+    assert first  # irgendein free-Kandidat der Fake-Liste
+    r2 = _post_chat(app_client, "auto@free")
+    assert r2.headers.get("x-routed-model") == first  # sticky hold
+    preview = app_client.get("/v1/routing/auto").json()
+    assert preview["reason"] == "explore"
+    assert preview["explore"]["held_s"] > 0
+    assert preview["resolved"] == first

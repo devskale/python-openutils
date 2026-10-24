@@ -109,6 +109,43 @@ Semantics:
 `GET /v1/routing/auto` mit `Authorization`-Header zeigt DIESE Caller-Sicht:
 `preferences: {caller: "johann-cli", active: true, avoided: 14}`.
 
+## Exploration (optional): rotate the free pool, cache-friendly
+
+Default off. `UNIINFER_AUTO_EXPLORE` in the proxy env:
+
+| value | behavior |
+|---|---|
+| `off` (default) | deterministic v0 order (pin > prefer > weight > catalog) |
+| `on` / `least-served` | plain tier ordered by fewest observed requests (7d), random tiebreak |
+| `random` | uniform random pick WITHIN the pool zone (the K least-served — not the whole catalog) |
+
+Knobs:
+- `UNIINFER_AUTO_EXPLORE_POOL` (default 50) — the exploration zone = the K
+  least-observed candidates. Heavily-served models never re-enter the draw.
+- `UNIINFER_AUTO_EXPLORE_HOLD_S` (default 900) — **the cache knob**: the
+  exploration target is HELD for this window; consecutive requests reuse it
+  so provider prompt caches stay warm (`cached_tokens` climbs instead of
+  thrashing) and the health index gets coherent per-model samples. `0` =
+  per-request rotation (cache-hostile, discouraged).
+
+Why smart instead of naive-random: per-request uniform rotation over ~250
+free models means every request starts with a cold prompt cache AND deep
+catalog junk gets the same weight as good models. Least-served-first gives
+full coverage over time (every model eventually observed → the health index
+fills); pins and personal `prefer` still outrank exploration; `avoid` still
+filters. The arc: explore → measure → exploit (v1 score ordering replaces
+least-served naturally — well-tested models lose the exploration bonus).
+
+Exploration safety: stream-only upstreams answering 400 ("stream:true is
+required") classify as dead-upstream — the request falls through the chain,
+the model parks (1h) and auto-excludes from routing after 3 parks. Direct
+streaming calls to it keep working.
+
+Read-only views never mutate the hold: `GET /v1/routing/auto` follows (but
+doesn't set) it and reports `explore: {mode, pool, held_s}`; the fallback-
+chain construction likewise. The `[auto-route]` journal line shows
+`reason=explore`.
+
 ## Operator controls (the existing override seam)
 
 `model_overrides.json` (or `PUT /v1/models/overrides/{model_id}`) gains three

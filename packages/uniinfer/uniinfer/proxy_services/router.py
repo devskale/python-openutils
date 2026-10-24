@@ -12,12 +12,22 @@ Candidate set: active free models from the catalog (``models.json`` via
 3. provider quota pressure — provider utilization vs its documented free-tier
    limits (from ``provider_limits.json`` + live stats), skip when >= 80%
 
-Ordering (v0, deterministic, no scoring): pinned models first
-(operator ``pin: true``), then personally preferred models (per-caller
-``prefer``, routing_preferences.json), then operator ``weight`` (default 1.0,
-higher first), then catalog order as the stable tiebreak. The full ordered
-candidate list is returned so the caller can fall through on failure
-(non-streaming path).
+Ordering (v0): pinned models first (operator ``pin: true``), then personally
+preferred models (per-caller ``prefer``, routing_preferences.json), then
+operator ``weight`` (default 1.0, higher first), then catalog order as the
+stable tiebreak. The full ordered candidate list is returned so the caller
+can fall through on failure (non-streaming path).
+
+Exploration (optional, env): with no pin/prefer deciding, the plain tier can
+EXPLORE instead of always serving the same head — least-served first (models
+with the fewest observed requests, random tiebreak) or uniform random,
+bounded to a pool of K least-served candidates. SMART randomness: the
+exploration target is HELD for a window (``UNIINFER_AUTO_EXPLORE_HOLD_S``)
+so consecutive requests reuse the same model — provider prompt caches stay
+warm (cache thrash is the failure mode of naive per-request rotation) and
+the health index gets coherent samples; the hold releases on expiry, park,
+or filter drop. The arc: explore → measure (health index fills) → exploit
+(v1 score ordering supersedes least-served naturally).
 
 Personal preferences (``avoid`` filter, ``prefer`` boost) resolve per caller:
 the request bearer's sha256 maps to a token NAME via the auth-token metadata
@@ -32,6 +42,7 @@ resolution for logging/auditing.
 from __future__ import annotations
 
 import logging
+import random
 import threading
 import time
 from typing import ClassVar
@@ -60,7 +71,140 @@ _DEAD_COOLDOWN_S = 60 * 60
 _DEAD_PARKS_TO_DEPRECATE = 3
 
 # Substrings marking an upstream answer as "model gone" (not quota, not flaky).
-_DEAD_MARKERS = ("model is unavailable", "model not found", "does not exist")
+_DEAD_MARKERS = (
+    "model is unavailable",
+    "model not found",
+    "does not exist",
+    # Stream-only upstreams answering non-streaming requests: not flaky, not
+    # quota — this model will 400 the same way every time. Dead for ROUTING
+    # (park + auto-exclude); direct streaming calls keep working.
+    "stream:true is required",
+    "stream:false is not supported",
+)
+
+
+# ── exploration (optional): rotate the free pool, cache-friendly ────────
+
+def _explore_cfg() -> dict:
+    """UNIINFER_AUTO_EXPLORE=off|on|least-served|random (+_POOL, +_HOLD_S).
+
+    off is the default (deterministic v0 behavior); on/least-served orders
+    the plain tier by fewest observed requests (random tiebreak), random
+    shuffles it. POOL bounds the exploration zone to the K least-served
+    candidates; HOLD_S is the sticky window per exploration target — the
+    cache-friendliness knob (per-request rotation thrashes provider prompt
+    caches; a held target warms them).
+    """
+    import os
+
+    raw = (os.getenv("UNIINFER_AUTO_EXPLORE", "") or "").strip().lower()
+    if raw == "random":
+        mode = "random"
+    elif raw in {"on", "1", "true", "yes", "least-served"}:
+        mode = "least-served"
+    else:
+        mode = "off"
+
+    def _int_env(name: str, default: int) -> int:
+        try:
+            return int(os.getenv(name, "") or default)
+        except ValueError:
+            return default
+
+    def _float_env(name: str, default: float) -> float:
+        try:
+            return float(os.getenv(name, "") or default)
+        except ValueError:
+            return default
+
+    return {
+        "mode": mode,
+        "pool": max(1, _int_env("UNIINFER_AUTO_EXPLORE_POOL", 50)),
+        "hold_s": max(0.0, _float_env("UNIINFER_AUTO_EXPLORE_HOLD_S", 900.0)),
+    }
+
+
+class _ExploreHold:
+    """The current exploration target per selector, held for a window.
+
+    Holding (instead of per-request rotation) keeps provider prompt caches
+    warm and gives the health index coherent per-model samples. A hold
+    invalidates itself: the resolver only honors it while the model is still
+    in the filtered candidate list (parked/degraded/excluded/avoided drops
+    it, and the next resolve picks fresh). In-memory; a restart re-arms from
+    the least-served counters.
+    """
+
+    _state: ClassVar[dict[str, tuple[str, float]]] = {}
+    _lock: ClassVar[threading.Lock] = threading.Lock()
+
+    @classmethod
+    def get(cls, selector: str) -> tuple[str, float] | None:
+        now = time.monotonic()
+        with cls._lock:
+            held = cls._state.get(selector)
+            if held and held[1] > now:
+                return held
+            if held:
+                del cls._state[selector]
+            return None
+
+    @classmethod
+    def set(cls, selector: str, model_id: str, hold_s: float) -> None:
+        with cls._lock:
+            cls._state[selector] = (model_id, time.monotonic() + max(0.0, hold_s))
+
+    @classmethod
+    def clear(cls) -> None:
+        with cls._lock:
+            cls._state.clear()
+
+
+def _observed_counts() -> dict[str, int]:
+    """Requests per model over the trailing 7d (the exploration signal)."""
+    try:
+        from uniinfer.proxy_services.stats import get_stats
+
+        return {
+            mid: c.get("req", 0)
+            for mid, c in get_stats().merged_per_model(24 * 7).items()
+        }
+    except Exception as e:  # noqa: BLE001 — explore degrades to ties, never fails
+        logger.debug("stats unavailable for exploration: %s", e)
+        return {}
+
+
+def _explore_order(
+    selector: str, order: list[dict], cfg: dict, *, set_hold: bool = True
+) -> tuple[list[dict], dict]:
+    """Reorder the plain tier for exploration; returns (order, explore_meta).
+
+    A live hold wins (sticky target); otherwise the zone head is picked per
+    mode — least-served (n asc, random tiebreak) or random shuffle — bounded
+    to the K-entry pool zone, and (optionally) held. ``set_hold=False`` for
+    read-only callers (preview, fallback-chain construction): they follow
+    the hold but never replace it.
+    """
+    ids = {m["id"] for m in order}
+    held = _ExploreHold.get(selector)
+    if held and held[0] in ids:
+        head = next(m for m in order if m["id"] == held[0])
+        meta = {"mode": cfg["mode"], "pool": cfg["pool"], "held_s": round(held[1] - time.monotonic(), 1)}
+        return [head] + [m for m in order if m["id"] != held[0]], meta
+
+    counts = _observed_counts()
+    # Zone selection is ALWAYS least-served (the pool = the K least-observed
+    # candidates — random mode randomizes WITHIN that zone, not across the
+    # whole catalog, or heavily-served models would re-enter the draw).
+    ordered = sorted(order, key=lambda m: (counts.get(m["id"], 0), random.random()))
+    if cfg["mode"] == "random":
+        zone = ordered[: cfg["pool"]]
+        random.shuffle(zone)
+        ordered = zone + ordered[cfg["pool"] :]
+    if set_hold and cfg["hold_s"] > 0 and ordered:
+        _ExploreHold.set(selector, ordered[0]["id"], cfg["hold_s"])
+    meta = {"mode": cfg["mode"], "pool": cfg["pool"], "hold_s": cfg["hold_s"]}
+    return ordered, meta
 
 
 class _QuotaCooldown:
@@ -624,12 +768,14 @@ def resolve_auto(
     *,
     token_hash: str | None = None,
     log_decision: bool = True,
+    apply_hold: bool = True,
 ) -> tuple[str, dict] | None:
     """Resolve ``auto@<selector>`` to a concrete ``provider@model``.
 
     Returns (resolved_id, meta) with meta = {selector, candidates, skipped,
-    chosen, reason}, or None if the input is not an auto model (pass-through)
-    or no candidate survives the filters (caller decides the error).
+    chosen, reason, explore?}, or None if the input is not an auto model
+    (pass-through) or no candidate survives the filters (caller decides the
+    error).
 
     ``token_hash`` (sha256 of the request bearer) applies that caller's
     personal prefer/avoid from routing_preferences.json — None or an unknown
@@ -639,6 +785,9 @@ def resolve_auto(
     callers that resolve without serving traffic (routing preview, fallback-
     chain construction after an already-logged decision): the journal's
     routing lines must stay attributable to real request decisions.
+
+    ``apply_hold=False``: follow (but never set) the exploration hold — the
+    read-only callers' side-effect-free view.
     """
     if "@" not in provider_model:
         return None
@@ -655,16 +804,27 @@ def resolve_auto(
         return None
 
     ranked.sort(key=lambda t: (-t[0], -t[1], t[2]))
-    chosen = ranked[0][3]
+    order = [t[3] for t in ranked]
     reason = {2: "pin", 1: "prefer", 0: "weight"}[ranked[0][0]]
+    explore_meta = None
+    if ranked[0][0] == 0:
+        ecfg = _explore_cfg()
+        if ecfg["mode"] != "off":
+            order, explore_meta = _explore_order(
+                selector, order, ecfg, set_hold=apply_hold
+            )
+            reason = "explore"
+    chosen = order[0]
     meta = {
         "selector": selector,
         "candidates": len(ranked),
         "skipped": {k: len(v) for k, v in skipped.items()},
         "chosen": chosen["id"],
         "reason": reason,
-        "fallbacks": [t[3]["id"] for t in ranked[1:]],
+        "fallbacks": [m["id"] for m in order[1:]],
     }
+    if explore_meta is not None:
+        meta["explore"] = explore_meta
     if log_decision:
         logger.info(
             "[auto-route] %s -> %s (%s; %d candidates, skipped: %s)",
@@ -688,7 +848,7 @@ def resolve_auto_candidates(
     same personal preferences as the head choice.
     """
     resolved = resolve_auto(
-        provider_model, token_hash=token_hash, log_decision=False
+        provider_model, token_hash=token_hash, log_decision=False, apply_hold=False
     )
     if resolved is None:
         return []
@@ -711,7 +871,10 @@ def routing_preview(
     """
     personal = effective_prefs(token_hash)
     resolved = resolve_auto(
-        provider_model, token_hash=token_hash, log_decision=False
+        provider_model,
+        token_hash=token_hash,
+        log_decision=False,
+        apply_hold=False,
     )
     preview = {
         "model": provider_model,
@@ -720,6 +883,8 @@ def routing_preview(
         "candidates": resolved[1].get("candidates", 0) if resolved else 0,
         "skipped": resolved[1].get("skipped", {}) if resolved else {},
         "fallbacks": resolved[1].get("fallbacks", []) if resolved else [],
+        "explore": (resolved[1].get("explore") if resolved else None)
+        or _explore_cfg()["mode"],
         "parked": _QuotaCooldown.snapshot(),
         "dead_parks": _QuotaCooldown.dead_parks_snapshot(),
         "preferences": {
