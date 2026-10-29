@@ -137,12 +137,14 @@ def test_legacy_sampling_keys_stripped_and_warned(monkeypatch, tmp_path, caplog)
         r = config.resolve_model()
     assert r.temperature == 0.7      # catalog, not legacy 0.99
     assert r.max_tokens == 10000     # catalog, not legacy 64000 (the audit drift)
-    # Katalog-Backup-Kette (seit 2026-10-22: Aqueduct zuerst, dann Gemini),
-    # nicht der gestrippte legacy-backup tu@legacy
-    assert [str(b) for b in r.backups] == [
-        "tu@qwen-3.6-35b-vllm",
-        "gemini@models/gemini-flash-lite-latest",
+    # Katalog-Backup-Kette gewinnt über den gestrippten legacy-backup —
+    # Erwartung aus der Registry ABGELEITET (never-hardcode-Regel), nicht
+    # dupliziert: exakt _load_registry().default.backups in Katalog-Reihenfolge.
+    from llminvoke.config import _load_registry
+    expected_chain = [
+        str(config.ModelRef.parse(s)) for s in _load_registry()["default"]["backups"]
     ]
+    assert [str(b) for b in r.backups] == expected_chain
     assert "sampling keys ignored" in caplog.text
     assert "default.max_tokens" in caplog.text
     assert "packages.klark0.tasks.chat.temperature" in caplog.text

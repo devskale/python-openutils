@@ -148,8 +148,14 @@ default:
     # 2026-10-22: Aqueduct erster Backup (invers — DGX-Primary, Aqueduct faengt,
     # inkl. des bekannten DGX-Synthese-Leerfalls).
     - tu@qwen-3.6-35b-vllm
+    # 2026-10-30 (User): tu@qwen-3.8-27b als zweites Backup-Glied — Kette
+    # hab → vllm → 3.8-27b (beide Aqueduct-Karten), bevor der einzige
+    # Cross-Provider-Anker kommt.
+    - tu@qwen-3.8-27b
     # 2026-09-24: cross-provider-backup gemini-flash (flash-lite zuverlaessig,
-    # volle flash-generation 503-anfaellig). Alias = auto-aktuell.
+    # volle flash-generation 503-anfaellig). Alias = auto-aktuell. Bleibt
+    # bewusst SCHLUSSGLIED: faengt den Fall, in dem DGX+Aqueduct gemeinsam
+    # liegen (gleiche Ausfall-Domäne der beiden TU-Karten davor).
     - gemini@models/gemini-flash-lite-latest
   temperature: 0.7
   max_tokens: 10000
