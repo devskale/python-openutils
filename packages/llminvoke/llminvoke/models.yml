@@ -18,6 +18,9 @@ providers:
   tu:
     dsgvo: true
     description: "TU Aqueduct — DSGVO-konform, einzige erlaubte Quelle für sensible Vergabedaten"
+  hab:
+    dsgvo: true
+    description: "HAB (DGX lokal, amd:18020, via uniinfer-Proxy hab) — eigene Infrastruktur, DSGVO-konform; Production-Default seit 2026-10-22. Registry-Eintrag 2026-10-30: fehlte — DSGVO-Filter für Backups hätte hab-Karten fälschlich gedroppt"
   wwhb:
     dsgvo: true
     description: "wwhb — DSGVO-konform (incoming)"
@@ -53,6 +56,11 @@ models:
     max_output_tokens: 32768
     supports_thinking: true
     description: "Qwen 3.8 27B via TU Aqueduct — live verifiziert 2026-10-21 (Completion, Streaming 78 chunks, enable_thinking an/aus)"
+  tu@glm-5.3-744b-experimental:
+    context_window: 131072
+    max_output_tokens: 32768
+    supports_thinking: true
+    description: "GLM 5.3 744B via TU Aqueduct (experimental) — GROSSMODELL für AAB-Reviews/offene Dokumente (User 2026-10-30). uniinfer: active/fresh, health B (0.901), tool_call verifiziert. DSGVO via tu-Provider."
   hab@qwen3.6-35b:
     context_window: 131072
     max_output_tokens: 32768
@@ -148,15 +156,12 @@ default:
     # 2026-10-22: Aqueduct erster Backup (invers — DGX-Primary, Aqueduct faengt,
     # inkl. des bekannten DGX-Synthese-Leerfalls).
     - tu@qwen-3.6-35b-vllm
-    # 2026-10-30 (User): tu@qwen-3.8-27b als zweites Backup-Glied — Kette
-    # hab → vllm → 3.8-27b (beide Aqueduct-Karten), bevor der einzige
-    # Cross-Provider-Anker kommt.
+    # 2026-10-30 (User): Kette hab → vllm → 3.8-27b (beide Aqueduct-Karten).
     - tu@qwen-3.8-27b
-    # 2026-09-24: cross-provider-backup gemini-flash (flash-lite zuverlaessig,
-    # volle flash-generation 503-anfaellig). Alias = auto-aktuell. Bleibt
-    # bewusst SCHLUSSGLIED: faengt den Fall, in dem DGX+Aqueduct gemeinsam
-    # liegen (gleiche Ausfall-Domäne der beiden TU-Karten davor).
-    - gemini@models/gemini-flash-lite-latest
+    # 2026-10-30 (User): gemini-flash-lite ENTFERNT — nicht DSGVO-konform;
+    # Gemini darf nur offene Doks sehen (AAB/FB-Auszug), nie als genereller
+    # Backup (könnte Bieter-Unterlagen empfangen). Cross-Provider-Anchor
+    # bewusst geopfert; Gemini bleibt im Katalog für offene-Dok-Tasks.
   temperature: 0.7
   max_tokens: 10000
   retry:
@@ -189,9 +194,16 @@ packages:
     temperature: 0.7
     tasks:
       kriterien:
-        model: hab@qwen3.6-35b  # 2026-10-22 Default-Wechsel (397b parkt weiter)
+        # 2026-10-30 (User): GLM 5.3 744B als Grossmodell für den AAB-Review
+        # (offene Dokumente). Zuvor hab@qwen3.6-35b (2026-10-22, 397b parkte).
+        model: tu@glm-5.3-744b-experimental
         max_tokens: 32768
   agentos:
+    # 2026-10-30 (User): Vergabedaten-Default — agentos verarbeitet Bieter-
+    # Unterlagen; die Backup-Kette wird auf DSGVO-Provider gefiltert (Gemini &
+    # Co. fallen selbst heraus, falls jemand sie später wieder in defaults
+    # aufnimmt). Offene-Dok-Tasks (AAB/FB) können das pro Task lockern.
+    dsgvo_required: true
     temperature: 0.7
     max_tokens: 10000
     tasks:
@@ -205,9 +217,10 @@ packages:
       stepRetrieve: {temperature: 0.2, request_kwargs: {chat_template_kwargs: {enable_thinking: false}}}
       precheck: {temperature: 0, request_kwargs: {chat_template_kwargs: {enable_thinking: false}}}
       stepDateExtract: {temperature: 0, request_kwargs: {chat_template_kwargs: {enable_thinking: false}}}
-      # AAB-Anforderungs-Extraktion (FAP gather): strukturierte Feld-Extraktion
-      # aus der AAB, keine Interpretation — thinking OFF (Vorfall: 97.7s mit ON).
-      stepAabExtract: {temperature: 0.2, request_kwargs: {chat_template_kwargs: {enable_thinking: false}}}
+      # AAB-Anforderungs-Extraktion (FAP gather) — 2026-10-30 (User): GLM 5.3
+      # 744B als Grossmodell für AAB-Reviews (offene Dokumente). temperature/
+      # nothink-Profile bleiben; bei Review-Qualität-Mangel thinking ON erwägen.
+      stepAabExtract: {temperature: 0.2, model: tu@glm-5.3-744b-experimental, request_kwargs: {chat_template_kwargs: {enable_thinking: false}}}
       stepLoopFactsheet: {temperature: 0, request_kwargs: {chat_template_kwargs: {enable_thinking: false}}}
       # Orchestrator per-doc assessment — nothink. The per-doc call is a
       # structured classification (does THIS doc cover the criterion?) not deep
