@@ -430,13 +430,35 @@ def call_llm(
     return ""  # entire chain exhausted
 
 
+def _stamp_usage_details_flat(usage: dict) -> dict:
+    """Provider-Usage-Details FLACH aufstempeln: ``cached_tokens`` (in) +
+    ``reasoning_tokens`` — DER eine Normalisierer an der Invocation-Seam.
+
+    OpenAI-/vLLM-kompatible Endpunkte (Aqueduct, DGX) melden die Details nur
+    VERSCHACHTELT: ``prompt_tokens_details.cached_tokens`` (wie viel vom
+    Prompt kam aus dem Prefix-Cache) und ``completion_tokens_details.
+    reasoning_tokens`` (Denk-Tokens). Konsumenten wollen in/out/cached-in
+    FLACH lesen (agentos TokenTracker → llm-Block in der Kriterien-History)
+    — bisher warf jede Schicht sie still weg. Bereits flache Keys gewinnen,
+    die rohen Felder bleiben unangetastet, das Dict wird kopiert (nie mutiert).
+    """
+    ptd = usage.get("prompt_tokens_details")
+    ctd = usage.get("completion_tokens_details")
+    flat: dict = {}
+    if not usage.get("cached_tokens") and isinstance(ptd, dict) and ptd.get("cached_tokens"):
+        flat["cached_tokens"] = int(ptd["cached_tokens"])
+    if not usage.get("reasoning_tokens") and isinstance(ctd, dict) and ctd.get("reasoning_tokens"):
+        flat["reasoning_tokens"] = int(ctd["reasoning_tokens"])
+    return {**usage, **flat} if flat else usage
+
+
 def _extract_usage(response: object) -> dict | None:
     """Best-effort usage extraction from a raw response."""
     if response is None:
         return None
     usage = getattr(response, "usage", None)
     if isinstance(usage, dict):
-        return usage
+        return _stamp_usage_details_flat(usage)
     return None
 
 
@@ -742,11 +764,12 @@ def _chunk_events(chunk):
     if isinstance(c, str) and c:
         yield ("content", c)
     # Terminaler Usage-Chunk: choices leer, usage gefüllt → als Event durchreichen
+    # (Details flach aufgestempelt — in/out/cached-in, siehe _stamp_usage_details_flat)
     u = getattr(chunk, "usage", None)
     if u:
         d = u if isinstance(u, dict) else (u.model_dump() if hasattr(u, "model_dump") else dict(u))
         if d:
-            yield ("usage", d)
+            yield ("usage", _stamp_usage_details_flat(d))
 
 
 def iter_llm_events(
