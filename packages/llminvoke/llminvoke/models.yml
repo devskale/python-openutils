@@ -65,7 +65,7 @@ models:
     context_window: 131072
     max_output_tokens: 32768
     supports_thinking: true
-    description: "Qwen 3.6 35B A3B auf DGX lokal (vLLM NVFP4, amd:18020) via uniinfer-Proxy hab — PRODUCTION-DEFAULT seit 2026-10-22 (Messreihe: ttfb ~40x schneller als Aqueduct; bekannt: ein Synthese-Prompt lief 5x leer → Aqueduct-Backup)"
+    description: "Qwen 3.6 35B A3B auf DGX lokal (vLLM NVFP4, amd:18020) via uniinfer-Proxy hab — PRODUCTION-DEFAULT seit 2026-10-22 (Messreihe: ttfb ~40x schneller als Aqueduct; bekannt: ein Synthese-Prompt lief 5x leer → Aqueduct-Backup). Tool-Call VERIFIZIERT 2026-10-30 (DGX qwen3_xml-Parser, voller uniinfer-Pfad, auch enable_thinking:false) — ABER: im PA-React-Agent-Kontext ruft das Modell die Tools nicht freiwillig (E_BERUFL_001: 33s-Läufe ohne Tool-Runde vs. tu-3.8 mit recht_lesen+GISA) — Verhaltensfrage, kein Infra-Defekt."
   tu@qwen-3.6-30b:
     context_window: 131072
     supports_thinking: true
