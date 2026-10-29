@@ -178,6 +178,13 @@ packages:
   pdf2md:
     temperature: 0.2
     max_tokens: 4096
+    tasks:
+      # VLM-Aufrufe (polish/nail-auto-rescue/signatures-VLM) laufen über die
+      # API (vLLM-Endpunkt hab=DGX) — kein lokales Binary. Visuelles Lesen
+      # der Seitenbilder: Qwen3.6-35B (User 2026-10-30).
+      vlm:
+        model: hab@qwen3.6-35b
+        max_tokens: 8192  # ganzseitige VLM-Neuschreibungen (polish) — 4k clippt dichte Scan-Seiten
   md2blank:
     # (2026-10-09) war DOPPELT in dieser Datei — YAML last-wins hatte die
     # tasks fnamer/blank still verworfen; zusammengeführt (einziger Block jetzt).
