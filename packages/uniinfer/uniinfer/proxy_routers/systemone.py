@@ -3,7 +3,7 @@
 ``POST /v1/systemone`` leitet an Instanz-Aliase weiter, dialekt-agnostisch:
 
 - **decision** (``{"model", "state", "questions"}`` → ``{answers}``):
-  jev, clef, d3-mini (dgx), …
+  jev, clef, d1-2B (dgx), …
 - **extraction** (``{"model", "state", "fields"}`` → typisierte Feldwerte
   mit Confidence): clairic, … — Forward-Pass, keine Output-Tokens.
 

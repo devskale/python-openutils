@@ -42,7 +42,7 @@ reviews. Keep this current when concepts are named or sharpened.
   über `state` liefert typisierte Antworten, keine freie Textgenerierung.
   Zwei Dialekte (Eigenschaft des MODELLS, deklariert in
   `models/type_overrides.json`): **decision** (`{state, questions}` →
-  `{answers}` mit Wahrscheinlichkeiten; jev, clef, d3-mini) und
+  `{answers}` mit Wahrscheinlichkeiten; jev, clef, d1-2B) und
   **extraction** (`{state, fields}` → typisierte Werte + Confidence;
   clairic). Ein Endpoint (`/v1/systemone`), Transport = Instanz-Eigenschaft:
   `base_url` → nativer 1:1-Forward, ohne → chat-wrap (nur decision).

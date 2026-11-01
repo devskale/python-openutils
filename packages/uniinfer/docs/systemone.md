@@ -10,7 +10,7 @@ Beispiele, kein Duplikat der Logik).
 
 | Dialekt | Payload | Antwort | Modelle |
 |---|---|---|---|
-| **decision** | `{model, state, questions}` | `{answers}` — choice/noul/score + Wahrscheinlichkeiten | jev, clef-Familie, d3-mini (dgx) |
+| **decision** | `{model, state, questions}` | `{answers}` — choice/noul/score + Wahrscheinlichkeiten | jev, clef-Familie, d1-2B (dgx) |
 | **extraction** | `{model, state, fields}` | typisierte Feldwerte + Confidence + Verteilungsstatistik | clairic (CF) |
 
 Dialekt-Erkennung: **Katalog-Typ ist Autorität** (`type_overrides.json`,
@@ -32,18 +32,18 @@ Tokens, chat-wrap ist physikalisch unmöglich) — nicht 502.
 
 | Wert | URL | Nutzung |
 |---|---|---|
-| `null` (Default) | `{base}/systemone` | native vLLM/jev-Endpoints (hab/d3-mini) |
+| `null` (Default) | `{base}/systemone` | native Endpoints (hab → d1-2B auf dgx) |
 | `""` | `{base}` AS-IS | Instanz-pro-Modell mit vollständiger Run-URL (clef, clef-flash, clef-omni) |
 | `"/{model}"` | `{base}/{bare_model}` | **Instanz-pro-Endpoint** für Familien: `cfrun` bedient JEDES CF-System-One-Modell |
 
 ## Beispiele
 
-**Decision (d3-mini auf dgx):**
+**Decision (d1-2B auf dgx, via `hab`):**
 
 ```bash
 curl -X POST .../v1/systemone -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" -d '{
-    "model": "d3mini@vllm-sr/d3-mini",
+    "model": "hab@LiquidAI/d1-2B",
     "state": "Meine Karte wurde zweimal belastet.",
     "questions": {"team": {"type": "choice", "instructions": "Welches Team?",
                            "criteria": {"billing": "Zahlungen", "versand": "Lieferungen"}}}}'
