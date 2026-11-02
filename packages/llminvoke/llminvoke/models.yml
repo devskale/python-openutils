@@ -203,8 +203,14 @@ packages:
       kriterien:
         # 2026-10-30 (User): GLM 5.3 744B als Grossmodell für den AAB-Review
         # (offene Dokumente). Zuvor hab@qwen3.6-35b (2026-10-22, 397b parkte).
+        # 2026-11-02: nothink — GLM verbrannte completion-tokens im Reasoning
+        # (content: None, reasoning_tokens gefüllt) → Extraktion leer/Fallback.
+        # Kriterien-Extraktion ist strukturierte JSON-Arbeit (wie stepAabExtract).
         model: tu@glm-5.3-744b-experimental
         max_tokens: 32768
+        request_kwargs:
+          chat_template_kwargs:
+            enable_thinking: false
   agentos:
     # 2026-10-30 (User): Vergabedaten-Default — agentos verarbeitet Bieter-
     # Unterlagen; die Backup-Kette wird auf DSGVO-Provider gefiltert (Gemini &
