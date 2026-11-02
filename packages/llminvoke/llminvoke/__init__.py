@@ -636,9 +636,16 @@ def _start_stream(
             # (TU-Aqueduct), umgeht den uniinfer-Proxy (der das reasoning
             # normalisiert + routed) und denkt still ohne reasoning-Events.
             prov = create_provider(ref.provider, base_url=cfg.base_url, api_key=cfg.bearer)
-            # Gateway-Route: das Model-id-Format ist provider@model (der Proxy
-            # routet per Prefix). Ohne Prefix -> 422 'Invalid model format'.
-            _model_id = ref.model if "@" in ref.model else f"{ref.provider}@{ref.model}"
+            # Model-id je Route (live 2026-11-02): NUR der uniinfer-Gateway
+            # (expliziter cfg.base_url) routet per provider@model-Präfix.
+            # Direkter Provider-Call (base_url None → Provider-Default, z.B.
+            # TU-Aqueduct) braucht das BARE model — aqueduct 400t auf
+            # 'tu@glm-…' („no healthy deployments"), stream starb leer und
+            # die Kette fiel auf hab-qwen zurück (strukt2meta-Vorfall).
+            if cfg.base_url:
+                _model_id = ref.model if "@" in ref.model else f"{ref.provider}@{ref.model}"
+            else:
+                _model_id = ref.model
             request = ChatCompletionRequest(
                 messages=msgs,
                 model=_model_id,
