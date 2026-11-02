@@ -804,6 +804,27 @@ class TUProvider(ChatProvider):
         if ctk:
             payload["chat_template_kwargs"] = ctk
 
+        # GLM-5.x auf Aqueduct honoriert KEINEN der beiden Knobs (live
+        # 2026-11-02: enable_thinking/thinking=false gesetzt — Reasoning
+        # streamt trotzdem; strukt2meta-Kriterien-Extraktion starb an
+        # „Kette leer", weil Content erst nach 60s+ Reasoning kommt). Der
+        # GLM-Chat-Template-Soft-Switch '/nothink' in der ersten User-
+        # Message wirkt (0,8s TTFT, Content sofort, live verifiziert).
+        # Nur zusätzlich gepinnt — die Knobs bleiben für die Familien,
+        # die sie lesen (qwen/deepseek).
+        _reasoning_off = request.reasoning_effort in REASONING_OFF or any(
+            ctk.get(k) is False for k in self._THINKING_OFF_KNOBS
+        )
+        if _reasoning_off and str(request.model or "").lower().startswith("glm-5"):
+            for i, m in enumerate(payload["messages"]):
+                if m.get("role") == "user":
+                    if not str(m.get("content", "")).lstrip().startswith("/nothink"):
+                        payload["messages"][i] = {
+                            **m,
+                            "content": "/nothink\n" + str(m.get("content", "")),
+                        }
+                    break
+
         # OpenAI passthrough: forward unmapped OpenAI params (top_p,
         # response_format, seed, stream_options, logprobs, …) verbatim so new
         # OpenAI features reach vLLM without a per-field code change. Critically
