@@ -620,13 +620,25 @@ class TUProvider(ChatProvider):
         # that case in TU_STREAM_OPEN_TIMEOUT seconds instead of the client's 300s
         # streaming budget. The injected/retry client reuses its own pool timeout.
         base_t = getattr(client, "timeout", None)
+        # Modell-abhängiger Open-Timeout (live 2026-11-02): Grossmodelle
+        # (glm-5.x, 744B) brauchen auf GROSSen Prompts (strukt2meta-Kriterien:
+        # Template + komplette AAB, ~50k Tokens) länger als 90s PREFILL, ehe
+        # die ersten Headers kommen — der 90s-Wedged-Schutz fällte sie
+        # fälschlich und die Kette fiel auf hab-qwen (SOLL-Vertrag stirbt).
+        # Kleinmodelle behalten 90s (wedged replica wird weiterhin schnell
+        # erkannt); Grossmodell-Budget separat per Env überschreibbar.
+        _open_budget = (
+            _env_float("TU_STREAM_OPEN_TIMEOUT_BIG", 300.0)
+            if str(model).lower().startswith("glm-5")
+            else TU_STREAM_OPEN_TIMEOUT
+        )
         if isinstance(base_t, httpx.Timeout):
             open_timeout = httpx.Timeout(
-                connect=base_t.connect, read=TU_STREAM_OPEN_TIMEOUT,
+                connect=base_t.connect, read=_open_budget,
                 write=base_t.write, pool=base_t.pool,
             )
         else:
-            open_timeout = httpx.Timeout(TU_STREAM_OPEN_TIMEOUT, connect=30.0)
+            open_timeout = httpx.Timeout(_open_budget, connect=30.0)
         for attempt in range(max_retries + 1):
             try:
                 cm = client.stream("POST", url, json=payload, timeout=open_timeout)
