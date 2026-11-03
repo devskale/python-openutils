@@ -106,6 +106,45 @@ def _resolve_dialect(bare_model: str, body: dict) -> tuple[str | None, JSONRespo
     return payload_dialect, None
 
 
+# ── Selbstauskunft: Instanz-Modellliste (GET /models), TTL-gecacht ──────
+# Vorfall 2026-11-02: hab@qwen3.6-35b wurde still an den d1-2B-Container
+# geroutet (Instanz mit EINEM geladenen Modell ignoriert das model-Feld im
+# Body). Backends mit Modellliste self-describe ihre Fähigkeiten — der
+# Router schaut hin statt Handpflege (type_overrides) zu betreiben.
+
+_MODELS_TTL_OK = 60.0
+_MODELS_TTL_FAIL = 10.0
+_instance_models_cache: dict[str, tuple[float, "frozenset[str] | None"]] = {}
+
+
+async def _instance_model_ids(base: str, headers: dict[str, str]) -> "frozenset[str] | None":
+    """Modell-IDs der Instanz via GET {base}/models — Selbstauskunft.
+
+    None = nicht ermittelbar (Endpoint fehlt/DNS/Timeout) → Aufrufer
+    fail-open (z.B. CF-Instanzen mit ``systemone_path='/{model}'``, wo
+    /models keine verlässliche Instanz-Liste liefert).
+    """
+    import time
+    now = time.monotonic()
+    hit = _instance_models_cache.get(base)
+    if hit is not None and hit[0] > now:
+        return hit[1]
+    try:
+        from uniinfer.core import _shared_async_client
+        resp = await _shared_async_client().get(
+            f"{base}/models", headers=headers, timeout=5)
+        resp.raise_for_status()
+        doc = resp.json()
+        ids = frozenset(
+            m["id"] for m in doc.get("data", [])
+            if isinstance(m, dict) and m.get("id"))
+        expires, val = now + _MODELS_TTL_OK, ids
+    except Exception:
+        expires, val = now + _MODELS_TTL_FAIL, None
+    _instance_models_cache[base] = (expires, val)
+    return val
+
+
 def create_systemone_router(
     parse_provider_model=None,
 ) -> APIRouter:
@@ -176,6 +215,18 @@ def create_systemone_router(
         if upstream_key:
             headers["Authorization"] = f"Bearer {upstream_key}"
 
+        # Membership-Check: was bedient die Instanz wirklich? Ein Backend
+        # mit EINEM geladenen Modell ignoriert das model-Feld im Body und
+        # antwortet still mit seinem Modell — hier wird das angefragte
+        # Modell gegen die Liste geprüft, BEFOR weitergeleitet wird.
+        probe_headers = {"Authorization": f"Bearer {upstream_key}"} if upstream_key else {}
+        served = await _instance_model_ids(base, probe_headers)
+        if served is not None and bare_model not in served:
+            return JSONResponse(
+                {"error": f"model '{bare_model}' is not served by instance "
+                          f"'{alias}' (serves: {', '.join(sorted(served))})"},
+                status_code=404)
+
         from uniinfer.core import _shared_async_client
         # Systemone-Ziel: Default /systemone-Suffix; Overlay kann pro Instanz
         # überschreiben ("" = base_url AS-IS, "/{model}" = Modell im Pfad —
@@ -204,6 +255,15 @@ def create_systemone_router(
         if (isinstance(payload, dict) and payload.get("success") is True
                 and isinstance(payload.get("result"), dict)):
             payload = payload["result"]
+        # Rauchmelder Silent Rerouting: antwortet das Backend als ANDERES
+        # Modell als angefragt (Ignorieren des model-Felds, falscher Tunnel),
+        # war der Request falsch geroutet — nicht still durchreichen.
+        if (isinstance(payload, dict) and payload.get("model")
+                and payload["model"] != bare_model):
+            return JSONResponse(
+                {"error": f"upstream served model '{payload['model']}' but "
+                          f"'{bare_model}' was requested"},
+                status_code=502)
         return JSONResponse(payload, status_code=resp.status_code)
 
     async def _chat_wrap(alias, bare_model, body, api_key):

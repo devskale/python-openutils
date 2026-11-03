@@ -439,3 +439,121 @@ def test_token_scope_resolves_alias_to_provider(monkeypatch):
     check_token_constraints("deadbeef", "d3mini", meta)    # dgxp via credgoo_service
     with _pytest.raises(TokenRegistryError):
         check_token_constraints("deadbeef", "tu", meta)  # fremder Provider
+
+
+# ── Selbstauskunft: Membership-Check (GET /models) + Model-Echo ──────────
+# Vorfall 2026-11-02: /v1/systemone leitete hab@qwen3.6-35b still an den
+# d1-2B-Container weiter (Instanz ignorierte das model-Feld, antwortete als
+# LiquidAI/d1-2B). Zwei Guardrails gegen stilles Rerouting:
+# 1. Membership: angefragtes Modell muss in der Instanz-Modellliste sein
+# 2. Echo: Antwort-model muss dem angefragten Modell entsprechen
+
+@pytest.fixture(autouse=True)
+def _clear_models_cache():
+    from uniinfer.proxy_routers import systemone as _so
+    _so._instance_models_cache.clear()
+    yield
+    _so._instance_models_cache.clear()
+
+
+def _native_probe_setup(monkeypatch, alias, models_result, response_model=None):
+    """Native Instanz; GET /models liefert models_result (dict | Exception),
+    POST antwortet mit optionalem model-Echo."""
+    import httpx
+
+    spec = InstanceSpec(alias=alias, provider="openai-compat", is_builtin=False,
+                        base_url=f"https://{alias}.example/v1",
+                        requires_api_key=False)
+    monkeypatch.setattr("uniinfer.proxy_routers.systemone.resolve_instance",
+                        lambda a: spec)
+    monkeypatch.setattr("uniinfer.proxy_routers.systemone.instance_requires_api_key",
+                        lambda a: False)
+
+    captured = {"post_calls": 0, "get_url": None}
+
+    class ModelsResp:
+        status_code = 200
+        def json(self):
+            return models_result
+        def raise_for_status(self):
+            pass
+
+    class Resp:
+        status_code = 200
+        def json(self):
+            out = {"answers": {"x": {"type": "noul", "noul": 0.9}}}
+            if response_model is not None:
+                out["model"] = response_model
+            return out
+
+    async def fake_get(self, url, headers=None, timeout=None):
+        captured["get_url"] = url
+        if isinstance(models_result, Exception):
+            raise models_result
+        return ModelsResp()
+
+    async def fake_post(self, url, json=None, headers=None, timeout=None):
+        captured["post_calls"] += 1
+        return Resp()
+
+    monkeypatch.setattr(httpx.AsyncClient, "get", fake_get)
+    monkeypatch.setattr(httpx.AsyncClient, "post", fake_post)
+    monkeypatch.setattr("uniinfer.core._shared_async_client",
+                        lambda: httpx.AsyncClient())
+    return captured
+
+
+def test_unserved_model_rejected_404(monkeypatch):
+    """Membership-Check: Modell nicht in der Instanz-Liste → 404 statt
+    stillem Forward an das geladene Modell (Vorfall hab@qwen3.6-35b)."""
+    captured = _native_probe_setup(
+        monkeypatch, "habtest",
+        models_result={"data": [{"id": "LiquidAI/d1-2B"}]})
+    c = _app(None)
+    r = c.post("/v1/systemone", json={
+        "model": "habtest@qwen3.6-35b", "state": {}, "questions": {"q": {}}})
+    assert r.status_code == 404, r.text
+    err = r.json()["error"]
+    assert "not served" in err and "qwen3.6-35b" in err
+    assert "LiquidAI/d1-2B" in err  # sagt, was die Instanz STATDESSEN bedient
+    assert captured["post_calls"] == 0  # nie weitergeleitet
+
+
+def test_served_model_forwards_with_echo_ok(monkeypatch):
+    """Modell in der Liste → Forward; Antwort-Echo == angefragt → 200."""
+    _native_probe_setup(
+        monkeypatch, "habok",
+        models_result={"data": [{"id": "LiquidAI/d1-2B"}]},
+        response_model="LiquidAI/d1-2B")
+    c = _app(None)
+    r = c.post("/v1/systemone", json={
+        "model": "habok@LiquidAI/d1-2B", "state": {}, "questions": {"q": {}}})
+    assert r.status_code == 200, r.text
+
+
+def test_models_list_unavailable_fails_open(monkeypatch):
+    """GET /models nicht ermittelbar (CF '{model}'-Instanzen, tote URLs) →
+    Check übersprungen, Forward läuft (fail-open)."""
+    import httpx as _hx
+    captured = _native_probe_setup(
+        monkeypatch, "nofail", models_result=_hx.ConnectError("no dns"))
+    c = _app(None)
+    r = c.post("/v1/systemone", json={
+        "model": "nofail@whatever", "state": {}, "questions": {"q": {}}})
+    assert r.status_code == 200, r.text
+    assert captured["post_calls"] == 1
+
+
+def test_model_echo_mismatch_502(monkeypatch):
+    """Rauchmelder: Backend antwortet als ANDERES Modell als angefragt
+    (silent rerouting) → 502 statt stiller Durchreichung."""
+    _native_probe_setup(
+        monkeypatch, "habecho",
+        models_result={"data": [{"id": "qwen3.6-35b"}, {"id": "LiquidAI/d1-2B"}]},
+        response_model="LiquidAI/d1-2B")
+    c = _app(None)
+    r = c.post("/v1/systemone", json={
+        "model": "habecho@qwen3.6-35b", "state": {}, "questions": {"q": {}}})
+    assert r.status_code == 502, r.text
+    err = r.json()["error"]
+    assert "LiquidAI/d1-2B" in err and "qwen3.6-35b" in err
