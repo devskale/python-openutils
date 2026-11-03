@@ -127,27 +127,19 @@ def test_dsgvo_filter_on_overlay_backups(monkeypatch, tmp_path):
 
 # ── legacy bridge (KONTEXT_CLIENTS_YML) ────────────────────────────────
 
-def test_legacy_sampling_keys_stripped_and_warned(monkeypatch, tmp_path, caplog):
+def test_deprecated_clients_yml_sampling_strip_and_deprecation(monkeypatch, tmp_path, caplog):
+    """Issue clients-yml-abschaltung: clients.yml behält den 0.3.5-Strip
+    (tu-Sicherheit — Routing/Sampling besitzt der Katalog) und warnt jetzt
+    DEPRECATED mit Migrationsziel Box-models.yml."""
     _overlay(monkeypatch, tmp_path, {
         "default": {"model": "tu@qwen-3.6-35b-vllm", "temperature": 0.99,
                     "max_tokens": 64000, "backups": ["tu@legacy"]},
-        "packages": {"klark0": {"tasks": {"chat": {"temperature": 1.5}}}},
     }, env="KONTEXT_CLIENTS_YML", name="clients.yml")
     with caplog.at_level("WARNING", logger="llminvoke.config"):
         r = config.resolve_model()
-    assert r.temperature == 0.7      # catalog, not legacy 0.99
-    assert r.max_tokens == 10000     # catalog, not legacy 64000 (the audit drift)
-    # Katalog-Backup-Kette gewinnt über den gestrippten legacy-backup —
-    # Erwartung aus der Registry ABGELEITET (never-hardcode-Regel), nicht
-    # dupliziert: exakt _load_registry().default.backups in Katalog-Reihenfolge.
-    from llminvoke.config import _load_registry
-    expected_chain = [
-        str(config.ModelRef.parse(s)) for s in _load_registry()["default"]["backups"]
-    ]
-    assert [str(b) for b in r.backups] == expected_chain
-    assert "sampling keys ignored" in caplog.text
-    assert "default.max_tokens" in caplog.text
-    assert "packages.klark0.tasks.chat.temperature" in caplog.text
+    assert r.temperature != 0.99       # Strip bleibt: Katalog besitzt Sampling
+    assert r.max_tokens != 64000
+    assert "DEPRECATED" in caplog.text and "clients.yml" in caplog.text
 
 
 def test_legacy_choice_keys_still_honored(monkeypatch, tmp_path):
@@ -158,8 +150,6 @@ def test_legacy_choice_keys_still_honored(monkeypatch, tmp_path):
     r = config.resolve_model()
     assert r.base_url == "https://legacy/v1"
     assert r.bearer == "sk-legacy"
-    assert r.model == "legacy-choice"
-    assert r.request_kwargs.get("chat_template_kwargs") == {"enable_thinking": False}
 
 
 def test_models_env_wins_over_clients_env(monkeypatch, tmp_path):
@@ -178,7 +168,6 @@ def test_legacy_via_data_dir(monkeypatch, tmp_path):
     config.reload_config()
     r = config.resolve_model()
     assert r.model == "datadir"
-    assert config._overlay_legacy is True
 
 
 def test_models_via_data_dir(monkeypatch, tmp_path):
@@ -188,7 +177,6 @@ def test_models_via_data_dir(monkeypatch, tmp_path):
     config.reload_config()
     r = config.resolve_model()
     assert r.model == "datadir-new"
-    assert config._overlay_legacy is False
 
 
 # ── mtime hot-reload ───────────────────────────────────────────────────

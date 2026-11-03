@@ -150,8 +150,9 @@ default:
   # von der DGX — Aqueduct-Backup faengt (erster Backup-Eintrag, invers).
   model: hab@qwen3.6-35b
   # Backup-Kette (ADR 0004 §4): transient erschöpft / permanent → nächstes Glied.
-  # Der Schnell-Schalter ist die runtime clients.yml (`model:`-Zeile, mtime-Reload,
-  # kein Restart); Backups fließen aus jeder Schicht, env pinnt nur den Primary.
+  # Der Schnell-Schalter ist die Box-models.yml (metarepo-Root, KONTEXT_MODELS_YML,
+  # `model:`-Zeile, mtime-Reload, kein Restart; Issue clients-yml-abschaltung);
+  # Backups fließen aus jeder Schicht, env pinnt nur den Primary.
   backups:
     # 2026-10-22: Aqueduct erster Backup (invers — DGX-Primary, Aqueduct faengt,
     # inkl. des bekannten DGX-Synthese-Leerfalls).
@@ -258,4 +259,13 @@ packages:
       stepSynthesis: {temperature: 0.2}     # standard-path synthesis
       stepFapArmAudit: {temperature: 0.2}   # FAP per-doc audit arm
       stepFapSynthesis: {temperature: 0.2}  # FAP synthesis
+      # queryflow-Steps (2026-10-08, ex pi5-clients.yml — Issue clients-yml-
+      # abschaltung: Task-Profile gehören in den Katalog, nicht ins Box-Overlay).
+      # Dok-AUSWAHL ist Classify/Extract → nothink (schneller, stabilere JSON-
+      # Struktur). queryAnswer (Synthese) ebenfalls nothink: 80% der Laufzeit
+      # war Denk-Overhead (1945 completion tokens für ~4 Sätze) — die Auswahl
+      # steht fest, die Antwort ist Extraktion + Zitate.
+      queryRoute: {thinking: "off"}
+      queryRetrieve: {thinking: "off"}
+      queryAnswer: {thinking: "off"}
       stepFirmenstruktur: {}

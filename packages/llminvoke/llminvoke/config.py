@@ -66,7 +66,7 @@ _REGISTRY_PATH = _PACKAGE_DIR / "models.yml"
 _registry_cache: dict[str, Any] | None = None
 _overlay_cache: dict[str, Any] | None = None
 _overlay_mtime: float | None = None
-_overlay_legacy: bool = False   # True while a clients.yml feeds the overlay (WP4 transition)
+_overlay_deprecated: bool = False  # True while a clients.yml feeds the overlay (deprecated; dies after tu migrates)
 
 
 # ════════════════════════════════════════════════════════════════════════
@@ -166,12 +166,15 @@ def _load_registry() -> dict[str, Any]:
 
 
 def _box_path() -> tuple[Path, bool] | None:
-    """Locate the box overlay: ``(path, legacy)`` or None.
+    """Locate the box overlay: ``(path, deprecated)`` or None.
 
-    ``KONTEXT_MODELS_YML`` is the true overlay; ``KONTEXT_CLIENTS_YML`` (and a
-    ``clients.yml`` in KONTEXT_DATA_DIR) loads as a LEGACY overlay with
-    sampling keys stripped — the WP4 migration bridge, removable once every
-    box carries a models.yml.
+    ``KONTEXT_MODELS_YML`` is the true overlay (full precedence, no strip).
+    A ``KONTEXT_CLIENTS_YML`` (or a ``clients.yml`` in KONTEXT_DATA_DIR) is
+    DEPRECATED (Issue llminvoke-clients-yml-abschaltung): still honored with
+    the legacy guards (sampling-strip + blanket-precedence, so unmigrated
+    boxes keep exact 0.3.5 behavior) and a deprecation warning per load.
+    Once every box carries a models.yml, this branch — including strip and
+    precedence guard — dies in one final commit.
     """
     explicit_new = os.environ.get("KONTEXT_MODELS_YML", "").strip()
     if explicit_new:
@@ -190,20 +193,22 @@ def _box_path() -> tuple[Path, bool] | None:
     return None
 
 
-# Sampling keys a legacy clients.yml must NOT carry into the merge — the
-# catalog owns them (audit 2026-10-09: max_tokens 64000 vs 10000 drift etc.).
+# Sampling keys a DEPRECATED clients.yml must NOT carry into the merge —
+# the catalog owns them (audit 2026-10-09: max_tokens 64000 vs 10000 drift).
 # Choice keys (model/base_url/bearer/thinking/bare_model/dsgvo_required)
-# stay honored from legacy files; true overlays may set anything.
+# stay honored; true overlays (KONTEXT_MODELS_YML) may set anything.
+# Removal happens together with the legacy branch once tu migrated.
 _LEGACY_STRIP_KEYS = frozenset({"temperature", "max_tokens", "backups", "retry"})
 
 
-def _sanitize_legacy(cfg: dict[str, Any]) -> dict[str, Any]:
-    """Strip drift-prone sampling keys from a legacy overlay, warn once."""
+def _sanitize_legacy(cfg: dict[str, Any], path: Path | None = None) -> dict[str, Any]:
+    """Strip drift-prone sampling keys from a deprecated overlay + warn
+    (DEPRECATED: migrate to a box models.yml — Issue clients-yml-abschaltung)."""
     stripped: list[str] = []
 
-    def _walk(node: dict[str, Any], path: str) -> None:
+    def _walk(node: dict[str, Any], path_: str) -> None:
         for k, v in list(node.items()):
-            here = f"{path}.{k}" if path else k
+            here = f"{path_}.{k}" if path_ else k
             if k in _LEGACY_STRIP_KEYS:
                 del node[k]
                 stripped.append(here)
@@ -211,12 +216,14 @@ def _sanitize_legacy(cfg: dict[str, Any]) -> dict[str, Any]:
                 _walk(v, here)
 
     _walk(cfg, "")
-    if stripped:
-        _logger.warning(
-            "legacy clients.yml as overlay: sampling keys ignored (catalog owns "
-            "them; write a <box>/models.yml to own sampling deliberately): %s",
-            ", ".join(sorted(stripped)),
-        )
+    _logger.warning(
+        "DEPRECATED: clients.yml as overlay (%s) — migrate to a box models.yml "
+        "via KONTEXT_MODELS_YML (Issue llminvoke-clients-yml-abschaltung)%s",
+        path or "<data-dir>",
+        f"; sampling keys ignored (catalog owns them): {', '.join(sorted(stripped))}"
+        if stripped
+        else "",
+    )
     return cfg
 
 
@@ -226,11 +233,11 @@ def _load_overlay() -> dict[str, Any]:
     The overlay is editable without redeploy — cheap stat per resolve, re-read
     on mtime change (unchanged behavior inherited from the clients.yml loader).
     """
-    global _overlay_cache, _overlay_mtime, _overlay_legacy
+    global _overlay_cache, _overlay_mtime, _overlay_deprecated
     located = _box_path()
     if located is None:
         return {}
-    path, legacy = located
+    path, deprecated = located
     try:
         mtime = path.stat().st_mtime
     except OSError:
@@ -242,11 +249,11 @@ def _load_overlay() -> dict[str, Any]:
     try:
         with open(path, encoding="utf-8") as f:
             cfg = yaml.safe_load(f) or {}
-        if legacy:
-            cfg = _sanitize_legacy(cfg)
+        if deprecated:
+            cfg = _sanitize_legacy(cfg, path)
         _overlay_cache = cfg
         _overlay_mtime = mtime
-        _overlay_legacy = legacy
+        _overlay_deprecated = deprecated
     except (OSError, yaml.YAMLError) as exc:
         _logger.warning("Failed to load overlay (%s): %s", path, exc)
         _overlay_cache = {}
@@ -255,11 +262,11 @@ def _load_overlay() -> dict[str, Any]:
 
 def reload_config() -> None:
     """Force a reload of both registry + overlay caches."""
-    global _registry_cache, _overlay_cache, _overlay_mtime, _overlay_legacy
+    global _registry_cache, _overlay_cache, _overlay_mtime, _overlay_deprecated
     _registry_cache = None
     _overlay_cache = None
     _overlay_mtime = None
-    _overlay_legacy = False
+    _overlay_deprecated = False
 
 
 # ── catalog queries ────────────────────────────────────────────────────
@@ -393,16 +400,11 @@ def resolve_model(
     overlay_src = _load_overlay() or {}
     catalog = _chain(catalog_src, package, task)
     overlay = _chain(overlay_src, package, task)
-    # Legacy-Overlay-Blankett schlägt KEINE Katalog-Task-Entscheidung mehr
-    # (User 2026-11-02: Modus-Defaults leben in der Registry — strukt2meta
-    # AAB/kriterien → Grossmodell, B-Docs → DSGVO-Default — „per default
-    # einstellbar, ohne overrides"). Nur wenn das LEGACY-Overlay den
-    # Task/Paket NICHT explizit überschreibt, aber der Katalog auf Task-
-    # Ebene ein model setzt, gewinnt dieses über das Overlay-Blankett.
-    # Base_url/bearer/backups des Overlays bleiben (Ops-Domain: Proxy-
-    # Routing, Failover). Echte Overlays (KONTEXT_MODELS_YML) behalten
-    # die volle Präzedenz (WP4).
-    if _overlay_legacy and overlay and package and task:
+    # DEPRECATED-clients.yml-Blankett schlägt KEINE Katalog-Task-Entscheidung
+    # (0.3.5-Verhalten, unverändert — User 2026-11-02: Modus-Defaults leben in
+    # der Registry). Echte Overlays (KONTEXT_MODELS_YML) haben volle Präzedenz
+    # (WP4). Stirbt zusammen mit dem Legacy-Zweig, sobald tu migriert ist.
+    if _overlay_deprecated and overlay and package and task:
         _ov_pkg = overlay_src.get("packages", {}).get(package, {})
         _ov_has_specific = _ov_pkg.get("model") or _ov_pkg.get("tasks", {}).get(task, {}).get("model")
         _cat_task_model = (
