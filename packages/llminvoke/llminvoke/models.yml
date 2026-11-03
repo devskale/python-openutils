@@ -197,6 +197,13 @@ packages:
         model: hab@qwen3.6-35b
 
   strukt2meta:
+    # Modus-Defaults (User 2026-11-02): A-Verzeichnis (AAB-Analyse, offene
+    # Dokumente) → Grossmodell per TASK (kriterien: GLM 5.3 744B);
+    # B-Verzeichnis (Bieter-Docs) → Paket-Default DSGVO-gefiltert.
+    # dsgvo_required gilt paketweit — tu/hab sind dsgvo:true, GLM/tu geht
+    # dadurch auch für die AAB-Aufgabe durch. KEIN Overlay-Override nötig
+    # (Legacy-Blankett schlägt Katalog-Task-Modelle nicht mehr, llminvoke 0.3.5).
+    dsgvo_required: true
     max_tokens: 16384
     temperature: 0.7
     tasks:

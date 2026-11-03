@@ -389,8 +389,29 @@ def resolve_model(
 
     Returns a DSGVO-filtered ``ResolvedConfig`` ready for the retry/backup loop.
     """
-    catalog = _chain(_load_registry(), package, task)
-    overlay = _chain(_load_overlay(), package, task)
+    catalog_src = _load_registry()
+    overlay_src = _load_overlay() or {}
+    catalog = _chain(catalog_src, package, task)
+    overlay = _chain(overlay_src, package, task)
+    # Legacy-Overlay-Blankett schlägt KEINE Katalog-Task-Entscheidung mehr
+    # (User 2026-11-02: Modus-Defaults leben in der Registry — strukt2meta
+    # AAB/kriterien → Grossmodell, B-Docs → DSGVO-Default — „per default
+    # einstellbar, ohne overrides"). Nur wenn das LEGACY-Overlay den
+    # Task/Paket NICHT explizit überschreibt, aber der Katalog auf Task-
+    # Ebene ein model setzt, gewinnt dieses über das Overlay-Blankett.
+    # Base_url/bearer/backups des Overlays bleiben (Ops-Domain: Proxy-
+    # Routing, Failover). Echte Overlays (KONTEXT_MODELS_YML) behalten
+    # die volle Präzedenz (WP4).
+    if _overlay_legacy and overlay and package and task:
+        _ov_pkg = overlay_src.get("packages", {}).get(package, {})
+        _ov_has_specific = _ov_pkg.get("model") or _ov_pkg.get("tasks", {}).get(task, {}).get("model")
+        _cat_task_model = (
+            catalog_src.get("packages", {}).get(package, {}).get("tasks", {}).get(task, {}).get("model")
+        )
+        if _cat_task_model and not _ov_has_specific and overlay.get("model"):
+            overlay = dict(overlay)
+            overlay.pop("model", None)
+            overlay.pop("backups", None)  # Blankett-Failover paßt nicht zum Task-Modell
     eff = _deep_merge(catalog, overlay)
 
     primary_spec = eff.get("model", "tu@qwen-3.6-35b")
