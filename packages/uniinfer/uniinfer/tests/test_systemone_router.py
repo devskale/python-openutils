@@ -382,9 +382,19 @@ def test_body_without_questions_or_fields_400(monkeypatch):
 
 
 def test_dialect_mismatch_catalog_400(monkeypatch):
-    """Katalog-Typ ist Autorität: d3-mini ist 'decision' getyped — ein
-    fields-Payload wird abgelehnt statt falsch durchgereicht."""
+    """Katalog-Typ ist Autorität: ein als 'decision' getyptes Modell lehnt
+    einen fields-Payload ab statt ihn falsch durchzureichen.
+
+    Das Typing kommt vom GEMOCKTEN Katalog: die Runtime-type_overrides.json
+    wird vom models-refresh aus Live-Daten regeneriert (tote Backends wie
+    vllm-sr/d3-mini werden geprunt, neue wie LiquidAI/d1-2B ergänzt) und
+    ist als Fixture nicht deterministisch (Vorfall: Deploy-Gate amd rot
+    nach d3-mini-Prune, lokal grün).
+    """
     captured = _native_setup(monkeypatch, "d3mini", None)
+    monkeypatch.setattr(
+        "uniinfer.proxy_routers.systemone._catalog_systemone_type",
+        lambda m: "decision" if m == "vllm-sr/d3-mini" else None)
     c = _app(None)
     r = c.post("/v1/systemone", json={
         "model": "d3mini@vllm-sr/d3-mini",
