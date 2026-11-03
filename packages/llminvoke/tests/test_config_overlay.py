@@ -127,19 +127,22 @@ def test_dsgvo_filter_on_overlay_backups(monkeypatch, tmp_path):
 
 # ── legacy bridge (KONTEXT_CLIENTS_YML) ────────────────────────────────
 
-def test_deprecated_clients_yml_sampling_strip_and_deprecation(monkeypatch, tmp_path, caplog):
-    """Issue clients-yml-abschaltung: clients.yml behält den 0.3.5-Strip
-    (tu-Sicherheit — Routing/Sampling besitzt der Katalog) und warnt jetzt
-    DEPRECATED mit Migrationsziel Box-models.yml."""
+def test_deprecated_clients_yml_endpoint_only(monkeypatch, tmp_path, caplog):
+    """Issue clients-yml-abschaltung (User 2026-11-03): clients.yml wird auf
+    die Endpoint-Domain reduziert — Sampling UND Routing gestrichen, Warnung
+    nennt die Drops; Box-models.yml behält volle Macht."""
     _overlay(monkeypatch, tmp_path, {
         "default": {"model": "tu@qwen-3.6-35b-vllm", "temperature": 0.99,
-                    "max_tokens": 64000, "backups": ["tu@legacy"]},
+                    "max_tokens": 64000, "backups": ["tu@legacy"],
+                    "base_url": "https://legacy/v1", "bearer": "sk-legacy"},
     }, env="KONTEXT_CLIENTS_YML", name="clients.yml")
     with caplog.at_level("WARNING", logger="llminvoke.config"):
         r = config.resolve_model()
-    assert r.temperature != 0.99       # Strip bleibt: Katalog besitzt Sampling
+    assert r.temperature != 0.99       # Sampling gestrichen
     assert r.max_tokens != 64000
-    assert "DEPRECATED" in caplog.text and "clients.yml" in caplog.text
+    assert [str(b) for b in r.backups] != ["tu@legacy"]  # Routing gestrichen
+    assert r.base_url == "https://legacy/v1"  # Endpoint überlebt
+    assert "DEPRECATED" in caplog.text
 
 
 def test_legacy_choice_keys_still_honored(monkeypatch, tmp_path):
@@ -162,12 +165,15 @@ def test_models_env_wins_over_clients_env(monkeypatch, tmp_path):
 
 
 def test_legacy_via_data_dir(monkeypatch, tmp_path):
+    """clients.yml im DATA_DIR: DEPRECATED — nur Endpoint-Domain überlebt;
+    Routing (model) wird gestrichen, die Registry routet."""
     p = tmp_path / "clients.yml"
-    p.write_text(yaml.safe_dump({"default": {"model": "tu@datadir"}}))
+    p.write_text(yaml.safe_dump({"default": {"model": "tu@datadir", "base_url": "https://dd/v1"}}))
     monkeypatch.setenv("KONTEXT_DATA_DIR", str(tmp_path))
     config.reload_config()
     r = config.resolve_model()
-    assert r.model == "datadir"
+    assert r.model != "datadir"          # Routing entmachtet
+    assert r.base_url == "https://dd/v1"  # Endpoint überlebt
 
 
 def test_models_via_data_dir(monkeypatch, tmp_path):

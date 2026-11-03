@@ -21,10 +21,13 @@ def _isolate(monkeypatch):
 
 
 def _clients(monkeypatch, tmp_path, data):
+    """Overlay-Seam für Endpoint-Tests: Box-models.yml (der ECHTE Pfad —
+    clients.yml ist DEPRECATED und auf Endpoint-Domain reduziert, s.
+    test_clients_yml_deprecated.py)."""
     import yaml
-    p = tmp_path / "clients.yml"
+    p = tmp_path / "models.yml"
     p.write_text(yaml.safe_dump(data))
-    monkeypatch.setenv("KONTEXT_CLIENTS_YML", str(p))
+    monkeypatch.setenv("KONTEXT_MODELS_YML", str(p))
     config.reload_config()
 
 
@@ -195,7 +198,7 @@ def test_thinking_yaml_bool_off_coerced(monkeypatch, tmp_path):
     """YAML parses unquoted `off` as False — coerce to the off mapping."""
     p = tmp_path / "c.yml"
     p.write_text("default:\n  model: tu@qwen-3.6-35b\n  thinking: off\n")
-    monkeypatch.setenv("KONTEXT_CLIENTS_YML", str(p))
+    monkeypatch.setenv("KONTEXT_MODELS_YML", str(p))
     config.reload_config()
     r = config.resolve_model()
     assert r.request_kwargs.get("chat_template_kwargs") == {"enable_thinking": False}
