@@ -40,7 +40,9 @@ def _cfg():
 
     return ResolvedConfig(
         primary=ModelRef(provider="tu", model="qwen-test"),
-        base_url="http://x", bearer="k",
+        # base_url None → Provider-Pfad (Gateway-Zweig testet
+        # test_start_stream_gateway.py; hier pinnen wir den Chunk-Vertrag).
+        base_url=None, bearer="k",
         retry=RetryPolicy(attempts=1),
     )
 

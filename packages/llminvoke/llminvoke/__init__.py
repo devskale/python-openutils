@@ -614,6 +614,74 @@ def _chunk_has_payload(chunk) -> bool:
     return isinstance(r, str) and bool(r)
 
 
+def _stream_via_openai_sdk(
+    *,
+    base_url: str,
+    bearer: str | None,
+    provider: str,
+    model: str,
+    bare_model: bool = False,
+    messages: list[ChatMessage],
+    temperature: float,
+    max_tokens: int,
+    request_kwargs: dict,
+):
+    """Gateway STREAM via the sync openai SDK — yields duck-typed chunks.
+
+    Streaming twin of :func:`_invoke_via_openai_sdk` (same event-loop
+    immunity, same timeouts). The gateway routes by the ``provider@model``
+    prefix, so instance aliases (hab, …) that uniinfer's ProviderFactory
+    doesn't know become streamable: ``create_provider('hab')`` raises
+    "not registered" even WITH a base_url override (the factory resolves
+    by provider NAME before any kwarg reaches a constructor) — Vorfall
+    2026-11-04 (dgx-hab-episoden): der Primary-Kettenplatz verbrannte pro
+    Step an diesem ValueError plus 20–30 s an toten Backups (ttfb 32–44 s).
+    """
+    from types import SimpleNamespace
+
+    from openai import OpenAI
+
+    import httpx
+    client = OpenAI(
+        base_url=base_url, api_key=bearer or "missing",
+        timeout=httpx.Timeout(connect=10.0, read=90.0, write=30.0, pool=10.0),
+    )
+    model_id = model if bare_model else f"{provider}@{model}"
+    openai_messages = [
+        {"role": getattr(m, "role", None) or "user", "content": getattr(m, "content", None)}
+        for m in messages
+    ]
+    raw_stream = client.chat.completions.create(
+        model=model_id,
+        messages=openai_messages,
+        temperature=temperature,
+        max_tokens=max_tokens,
+        stream=True,
+        stream_options={"include_usage": True},
+        extra_body=request_kwargs or None,
+    )
+
+    def _adapt(raw_iter):
+        for raw in raw_iter:
+            delta = raw.choices[0].delta if raw.choices else None
+            content = getattr(delta, "content", None) if delta is not None else None
+            reasoning = getattr(delta, "reasoning_content", None) if delta is not None else None
+            if not reasoning and delta is not None:
+                reasoning = getattr(delta, "thinking", None)
+            usage = getattr(raw, "usage", None)
+            usage = None if usage is None else (
+                usage if isinstance(usage, dict)
+                else usage.model_dump() if hasattr(usage, "model_dump") else dict(usage)
+            )
+            yield SimpleNamespace(
+                message=SimpleNamespace(content=content, reasoning_content=reasoning),
+                thinking=None,
+                usage=usage,
+            )
+
+    return _adapt(raw_stream)
+
+
 def _start_stream(
     ref: ModelRef,
     cfg: ResolvedConfig,
@@ -631,30 +699,37 @@ def _start_stream(
     err: BaseException = RuntimeError("not attempted")
     for attempt in range(attempts):
         try:
-            # Gateway-Pfad wie call_llm/_try_model: cfg.base_url/bearer
-            # weiterreichen — sonst streamt der Pfad DIREKT zum Provider
-            # (TU-Aqueduct), umgeht den uniinfer-Proxy (der das reasoning
-            # normalisiert + routed) und denkt still ohne reasoning-Events.
-            prov = create_provider(ref.provider, base_url=cfg.base_url, api_key=cfg.bearer)
-            # Model-id je Route (live 2026-11-02): NUR der uniinfer-Gateway
-            # (expliziter cfg.base_url) routet per provider@model-Präfix.
-            # Direkter Provider-Call (base_url None → Provider-Default, z.B.
-            # TU-Aqueduct) braucht das BARE model — aqueduct 400t auf
-            # 'tu@glm-…' („no healthy deployments"), stream starb leer und
-            # die Kette fiel auf hab-qwen zurück (strukt2meta-Vorfall).
             if cfg.base_url:
-                _model_id = ref.model if "@" in ref.model else f"{ref.provider}@{ref.model}"
+                # Gateway-Zweig (Vorfall 2026-11-04, dgx-hab-episoden): der
+                # Gateway routet per provider@model-Präfix — auch Alias-only-
+                # Instanzen (hab), die die ProviderFactory nicht kennt. Der
+                # alte Weg (create_provider mit base_url-Override) warf für
+                # Aliase ValueError "not registered" (die Factory resolved
+                # per Name, bevor das base_url-kwarg irgendwo ankam) und
+                # verheizte den Primary-Kettenplatz + 20–30 s an toten
+                # Backups pro Step (ttfb 32–44 s).
+                stream = _stream_via_openai_sdk(
+                    base_url=cfg.base_url, bearer=cfg.bearer,
+                    provider=ref.provider, model=ref.model,
+                    bare_model=cfg.bare_model, messages=msgs,
+                    temperature=cfg.temperature, max_tokens=cfg.max_tokens,
+                    request_kwargs=request_kwargs,
+                )
             else:
-                _model_id = ref.model
-            request = ChatCompletionRequest(
-                messages=msgs,
-                model=_model_id,
-                temperature=cfg.temperature,
-                max_tokens=cfg.max_tokens,
-                streaming=True,
-                **request_kwargs,
-            )
-            stream = prov.stream_complete(request)
+                # Direkter Provider-Call (base_url None → Provider-Default,
+                # z.B. TU-Aqueduct) braucht das BARE model — aqueduct 400t auf
+                # 'tu@glm-…' („no healthy deployments", stream starb leer und
+                # die Kette fiel auf hab-qwen zurück; strukt2meta-Vorfall).
+                prov = create_provider(ref.provider, api_key=cfg.bearer)
+                request = ChatCompletionRequest(
+                    messages=msgs,
+                    model=ref.model,
+                    temperature=cfg.temperature,
+                    max_tokens=cfg.max_tokens,
+                    streaming=True,
+                    **request_kwargs,
+                )
+                stream = prov.stream_complete(request)
             for chunk in stream:
                 if _chunk_has_payload(chunk):
                     return stream, chunk
