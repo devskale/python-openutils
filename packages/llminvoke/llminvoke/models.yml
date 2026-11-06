@@ -225,7 +225,12 @@ packages:
     # Co. fallen selbst heraus, falls jemand sie später wieder in defaults
     # aufnimmt). Offene-Dok-Tasks (AAB/FB) können das pro Task lockern.
     dsgvo_required: true
-    temperature: 0.7
+    # 2026-11-06 (User): 0.7 → 0.2 — Bewertungsvarianz war zu hoch (Vorfall
+    # Z_PREIS_001 Ortlieb: Per-Doc-Assessor halluzinierte bei 0.7 nicht
+    # existierende Lose aus Positions-Nummern; identischer Lauf bei 0.2-Regime
+    # korrekt). Dokument-Lektüre und Zahlen-Extraktion brauchen enge Sampling-
+    # Fenster; Kreativität kostet hier Richtigkeit.
+    temperature: 0.2
     max_tokens: 10000
     tasks:
       # nothink steps — fast classification/routing/extraction (thinking wastes latency).
