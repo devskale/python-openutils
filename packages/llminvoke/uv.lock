@@ -1649,7 +1649,7 @@ wheels = [
 
 [[package]]
 name = "llminvoke"
-version = "0.3.9"
+version = "0.3.10"
 source = { editable = "." }
 dependencies = [
     { name = "credgoo" },
