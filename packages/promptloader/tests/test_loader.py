@@ -197,3 +197,33 @@ def test_fingerprint_golden_stable():
         == "d2f7adc3ef2c3740723359742b258b07508a30e02a637d4e26c19cb0ba587b30"
     )
     assert _get_version(txt) == "1.4"
+
+
+def test_modified_symmetrisch_bei_includes(tmp_path, monkeypatch):
+    """Fix 2026-11-09 („welche 5 geändert??"): modified vergleicht Working-
+    Text (Includes aufgelöst) gegen HEAD-Text — vorher RAW. Folge: jede
+    {{>-Prompt war permanent „lokal geändert", obwohl der Checkout sauber
+    war (pi5: alle 5 Treffer hatten Includes, keine ohne)."""
+    from pathlib import Path
+    import promptloader.loader as L
+
+    root = tmp_path
+    pkg = root / "agentos"
+    (pkg / "d").mkdir(parents=True)
+    inc = pkg / "d" / "base.md"
+    inc.write_text("---\nversion: '1.0'\n---\ngemeinsamer Baustein\n")
+    p = pkg / "d" / "prompt.md"
+    p.write_text("---\nversion: '1.0'\n---\n{{> d/base.md}}\neigener Text\n")
+
+    # Working-File == HEAD (sauberer Checkout): modified MUSS False sein
+    monkeypatch.setattr(
+        L, "_git_head_text",
+        lambda _root, rel: (root / rel).read_text(encoding="utf-8"),
+    )
+    monkeypatch.setenv("KONTEXT_PROMPTS_DIR", str(root))
+    info = L.get_prompt_set_info()
+    if info:
+        entry = next(x for x in info["prompts"] if x["name"].endswith("prompt.md"))
+        assert entry["modified"] is False, (
+            "sauberer Checkout mit Includes darf nicht als geändert gelten"
+        )

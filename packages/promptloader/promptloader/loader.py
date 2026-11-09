@@ -459,6 +459,15 @@ def get_prompt_set_info() -> dict:
                 except OSError:
                     continue
                 head = _git_head_text(root, rel)
+                # Symmetrie (Fix 2026-11-09, „welche 5 geändert??"): der
+                # Working-Text wird mit aufgelösten Includes gefingert, der
+                # HEAD-Text bisher RAW — jede {{>-Prompt war dadurch perma-
+                # nent „lokal geändert", trotz sauberem Checkout (pi5: 5/5
+                # Treffer hatten Includes, 0 ohne). HEAD-Text ebenfalls
+                # resolve_n — wie es der kontext-prompts-CLI (Z.181f) schon
+                # immer macht.
+                if head is not None and "{{>" in head:
+                    head = resolve_includes(head, pkg_dir)
                 prompts.append(
                     {
                         "name": rel,
