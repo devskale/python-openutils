@@ -813,6 +813,19 @@ class TUProvider(ChatProvider):
         if request.reasoning_effort in REASONING_OFF and not (set(ctk) & set(self._THINKING_OFF_KNOBS)):
             for _knob in self._THINKING_OFF_KNOBS:
                 ctk.setdefault(_knob, False)
+        # Graduierte reasoning_effort (low/medium/high/xhigh) auf den
+        # ZUVERLÄSSIGEN Transport heben (2026-11-09): llminvoices generisches
+        # `thinking: medium` schreibt top-level reasoning_effort — Aqueduct
+        # ignoriert das still (bzw. 400 je Client), während dasselbe Feld in
+        # chat_template_kwargs dokumentiert funktioniert (3/3 Sonden live).
+        # Gleiche escape-hatch-Prezedenz wie bei OFF: explizite ctk-Keys des
+        # Callers gewinnen.
+        if (
+            request.reasoning_effort
+            and request.reasoning_effort not in REASONING_OFF
+            and "reasoning_effort" not in ctk
+        ):
+            ctk["reasoning_effort"] = request.reasoning_effort
         if ctk:
             payload["chat_template_kwargs"] = ctk
 
