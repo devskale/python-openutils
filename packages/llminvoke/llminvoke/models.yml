@@ -260,10 +260,15 @@ packages:
       # Remaining variance on ambiguous verdicts is handled by worker-side
       # majority-vote escalation on low-confidence results (see
       # auditflow-nondeterminism issue). Covers both paths:
-      stepAssess: {temperature: 0.2}        # standard-path assessor
-      stepSynthesis: {temperature: 0.2}     # standard-path synthesis
-      stepFapArmAudit: {temperature: 0.2}   # FAP per-doc audit arm
-      stepFapSynthesis: {temperature: 0.2}  # FAP synthesis
+      # Thinking-Stufen (2026-11-09, Aqueduct qwen-3.8-27b): Default ist xhigh
+      # — frisst das max_tokens-Budget (6131 Thinking-Deltas → 0 Content) und
+      # verbrennt ~5× Completion-Tokens. medium via chat_template_kwargs (der
+      # dokumentierte Transport; top-level wird still ignoriert): 3/3 Sonden
+      # vollständig (29–87 s). Model-probe: scripts/model_probe.py (agentos).
+      stepAssess: {temperature: 0.2, request_kwargs: {chat_template_kwargs: {reasoning_effort: medium}}}        # standard-path assessor
+      stepSynthesis: {temperature: 0.2, request_kwargs: {chat_template_kwargs: {reasoning_effort: medium}}}     # standard-path synthesis
+      stepFapArmAudit: {temperature: 0.2, request_kwargs: {chat_template_kwargs: {reasoning_effort: medium}}}   # FAP per-doc audit arm
+      stepFapSynthesis: {temperature: 0.2, request_kwargs: {chat_template_kwargs: {reasoning_effort: medium}}}  # FAP synthesis
       # queryflow-Steps (2026-10-08, ex pi5-clients.yml — Issue clients-yml-
       # abschaltung: Task-Profile gehören in den Katalog, nicht ins Box-Overlay).
       # Dok-AUSWAHL ist Classify/Extract → nothink (schneller, stabilere JSON-
