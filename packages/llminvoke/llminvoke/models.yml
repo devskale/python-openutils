@@ -266,7 +266,8 @@ packages:
       # dokumentierte Transport; top-level wird still ignoriert): 3/3 Sonden
       # vollständig (29–87 s). Model-probe: scripts/model_probe.py (agentos).
       stepAssess: {temperature: 0.2, request_kwargs: {chat_template_kwargs: {reasoning_effort: medium}}}        # standard-path assessor
-      stepSynthesis: {temperature: 0.2, request_kwargs: {chat_template_kwargs: {reasoning_effort: medium}}}     # standard-path synthesis
+      stepSynthesizeCriterion: {temperature: 0.2, request_kwargs: {chat_template_kwargs: {reasoning_effort: medium}}}     # standard-path synthesis (Key hieß stepSynthesis — Pin ging ins Leere, xhigh-Default; Vorfall 2026-11-10)
+      stepSynthesizeSetCoverage: {temperature: 0.2, request_kwargs: {chat_template_kwargs: {reasoning_effort: medium}}}    # Set-Abdeckungs-Gate-Synthese
       stepFapArmAudit: {temperature: 0.2, request_kwargs: {chat_template_kwargs: {reasoning_effort: medium}}}   # FAP per-doc audit arm
       stepFapSynthesis: {temperature: 0.2, request_kwargs: {chat_template_kwargs: {reasoning_effort: medium}}}  # FAP synthesis
       # queryflow-Steps (2026-10-08, ex pi5-clients.yml — Issue clients-yml-
