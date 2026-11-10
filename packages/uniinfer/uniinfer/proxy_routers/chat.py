@@ -26,6 +26,7 @@ from uniinfer.proxy_schemas.chat import (
     NonStreamingChatCompletion,
     NonStreamingChoice,
 )
+from uniinfer.proxy_services.key_usage import get_key_usage
 from uniinfer.proxy_services.stats import get_stats
 from uniinfer.proxy_services.stream_guard import (
     astream_guarded,
@@ -199,6 +200,7 @@ def create_chat_router(
                         if e.response_body
                         else str(e)
                     )
+                    get_key_usage().note(api_bearer_token, provider_model)
                     get_stats().record(
                         provider_model,
                         status=429,
@@ -308,6 +310,7 @@ def create_chat_router(
                             provider_model,
                             f"EMPTY-STREAM: non-stream completion empty after {_attempts} attempt(s)",
                         )
+                        get_key_usage().note(api_bearer_token, provider_model)
                         get_stats().record(
                             provider_model,
                             status=502,
@@ -412,6 +415,7 @@ def create_chat_router(
                 else None
             )
             if is_openai_strict_mode():
+                get_key_usage().note(api_bearer_token, provider_model)
                 get_stats().record(
                     provider_model,
                     status=200,
@@ -422,6 +426,7 @@ def create_chat_router(
                     content=response_data.model_dump(exclude_none=True),
                     headers=_routed_headers,
                 )
+            get_key_usage().note(api_bearer_token, provider_model)
             get_stats().record(
                 provider_model,
                 status=200,
@@ -454,6 +459,7 @@ def create_chat_router(
             if e.response_body:
                 detail = f"{detail} | Response: {e.response_body}"
             sc = getattr(e, "status_code", 500) or 500
+            get_key_usage().note(api_bearer_token, provider_model)
             get_stats().record(
                 provider_model,
                 status=sc,
@@ -467,6 +473,7 @@ def create_chat_router(
             logger.exception(
                 "Unexpected error in /v1/chat/completions: %s: %s", type(e).__name__, e
             )
+            get_key_usage().note(api_bearer_token, provider_model)
             get_stats().record(
                 provider_model,
                 status=500,
@@ -525,6 +532,7 @@ def create_chat_router(
                 provider_api_key=provider_api_key,
                 base_url=base_url,
             )
+            get_key_usage().note(api_bearer_token, provider_model)
 
             embedding_data = [
                 EmbeddingData(embedding=embedding, index=i)

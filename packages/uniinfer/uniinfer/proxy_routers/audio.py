@@ -13,6 +13,7 @@ from pydantic import BaseModel
 from uniinfer.auth import get_optional_proxy_token, verify_provider_access
 from uniinfer.completion import parse_provider_model
 from uniinfer.audio import TTSTarget, STTTarget
+from uniinfer.proxy_services.key_usage import get_key_usage
 
 logger = logging.getLogger("uniioai_proxy")
 
@@ -79,6 +80,7 @@ def create_audio_router(
                 speed=request_input.speed or 1.0,
                 instructions=request_input.instructions,
             )
+            get_key_usage().note(api_bearer_token, request_input.model)
             return Response(content=result.audio_content, media_type=result.content_type)
         except HTTPException:
             raise
@@ -133,6 +135,7 @@ def create_audio_router(
                 response_format=response_format or "json",
                 temperature=temperature if temperature is not None else 0.0,
             )
+            get_key_usage().note(api_bearer_token, model)
 
             if response_format == "verbose_json":
                 return STTVerboseResponseModel(

@@ -18,6 +18,7 @@ from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
 from uniinfer.auth import get_optional_proxy_token, verify_provider_access
+from uniinfer.proxy_services.key_usage import get_key_usage
 from uniinfer.provider_access import get_provider_api_key
 from uniinfer.images import ImageTarget, ImageData, ImageGenerationError
 
@@ -152,6 +153,7 @@ def create_images_router(
                         raise HTTPException(status_code=401, detail=str(e))
                     except ImageGenerationError as e:
                         raise HTTPException(status_code=e.status_code, detail=e.body)
+                get_key_usage().note(api_bearer_token, provider_model)
 
                 data_items = [item.to_dict() for item in items]
 

@@ -43,6 +43,7 @@ from uniinfer.proxy_routers.tools import create_tools_router
 from uniinfer.proxy_routers.smoke import create_smoke_router
 from uniinfer.proxy_routers.capabilities import create_capabilities_router
 from uniinfer.proxy_routers.stats import create_stats_router
+from uniinfer.proxy_routers.usage import create_usage_router
 from uniinfer.proxy_routers.systemone import create_systemone_router
 
 try:
@@ -255,6 +256,7 @@ app.include_router(create_models_router(UNIINFER_VERSION))
 app.include_router(create_smoke_router())
 app.include_router(create_capabilities_router(parse_provider_model=parse_provider_model, provider_configs=PROVIDER_CONFIGS))
 app.include_router(create_stats_router())
+app.include_router(create_usage_router())
 app.include_router(create_images_router(parse_provider_model))
 app.include_router(create_audio_router(parse_provider_model))
 app.include_router(create_system_router(UNIINFER_VERSION))

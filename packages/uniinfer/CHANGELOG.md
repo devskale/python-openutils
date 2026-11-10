@@ -8,6 +8,33 @@ adheres to [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- **`GET /v1/usage` — maschinenlesbare Quota-Attribution pro Key (Statusline-
+  Issue uniinfer-usage-endpoint-for-statusline).** Der Proxy führt jetzt
+  per-Key-/per-Model-Zähler in drei kalenderalignten UTC-Fenstern (Minute/
+  Stunde/Tag — exakt die Aqueduct-Reset-Grenzen: volle Minute, volle Stunde,
+  Mitternacht UTC). Multiplikatoren (Aqueduct "Limits 2x" — qwen-3.8-27b und
+  seine Aliase vision/ocr zählen 0.5) werden zur Lesezeit aus
+  `provider_limits.json` angewendet, Konfig-Änderungen wirken also rück-
+  wirkend auf Rohzahlen. Antwort: `key` (gekürzt, kein Secret), `windows`
+  (used/limit/proxy_total/reset_at je Fenster), `models` (Day-Breakdown mit
+  requests/multiplier/weighted), `upstream` (Shared-Key-Note + Source).
+  Bearer-Auth wie die Chat-API; unbekannte/revoked Tokens → 401. **Read-only
+  Reporting, kein Limiter** (0.8.38-Lektion: die AIMD-Infrastruktur bleibt
+  gelöscht). Wichtig: Aqueduct-Limits binden den EINEN gemeinsamen Upstream-
+  TU-Key — `used` ist die Attribution des Aufrufers, `proxy_total` das
+  Aggregat. Zähler gecoleted in `proxy_services/key_usage.py` (nur aktuelle
+  Buckets im RAM, Snapshot `logs/key_usage.json`, Restart-stabil), hooked in
+  chat (alle 6 Record-Sites + Embeddings), images, audio (TTS + STT; dort
+  success-only). `provider_limits.json` tu-Eintrag aktualisiert (50/1500/
+  15000 + Multiplikatoren, ersetzt die stale AIMD-Note); `get_window_limits`
+  + `get_request_multipliers` Accessors in providers.py. Nebeneffekt:
+  `_provider_utilization_pct` aktiviert für TU (Skip erst ab 80% — Routing
+  unverändert bei realer Last). Live-Sonde vor dem Bau: Aqueduct sendet
+  KEINE X-RateLimit-Header (200s geprüft von amd) — Counter selbst führen
+  war also zwingend. Tests: +18 hermetisch (UTC-Floors, Multiplikator-
+  Gewichtung inkl. Aliase, Key-Isolation, Rollover-Pruning, Snapshot-
+  Roundtrip, Cap-Eviction, Endpoint-Vertrag).
+
 - **Exploration für `auto@free` (optional, Default off).** `UNIINFER_AUTO_
   EXPLORE=on|least-served|random` rotiert den "egal"-Pool (Plain-Tier) statt
   immer denselben Kopf zu bedienen — least-served first (7d-Beobachtungs-

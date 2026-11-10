@@ -244,6 +244,30 @@ def get_provider_limits(provider_id: str) -> dict:
     return _PROVIDER_LIMITS.get(provider_id, {})
 
 
+def get_window_limits(provider_id: str) -> dict[str, int]:
+    """Documented rolling-window request limits for a provider.
+
+    Returns {"minute": n, "hour": n, "day": n} with only the documented
+    windows present (missing windows mean unknown, not unlimited).
+    """
+    limits = _PROVIDER_LIMITS.get(provider_id, {})
+    mapping = {
+        "minute": "requests_per_minute",
+        "hour": "requests_per_hour",
+        "day": "requests_per_day",
+    }
+    return {kind: limits[key] for kind, key in mapping.items() if key in limits}
+
+
+def get_request_multipliers(provider_id: str) -> dict[str, float]:
+    """Limit multipliers per bare model name (Aqueduct "Limits 2x" model -> 0.5)."""
+    return {
+        str(model): float(weight)
+        for model, weight in _PROVIDER_LIMITS.get(provider_id, {})
+        .get("request_multipliers", {}).items()
+    }
+
+
 def get_all_provider_limits() -> dict:
     """All documented free-tier rate limits, keyed by provider id."""
     return _PROVIDER_LIMITS
