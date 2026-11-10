@@ -363,9 +363,9 @@ def with_retry(
     response, or ``None`` if exhausted/permanent (caller decides: backup
     chain, raise, or degrade loudly).
     """
-    from .config import RetryConfig, classify_error, _extract_retry_after
+    from .config import RetryPolicy, classify_error, _extract_retry_after
 
-    r = retry if isinstance(retry, RetryConfig) else RetryConfig()
+    r = retry if isinstance(retry, RetryPolicy) else RetryPolicy()
     attempts = 1 if fail_fast else r.attempts
     err: BaseException = RuntimeError("not attempted")
     for attempt in range(attempts):
