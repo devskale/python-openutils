@@ -751,6 +751,14 @@ def _stream_via_openai_sdk(
         return d
 
     openai_messages = [_to_openai_msg(m) for m in messages]
+    # Top-Level-OpenAI-Parameter (Tool-Calls!) NICHT in extra_body — derselbe
+    # Vertrag wie _invoke_via_openai_sdk (in extra_body ignoriert der Gateway
+    # tools still).
+    _TOP_LEVEL = ("tools", "tool_choice", "parallel_tool_calls", "response_format")
+    top_kwargs = {k: request_kwargs[k] for k in _TOP_LEVEL if k in request_kwargs}
+    extra = {k: v for k, v in request_kwargs.items() if k not in _TOP_LEVEL and k != "extra_body"}
+    if isinstance(request_kwargs.get("extra_body"), dict):
+        extra = {**request_kwargs["extra_body"], **extra}
     raw_stream = client.chat.completions.create(
         model=model_id,
         messages=openai_messages,
@@ -758,7 +766,8 @@ def _stream_via_openai_sdk(
         max_tokens=max_tokens,
         stream=True,
         stream_options={"include_usage": True},
-        extra_body=request_kwargs or None,
+        extra_body=extra or None,
+        **top_kwargs,
     )
 
     def _adapt(raw_iter):
@@ -768,15 +777,25 @@ def _stream_via_openai_sdk(
             reasoning = getattr(delta, "reasoning_content", None) if delta is not None else None
             if not reasoning and delta is not None:
                 reasoning = getattr(delta, "thinking", None)
+            # Tool-Call-DELTAS durchreichen (2026-11-10): OpenAI-Streaming
+            # liefert tool_calls in Fragmenten ({index, id?, function:{name?,
+            # arguments-part}}) — roh yielden, die Akkumulation gehört EINER
+            # Stelle (assemble_tool_call_deltas), aufgerufen von iter_llm_events.
+            tcd = getattr(delta, "tool_calls", None) if delta is not None else None
+            finish = getattr(raw.choices[0], "finish_reason", None) if raw.choices else None
             usage = getattr(raw, "usage", None)
             usage = None if usage is None else (
                 usage if isinstance(usage, dict)
                 else usage.model_dump() if hasattr(usage, "model_dump") else dict(usage)
             )
             yield SimpleNamespace(
-                message=SimpleNamespace(content=content, reasoning_content=reasoning),
+                message=SimpleNamespace(
+                    content=content, reasoning_content=reasoning,
+                    tool_calls_delta=tcd,
+                ),
                 thinking=None,
                 usage=usage,
+                finish_reason=finish,
             )
 
     return _adapt(raw_stream)
@@ -923,6 +942,40 @@ def stream_llm(
         return  # done — even if mid-stream errored, we don't backup
 
 
+def assemble_tool_call_deltas(frags: list) -> list[dict]:
+    """OpenAI-Streaming-Tool-Call-Fragmente zu vollen tool_call-Dicts summieren.
+
+    Der Stream liefert je Fragment ``{index, id?, type?, function: {name?,
+    arguments-teilstring}}`` — id/name im ersten Fragment, arguments werden
+    über alle Fragmente konateniert. EINE Akkumulations-Stelle (llminvoke),
+    Konsumenten bekommen fertige OpenAI-Shape-Dicts
+    (``{id, type: 'function', function: {name, arguments}}``) — sortiert nach
+    index, wie das Modell sie beabsichtigte.
+    """
+    acc: dict[int, dict] = {}
+    for frag in frags or []:
+        idx = getattr(frag, "index", None)
+        if idx is None and isinstance(frag, dict):
+            idx = frag.get("index")
+        if idx is None:
+            continue
+        slot = acc.setdefault(int(idx), {"id": "", "type": "function", "function": {"name": "", "arguments": ""}})
+        fid = getattr(frag, "id", None) or (frag.get("id") if isinstance(frag, dict) else None)
+        if fid:
+            slot["id"] = fid
+        ftype = getattr(frag, "type", None) or (frag.get("type") if isinstance(frag, dict) else None)
+        if ftype:
+            slot["type"] = ftype
+        fn = getattr(frag, "function", None) or (frag.get("function") if isinstance(frag, dict) else None)
+        fname = (getattr(fn, "name", None) or (fn.get("name") if isinstance(fn, dict) else None)) if fn else None
+        fargs = (getattr(fn, "arguments", None) or (fn.get("arguments") if isinstance(fn, dict) else None)) if fn else None
+        if fname:
+            slot["function"]["name"] += str(fname)
+        if fargs:
+            slot["function"]["arguments"] += str(fargs)
+    return [acc[k] for k in sorted(acc)]
+
+
 def _chunk_events(chunk):
     """Yield (kind, text) events from a streaming chunk: reasoning + content + usage.
 
@@ -945,6 +998,16 @@ def _chunk_events(chunk):
     c = getattr(msg, "content", None)
     if isinstance(c, str) and c:
         yield ("content", c)
+    # Tool-Call-Fragmente (Streaming-Tool-Agenten): roh durchreichen — die
+    # Akkumulation macht iter_llm_events via assemble_tool_call_deltas.
+    tcd = getattr(msg, "tool_calls_delta", None)
+    if tcd:
+        yield ("tool_calls_delta", tcd)
+    # finish_reason (letzer Content-Chunk): 'length' = max_tokens-Stopp —
+    # Konsumenten (Agent) failen darauf laut statt abgeschnittene Antworten.
+    fin = getattr(chunk, "finish_reason", None)
+    if fin:
+        yield ("finish", fin)
     # Terminaler Usage-Chunk: choices leer, usage gefüllt → als Event durchreichen
     # (Details flach aufgestempelt — in/out/cached-in, siehe _stamp_usage_details_flat)
     u = getattr(chunk, "usage", None)
@@ -1006,16 +1069,30 @@ def iter_llm_events(
             )
             continue  # next backup
         # first token obtained — drain the rest, no backup (Q20)
-        yield from _chunk_events(first)
+        _tc_frags: list = []
+        for kind, payload in _chunk_events(first):
+            if kind == "tool_calls_delta":
+                _tc_frags.extend(payload)
+                continue
+            yield (kind, payload)
         try:
             for chunk in stream:
-                yield from _chunk_events(chunk)
+                for kind, payload in _chunk_events(chunk):
+                    if kind == "tool_calls_delta":
+                        _tc_frags.extend(payload)
+                        continue
+                    yield (kind, payload)
         except Exception as exc:
             emit_alarm(
                 "alarm", ref.provider, ref.model,
                 classify_error(exc), str(exc) + " (mid-stream)",
                 package=pkg, client=cli,
             )
+        # Terminale Ereignisse NACH dem Stream: akkumulierte Tool-Calls als
+        # EIN Event (OpenAI-Shape-Dicts) — Streaming-Tool-Agenten (ReactAgent)
+        # konsumieren fertig montierte Calls statt Fragmente zu puddeln.
+        if _tc_frags:
+            yield ("tool_calls", assemble_tool_call_deltas(_tc_frags))
         return  # done — even if mid-stream errored, we don't backup
 
 

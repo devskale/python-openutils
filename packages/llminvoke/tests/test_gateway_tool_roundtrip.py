@@ -102,3 +102,34 @@ def test_chatmessage_objekt_mit_tool_feldern():
                                messages=[m], temperature=0.2, max_tokens=10, request_kwargs={})
     sent = captured["messages"][0]
     assert sent["role"] == "tool" and sent["tool_call_id"] == "c2" and sent["content"] == "res"
+
+
+def test_assemble_tool_call_deltas_fragmente_zu_dicts():
+    """OpenAI-Fragmente (id/name im ersten, arguments konateniert) →
+    vollständige OpenAI-Shape-Dicts, sortiert nach index."""
+    from types import SimpleNamespace as NS
+    from llminvoke import assemble_tool_call_deltas
+
+    frags = [
+        NS(index=0, id="c1", type="function", function=NS(name="gisa", arguments='{"f')),
+        NS(index=0, function=NS(arguments='rage":"x"}')),
+        NS(index=1, id="c2", function=NS(name="recht", arguments="{}")),
+    ]
+    out = assemble_tool_call_deltas(frags)
+    assert out[0] == {"id": "c1", "type": "function", "function": {"name": "gisa", "arguments": '{"frage":"x"}'}}
+    assert out[1]["id"] == "c2" and out[1]["function"]["name"] == "recht"
+    assert assemble_tool_call_deltas([]) == []
+    assert assemble_tool_call_deltas(None) == []
+
+
+def test_chunk_events_tool_delta_und_finish():
+    from types import SimpleNamespace as NS
+    from llminvoke import _chunk_events
+
+    ch = NS(message=NS(content="hi", reasoning_content=None,
+                       tool_calls_delta=[NS(index=0, id="c1", function=NS(name="t", arguments="{}"))]),
+            thinking=None, usage=None, finish_reason="tool_calls")
+    ev = dict(_chunk_events(ch))
+    assert ev["content"] == "hi"
+    assert ev["tool_calls_delta"][0].id == "c1"
+    assert ev["finish"] == "tool_calls"
