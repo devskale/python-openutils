@@ -211,18 +211,45 @@ def _invoke_via_openai_sdk(
         timeout=httpx.Timeout(connect=10.0, read=90.0, write=30.0, pool=10.0),
     )
     model_id = model if bare_model else f"{provider}@{model}"
-    openai_messages = [
-        {"role": getattr(m, "role", None) or "user", "content": getattr(m, "content", None)}
-        for m in messages
-    ]
+    def _to_openai_msg(m):
+        # Tool-fähige Konversation (2026-11-10, User: „immer über uniinfer"):
+        # rohe OpenAI-Shape-Dicts (assistant.tool_calls, tool-Rolle mit
+        # tool_call_id) VERBATIM durchreichen; ChatMessage-Objekte inklusive
+        # ihrer Tool-Felder konvertieren — vorher fielen tool_calls sowohl in
+        # der Anfrage als auch in der Antwort weg.
+        if isinstance(m, dict):
+            return m
+        d = {"role": getattr(m, "role", None) or "user", "content": getattr(m, "content", None)}
+        if getattr(m, "tool_calls", None):
+            d["tool_calls"] = [
+                tc if isinstance(tc, dict) else (tc.model_dump() if hasattr(tc, "model_dump") else dict(tc))
+                for tc in m.tool_calls
+            ]
+        if getattr(m, "tool_call_id", None):
+            d["tool_call_id"] = m.tool_call_id
+        rd = getattr(m, "reasoning_details", None)
+        if rd and isinstance(d, dict):
+            d.setdefault("extra_fields", {})["reasoning_details"] = rd
+        return d
+
+    openai_messages = [_to_openai_msg(m) for m in messages]
     # vLLM extras (chat_template_kwargs.enable_thinking, …) ride in extra_body →
     # merged into the top-level request JSON → forwarded by the proxy to vLLM.
+    # OpenAI-Request-Parameter, die TOP-LEVEL gehören (Tool-Calls!), von
+    # vLLM-Extras (extra_body) trennen — tools in extra_body ignoriert der
+    # Gateway still (Vorfall: ReactAgent-Rewiring).
+    _TOP_LEVEL = ("tools", "tool_choice", "parallel_tool_calls", "response_format", "stream")
+    top_kwargs = {k: request_kwargs[k] for k in _TOP_LEVEL if k in request_kwargs}
+    extra = {k: v for k, v in request_kwargs.items() if k not in _TOP_LEVEL and k != "extra_body"}
+    if isinstance(request_kwargs.get("extra_body"), dict):
+        extra = {**request_kwargs["extra_body"], **extra}
     resp = client.chat.completions.create(
         model=model_id,
         messages=openai_messages,
         temperature=temperature,
         max_tokens=max_tokens,
-        extra_body=request_kwargs or None,
+        extra_body=extra or None,
+        **top_kwargs,
     )
     # Crash loud (golden rule): no choices = gateway/upstream malfunction, not a
     # legitimate empty. Surface it as an explicit error so it alarms + retries
@@ -244,10 +271,18 @@ def _invoke_via_openai_sdk(
         if u
         else {}
     )
+    _tcs = getattr(msg, "tool_calls", None) or None
+    if _tcs:
+        _tcs = [
+            tc if isinstance(tc, dict) else (tc.model_dump() if hasattr(tc, "model_dump") else dict(tc))
+            for tc in _tcs
+        ]
     return ChatCompletionResponse(
         message=ChatMessage(
             role=(getattr(msg, "role", None) or "assistant"),
             content=getattr(msg, "content", None),
+            tool_calls=_tcs,
+            tool_call_id=getattr(msg, "tool_call_id", None),
         ),
         provider=provider,
         model=getattr(resp, "model", model_id),
@@ -304,6 +339,53 @@ def invoke_llm(
 # ════════════════════════════════════════════════════════════════════════
 # call_llm — retry + backoff + backup chain (the recommended entry point)
 # ════════════════════════════════════════════════════════════════════════
+
+def with_retry(
+    fn,
+    *,
+    retry=None,
+    fail_fast: bool = False,
+    alarm_provider: str | None = None,
+    alarm_model: str | None = None,
+    package: str | None = None,
+    client: str | None = None,
+):
+    """Retry ANY LLM-shaped callable with the canonical retry semantics.
+
+    One seam for robustness (User 2026-11-10: model errors 429/500 can
+    always happen — the whole workflow must be robust): consumers that need
+    the RAW response (tool-calling agents) get the same retry/backoff/
+    Retry-After/alarm treatment that ``call_llm`` gives text callers.
+
+    ``fn() -> response`` — raise on failure; transient errors (rate_limited/
+    timeout/network/server_error/…) retry with backoff, permanent errors
+    (auth/context/not_found/bad_request) stop immediately. Returns the
+    response, or ``None`` if exhausted/permanent (caller decides: backup
+    chain, raise, or degrade loudly).
+    """
+    from .config import RetryConfig, classify_error, _extract_retry_after
+
+    r = retry if isinstance(retry, RetryConfig) else RetryConfig()
+    attempts = 1 if fail_fast else r.attempts
+    err: BaseException = RuntimeError("not attempted")
+    for attempt in range(attempts):
+        try:
+            return fn()
+        except Exception as exc:
+            err = exc
+        kind = classify_error(err)
+        if kind in PERMANENT_ERRORS:
+            break
+        if attempt < attempts - 1:
+            ra = _extract_retry_after(err) if kind == "rate_limited" else None
+            time.sleep(r.delay_for(attempt + 1, ra))
+    if alarm_provider or alarm_model:
+        emit_alarm(
+            "alarm", alarm_provider or "?", alarm_model or "?",
+            classify_error(err), str(err), package=package, client=client,
+        )
+    return None
+
 
 def _try_model(
     ref: ModelRef,
@@ -647,10 +729,28 @@ def _stream_via_openai_sdk(
         timeout=httpx.Timeout(connect=10.0, read=90.0, write=30.0, pool=10.0),
     )
     model_id = model if bare_model else f"{provider}@{model}"
-    openai_messages = [
-        {"role": getattr(m, "role", None) or "user", "content": getattr(m, "content", None)}
-        for m in messages
-    ]
+    def _to_openai_msg(m):
+        # Tool-fähige Konversation (2026-11-10, User: „immer über uniinfer"):
+        # rohe OpenAI-Shape-Dicts (assistant.tool_calls, tool-Rolle mit
+        # tool_call_id) VERBATIM durchreichen; ChatMessage-Objekte inklusive
+        # ihrer Tool-Felder konvertieren — vorher fielen tool_calls sowohl in
+        # der Anfrage als auch in der Antwort weg.
+        if isinstance(m, dict):
+            return m
+        d = {"role": getattr(m, "role", None) or "user", "content": getattr(m, "content", None)}
+        if getattr(m, "tool_calls", None):
+            d["tool_calls"] = [
+                tc if isinstance(tc, dict) else (tc.model_dump() if hasattr(tc, "model_dump") else dict(tc))
+                for tc in m.tool_calls
+            ]
+        if getattr(m, "tool_call_id", None):
+            d["tool_call_id"] = m.tool_call_id
+        rd = getattr(m, "reasoning_details", None)
+        if rd and isinstance(d, dict):
+            d.setdefault("extra_fields", {})["reasoning_details"] = rd
+        return d
+
+    openai_messages = [_to_openai_msg(m) for m in messages]
     raw_stream = client.chat.completions.create(
         model=model_id,
         messages=openai_messages,
