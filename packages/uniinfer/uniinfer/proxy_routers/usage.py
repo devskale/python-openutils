@@ -125,9 +125,13 @@ def create_usage_router() -> APIRouter:
                 used = pool_raw.get(kh, {})
                 for kind in _WINDOW_KINDS:
                     pool_used[kind] += used.get(kind, 0.0)
-                keys.append({"key": label, "used": {
-                    kind: used.get(kind, 0.0) for kind in _WINDOW_KINDS
-                }})
+                keys.append({
+                    "key": label,
+                    "used": {kind: used.get(kind, 0.0) for kind in _WINDOW_KINDS},
+                    # Per-key truth: this key's fill vs ITS OWN quota (the
+                    # statusline shows the key the current model rides on).
+                    "limits": dict(per_key_limits),
+                })
 
             n_keys = len(keys)
             pool_limits = {

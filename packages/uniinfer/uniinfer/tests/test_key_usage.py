@@ -357,3 +357,12 @@ def test_entity_model_normalizes_alias_chain(monkeypatch):
     assert entity_model("novita-2@llama-x") == "novita@llama-x"
     assert entity_model("tu-klark@qwen-3.8-27b") == "tu@qwen-3.8-27b"
     assert entity_model("unknown@x") == "unknown@x"
+
+
+def test_usage_per_key_limits_in_payload(usage_client):
+    """Each pool key carries its OWN limits (per-key truth for the statusline)."""
+    r = usage_client.get("/v1/usage", headers={"Authorization": "Bearer timo-token@x"})
+    tu = r.json()["providers"]["tu"]["pool"]
+    for entry in tu["keys"]:
+        assert entry["limits"] == {"minute": 50, "hour": 1500, "day": 15000}
+    assert tu["limits"]["hour"] == 3000  # pool ceiling unchanged (n x per-key)
