@@ -178,6 +178,9 @@ def create_chat_router(
                     reasoning_effort=reasoning_effort,
                     chat_template_kwargs=request_input.chat_template_kwargs,
                     extra=extras,
+                    usage_note=lambda: get_key_usage().note(
+                        api_bearer_token, provider_model, provider_api_key
+                    ),
                 )
                 # Prime the stream: an open-time upstream 429 (RateLimitError)
                 # surfaces here as a real HTTP 429 (transparent rate-limit

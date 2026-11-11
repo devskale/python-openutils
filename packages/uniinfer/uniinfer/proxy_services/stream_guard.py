@@ -209,6 +209,7 @@ async def astream_guarded(
     reasoning_effort: str | None = None,
     chat_template_kwargs: dict | None = None,
     extra: dict | None = None,
+    usage_note=None,
 ) -> AsyncGenerator[str, None]:
     """Relay ``astream_response_generator`` with empty-stream protection.
 
@@ -227,6 +228,7 @@ async def astream_guarded(
             tools=tools, tool_choice=tool_choice, request_id=request_id,
             reasoning_effort=reasoning_effort,
             chat_template_kwargs=chat_template_kwargs, extra=extra,
+            usage_note=usage_note,
         ):
             yield event
         return
@@ -253,6 +255,7 @@ async def astream_guarded(
             tools=tools, tool_choice=tool_choice, request_id=request_id,
             reasoning_effort=reasoning_effort,
             chat_template_kwargs=chat_template_kwargs, extra=extra,
+            usage_note=usage_note,
         )
         stalled = False
         try:

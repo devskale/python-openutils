@@ -364,3 +364,55 @@ def test_usage_per_key_limits_in_payload(usage_client):
     for entry in tu["keys"]:
         assert entry["limits"] == {"minute": 50, "hour": 1500, "day": 15000}
     assert "limits" not in tu and "used" not in tu and "worst" not in tu  # lean: no aggregates
+
+
+# --- streaming path: usage_note fires when the stream reached upstream ---
+
+@pytest.mark.asyncio
+async def test_stream_usage_note_fires_on_upstream_contact(monkeypatch):
+    """Streams (every pi session!) count toward key usage: usage_note fires
+    when chunks arrived; a disconnect during priming (no chunk, no ttft,
+    status 200) never touched the upstream and must NOT count."""
+    from uniinfer.proxy_services import key_usage as ku_mod
+    from uniinfer.proxy_services.streaming import astream_response_generator
+
+    monkeypatch.setattr(ku_mod, "_SNAPSHOT_PATH", "/tmp/ku-stream-test.json")
+    KeyUsageCollector._instance = None
+    noted = []
+    calls = {"n": 0}
+
+    class _Prov:
+        async def astream_complete(self, request):
+            calls["n"] += 1
+
+            async def _gen():
+                yield type("C", (), {"model_dump": lambda self=None: {"id": "x1", "object": "chat.completion.chunk", "created": 1, "model": "m", "choices": [{"index": 0, "delta": {"role": "assistant", "content": "hi"}, "finish_reason": None}]}})()
+                yield type("C", (), {"model_dump": lambda self=None: {"id": "x1", "object": "chat.completion.chunk", "created": 1, "model": "m", "choices": [{"index": 0, "delta": {}, "finish_reason": "stop"}]}})()
+
+            return _gen()
+
+    class _Target:
+        provider_model = "tu@qwen-3.8-27b"
+        provider = _Prov()
+        async def aclose(self):
+            pass
+
+    gen = astream_response_generator(
+        target=_Target(), messages=[{"role": "user", "content": "x"}],
+        temp=0.0, max_tok=5,
+        usage_note=lambda: noted.append(1),
+    )
+    chunks = [c async for c in gen]
+    assert chunks and noted == [1]  # Upstream-Kontakt → gezählt
+
+    # Priming-Disconnect: Generator erzeugen, NICHT konsumieren (kein Upstream-Call)
+    calls["n"] = 0
+    gen2 = astream_response_generator(
+        target=_Target(), messages=[{"role": "user", "content": "x"}],
+        temp=0.0, max_tok=5,
+        usage_note=lambda: noted.append(2),
+    )
+    await gen2.aclose()  # schließt ohne je gezogen zu haben
+    assert calls["n"] == 0
+    assert 2 not in noted
+    KeyUsageCollector._instance = None

@@ -151,6 +151,7 @@ async def astream_response_generator(
     reasoning_effort: str | None = None,
     chat_template_kwargs: dict | None = None,
     extra: dict | None = None,
+    usage_note=None,
 ) -> AsyncGenerator[str, None]:
     completion_id = f"chatcmpl-{uuid.uuid4()}"
     created_time = int(time.time())
@@ -678,6 +679,14 @@ async def astream_response_generator(
             )
         except Exception:
             pass
+        # Per-key usage attribution: note when the stream REACHED the upstream
+        # (chunks, TTFT, or an upstream error status) — a disconnect during
+        # priming never touched the provider and burns no quota.
+        if usage_note and (chunk_count or _stats_ttft_ms is not None or _stats_status >= 400):
+            try:
+                usage_note()
+            except Exception:
+                pass
         # Close the upstream iterator deterministically — on early exits
         # (client disconnect, error chunks) it can still be suspended with an
         # open httpx stream. A raw aclose() here can race a still-unwinding
