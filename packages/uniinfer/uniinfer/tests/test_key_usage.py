@@ -278,3 +278,31 @@ def test_usage_primary_provider_env(monkeypatch, usage_client):
     w = r.json()["windows"]
     assert w["day"]["used"] == 1.0                  # groq-scoped legacy view
     assert r.json()["upstream"]["primary_provider"] == "groq"
+
+
+# --- entity normalization: alias models count toward their entity provider ---
+
+def test_alias_model_counts_toward_entity(collector, monkeypatch):
+    """tu-klark@model (overlay alias) is counted under the tu entity."""
+    from uniinfer.config import instances as instances_mod
+
+    class _Spec:
+        provider = "tu"
+
+    monkeypatch.setattr(instances_mod, "resolve_instance", lambda a: _Spec() if a == "tu-klark" else (_ for _ in ()).throw(ValueError(a)))
+    th = hashlib.sha256(b"tok1").hexdigest()
+    collector.note("tok1", "tu-klark@qwen-3.8-27b", KLARK_KEY, now=NOW)
+
+    view = collector.usage_view(th, MULTS, provider="tu", now=NOW)
+    assert view["windows"]["minute"]["used"] == 0.5
+    pool = collector.provider_pool_view("tu", MULTS, now=NOW)
+    assert pool[KLARK_H]["minute"] == 0.5
+
+
+def test_unknown_alias_passes_through_unnormalized(collector, monkeypatch):
+    from uniinfer.config import instances as instances_mod
+
+    monkeypatch.setattr(instances_mod, "resolve_instance", lambda a: (_ for _ in ()).throw(ValueError(a)))
+    collector.note("tok1", "mystery@model", POOL_KEY, now=NOW)
+    pool = collector.provider_pool_view("mystery", {}, now=NOW)
+    assert pool[POOL_H]["minute"] == 1.0

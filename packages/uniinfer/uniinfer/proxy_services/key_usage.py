@@ -86,6 +86,27 @@ def weight_of(provider_model: str, multipliers: dict[str, float]) -> float:
     return float(multipliers.get(bare, 1.0))
 
 
+def entity_model(provider_model: str) -> str:
+    """Normalize an alias-prefixed model to its ENTITY provider.
+
+    ``tu-klark@qwen-3.8-27b`` counts toward the ``tu`` entity (the alias is
+    routing to the same upstream entity — instances overlay spec.provider).
+    Unknown aliases pass through unchanged; resolution failures never break
+    counting.
+    """
+    if "@" not in provider_model:
+        return provider_model
+    alias, rest = provider_model.split("@", 1)
+    try:
+        from uniinfer.config.instances import resolve_instance
+
+        spec = resolve_instance(alias)
+        entity = spec.provider or alias
+        return f"{entity}@{rest}" if entity != alias else provider_model
+    except Exception:  # noqa: BLE001 — counting must never break on config issues
+        return provider_model
+
+
 class KeyUsageCollector:
     """Singleton usage counter: (caller × upstream-key × model), UTC windows."""
 
@@ -127,6 +148,7 @@ class KeyUsageCollector:
         ts = int(now if now is not None else time.time())
         th = token_hash(token)
         kh = upstream_key_hash(upstream_key)
+        provider_model = entity_model(provider_model)
         with self._lock:
             if th not in self._cur:
                 self._evict_if_full(ts)
