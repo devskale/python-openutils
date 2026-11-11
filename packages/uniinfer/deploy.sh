@@ -61,6 +61,11 @@ echo "Extras selection:${EXTRAS_FLAGS:- (base only — lean default)}"
 
 echo "Pulling latest code..."
 cd "$ROOT"
+# Self-heal: local lockfile drift (an earlier bare `uv sync` rewrites uv.lock)
+# blocks `git pull` on the deploy box. Tracked lockfiles are disposable here —
+# source of truth is git. Discard drift, then pull. (Retro 2026-11-11: two
+# deploy aborts on exactly this.)
+git checkout -- packages/*/uv.lock 2>/dev/null || true
 git pull
 
 echo "Syncing dependencies..."
