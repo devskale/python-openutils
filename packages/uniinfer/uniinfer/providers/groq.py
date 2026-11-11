@@ -187,7 +187,12 @@ class GroqProvider(ChatProvider):
             upstream_quota.note_from_headers(self.api_key, params["model"], raw.headers)
         except Exception:  # noqa: BLE001 — capture must never break the call
             pass
-        return raw.parse()
+        parsed = raw.parse()
+        import inspect
+
+        if inspect.iscoroutine(parsed):  # groq SDK: async parse on raw responses
+            parsed = await parsed
+        return parsed
 
     async def astream_complete(
         self,
