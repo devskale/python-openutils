@@ -79,6 +79,15 @@ observed exactly in the one minute where local rate exceeded 25 req/min
 | `TU_TRANSPORT_RETRIES` | `0` (lean relay) | Retry belongs to the **agent/caller**; the proxy relays failures immediately. Pool hygiene still runs: a timeout evicts the poisoned pooled client (`da62091`) so the *next* request gets fresh routing. |
 | `TU_RATE_LIMIT_PER_MIN` | unset | Deliberate: wedges are **not** quota-driven — a local bucket would only self-throttle while TU's own 429s already arrive correctly. |
 
+### Multi-Key (upstream key pools, live 2026-11-11)
+
+Pool aliases (`tu-klark@…`), caller keys (`X-Provider-Key`), per-key client
+pool, `/v1/usage` attribution. Knobs: `UNIINFER_OWN_KEY_PROVIDERS` (default
+`tu`), `UNIINFER_USAGE_PRIMARY_PROVIDER` (default `tu`), `TU_CLIENT_POOL_MAX`
+(default 32). Membership = instances overlay, limits = provider_limits.json.
+Detail: `docs/provider-instances-design.md` §Key pools · Issues
+`uniinfer-multi-key-concept`, `uniinfer-pool-failover-slice-b`.
+
 Ops guidance: TU wedge windows last 20–60 min — a caller seeing a TU
 timeout/504 should prefer a provider switch or delayed retry over an
 immediate retry onto the same wedged routing.

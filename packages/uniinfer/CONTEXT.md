@@ -8,6 +8,12 @@ reviews. Keep this current when concepts are named or sharpened.
 - **Provider** — an LLM backend behind `ChatProvider` (ollama, tu/vLLM, zai,
   openai, anthropic, gemini, …). Registered in `ProviderFactory`. Each owns its
   own dialect of every cross-provider concern.
+- **Upstream-Key-Pool** — the upstream API keys a provider dispatches through,
+  each stacking its own quota (Aqueduct limits per KEY). Membership is deploy
+  config: overlay aliases with own `credgoo_service` — `tu-klark@model`
+  addresses the klark-dedicated key; caller keys ride `X-Provider-Key`.
+  Naming: semantic when semantics exist (`tu-klark`, `zai-code`), numbers when
+  fungible (`novita-2`); failover never across cost tiers (zai↔zai-code).
 - **Reasoning effort** — the cross-provider *intent*: how hard a model should
   reason. Typed `Literal["none","minimal","low","medium","high"]`, carried on
   `ChatCompletionRequest.reasoning_effort`. The single primary thinking-control

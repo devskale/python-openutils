@@ -58,6 +58,20 @@ Field defaults (when omitted): inherit the underlying class attrs
   Anonymous instances (local vLLM, LM Studio, Ollama) declare `false`; the
   proxy's auth-bypass reads this instead of a hardcoded `ollama` check.
 
+## Key pools (multi-key, live 2026-11-11)
+
+An alias with own `credgoo_service` on a builtin class is a **pool key**
+(`tu-klark` → provider `tu`, own quota; every key stacks full quota —
+Aqueduct limits per key). Naming: semantic when semantics exist (`tu-klark`,
+`zai-code`), numbers when fungible (`novita-2`); never renumbered; airtable
+name == alias. Never failover across cost tiers (zai↔zai-code) or URLs
+(`tu-staging`). TU clients pool per `(base_url, key-hash)` — Authorization
+is baked in per client (`TU_CLIENT_POOL_MAX`, default 32). Caller keys:
+header `X-Provider-Key` (`UNIINFER_OWN_KEY_PROVIDERS`, default `tu`).
+Usage: `/v1/usage` `providers.<p>.pool`/`mine`, legacy `windows` via
+`UNIINFER_USAGE_PRIMARY_PROVIDER`. History: issue `uniinfer-multi-key-concept`;
+failover: issue `uniinfer-pool-failover-slice-b`.
+
 ## Generic class
 
 - New `OpenAICompatProvider` (subclass of `OpenAICompatibleChatProvider`):
