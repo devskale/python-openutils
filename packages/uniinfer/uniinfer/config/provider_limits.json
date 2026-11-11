@@ -22,8 +22,7 @@
   "source": "https://ollama.com/pricing"
  },
  "arli": {
-  "concurrent_requests": 1,
-  "notes": "Qwen-3.5-27B-Derestricted: 12K ctx, 1 concurrent. Other models: 5 trial requests / 2 days.",
+  "notes": "Free tier GONE (live probe 2026-11-11): both catalog models answer 403 'Please upgrade your plan' on the FREE plan (account arli@skale.io). Instance disabled in the deployed overlay until a plan upgrade.",
   "source": "https://www.arliai.com/pricing"
  },
  "gemini": {

@@ -693,7 +693,7 @@ wheels = [
 
 [[package]]
 name = "credgoo"
-version = "0.1.16"
+version = "0.1.17"
 source = { editable = "../credgoo" }
 dependencies = [
     { name = "requests", version = "2.32.5", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.10'" },
@@ -3495,7 +3495,7 @@ wheels = [
 
 [[package]]
 name = "uniinfer"
-version = "0.9.13"
+version = "0.9.14"
 source = { editable = "." }
 dependencies = [
     { name = "ai21" },
