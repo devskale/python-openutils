@@ -59,11 +59,17 @@ async def test_groq_provider_acomplete(chat_request):
     mock_response.usage.total_tokens = 15
     mock_response.model_dump.return_value = {"id": "test-res"}
 
-    with patch.object(provider.async_client.chat.completions, 'create', new_callable=AsyncMock) as mock_create:
-        mock_create.return_value = mock_response
-        
+    raw = MagicMock()
+    raw.headers = {}
+    raw.parse.return_value = mock_response
+    with patch.object(
+        provider.async_client.chat.completions.with_raw_response,
+        'create', new_callable=AsyncMock,
+    ) as mock_create:
+        mock_create.return_value = raw
+
         response = await provider.acomplete(chat_request)
-        
+
         assert response.message.content == "Groq response"
         assert response.provider == "groq"
         mock_create.assert_called_once()

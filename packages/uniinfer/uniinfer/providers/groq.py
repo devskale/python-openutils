@@ -117,7 +117,7 @@ class GroqProvider(ChatProvider):
         params = self._build_groq_params(request, False, provider_specific_kwargs)
 
         try:
-            completion = await self.async_client.chat.completions.create(**params)
+            completion = await self._create_with_quota_capture(params)
 
             response_message = completion.choices[0].message
             tool_calls = None
@@ -168,6 +168,27 @@ class GroqProvider(ChatProvider):
                 raise
             raise map_provider_error("Groq", e)
 
+    async def _create_with_quota_capture(self, params: Dict[str, Any]):
+        """Create a completion, capturing x-ratelimit-* quota truth on the way.
+
+        Groq (org-level limits per model) answers with rate-limit headers on
+        EVERY response; with_raw_response exposes them at zero extra cost.
+        Falls back to a plain create when the SDK lacks the raw seam — quota
+        capture must never break a request.
+        """
+        try:
+            create_raw = self.async_client.chat.completions.with_raw_response.create
+        except AttributeError:  # SDK without the raw seam — plain path
+            return await self.async_client.chat.completions.create(**params)
+        raw = await create_raw(**params)
+        try:
+            from uniinfer.proxy_services import upstream_quota
+
+            upstream_quota.note_from_headers(self.api_key, params["model"], raw.headers)
+        except Exception:  # noqa: BLE001 — capture must never break the call
+            pass
+        return raw.parse()
+
     async def astream_complete(
         self,
         request: ChatCompletionRequest,
@@ -181,7 +202,7 @@ class GroqProvider(ChatProvider):
         params = self._build_groq_params(request, True, provider_specific_kwargs)
 
         try:
-            stream = await self.async_client.chat.completions.create(**params)
+            stream = await self._create_with_quota_capture(params)
 
             async for chunk in stream:
                 if chunk.choices and hasattr(chunk.choices[0], 'delta'):

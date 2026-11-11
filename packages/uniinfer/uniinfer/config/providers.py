@@ -259,6 +259,13 @@ def get_window_limits(provider_id: str) -> dict[str, int]:
     return {kind: limits[key] for kind, key in mapping.items() if key in limits}
 
 
+def get_quota_source(provider_id: str) -> str:
+    """Quota truth source for a provider: 'self-counted' (default — proxy
+    counts requests per key/model in calendar windows) or 'upstream-headers'
+    (x-ratelimit-* truth captured from every response; limits per key×model)."""
+    return str(_PROVIDER_LIMITS.get(provider_id, {}).get("quota_source", "self-counted"))
+
+
 def get_request_multipliers(provider_id: str) -> dict[str, float]:
     """Limit multipliers per bare model name (Aqueduct "Limits 2x" model -> 0.5)."""
     return {

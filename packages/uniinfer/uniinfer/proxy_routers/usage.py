@@ -31,6 +31,7 @@ from fastapi.responses import JSONResponse
 from uniinfer.auth import _allowed_token_hashes, _token_metadata, validate_proxy_token
 from uniinfer.config.providers import (
     get_all_provider_limits,
+    get_quota_source,
     get_request_multipliers,
     get_window_limits,
 )
@@ -120,16 +121,46 @@ def create_usage_router() -> APIRouter:
             pool_raw = collector.provider_pool_view(prov, multipliers, now=now)
 
             keys: list[dict[str, Any]] = []
+            upstream_mode = get_quota_source(prov) == "upstream-headers"
             for kh, label in sorted(labels.items(), key=lambda kv: kv[1]):
                 used = pool_raw.get(kh, {})
-                keys.append({
+                entry: dict[str, Any] = {
                     "key": label,
                     "used": {kind: used.get(kind, 0.0) for kind in _WINDOW_KINDS},
                     # Per-key truth: this key's fill vs ITS OWN quota. The
                     # statusline shows the key the current model rides on
                     # (model prefix = alias = key) — no pool aggregates.
                     "limits": dict(per_key_limits),
-                })
+                }
+                if upstream_mode:
+                    from uniinfer.proxy_services import upstream_quota
+                    from datetime import timedelta
+
+                    truth: dict[str, Any] = {}
+                    for model, e in upstream_quota.view(kh).items():
+                        dims = {}
+                        for dim in ("requests", "tokens"):
+                            d = e.get(dim)
+                            if not d:
+                                continue
+                            reset_at = None
+                            if d.get("reset_s") is not None:
+                                reset_at = (
+                                    datetime.fromtimestamp(
+                                        e["ts"] + d["reset_s"], timezone.utc
+                                    ).isoformat().replace("+00:00", "Z")
+                                )
+                            dims[dim] = {
+                                "used": d["limit"] - d["remaining"],
+                                "limit": d["limit"],
+                                "remaining": d["remaining"],
+                                **({"reset_at": reset_at} if reset_at else {}),
+                            }
+                        if dims:
+                            truth[model] = {"age_s": int(time.time() - e["ts"]), **dims}
+                    if truth:
+                        entry["upstream"] = truth
+                keys.append(entry)
 
             mine = collector.usage_view(th, multipliers, provider=prov, now=now)
 

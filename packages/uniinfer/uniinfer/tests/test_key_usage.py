@@ -416,3 +416,51 @@ async def test_stream_usage_note_fires_on_upstream_contact(monkeypatch):
     assert calls["n"] == 0
     assert 2 not in noted
     KeyUsageCollector._instance = None
+
+
+# --- upstream quota truth (header capture, config-driven per provider) ---
+
+def test_upstream_quota_parse_and_view():
+    from uniinfer.proxy_services import upstream_quota as uq
+
+    uq.reset()
+    kh = upstream_hash = __import__("hashlib").sha256(b"sk-groq").hexdigest()
+    uq.note_from_headers("sk-groq", "openai/gpt-oss-20b", {
+        "x-ratelimit-limit-requests": "1000",
+        "x-ratelimit-remaining-requests": "999",
+        "x-ratelimit-reset-requests": "1m26.4s",
+        "x-ratelimit-limit-tokens": "8000",
+        "x-ratelimit-remaining-tokens": "7927",
+        "x-ratelimit-reset-tokens": "547ms",
+    })
+    v = uq.view(kh)["openai/gpt-oss-20b"]
+    assert v["requests"] == {"limit": 1000, "remaining": 999, "reset_s": 86.4}
+    assert v["tokens"] == {"limit": 8000, "remaining": 7927, "reset_s": 0.547}
+
+    uq.note_from_headers("sk-groq", "m", {"content-type": "application/json"})  # keine RL-Header → no-op
+    assert set(uq.view(kh)) == {"openai/gpt-oss-20b"}
+    uq.reset()
+
+
+def test_usage_endpoint_upstream_truth(usage_client, monkeypatch):
+    """groq (quota_source=upstream-headers): Key-Eintrag trägt per-Model-
+    Upstream-Wahrheit; used = limit - remaining."""
+    import uniinfer.proxy_routers.usage as usage_mod
+    from uniinfer.proxy_services import upstream_quota as uq
+
+    uq.reset()
+    kh = __import__("hashlib").sha256(b"sk-groq-pool").hexdigest()
+    uq.note_from_headers("sk-groq-pool", "openai/gpt-oss-20b", {
+        "x-ratelimit-limit-requests": "1000",
+        "x-ratelimit-remaining-requests": "970",
+        "x-ratelimit-reset-requests": "10m0s",
+    })
+    monkeypatch.setattr(usage_mod, "get_quota_source",
+                        lambda pid: "upstream-headers" if pid == "groq" else "self-counted")
+    r = usage_client.get("/v1/usage", headers={"Authorization": "Bearer other-key@y"})
+    gk = r.json()["providers"]["groq"]["pool"]["keys"][0]
+    up = gk["upstream"]["openai/gpt-oss-20b"]
+    assert up["requests"]["used"] == 30
+    assert up["requests"]["limit"] == 1000
+    assert up["requests"]["reset_at"].endswith("Z")
+    uq.reset()
