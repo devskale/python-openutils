@@ -242,24 +242,21 @@ def test_usage_providers_pool_mine_shape(usage_client):
 
     tu = body["providers"]["tu"]
     pool = tu["pool"]
-    by_label = {k["key"]: k["used"] for k in pool["keys"]}
-    assert by_label["tu"]["minute"] == 1.0          # timo's 2x qwen x 0.5 on pool key
-    assert by_label["tu-klark"]["minute"] == 1.0    # other caller's glm on klark key
-    assert pool["used"]["minute"] == 2.0
-    assert pool["limits"]["minute"] == 100          # 2 keys x 50
-    assert pool["limits"]["day"] == 30000           # 2 keys x 15000
-    # own-key traffic (OWN_H) is NOT a pool key — absent from pool keys
-    assert all(k != "own" for k in by_label)
-    # worst: klark 1.0/50 = 2% (min) vs tu 1.0/50 = 2% — max pct wins deterministically
-    assert pool["worst"]["window"] in ("minute", "hour", "day")
+    by_label = {k["key"]: k for k in pool["keys"]}
+    assert by_label["tu"]["used"]["minute"] == 1.0      # timo's 2x qwen x 0.5 on pool key
+    assert by_label["tu-klark"]["used"]["minute"] == 1.0  # other caller's glm on klark key
+    # Per-key truth, no pool aggregates
+    assert set(pool.keys()) == {"keys"}
+    assert by_label["tu"]["limits"] == {"minute": 50, "hour": 1500, "day": 15000}
     # mine: caller attribution across pool + own keys, tu-scoped, weighted
     assert tu["mine"]["minute"] == 1.5
     assert "2x" in tu["multiplier_note"]
 
     groq = body["providers"]["groq"]
-    assert groq["pool"]["keys"][0]["key"] == "groq"
-    assert groq["pool"]["used"]["day"] == 1.0
-    assert groq["pool"]["limits"]["day"] == 14400
+    gk = groq["pool"]["keys"][0]
+    assert gk["key"] == "groq"
+    assert gk["used"]["day"] == 1.0
+    assert gk["limits"]["day"] == 14400
     assert groq["mine"]["minute"] == 0.0            # other caller's traffic, not timo's
 
 
@@ -365,4 +362,4 @@ def test_usage_per_key_limits_in_payload(usage_client):
     tu = r.json()["providers"]["tu"]["pool"]
     for entry in tu["keys"]:
         assert entry["limits"] == {"minute": 50, "hour": 1500, "day": 15000}
-    assert tu["limits"]["hour"] == 3000  # pool ceiling unchanged (n x per-key)
+    assert "limits" not in tu and "used" not in tu and "worst" not in tu  # lean: no aggregates

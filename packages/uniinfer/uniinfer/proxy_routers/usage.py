@@ -120,44 +120,21 @@ def create_usage_router() -> APIRouter:
             pool_raw = collector.provider_pool_view(prov, multipliers, now=now)
 
             keys: list[dict[str, Any]] = []
-            pool_used = {kind: 0.0 for kind in _WINDOW_KINDS}
             for kh, label in sorted(labels.items(), key=lambda kv: kv[1]):
                 used = pool_raw.get(kh, {})
-                for kind in _WINDOW_KINDS:
-                    pool_used[kind] += used.get(kind, 0.0)
                 keys.append({
                     "key": label,
                     "used": {kind: used.get(kind, 0.0) for kind in _WINDOW_KINDS},
-                    # Per-key truth: this key's fill vs ITS OWN quota (the
-                    # statusline shows the key the current model rides on).
+                    # Per-key truth: this key's fill vs ITS OWN quota. The
+                    # statusline shows the key the current model rides on
+                    # (model prefix = alias = key) — no pool aggregates.
                     "limits": dict(per_key_limits),
                 })
-
-            n_keys = len(keys)
-            pool_limits = {
-                kind: (n_keys * per_key_limits[kind]) if per_key_limits.get(kind) else None
-                for kind in _WINDOW_KINDS
-            }
-
-            worst: dict[str, Any] | None = None
-            for entry in keys:
-                for kind in _WINDOW_KINDS:
-                    lim = per_key_limits.get(kind)
-                    if not lim:
-                        continue
-                    pct = round(100.0 * entry["used"][kind] / lim, 1)
-                    if worst is None or pct > worst["pct"]:
-                        worst = {"key": entry["key"], "pct": pct, "window": kind}
 
             mine = collector.usage_view(th, multipliers, provider=prov, now=now)
 
             providers[prov] = {
-                "pool": {
-                    "keys": keys,
-                    "used": {kind: round(pool_used[kind], 3) for kind in _WINDOW_KINDS},
-                    "limits": pool_limits,
-                    **({"worst": worst} if worst else {}),
-                },
+                "pool": {"keys": keys},
                 "mine": {
                     kind: mine["windows"][kind]["used"] for kind in _WINDOW_KINDS
                 },
