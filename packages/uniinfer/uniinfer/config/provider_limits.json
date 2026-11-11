@@ -2,9 +2,10 @@
  "_doc": "Documented FREE-tier rate limits per provider, transcribed from docs/providers.md. Limits change \u2014 update this file, not code. Units are explicit keys (requests_per_minute, requests_per_day, tokens_per_minute, tokens_per_day, ...). Omitted key = unknown/not published. `per_model` overrides the provider defaults for specific models. Approximate values are flagged in `notes`.",
  "groq": {
   "tokens_per_day": 100000,
-  "notes": "Org-level limits per MODEL (RPD requests / TPM tokens), delivered live as x-ratelimit-* headers on every response \u2014 /v1/usage surfaces upstream truth; keys do NOT stack (org quota). Supersedes flat 30 RPM.",
+  "notes": "Org-level per MODEL; live x-ratelimit-* truth on every response (quota_source=upstream-headers). BINDING constraint is TPM: 8000 tokens/min for gpt-oss-20b on the on_demand tier \u2014 agent-sized requests (18k+ tokens) get 413 rate_limit_exceeded BEFORE any window logic. Unusable for pi sessions; instance disabled in the deployed overlay (auto-routing protection). Small-context calls (probes, tiny chats) remain fine when addressed directly.",
   "source": "https://console.groq.com/docs/rate-limits",
-  "quota_source": "upstream-headers"
+  "quota_source": "upstream-headers",
+  "requests_per_day": 1000
  },
  "openrouter": {
   "requests_per_day": 50,
