@@ -26,7 +26,7 @@ PREDEFINED_MODELS = [
     "stepfun@step-1-flash",
     "upstage@solar-mini-250401",
     "zai@glm-4.5-flash",
-    "zai-code@glm-4.5",
+    "zaicode@glm-4.5",
     "ngc@google/gemma-3-27b-it",
     "cohere@command-r",
     "moonshot@kimi-latest",

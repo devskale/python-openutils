@@ -88,7 +88,7 @@ ProviderFactory.register_provider("opencode", OpenCodeProvider)
 ProviderFactory.register_provider("kilo", KiloProvider)
 ProviderFactory.register_provider("pollinations", PollinationsProvider)
 ProviderFactory.register_provider("zai", ZAIProvider)
-ProviderFactory.register_provider("zai-code", ZAICodeProvider)
+ProviderFactory.register_provider("zaicode", ZAICodeProvider)
 ProviderFactory.register_provider("tu", TUProvider)
 ProviderFactory.register_provider("tu-staging", TUStagingProvider)
 

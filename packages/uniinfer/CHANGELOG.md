@@ -8,6 +8,23 @@ adheres to [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- **Key-agnostischer Katalog (Adressierungs-Modell final):** Hauptliste zeigt
+  jede Entity einmal — Pool-Key-Aliasse (Overlay `entity` gesetzt und !=
+  alias, z.B. tu-klark→tu, novita-2→novita) erscheinen NICHT mehr in
+  `/v1/models` (kein Re-Listing pro Key; SOTA: OpenRouter/LiteLLM listen
+  Modelle, nie Keys). Per-Alias-Endpoint (`/v1/models/tu-klark`) bleibt.
+  Adressierung: `tu@x` = key-agnostisch (Pool, Router wählt — Slice B),
+  `tu-klark@x` = bewusstes Key-Pinning.
+
+### Changed
+
+- **`zai-code` → `zaicode` umbenannt:** zai-code ist ein ANDERER Anbieter
+  (eigene URL `api/coding/paas/v4`, bezahlter Plan) — das Namens-Pattern
+  `zai-<suffix>` sah aber wie ein zai-Pool-Key aus. Keine Pattern-Logik im
+  Code (nur explizites `entity`-Feld), aber der Name löscht die Verwechslung
+  aus. Airtable-Service-Pendant wird analog umbenannt. Modelle heißen jetzt
+  `zaicode@…`.
+
 - **Entity-Feld für Custom-Aliasse** (Issue uniinfer-entity-field-novita-pool):
   optionales Overlay-Feld `entity` gruppiert Custom-Aliasse über generischen
   Klassen (openai-compat) für Usage-Pools, Token-Scopes und Attribution —

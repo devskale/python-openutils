@@ -88,5 +88,5 @@ def test_resolve_credgoo_service_custom_default_is_alias(instances_env):
 
 
 def test_resolve_credgoo_service_builtin_uses_class_attr(instances_env):
-    # zai-code's class declares CREDGOO_SERVICE = "zai-code"; no instance override.
-    assert _resolve_credgoo_service("zai-code") == "zai-code"
+    # zai-code's class declares CREDGOO_SERVICE = "zaicode"; no instance override.
+    assert _resolve_credgoo_service("zaicode") == "zaicode"

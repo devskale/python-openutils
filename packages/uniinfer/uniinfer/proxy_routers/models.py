@@ -100,6 +100,21 @@ def _model_info_to_dict(m) -> dict:
     return {"id": str(m), "object": "model", "owned_by": "skaledev"}
 
 
+def _pool_key_aliases() -> frozenset[str]:
+    """Instance aliases that are POOL KEYS of another entity (overlay field
+    ``entity`` set and != alias, e.g. tu-klark → tu). Key-agnostic catalog:
+    the main list shows each entity's models once — pool keys are explicit
+    addressing overrides (per-alias endpoint stays available), never
+    discovery entries. SOTA: OpenRouter/LiteLLM list models, not keys."""
+    from uniinfer.config.instances import load_instances
+
+    return frozenset(
+        alias
+        for alias, spec in load_instances().items()
+        if (getattr(spec, "entity", None) or None) not in (None, alias)
+    )
+
+
 def create_models_router(version: str) -> APIRouter:
     router = APIRouter()
 
@@ -133,6 +148,12 @@ def create_models_router(version: str) -> APIRouter:
         them like concrete models."""
         await ensure_fresh_models_file()  # stale (>REFETCHTIME, default 24h) → background regen
         models = Catalog().list_resolved()
+        pool_keys = _pool_key_aliases()
+        if pool_keys:
+            models = [
+                m for m in models
+                if m.get("id", "").split("@", 1)[0] not in pool_keys
+            ]
         from uniinfer.proxy_services.router import virtual_model_entries
 
         models = models + virtual_model_entries()

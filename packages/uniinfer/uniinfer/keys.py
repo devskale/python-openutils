@@ -47,7 +47,7 @@ _NO_KEY_REQUIRED = frozenset({"ollama", "pollinations"})
 # Credgoo service name overrides where it differs from the provider name.
 _CREDGOO_SERVICE_OVERRIDES = {
     "kilo": "kilocode",
-    # zai / zai-code / tu / tu-staging already match their provider names
+    # zai / zaicode / tu / tu-staging already match their provider names
 }
 
 

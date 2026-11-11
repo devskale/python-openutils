@@ -292,7 +292,7 @@ class ZAIProvider(ZAIBaseProvider):
 
 class ZAICodeProvider(ZAIBaseProvider):
     BASE_URL = "https://api.z.ai/api/coding/paas/v4"
-    PROVIDER_ID = "zai-code"
-    ERROR_PROVIDER_NAME = "ZAI-Code"
+    PROVIDER_ID = "zaicode"
+    ERROR_PROVIDER_NAME = "ZAICode"
     DEFAULT_MODEL = "glm-4.5"
-    CREDGOO_SERVICE = "zai-code"
+    CREDGOO_SERVICE = "zaicode"

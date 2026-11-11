@@ -180,11 +180,11 @@ def test_access_field_keytype_and_selective(tmp_path):
     # free-form keytype label + selective models list, both in the open access dict
     f = tmp_path / "pi.json"
     f.write_text(json.dumps({
-        "zai-code": {"provider": "zai-code", "access": {"keytype": "GLM Coding Pro"}},
+        "zaicode": {"provider": "zaicode", "access": {"keytype": "GLM Coding Pro"}},
         "zai-trial": {"provider": "zai", "access": {"keytype": "Trial", "models": ["glm-4.5-flash"]}},
     }))
     m = load_instances(path=str(f))
-    assert m["zai-code"].access["keytype"] == "GLM Coding Pro"
+    assert m["zaicode"].access["keytype"] == "GLM Coding Pro"
     assert m["zai-trial"].access["models"] == ["glm-4.5-flash"]
     assert m["zai"].access == {}  # builtin untouched
 

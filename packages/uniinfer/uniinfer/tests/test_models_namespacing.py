@@ -85,3 +85,27 @@ def test_delete_override_strips_provider_prefix(tmp_path):
 
     assert cat.delete_override("openai@gpt-5.4") is True
     assert "gpt-5.4" not in cat.read_overrides()["models"]
+
+
+def test_pool_key_aliases_from_overlay(tmp_path, monkeypatch):
+    """Pool-Key-Erkennung ist reine Overlay-Config: entity gesetzt und !=
+    alias → Pool-Key (tu-klark→tu, novita-2→novita). Aliasse OHNE entity
+    (hab) und Builtins (zai, zai-code — eigene Provider-Klassen!) bleiben
+    gelistet — zai-code ist ein ANDERER Anbieter, kein zai-Pool-Key."""
+    import json
+    from uniinfer.config import instances as instances_mod
+    from uniinfer.proxy_routers.models import _pool_key_aliases
+
+    overlay = tmp_path / "provider_instances.json"
+    overlay.write_text(json.dumps({
+        "tu-klark": {"provider": "tu", "entity": "tu", "credgoo_service": "tu-klark"},
+        "novita": {"provider": "openai-compat", "entity": "novita",
+                   "credgoo_service": "novita", "base_url": "https://x/v1"},
+        "novita-2": {"provider": "openai-compat", "entity": "novita",
+                     "credgoo_service": "novita-2", "base_url": "https://x/v1"},
+        "hab": {"provider": "openai-compat", "credgoo_service": "dgxp",
+                "base_url": "http://127.0.0.1:18020/v1"},
+    }))
+    monkeypatch.setenv("UNIINFER_INSTANCES_FILE", str(overlay))
+    monkeypatch.setattr(instances_mod, "_CACHE", {})
+    assert _pool_key_aliases() == frozenset({"tu-klark", "novita-2"})
