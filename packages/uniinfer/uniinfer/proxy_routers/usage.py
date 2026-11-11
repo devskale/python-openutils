@@ -138,10 +138,7 @@ def create_usage_router() -> APIRouter:
                 "mine": {
                     kind: mine["windows"][kind]["used"] for kind in _WINDOW_KINDS
                 },
-                "multiplier_note": (
-                    "'Limits 2x' models count 0.5 requests"
-                    if multipliers else None
-                ),
+                "multiplier_note": limits_cfg.get("multiplier_note"),
                 "source": limits_cfg.get("source"),
             }
 
@@ -161,14 +158,7 @@ def create_usage_router() -> APIRouter:
             "providers": providers,
             "windows": windows,
             "models": legacy["models"],
-            "upstream": {
-                "primary_provider": primary,
-                "note": (
-                    "Limits bind per upstream key; 'pool' aggregates the "
-                    "deployed key pool (instances overlay), 'mine' is this "
-                    "key's attribution including caller-supplied keys."
-                ),
-            },
+            "upstream": {"primary_provider": primary},
         }
         return JSONResponse(content=payload)
 

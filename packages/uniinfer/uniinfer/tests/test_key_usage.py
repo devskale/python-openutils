@@ -209,7 +209,8 @@ def usage_client(monkeypatch, tmp_path):
     )
     monkeypatch.setattr(usage_mod, "get_all_provider_limits", lambda: {
         "tu": {"requests_per_minute": 50, "requests_per_hour": 1500,
-               "requests_per_day": 15000, "source": "https://aqueduct"},
+               "requests_per_day": 15000, "source": "https://aqueduct",
+               "multiplier_note": "'Limits 2x' models count 0.5 requests"},
         "groq": {"requests_per_day": 14400},
     })
     monkeypatch.setattr(usage_mod, "get_request_multipliers", lambda pid: MULTS if pid == "tu" else {})

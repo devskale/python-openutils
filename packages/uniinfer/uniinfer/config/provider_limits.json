@@ -138,7 +138,8 @@
    "ocr": 0.5
   },
   "source": "https://datalab.tuwien.ac.at/blog/aqueduct-rate-limits/",
-  "notes": "Since 2026-11-09: per AQUEDUCT key 50/min, 1500/h, 15000/day; reset top-of-minute, top-of-hour, midnight UTC (01:00 Vienna in winter). The proxy funnels all clients through ONE shared upstream TU key, so these limits bind the aggregate; /v1/usage attributes per proxy key. request_multipliers: Aqueduct 'Limits 2x' models count 0.5 requests (vision/ocr are Aqueduct-side aliases of qwen-3.8-27b). Supersedes the stale AIMD-limiter note (ratelimit.py was deleted in 0.8.38)."
+  "notes": "Since 2026-11-09: per AQUEDUCT key 50/min, 1500/h, 15000/day; reset top-of-minute, top-of-hour, midnight UTC (01:00 Vienna in winter). The proxy funnels all clients through ONE shared upstream TU key, so these limits bind the aggregate; /v1/usage attributes per proxy key. request_multipliers: Aqueduct 'Limits 2x' models count 0.5 requests (vision/ocr are Aqueduct-side aliases of qwen-3.8-27b). Supersedes the stale AIMD-limiter note (ratelimit.py was deleted in 0.8.38).",
+  "multiplier_note": "'Limits 2x' models count 0.5 requests (qwen-3.8-27b and its aliases vision/ocr)"
  },
  "zai-code": {
   "notes": "Coding endpoint from Zhipu AI; inherits Z.AI fair-use. See zai.",
