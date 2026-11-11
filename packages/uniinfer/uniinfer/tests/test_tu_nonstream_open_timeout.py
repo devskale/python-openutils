@@ -73,7 +73,7 @@ class TestNonstreamOpenTimeout:
         evict+retry path to fire at all on a wedged replica."""
         provider = TUProvider(api_key="k")
         mock = _pool_client(post_side_effect=[_good_response()])
-        _TU_CLIENT_CACHE[provider.base_url] = (mock, asyncio.get_running_loop())
+        _TU_CLIENT_CACHE[provider._client_cache_key()] = (mock, asyncio.get_running_loop())
 
         await provider.acomplete(_request())
 
@@ -89,7 +89,7 @@ class TestNonstreamOpenTimeout:
         provider = TUProvider(api_key="k")
         monkeypatch.setenv("TU_TRANSPORT_RETRIES", "0")
         mock = _pool_client(post_side_effect=httpx.ReadTimeout("wedged replica"))
-        _TU_CLIENT_CACHE[provider.base_url] = (mock, asyncio.get_running_loop())
+        _TU_CLIENT_CACHE[provider._client_cache_key()] = (mock, asyncio.get_running_loop())
 
         with pytest.raises(ProviderError) as exc:
             await provider.acomplete(_request())
@@ -109,7 +109,7 @@ class TestNonstreamOpenTimeout:
         mock_a = _pool_client(post_side_effect=httpx.ReadTimeout("wedged replica"))
         mock_b = AsyncMock(spec=httpx.AsyncClient)
         mock_b.is_closed = False
-        _TU_CLIENT_CACHE[provider.base_url] = (mock_a, asyncio.get_running_loop())
+        _TU_CLIENT_CACHE[provider._client_cache_key()] = (mock_a, asyncio.get_running_loop())
         monkeypatch.setattr(TUProvider, "_new_async_client", lambda self: mock_b)
         _TU_TELEMETRY.evictions = 0
         _TU_TELEMETRY.transport_retries = 0
@@ -120,4 +120,4 @@ class TestNonstreamOpenTimeout:
         assert mock_a.post.await_count == 1
         assert _TU_TELEMETRY.evictions == 1
         assert _TU_TELEMETRY.transport_retries == 0
-        assert _TU_CLIENT_CACHE[provider.base_url][0] is mock_b
+        assert _TU_CLIENT_CACHE[provider._client_cache_key()][0] is mock_b

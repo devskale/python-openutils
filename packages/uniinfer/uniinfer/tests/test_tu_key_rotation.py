@@ -93,7 +93,7 @@ class TestTUKeyRotation:
 
         mock_a = _pool_client(_unauthorized_response())
         mock_b = _pool_client(_good_response("recovered"))
-        _TU_CLIENT_CACHE[provider.base_url] = (mock_a, asyncio.get_running_loop())
+        _TU_CLIENT_CACHE[provider._client_cache_key()] = (mock_a, asyncio.get_running_loop())
         monkeypatch.setattr(TUProvider, "_new_async_client", lambda self: mock_b)
 
         keys["key"] = "fresh-key"  # rotate between init and the call
@@ -102,7 +102,7 @@ class TestTUKeyRotation:
 
         assert response.message.content == "recovered"
         assert provider.api_key == "fresh-key"
-        assert _TU_CLIENT_CACHE[provider.base_url][0] is mock_b
+        assert _TU_CLIENT_CACHE[provider._client_cache_key()][0] is mock_b
 
     @pytest.mark.asyncio
     async def test_recovery_reads_backend_not_cache(self, monkeypatch):
@@ -117,7 +117,7 @@ class TestTUKeyRotation:
         provider = TUProvider(api_key=None)
         mock_a = _pool_client(_unauthorized_response())
         mock_b = _pool_client(_good_response("recovered"))
-        _TU_CLIENT_CACHE[provider.base_url] = (mock_a, asyncio.get_running_loop())
+        _TU_CLIENT_CACHE[provider._client_cache_key()] = (mock_a, asyncio.get_running_loop())
         monkeypatch.setattr(TUProvider, "_new_async_client", lambda self: mock_b)
         keys["key"] = "fresh-key"
 
@@ -135,7 +135,7 @@ class TestTUKeyRotation:
 
         provider = TUProvider(api_key=None)
         mock_a = _pool_client(_unauthorized_response())
-        _TU_CLIENT_CACHE[provider.base_url] = (mock_a, asyncio.get_running_loop())
+        _TU_CLIENT_CACHE[provider._client_cache_key()] = (mock_a, asyncio.get_running_loop())
 
         with pytest.raises(AuthenticationError):
             await provider.acomplete(_request())
@@ -152,7 +152,7 @@ class TestTUKeyRotation:
 
         provider = TUProvider(api_key="explicit-key")  # caller-owned
         mock_a = _pool_client(_unauthorized_response())
-        _TU_CLIENT_CACHE[provider.base_url] = (mock_a, asyncio.get_running_loop())
+        _TU_CLIENT_CACHE[provider._client_cache_key()] = (mock_a, asyncio.get_running_loop())
 
         with pytest.raises(AuthenticationError):
             await provider.acomplete(_request())

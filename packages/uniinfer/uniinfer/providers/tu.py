@@ -7,6 +7,7 @@ import asyncio
 import httpx
 import json
 import logging
+import hashlib
 import os
 import time
 from datetime import datetime, timezone
@@ -89,7 +90,24 @@ def _parse_retry_after(headers: Any) -> float | None:
 # loop) — asyncio.run-per-call closes each loop, and a client pooled on a dead
 # loop serves zombie connections ("Event loop is closed"). Recreate on loop
 # mismatch; pooling holds within one long-lived loop.
-_TU_CLIENT_CACHE: dict[str, tuple[httpx.AsyncClient, asyncio.AbstractEventLoop]] = {}
+#
+# Keyed by (base_url, key_id): the Authorization header is baked into a client
+# at mint time, so DISTINCT upstream keys (pool aliases like tu-klark,
+# caller-supplied X-Provider-Key) each need their own pooled client — a
+# base_url-only pool would silently serve every request on whichever key
+# minted the first client (the historical bare-key-gate finding). Size-capped
+# (TU_CLIENT_POOL_MAX, default 32) with oldest-first eviction: distinct keys
+# are few (deployed pool + one per own-key caller), so the cap only bounds
+# pathological own-key cardinality.
+_TU_CLIENT_CACHE: dict[tuple[str, str], tuple[httpx.AsyncClient, asyncio.AbstractEventLoop]] = {}
+
+
+def _tu_client_pool_max() -> int:
+    """Cap for the per-key pooled client cache (env-configurable)."""
+    try:
+        return max(2, int(os.getenv("TU_CLIENT_POOL_MAX", "32")))
+    except ValueError:
+        return 32
 
 # --- Stream robustness knobs -------------------------------------------------
 # A TU backend that accepts a request but never answers (its wedged-replica
@@ -449,7 +467,7 @@ class TUProvider(ChatProvider):
         except RuntimeError:
             loop = None
         replacement = self._new_async_client()
-        _TU_CLIENT_CACHE[self.base_url] = (replacement, loop)
+        _TU_CLIENT_CACHE[self._client_cache_key()] = (replacement, loop)
         self._async_client = replacement
         self._owns_client = False
         logger.warning(
@@ -458,13 +476,20 @@ class TUProvider(ChatProvider):
         )
         return replacement
 
-    async def _get_async_client(self) -> httpx.AsyncClient:
-        """Get the shared (per-base_url) httpx.AsyncClient for TU.
+    def _client_cache_key(self) -> tuple[str, str]:
+        """Cache identity: (base_url, key-id) — one pooled client per KEY."""
+        key_id = hashlib.sha256((self.api_key or "").encode()).hexdigest()[:16]
+        return (self.base_url, key_id)
 
-        Pooled per base_url so every request reuses ONE client (and its
-        connection pool) instead of minting one per Target — per-request
-        creation leaked native TLS/buffer memory under streaming load. The
-        client is cached process-wide; aclose() skips it (see _owns_client)."""
+    async def _get_async_client(self) -> httpx.AsyncClient:
+        """Get the shared (per base_url AND upstream key) httpx.AsyncClient for TU.
+
+        Pooled per (base_url, key_id) so every request reuses ONE client (and
+        its connection pool) instead of minting one per Target — per-request
+        creation leaked native TLS/buffer memory under streaming load. Distinct
+        upstream keys (aliases, caller-supplied) get distinct clients: the
+        Authorization header is baked in at mint time. The client is cached
+        process-wide; aclose() skips it (see _owns_client)."""
         # Respect a caller/test-injected client before consulting the pool.
         if self._async_client is not None and not self._async_client.is_closed:
             # Re-sync with the process-wide pool: a concurrent request may have
@@ -473,14 +498,14 @@ class TUProvider(ChatProvider):
             # the wedged connection forever. Injected clients (_owns_client) are
             # exempt — the caller owns their lifecycle.
             if not self._owns_client:
-                pooled = _TU_CLIENT_CACHE.get(self.base_url)
+                pooled = _TU_CLIENT_CACHE.get(self._client_cache_key())
                 if pooled is not None:
                     pooled_client = pooled[0]
                     if pooled_client is not self._async_client and not pooled_client.is_closed:
                         self._async_client = pooled_client
             return self._async_client
         loop = asyncio.get_running_loop()
-        cached = _TU_CLIENT_CACHE.get(self.base_url)
+        cached = _TU_CLIENT_CACHE.get(self._client_cache_key())
         if cached is not None:
             client, client_loop = cached
             if client.is_closed or client_loop is not loop or client_loop.is_closed():
@@ -494,7 +519,17 @@ class TUProvider(ChatProvider):
             # back to HTTP/1.1 for hosts that don't speak h2. Replaces the earlier
             # keepalive=0 workaround (which cost a TLS handshake per request).
             client = self._new_async_client()
-            _TU_CLIENT_CACHE[self.base_url] = (client, loop)
+            key = self._client_cache_key()
+            while len(_TU_CLIENT_CACHE) >= _tu_client_pool_max():
+                oldest_key, oldest = next(iter(_TU_CLIENT_CACHE.items()))
+                if oldest_key == key:
+                    break
+                del _TU_CLIENT_CACHE[oldest_key]
+                try:
+                    await oldest[0].aclose()
+                except Exception:
+                    pass
+            _TU_CLIENT_CACHE[key] = (client, loop)
         self._async_client = client
         self._owns_client = False
         return client

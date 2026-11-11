@@ -69,13 +69,13 @@ class TestTUPoolEvictionAcomplete:
         provider = TUProvider(api_key="k")
         mock_a = _pool_client(post_side_effect=httpx.ReadError("connection killed by LB"))
         mock_b = _pool_client(post_return=_good_response("recovered"))
-        _TU_CLIENT_CACHE[provider.base_url] = (mock_a, asyncio.get_running_loop())
+        _TU_CLIENT_CACHE[provider._client_cache_key()] = (mock_a, asyncio.get_running_loop())
         monkeypatch.setattr(TUProvider, "_new_async_client", lambda self: mock_b)
 
         response = await provider.acomplete(_request())
 
         assert response.message.content == "recovered"
-        assert _TU_CLIENT_CACHE[provider.base_url][0] is mock_b
+        assert _TU_CLIENT_CACHE[provider._client_cache_key()][0] is mock_b
 
 
 
@@ -84,7 +84,7 @@ class TestTUPoolEvictionAcomplete:
         provider = TUProvider(api_key="k")
         mock_a = _pool_client(post_side_effect=httpx.ReadTimeout("wedged backend"))
         mock_b = _pool_client(post_return=_good_response())
-        _TU_CLIENT_CACHE[provider.base_url] = (mock_a, asyncio.get_running_loop())
+        _TU_CLIENT_CACHE[provider._client_cache_key()] = (mock_a, asyncio.get_running_loop())
         monkeypatch.setattr(TUProvider, "_new_async_client", lambda self: mock_b)
 
         response = await provider.acomplete(_request())
@@ -92,14 +92,14 @@ class TestTUPoolEvictionAcomplete:
         assert response.message.content == "ok"
         assert mock_a.post.await_count == 1
         assert mock_b.post.await_count == 1
-        assert _TU_CLIENT_CACHE[provider.base_url][0] is mock_b
+        assert _TU_CLIENT_CACHE[provider._client_cache_key()][0] is mock_b
 
     @pytest.mark.asyncio
     async def test_injected_client_is_not_evicted(self):
         provider = TUProvider(api_key="k")
         mock_injected = _pool_client(post_side_effect=httpx.ReadTimeout("wedged"))
         mock_pooled = _pool_client(post_return=_good_response("pooled"))
-        _TU_CLIENT_CACHE[provider.base_url] = (mock_pooled, asyncio.get_running_loop())
+        _TU_CLIENT_CACHE[provider._client_cache_key()] = (mock_pooled, asyncio.get_running_loop())
         provider._async_client = mock_injected  # caller-injected (owns)
 
         with pytest.raises(ProviderError):
@@ -108,7 +108,7 @@ class TestTUPoolEvictionAcomplete:
         # All retries stayed on the injected client; the pool was untouched.
         assert mock_injected.post.await_count == 5
         assert mock_pooled.post.await_count == 0
-        assert _TU_CLIENT_CACHE[provider.base_url][0] is mock_pooled
+        assert _TU_CLIENT_CACHE[provider._client_cache_key()][0] is mock_pooled
 
 
 class TestTUPoolResync:
@@ -119,7 +119,7 @@ class TestTUPoolResync:
         p1, p2 = TUProvider(api_key="k"), TUProvider(api_key="k")
         mock_a = _pool_client()
         mock_b = _pool_client()
-        _TU_CLIENT_CACHE[p1.base_url] = (mock_a, asyncio.get_running_loop())
+        _TU_CLIENT_CACHE[p1._client_cache_key()] = (mock_a, asyncio.get_running_loop())
 
         assert await p1._get_async_client() is mock_a
         assert await p2._get_async_client() is mock_a
@@ -131,14 +131,14 @@ class TestTUPoolResync:
         assert await p1._get_async_client() is mock_b
         # …and the other long-lived instance re-syncs instead of serving on the corpse.
         assert await p2._get_async_client() is mock_b
-        assert _TU_CLIENT_CACHE[p1.base_url][0] is mock_b
+        assert _TU_CLIENT_CACHE[p1._client_cache_key()][0] is mock_b
 
     @pytest.mark.asyncio
     async def test_injected_client_is_not_resynced_away(self):
         provider = TUProvider(api_key="k")
         mock_injected = _pool_client()
         mock_pooled = _pool_client()
-        _TU_CLIENT_CACHE[provider.base_url] = (mock_pooled, asyncio.get_running_loop())
+        _TU_CLIENT_CACHE[provider._client_cache_key()] = (mock_pooled, asyncio.get_running_loop())
         provider._async_client = mock_injected  # injected: caller owns lifecycle
 
         assert await provider._get_async_client() is mock_injected
@@ -172,14 +172,14 @@ class TestTUPoolEvictionStream:
         mock_b.stream = MagicMock()
         mock_b.stream.return_value.__aenter__.return_value = mock_response
 
-        _TU_CLIENT_CACHE[provider.base_url] = (mock_a, asyncio.get_running_loop())
+        _TU_CLIENT_CACHE[provider._client_cache_key()] = (mock_a, asyncio.get_running_loop())
         monkeypatch.setattr(TUProvider, "_new_async_client", lambda self: mock_b)
 
         chunks = [c async for c in provider.astream_complete(_request())]
 
         assert mock_a.stream.call_count == 1
         assert mock_b.stream.call_count == 1
-        assert _TU_CLIENT_CACHE[provider.base_url][0] is mock_b
+        assert _TU_CLIENT_CACHE[provider._client_cache_key()][0] is mock_b
         assert chunks and chunks[0].message.content == "ok"
 
     @pytest.mark.asyncio
@@ -203,10 +203,35 @@ class TestTUPoolEvictionStream:
         mock.is_closed = False
         mock.stream = MagicMock()
         mock.stream.return_value.__aenter__.return_value = mock_response
-        _TU_CLIENT_CACHE[provider.base_url] = (mock, asyncio.get_running_loop())
+        _TU_CLIENT_CACHE[provider._client_cache_key()] = (mock, asyncio.get_running_loop())
 
         with caplog.at_level(logging.INFO, logger="uniinfer.providers.tu"):
             _ = [c async for c in provider.astream_complete(_request())]
 
         opens = [r for r in caplog.records if "STREAM-OPEN" in r.getMessage()]
         assert len(opens) == 1
+
+
+@pytest.mark.asyncio
+async def test_distinct_keys_get_distinct_pooled_clients(monkeypatch):
+    """Per-key pooling: the Authorization header is baked into a client, so
+    two upstream keys on the same base_url (pool alias / X-Provider-Key)
+    must never share a pooled client — the first key would silently serve
+    the second key's traffic (historical bare-key-gate finding)."""
+    p_default = TUProvider(api_key="sk-default")
+    p_klark = TUProvider(api_key="sk-klark")
+    c_default = _pool_client()
+    c_klark = _pool_client()
+    which = {"n": 0}
+    def mint(self):
+        which["n"] += 1
+        return c_default if which["n"] == 1 else c_klark
+    monkeypatch.setattr(TUProvider, "_new_async_client", mint)
+
+    got_default = await p_default._get_async_client()
+    got_klark = await p_klark._get_async_client()
+
+    assert got_default is c_default
+    assert got_klark is c_klark
+    assert got_default is not got_klark
+    assert p_default._client_cache_key() != p_klark._client_cache_key()
