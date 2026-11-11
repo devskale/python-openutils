@@ -306,3 +306,54 @@ def test_unknown_alias_passes_through_unnormalized(collector, monkeypatch):
     collector.note("tok1", "mystery@model", POOL_KEY, now=NOW)
     pool = collector.provider_pool_view("mystery", {}, now=NOW)
     assert pool[POOL_H]["minute"] == 1.0
+
+
+# --- entity field: custom aliases over generic classes group by entity ---
+
+class _EntitySpec:
+    """Overlay spec stub: novita/novita-2 are openai-compat customs with entity."""
+    def __init__(self, entity, provider):
+        self.entity = entity
+        self.provider = provider
+
+
+def _patch_entities(monkeypatch, mapping):
+    from uniinfer.config import instances as instances_mod
+    monkeypatch.setattr(
+        instances_mod, "resolve_instance",
+        lambda a: mapping[a] if a in mapping else (_ for _ in ()).throw(ValueError(a)),
+    )
+
+
+def test_entity_field_groups_custom_aliases(collector, monkeypatch):
+    _patch_entities(monkeypatch, {
+        "novita": _EntitySpec("novita", "openai-compat"),
+        "novita-2": _EntitySpec("novita", "openai-compat"),
+        "hab": _EntitySpec(None, "openai-compat"),  # no entity → class fallback
+    })
+    th = hashlib.sha256(b"tok1").hexdigest()
+    kh1 = upstream_key_hash("sk-novita-1")
+    kh2 = upstream_key_hash("sk-novita-2")
+    collector.note("tok1", "novita@llama-x", "sk-novita-1", now=NOW)
+    collector.note("tok2", "novita-2@llama-x", "sk-novita-2", now=NOW)
+    collector.note("tok1", "hab@hab-model", "sk-hab", now=NOW)
+
+    # both novita aliases count toward the novita entity (NOT openai-compat)
+    view = collector.usage_view(th, {}, provider="novita", now=NOW)
+    assert view["windows"]["minute"]["used"] == 1.0
+    pool = collector.provider_pool_view("novita", {}, now=NOW)
+    assert pool[kh1]["minute"] == 1.0 and pool[kh2]["minute"] == 1.0
+    # hab falls back to its class entity
+    hab_pool = collector.provider_pool_view("openai-compat", {}, now=NOW)
+    assert hab_pool[upstream_key_hash("sk-hab")]["minute"] == 1.0
+
+
+def test_entity_model_normalizes_alias_chain(monkeypatch):
+    _patch_entities(monkeypatch, {
+        "novita-2": _EntitySpec("novita", "openai-compat"),
+        "tu-klark": _EntitySpec(None, "tu"),
+    })
+    from uniinfer.proxy_services.key_usage import entity_model
+    assert entity_model("novita-2@llama-x") == "novita@llama-x"
+    assert entity_model("tu-klark@qwen-3.8-27b") == "tu@qwen-3.8-27b"
+    assert entity_model("unknown@x") == "unknown@x"

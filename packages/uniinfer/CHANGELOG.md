@@ -8,6 +8,15 @@ adheres to [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- **Entity-Feld für Custom-Aliasse** (Issue uniinfer-entity-field-novita-pool):
+  optionales Overlay-Feld `entity` gruppiert Custom-Aliasse über generischen
+  Klassen (openai-compat) für Usage-Pools, Token-Scopes und Attribution —
+  novita + novita-2 → Entity `novita`, statt auf die Klasse zu kollabieren.
+  Fallback `spec.provider` (Builtins: Klasse == Entity). Berührpunkte:
+  `InstanceSpec.entity`, `entity_model()`, `_pool_labels()`,
+  Token-Constraint-Kandidaten. Tests: +3 (Entity-Gruppierung, Ketten-
+  Normalisierung, Fallback).
+
 - **Multi-Key-Konzept Slice A — Upstream-Key-Attribution + eigene Keys von
   außen (Issue uniinfer-multi-key-concept, Q4–Q10 SOTA-abgeleitet).**
   - **`X-Provider-Key`-Header (M3):** authentifizierte Caller können ihren

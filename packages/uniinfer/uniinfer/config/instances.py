@@ -33,6 +33,7 @@ _ENTRY_FIELDS = (
     "enabled",
     "default_model",
     "systemone_path",
+    "entity",
 )
 
 
@@ -66,6 +67,11 @@ class InstanceSpec:
     enabled: bool = True
     default_model: Optional[str] = None
     is_builtin: bool = False
+    # Pool/Entity-Identität für Custom-Aliasse über generische Klassen
+    # (openai-compat): `entity` gruppiert Aliasse desselben Upstream-Dienstes
+    # (novita + novita-2 → "novita") für Usage-Pools und Token-Scopes.
+    # None → fallback: spec.provider (Builtins: Klasse == Entity).
+    entity: Optional[str] = None
     # Systemone-Pfad-Suffix für /v1/systemone: None → "/systemone" (Default,
     # native vLLM/jev-Endpoints), "" → base_url wird AS-IS angesprochen
     # (z.B. CF Workers AI /ai/run/@cf/…-URLs), "/{model}" → bare model im

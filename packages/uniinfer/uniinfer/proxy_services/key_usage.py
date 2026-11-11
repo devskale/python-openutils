@@ -89,8 +89,9 @@ def weight_of(provider_model: str, multipliers: dict[str, float]) -> float:
 def entity_model(provider_model: str) -> str:
     """Normalize an alias-prefixed model to its ENTITY provider.
 
-    ``tu-klark@qwen-3.8-27b`` counts toward the ``tu`` entity (the alias is
-    routing to the same upstream entity — instances overlay spec.provider).
+    ``tu-klark@qwen-3.8-27b`` counts toward the ``tu`` entity; custom aliases
+    over generic classes (``novita-2`` → openai-compat) group via the overlay's
+    ``entity`` field (fallback: spec.provider — for builtins class == entity).
     Unknown aliases pass through unchanged; resolution failures never break
     counting.
     """
@@ -101,7 +102,7 @@ def entity_model(provider_model: str) -> str:
         from uniinfer.config.instances import resolve_instance
 
         spec = resolve_instance(alias)
-        entity = spec.provider or alias
+        entity = getattr(spec, "entity", None) or spec.provider or alias
         return f"{entity}@{rest}" if entity != alias else provider_model
     except Exception:  # noqa: BLE001 — counting must never break on config issues
         return provider_model

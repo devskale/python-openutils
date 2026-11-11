@@ -370,6 +370,7 @@ def check_token_constraints(
             from uniinfer.config.instances import resolve_instance
             spec = resolve_instance(provider_name)
             candidates = {provider_name,
+                          getattr(spec, "entity", None),
                           getattr(spec, "provider", None),
                           getattr(spec, "credgoo_service", None)}
         except Exception:

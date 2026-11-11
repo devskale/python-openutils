@@ -63,7 +63,7 @@ def _pool_labels(provider: str) -> dict[str, str]:
 
     labels: dict[str, str] = {}
     for alias, spec in load_instances().items():
-        entity = spec.provider or alias
+        entity = getattr(spec, "entity", None) or spec.provider or alias
         if entity != provider and alias != provider:
             continue
         service = spec.credgoo_service or alias
