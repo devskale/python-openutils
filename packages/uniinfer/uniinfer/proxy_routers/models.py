@@ -100,6 +100,19 @@ def _model_info_to_dict(m) -> dict:
     return {"id": str(m), "object": "model", "owned_by": "skaledev"}
 
 
+def _hidden_instance_aliases() -> frozenset[str]:
+    """Aliases hidden from the main catalog: disabled instances (overlay
+    ``enabled: false`` — dead free tiers, retired endpoints) and pool-key
+    aliases (see :func:`_pool_key_aliases`). Read-time filter: hot overlay
+    reload, no catalog regen needed."""
+    from uniinfer.config.instances import load_instances
+
+    hidden = {
+        alias for alias, spec in load_instances().items() if not spec.enabled
+    }
+    return hidden | _pool_key_aliases()
+
+
 def _pool_key_aliases() -> frozenset[str]:
     """Instance aliases that are POOL KEYS of another entity (overlay field
     ``entity`` set and != alias, e.g. tu-klark → tu). Key-agnostic catalog:
@@ -148,11 +161,11 @@ def create_models_router(version: str) -> APIRouter:
         them like concrete models."""
         await ensure_fresh_models_file()  # stale (>REFETCHTIME, default 24h) → background regen
         models = Catalog().list_resolved()
-        pool_keys = _pool_key_aliases()
-        if pool_keys:
+        hidden = _hidden_instance_aliases()
+        if hidden:
             models = [
                 m for m in models
-                if m.get("id", "").split("@", 1)[0] not in pool_keys
+                if m.get("id", "").split("@", 1)[0] not in hidden
             ]
         from uniinfer.proxy_services.router import virtual_model_entries
 

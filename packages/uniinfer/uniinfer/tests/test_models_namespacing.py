@@ -109,3 +109,21 @@ def test_pool_key_aliases_from_overlay(tmp_path, monkeypatch):
     monkeypatch.setenv("UNIINFER_INSTANCES_FILE", str(overlay))
     monkeypatch.setattr(instances_mod, "_CACHE", {})
     assert _pool_key_aliases() == frozenset({"tu-klark", "novita-2"})
+
+
+def test_disabled_instance_hidden_from_catalog(tmp_path, monkeypatch):
+    """enabled:false versteckt die Instanz im Haupt-Katalog (read-time,
+    hot overlay): tote Free-Tiers (arli) verschwinden sofort, ohne Refresh."""
+    import json
+    from uniinfer.config import instances as instances_mod
+    from uniinfer.proxy_routers.models import _hidden_instance_aliases
+
+    overlay = tmp_path / "provider_instances.json"
+    overlay.write_text(json.dumps({
+        "arli": {"enabled": False},
+        "zai": {"access": {"only": "free"}},
+        "tu-klark": {"provider": "tu", "entity": "tu", "credgoo_service": "tu-klark"},
+    }))
+    monkeypatch.setenv("UNIINFER_INSTANCES_FILE", str(overlay))
+    monkeypatch.setattr(instances_mod, "_CACHE", {})
+    assert _hidden_instance_aliases() == frozenset({"arli", "tu-klark"})
