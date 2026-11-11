@@ -12,8 +12,7 @@ reviews. Keep this current when concepts are named or sharpened.
   each stacking its own quota (Aqueduct limits per KEY). Membership is deploy
   config: overlay aliases with own `credgoo_service` — `tu-klark@model`
   addresses the klark-dedicated key; caller keys ride `X-Provider-Key`.
-  Naming: semantic when semantics exist (`tu-klark`, `zai-code`), numbers when
-  fungible (`novita-2`); failover never across cost tiers (zai↔zai-code).
+  Naming + failover boundaries: `docs/provider-instances-design.md` §Key pools.
 - **Reasoning effort** — the cross-provider *intent*: how hard a model should
   reason. Typed `Literal["none","minimal","low","medium","high"]`, carried on
   `ChatCompletionRequest.reasoning_effort`. The single primary thinking-control

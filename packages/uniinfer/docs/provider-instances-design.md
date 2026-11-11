@@ -63,8 +63,8 @@ Field defaults (when omitted): inherit the underlying class attrs
 An alias with own `credgoo_service` on a builtin class is a **pool key**
 (`tu-klark` → provider `tu`, own quota; every key stacks full quota —
 Aqueduct limits per key). Naming: semantic when semantics exist (`tu-klark`,
-`zai-code`), numbers when fungible (`novita-2`); never renumbered; airtable
-name == alias. Never failover across cost tiers (zai↔zai-code) or URLs
+`zaicode`), numbers when fungible (`novita-2`); never renumbered; airtable
+name == alias. Never failover across cost tiers (zai↔zaicode) or URLs
 (`tu-staging`). TU clients pool per `(base_url, key-hash)` — Authorization
 is baked in per client (`TU_CLIENT_POOL_MAX`, default 32). Caller keys:
 header `X-Provider-Key` (`UNIINFER_OWN_KEY_PROVIDERS`, default `tu`).
@@ -183,7 +183,7 @@ semantics are new keys, no schema migration):
 ### First-cut tags (the "few important ones")
 
 ```jsonc
-"zai-code":  { "provider": "zai-code", "credgoo_service": "zai-code",
+"zaicode":  { "provider": "zaicode", "credgoo_service": "zaicode",
                "access": { "keytype": "GLM Coding Pro" } },
 "zai-trial": { "provider": "zai", "credgoo_service": "zai-trial",
                "access": { "keytype": "Trial", "models": ["glm-4.5-flash"] } },
