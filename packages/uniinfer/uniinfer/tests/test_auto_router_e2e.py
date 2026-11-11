@@ -100,7 +100,7 @@ def app_client(monkeypatch, tmp_path):
     ov.write_text(json.dumps({"models": {}}))
     monkeypatch.setattr(routing, "_router_overrides_path", lambda: str(ov))
     monkeypatch.setattr(
-        "uniinfer.proxy_routers.chat.verify_provider_access", lambda t, p: "fake-key"
+        "uniinfer.proxy_routers.chat.verify_provider_access", lambda t, p, own_key=None: "fake-key"
     )
     monkeypatch.setattr(
         "uniinfer.completion.resolve_instance",

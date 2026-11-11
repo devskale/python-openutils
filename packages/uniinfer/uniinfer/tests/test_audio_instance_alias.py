@@ -33,7 +33,7 @@ def _hab_spec():
 
 def _patch(monkeypatch, captured, stt_body=None, tts_content=b"RIFF"):
     monkeypatch.setattr("uniinfer.proxy_routers.audio.verify_provider_access",
-                        lambda token, alias: "sk-hab-upstream")
+                        lambda token, alias, own_key=None: "sk-hab-upstream")
     monkeypatch.setattr(
         "uniinfer.config.instances.resolve_instance",
         lambda a: _hab_spec() if a == "hab" else (_ for _ in ()).throw(ValueError(a)))
@@ -111,7 +111,7 @@ class TestLegacyPfad:
             lambda a: (_ for _ in ()).throw(ValueError(a)))
         from uniinfer.proxy_routers.audio import verify_provider_access
         monkeypatch.setattr("uniinfer.proxy_routers.audio.verify_provider_access",
-                            lambda token, alias: "sk-tu")
+                            lambda token, alias, own_key=None: "sk-tu")
         r = client.post("/v1/audio/speech", json={
             "model": "unknownprov@does-not-exist", "input": "x"})
         # TTSTarget wirft ValueError (TTS not supported) → 400, kein 500

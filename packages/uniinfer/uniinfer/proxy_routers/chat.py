@@ -75,6 +75,9 @@ def create_chat_router(
 
         try:
             provider_name, _ = parse_provider_model(provider_model)
+            # Caller-supplied upstream key (X-Provider-Key): rides the caller's
+            # own quota when the provider allows it (auth still fully applies).
+            _own_key = request.headers.get("x-provider-key")
             # Caller identity for personal routing preferences: the bearer's
             # sha256 maps to a token name (auth metadata sidecar) whose
             # prefer/avoid section in routing_preferences.json steers the
@@ -132,7 +135,9 @@ def create_chat_router(
             # the instance overlay / legacy extra_params; per-request base_url
             # (if provided) still wins as an explicit override.
 
-            provider_api_key = verify_provider_access(api_bearer_token, provider_name)
+            provider_api_key = verify_provider_access(
+                api_bearer_token, provider_name, own_key=_own_key
+            )
 
             # Auto-routed requests carry a fallback chain: on a quota-spent
             # upstream (429/402) the failed model is parked (cooldown) and the
@@ -200,7 +205,7 @@ def create_chat_router(
                         if e.response_body
                         else str(e)
                     )
-                    get_key_usage().note(api_bearer_token, provider_model)
+                    get_key_usage().note(api_bearer_token, provider_model, provider_api_key)
                     get_stats().record(
                         provider_model,
                         status=429,
@@ -310,7 +315,7 @@ def create_chat_router(
                             provider_model,
                             f"EMPTY-STREAM: non-stream completion empty after {_attempts} attempt(s)",
                         )
-                        get_key_usage().note(api_bearer_token, provider_model)
+                        get_key_usage().note(api_bearer_token, provider_model, provider_api_key)
                         get_stats().record(
                             provider_model,
                             status=502,
@@ -343,7 +348,7 @@ def create_chat_router(
                     request.state.provider_model = provider_model
                     request.state.routed_model = provider_model
                     provider_api_key = verify_provider_access(
-                        api_bearer_token, provider_name
+                        api_bearer_token, provider_name, own_key=_own_key
                     )
                     target = Target(provider_model, provider_api_key, base_url)
                 except ProviderError as e:
@@ -369,7 +374,7 @@ def create_chat_router(
                     request.state.provider_model = provider_model
                     request.state.routed_model = provider_model
                     provider_api_key = verify_provider_access(
-                        api_bearer_token, provider_name
+                        api_bearer_token, provider_name, own_key=_own_key
                     )
                     target = Target(provider_model, provider_api_key, base_url)
 
@@ -415,7 +420,7 @@ def create_chat_router(
                 else None
             )
             if is_openai_strict_mode():
-                get_key_usage().note(api_bearer_token, provider_model)
+                get_key_usage().note(api_bearer_token, provider_model, provider_api_key)
                 get_stats().record(
                     provider_model,
                     status=200,
@@ -426,7 +431,7 @@ def create_chat_router(
                     content=response_data.model_dump(exclude_none=True),
                     headers=_routed_headers,
                 )
-            get_key_usage().note(api_bearer_token, provider_model)
+            get_key_usage().note(api_bearer_token, provider_model, provider_api_key)
             get_stats().record(
                 provider_model,
                 status=200,
@@ -459,7 +464,7 @@ def create_chat_router(
             if e.response_body:
                 detail = f"{detail} | Response: {e.response_body}"
             sc = getattr(e, "status_code", 500) or 500
-            get_key_usage().note(api_bearer_token, provider_model)
+            get_key_usage().note(api_bearer_token, provider_model, provider_api_key)
             get_stats().record(
                 provider_model,
                 status=sc,
@@ -473,7 +478,7 @@ def create_chat_router(
             logger.exception(
                 "Unexpected error in /v1/chat/completions: %s: %s", type(e).__name__, e
             )
-            get_key_usage().note(api_bearer_token, provider_model)
+            get_key_usage().note(api_bearer_token, provider_model, provider_api_key)
             get_stats().record(
                 provider_model,
                 status=500,
@@ -532,7 +537,7 @@ def create_chat_router(
                 provider_api_key=provider_api_key,
                 base_url=base_url,
             )
-            get_key_usage().note(api_bearer_token, provider_model)
+            get_key_usage().note(api_bearer_token, provider_model, provider_api_key)
 
             embedding_data = [
                 EmbeddingData(embedding=embedding, index=i)

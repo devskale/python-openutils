@@ -397,7 +397,7 @@ def app_client(monkeypatch):
     _FakeGuardProvider.calls = 0
     _FakeGuardProvider.always_empty = False
     monkeypatch.setattr(
-        "uniinfer.proxy_routers.chat.verify_provider_access", lambda t, p: "fake-key"
+        "uniinfer.proxy_routers.chat.verify_provider_access", lambda t, p, own_key=None: "fake-key"
     )
     from uniinfer.config.instances import InstanceSpec
 

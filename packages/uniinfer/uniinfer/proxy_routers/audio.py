@@ -59,13 +59,17 @@ def create_audio_router(
             except Exception:
                 pass
             if inst is not None:
-                api_key = verify_provider_access(api_bearer_token, inst.alias)
+                api_key = verify_provider_access(
+                    api_bearer_token, inst.alias, own_key=request.headers.get("x-provider-key")
+                )
                 target = TTSTarget(
                     f"{inst.provider}@{parse_model(request_input.model)[1]}",
                     api_key=api_key, base_url=inst.base_url)
             else:
                 provider_name, _ = parse_model(request_input.model)
-                api_key = verify_provider_access(api_bearer_token, provider_name)
+                api_key = verify_provider_access(
+                    api_bearer_token, provider_name, own_key=request.headers.get("x-provider-key")
+                )
                 if not api_key:
                     raise HTTPException(status_code=401, detail=f"API key required for {provider_name}")
                 try:
@@ -80,7 +84,7 @@ def create_audio_router(
                 speed=request_input.speed or 1.0,
                 instructions=request_input.instructions,
             )
-            get_key_usage().note(api_bearer_token, request_input.model)
+            get_key_usage().note(api_bearer_token, request_input.model, api_key)
             return Response(content=result.audio_content, media_type=result.content_type)
         except HTTPException:
             raise
@@ -111,7 +115,9 @@ def create_audio_router(
             except Exception:
                 pass
             if inst is not None:
-                api_key = verify_provider_access(api_bearer_token, inst.alias)
+                api_key = verify_provider_access(
+                    api_bearer_token, inst.alias, own_key=request.headers.get("x-provider-key")
+                )
                 try:
                     target = STTTarget(
                         f"{inst.provider}@{parse_model(model)[1]}",
@@ -120,7 +126,9 @@ def create_audio_router(
                     raise HTTPException(status_code=400, detail=str(e))
             else:
                 provider_name, _ = parse_model(model)
-                api_key = verify_provider_access(api_bearer_token, provider_name)
+                api_key = verify_provider_access(
+                    api_bearer_token, provider_name, own_key=request.headers.get("x-provider-key")
+                )
                 if not api_key:
                     raise HTTPException(status_code=401, detail=f"API key required for {provider_name}")
                 try:
@@ -135,7 +143,7 @@ def create_audio_router(
                 response_format=response_format or "json",
                 temperature=temperature if temperature is not None else 0.0,
             )
-            get_key_usage().note(api_bearer_token, model)
+            get_key_usage().note(api_bearer_token, model, api_key)
 
             if response_format == "verbose_json":
                 return STTVerboseResponseModel(

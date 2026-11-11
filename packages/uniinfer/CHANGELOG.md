@@ -8,6 +8,39 @@ adheres to [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- **Multi-Key-Konzept Slice A — Upstream-Key-Attribution + eigene Keys von
+  außen (Issue uniinfer-multi-key-concept, Q4–Q10 SOTA-abgeleitet).**
+  - **`X-Provider-Key`-Header (M3):** authentifizierte Caller können ihren
+    eigenen Upstream-Key pro Request mitgeben — der Key fährt auf IHR Kontingent,
+    Pool-Keys bleiben unberührt. Auth (Allowlist/Combo/Constraints) bleibt
+    vollständig scharf; nur die Key-Auflösung wird übersprungen. Config-getrieben:
+    `UNIINFER_OWN_KEY_PROVIDERS` (Default `tu`). 429-Relais unverändert
+    transparent — nie Failover zwischen Caller- und Team-Keys.
+  - **Counter auf 3 Dimensionen** (Caller × Upstream-Key-Hash × provider@model):
+    `key_usage.note()` nimmt den RESOLVEDEN Upstream-Key (Pool- oder Caller-
+    Key), hasht ihn sofort (nie Key-Material speichern/loggen). Snapshot v2
+    (v1-Ära ohne Key-Dim wird verworfen — max. 1 Tag Day-Window-Daten).
+    Views sind provider-agnostisch: `usage_view(provider=…)` scope-t,
+    `provider_pool_view()` aggregiert proxy-weit per Key-Hash,
+    `active_providers()`. Kein Provider-Hardcode mehr — Multiplikatoren und
+    Limits kommen pro Provider aus `provider_limits.json`.
+  - **`/v1/usage` neu:** `providers.<p>.pool` (Keys aus dem Instances-Overlay:
+    Label = Alias, Hash-Vergleich via credgoo-Auflösung; `used`/`limits =
+    n_keys × dokumentierte Quote`/`worst` = höchster Key×Window), `mine`
+    (Caller-Attribution inkl. eigener Keys), Legacy-`windows` unverändert
+    (Primary-Provider via `UNIINFER_USAGE_PRIMARY_PROVIDER`, Default `tu`).
+    Nicht auflösbare Hashes (Caller-eigene Keys) erscheinen NICHT in der
+    Pool-Sicht — private Kontingente ≠ Team-Kapazität.
+  - **Overlay-Alias `tu-klark`** (amd, deploy-seitig): `tu-klark@…`-Modelle
+    adressier- und sichtbar (Fan-out via Custom-Alias-SWR, live verifiziert:
+    10 Modelle). Airtable-Rename `tu-2` → `tu-klark` (Quota dediziert für
+    klark0-App-Traffic).
+  - Tests: +17 neue/umgeschriebene (`test_key_usage.py`: 3-Dim-Counting,
+    Provider-Scoping, Pool-/own-Trennung, Snapshot v2/v1-Drop, Endpoint-
+    Shape inkl. Legacy + Env-Primary) + 4 own_key-Seam-Tests (`test_auth.py`).
+  - Slice B (Router-Failover: jede 429 hoppt bei gesundem Sibling, Cooldown
+    Retry-After+Jitter, temporär mit Rückkehr) folgt als eigenes Issue.
+
 - **`GET /v1/usage` — maschinenlesbare Quota-Attribution pro Key (Statusline-
   Issue uniinfer-usage-endpoint-for-statusline).** Der Proxy führt jetzt
   per-Key-/per-Model-Zähler in drei kalenderalignten UTC-Fenstern (Minute/

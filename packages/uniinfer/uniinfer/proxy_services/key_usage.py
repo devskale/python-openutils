@@ -1,21 +1,25 @@
 """Per-key usage counters for the /v1/usage endpoint (read-only reporting).
 
-Tracks raw request counts per (token-hash, provider@model) in three
-calendar-aligned windows — minute / hour / day, all UTC: the exact reset
-boundaries Aqueduct uses (top of minute, top of hour, midnight UTC).
+Tracks raw request counts per (token-hash, upstream-key-hash, provider@model)
+in three calendar-aligned windows — minute / hour / day, all UTC: the exact
+reset boundaries Aqueduct uses (top of minute, top of hour, midnight UTC).
+The upstream-key dimension attributes traffic to the actual quota holder:
+proxy pool keys (default `tu@`, aliases like `tu-klark@`) and caller-supplied
+keys (X-Provider-Key) are counted separately under their sha256.
+
 Limit multipliers (Aqueduct "Limits 2x" models count 0.5 requests) are
 applied at READ time from provider_limits.json, so config changes apply
 retroactively to the raw counts.
 
 Read-only reporting, deliberately NOT a limiter — the adaptive AIMD limiter
-was deleted as dead infrastructure in 0.8.38. Aqueduct's limits bind the
-SHARED upstream TU key (all proxy clients funnel through it), so these
-counters attribute per-proxy-key usage inside that aggregate quota; the
-/v1/usage endpoint reports both the caller's share and the proxy total.
+was deleted as dead infrastructure in 0.8.38. Failover/cooldown (slice B)
+may READ these counters but never enforces here.
 
 Only the current bucket per (key, window) is kept: used/limit/reset_at
-needs no history. State snapshots to logs/key_usage.json (tiny file) and is
-reloaded on startup so counters survive restarts, mirroring stats.py.
+needs no history. State snapshots to logs/key_usage.json (version 2; v1
+snapshots from the pre-key-dimension era are dropped — at most one day of
+day-window data) and is reloaded on startup so counters survive restarts,
+mirroring stats.py.
 """
 from __future__ import annotations
 
@@ -65,16 +69,25 @@ def token_hash(token: str) -> str:
     return hashlib.sha256(token.encode()).hexdigest()
 
 
+def upstream_key_hash(upstream_key: str | None) -> str:
+    """sha256 hex of an upstream API key — identity of the quota holder."""
+    return hashlib.sha256((upstream_key or "").encode()).hexdigest()
+
+
 def weight_of(provider_model: str, multipliers: dict[str, float]) -> float:
-    """Multiplier for a provider@model id; non-tu models weigh 0 (own quota domain)."""
-    if not provider_model.startswith("tu@"):
-        return 0.0
-    bare = provider_model.split("@", 1)[1]
+    """Request weight for a provider@model id (provider-scoped multipliers).
+
+    ``multipliers`` is ONE provider's map (bare model name -> weight, from
+    provider_limits.json request_multipliers); unknown models weigh 1.0. Callers
+    scope the view to one provider's models — the collector itself stays
+    provider-agnostic (no provider hardcode).
+    """
+    bare = provider_model.split("@", 1)[1] if "@" in provider_model else provider_model
     return float(multipliers.get(bare, 1.0))
 
 
 class KeyUsageCollector:
-    """Singleton per-key usage counter (minute/hour/day windows, UTC)."""
+    """Singleton usage counter: (caller × upstream-key × model), UTC windows."""
 
     _instance: "KeyUsageCollector | None" = None
     _lock = threading.Lock()
@@ -86,8 +99,8 @@ class KeyUsageCollector:
         return cls._instance
 
     def _init(self) -> None:
-        # token_hash -> kind -> bucket_ts -> {provider@model: raw_count}
-        self._cur: dict[str, dict[str, dict[int, dict[str, int]]]] = {}
+        # token_hash -> kind -> bucket_ts -> key_hash -> {provider@model: raw_count}
+        self._cur: dict[str, dict[str, dict[int, dict[str, dict[str, int]]]]] = {}
         self._last_note: dict[str, int] = {}
         self._notes_since_snapshot = 0
         self._file_lock = threading.Lock()
@@ -95,16 +108,25 @@ class KeyUsageCollector:
 
     # --- public API ---
 
-    def note(self, token: str | None, provider_model: str, *, now: float | None = None) -> None:
+    def note(
+        self,
+        token: str | None,
+        provider_model: str,
+        upstream_key: str | None = None,
+        *,
+        now: float | None = None,
+    ) -> None:
         """Count one upstream-bound request for a bearer token + provider@model.
 
-        No-op for missing token/model — keyless or malformed calls are not
-        attributable usage.
+        ``upstream_key`` is the RESOLVED upstream API key material (pool key or
+        caller-supplied) — hashed immediately, never stored. None/missing token
+        or model is not attributable usage (no-op).
         """
         if not token or not provider_model:
             return
         ts = int(now if now is not None else time.time())
         th = token_hash(token)
+        kh = upstream_key_hash(upstream_key)
         with self._lock:
             if th not in self._cur:
                 self._evict_if_full(ts)
@@ -114,8 +136,8 @@ class KeyUsageCollector:
                 buckets = per_kind.setdefault(kind, {})
                 for stale in [b for b in buckets if b != start]:
                     del buckets[stale]
-                buckets.setdefault(start, {})
-                buckets[start][provider_model] = buckets[start].get(provider_model, 0) + 1
+                models = buckets.setdefault(start, {}).setdefault(kh, {})
+                models[provider_model] = models.get(provider_model, 0) + 1
             self._last_note[th] = ts
             self._notes_since_snapshot += 1
             if self._notes_since_snapshot >= _SNAPSHOT_EVERY:
@@ -127,24 +149,32 @@ class KeyUsageCollector:
         th: str,
         multipliers: dict[str, float] | None = None,
         *,
+        provider: str | None = None,
         now: float | None = None,
     ) -> dict[str, Any]:
         """Weighted windows + per-model breakdown (day window) for one token hash.
 
-        ``used`` weights tu@ models by ``multipliers`` (default 1.0 per model);
-        non-tu models weigh 0 — they draw on their own providers' quotas, not
-        on the shared Aqueduct key. ``models`` lists tu@ entries only.
+        Attribution across ALL upstream keys the caller used (pool + own).
+        ``provider`` scopes the view to one provider's models (None = all
+        providers; weights then apply per-model via ``multipliers``).
         """
         multipliers = multipliers or {}
+        prefix = f"{provider}@" if provider else None
         ts = int(now if now is not None else time.time())
         with self._lock:
             per_kind = self._cur.get(th, {})
             windows: dict[str, dict[str, Any]] = {}
+            day_models: dict[str, int] = {}
             for kind in _WINDOW_KINDS:
-                models = per_kind.get(kind, {}).get(bucket_start(kind, ts), {})
-                used = sum(n * weight_of(m, multipliers) for m, n in models.items())
+                used = 0.0
+                for models in per_kind.get(kind, {}).get(bucket_start(kind, ts), {}).values():
+                    for m, n in models.items():
+                        if prefix and not m.startswith(prefix):
+                            continue
+                        used += n * weight_of(m, multipliers)
+                        if kind == "day":
+                            day_models[m] = day_models.get(m, 0) + n
                 windows[kind] = {"used": round(used, 3)}
-            day_models = per_kind.get("day", {}).get(bucket_start("day", ts), {})
             out_models = [
                 {
                     "model": m,
@@ -153,26 +183,51 @@ class KeyUsageCollector:
                     "weighted": round(n * weight_of(m, multipliers), 3),
                 }
                 for m, n in sorted(day_models.items())
-                if m.startswith("tu@")
             ]
         return {"windows": windows, "models": out_models}
 
-    def proxy_total(
+    def provider_pool_view(
         self,
-        kind: str,
+        provider: str,
         multipliers: dict[str, float] | None = None,
         *,
         now: float | None = None,
-    ) -> float:
-        """Weighted tu@ usage across ALL keys in the current window (shared-quota view)."""
+    ) -> dict[str, dict[str, float]]:
+        """Per-upstream-key weighted usage (proxy-wide, all callers) for a provider.
+
+        Returns {key_hash: {"minute": x, "hour": y, "day": z}} covering ONLY the
+        given provider's models. Caller-supplied keys (hashes unknown to the
+        pool registry) appear here too — the router filters by label map.
+        """
         multipliers = multipliers or {}
         ts = int(now if now is not None else time.time())
+        prefix = f"{provider}@"
+        out: dict[str, dict[str, float]] = {}
         with self._lock:
-            total = 0.0
             for per_kind in self._cur.values():
-                models = per_kind.get(kind, {}).get(bucket_start(kind, ts), {})
-                total += sum(n * weight_of(m, multipliers) for m, n in models.items())
-        return round(total, 3)
+                for kind in _WINDOW_KINDS:
+                    models_by_key = per_kind.get(kind, {}).get(bucket_start(kind, ts), {})
+                    for kh, models in models_by_key.items():
+                        used = sum(
+                            n * weight_of(m, multipliers)
+                            for m, n in models.items()
+                            if m.startswith(prefix)
+                        )
+                        if used:
+                            out.setdefault(kh, {"minute": 0.0, "hour": 0.0, "day": 0.0})
+                            out[kh][kind] += used
+        return {kh: {k: round(v, 3) for k, v in w.items()} for kh, w in out.items()}
+
+    def active_providers(self) -> set[str]:
+        """Providers with any counted traffic in the current day window."""
+        ts = int(time.time())
+        providers: set[str] = set()
+        with self._lock:
+            for per_kind in self._cur.values():
+                for models in per_kind.get("day", {}).get(bucket_start("day", ts), {}).values():
+                    for m in models:
+                        providers.add(m.split("@", 1)[0])
+        return providers
 
     def snapshot(self) -> None:
         """Persist current state to logs/key_usage.json."""
@@ -198,26 +253,34 @@ class KeyUsageCollector:
 
     def _serialize(self) -> dict[str, Any]:
         keys = {
-            th: {kind: {str(ts): dict(models) for ts, models in buckets.items()}
+            th: {kind: {str(ts): {kh: dict(models) for kh, models in by_key.items()}
+                        for ts, by_key in buckets.items()}
                  for kind, buckets in per_kind.items()}
             for th, per_kind in self._cur.items()
         }
-        return {"version": 1, "keys": keys, "last_note": dict(self._last_note)}
+        return {"version": 2, "keys": keys, "last_note": dict(self._last_note)}
 
     def _load(self) -> None:
         try:
             with open(_SNAPSHOT_PATH) as f:
                 data = json.load(f)
+            version = int(data.get("version", 1))
+            if version != 2:
+                logger.info("key_usage snapshot v%s dropped (pre-key-dimension era)", version)
+                return
             now = int(time.time())
             for th, per_kind in data.get("keys", {}).items():
-                restored: dict[str, dict[int, dict[str, int]]] = {}
+                restored: dict[str, dict[int, dict[str, dict[str, int]]]] = {}
                 for kind, buckets in per_kind.items():
                     if kind not in _WINDOW_KINDS:
                         continue
                     current = bucket_start(kind, now)
-                    models = buckets.get(str(current))
-                    if models:
-                        restored[kind] = {current: {m: int(n) for m, n in models.items()}}
+                    by_key = buckets.get(str(current))
+                    if by_key:
+                        restored[kind] = {
+                            current: {kh: {m: int(n) for m, n in models.items()}
+                                      for kh, models in by_key.items()}
+                        }
                 if restored:
                     self._cur[th] = restored
             self._last_note = {

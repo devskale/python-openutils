@@ -111,3 +111,60 @@ def test_verify_provider_access_none_token_keyed_401(mock_get_key, mock_requires
     with pytest.raises(HTTPException) as excinfo:
         verify_provider_access(None, "openai")
     assert excinfo.value.status_code == 401
+
+
+# --- X-Provider-Key (own_key seam) — multi-key concept, slice A2 ---
+
+@patch("uniinfer.auth.instance_requires_api_key")
+@patch("uniinfer.auth.get_provider_api_key")
+def test_own_key_used_for_enabled_provider(mock_get_key, mock_requires, monkeypatch):
+    """Own key returned verbatim for an enabled provider; credgoo never called."""
+    monkeypatch.setenv("UNIINFER_OWN_KEY_PROVIDERS", "tu")
+    mock_requires.return_value = True
+    key = verify_provider_access("bearer@enc", "tu", own_key="sk-caller-own")
+    assert key == "sk-caller-own"
+    mock_get_key.assert_not_called()
+
+
+@patch("uniinfer.auth.instance_requires_api_key")
+@patch("uniinfer.auth.get_provider_api_key")
+def test_own_key_ignored_for_disabled_provider(mock_get_key, mock_requires, monkeypatch):
+    """Header key ignored for providers not in UNIINFER_OWN_KEY_PROVIDERS."""
+    monkeypatch.setenv("UNIINFER_OWN_KEY_PROVIDERS", "tu")
+    mock_requires.return_value = True
+    mock_get_key.return_value = "pooled-key"
+    key = verify_provider_access("bearer@enc", "groq", own_key="sk-caller-own")
+    assert key == "pooled-key"
+    mock_get_key.assert_called_once()
+
+
+@patch("uniinfer.auth.instance_requires_api_key")
+@patch("uniinfer.auth.get_provider_api_key")
+def test_own_key_never_bypasses_bare_key_rejection(mock_get_key, mock_requires, monkeypatch):
+    """A bare (non-combo) bearer is rejected even with an own-key header —
+    auth (allowlist/combo gate) applies before any key override."""
+    monkeypatch.setenv("UNIINFER_OWN_KEY_PROVIDERS", "tu")
+    mock_requires.return_value = True
+    with pytest.raises(HTTPException) as exc:
+        verify_provider_access("bare-token", "tu", own_key="sk-caller-own")
+    assert exc.value.status_code == 401
+    mock_get_key.assert_not_called()
+
+
+@patch("uniinfer.auth.instance_requires_api_key")
+@patch("uniinfer.auth.get_provider_api_key")
+def test_own_key_rejected_token_still_401(mock_get_key, mock_requires, monkeypatch):
+    """An allowlist-rejected token gets 401 even with a valid own-key header."""
+    import hashlib
+    from uniinfer.auth import clear_token_caches
+    monkeypatch.setenv("UNIINFER_OWN_KEY_PROVIDERS", "tu")
+    monkeypatch.setenv("UNIINFER_AUTH_TOKENS_FILE", "/nonexistent/allowlist")
+    clear_token_caches()
+    mock_requires.return_value = True
+    combo = "u4d6670cab@deadbeef"
+    import uniinfer.auth as auth_mod
+    with patch.object(auth_mod, "_allowed_token_hashes", return_value=frozenset(["other"])):
+        with pytest.raises(HTTPException) as exc:
+            verify_provider_access(combo, "tu", own_key="sk-caller-own")
+    assert exc.value.status_code == 401
+    clear_token_caches()

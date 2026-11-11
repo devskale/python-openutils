@@ -144,7 +144,18 @@ def get_optional_proxy_token(
     return None
 
 
-def verify_provider_access(token: str, provider_name: str) -> str:
+def _own_key_providers() -> frozenset[str]:
+    """Providers where a caller may bring their own upstream key (X-Provider-Key).
+
+    Env UNIINFER_OWN_KEY_PROVIDERS, comma-separated; default 'tu' (where the
+    per-key quota pressure is). Callers' own keys ride their OWN quota — the
+    proxy's pool keys are never touched for them.
+    """
+    raw = os.getenv("UNIINFER_OWN_KEY_PROVIDERS", "tu")
+    return frozenset(p.strip() for p in raw.split(",") if p.strip())
+
+
+def verify_provider_access(token: str, provider_name: str, own_key: str | None = None) -> str:
     """
     Verifies that the provided token can be used to retrieve an API key for the provider.
 
@@ -159,6 +170,11 @@ def verify_provider_access(token: str, provider_name: str) -> str:
     Args:
         token: The bearer token (direct or credgoo combo).
         provider_name: The name of the LLM provider.
+        own_key: Caller-supplied upstream key (X-Provider-Key header). When set
+            and the provider is enabled for own keys, it is returned as the
+            upstream key INSTEAD of resolving credgoo — auth (allowlist,
+            combo requirement, constraints) still fully applies. The key rides
+            the caller's own quota; pool keys are untouched.
 
     Returns:
         str: The actual provider API key.
@@ -196,6 +212,10 @@ def verify_provider_access(token: str, provider_name: str) -> str:
                 "Direct provider keys are not accepted on this gateway; "
                 "send a credgoo combined token (bearer@encryption)."
             )
+        if own_key and provider_name in _own_key_providers():
+            # Caller-supplied upstream key (X-Provider-Key): auth has passed,
+            # the caller's own quota rides their own key — skip credgoo.
+            return own_key
         api_key = get_provider_api_key(token, provider_name)
         if not api_key and instance_requires_api_key(provider_name):
             raise AuthenticationError(

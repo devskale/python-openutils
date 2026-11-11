@@ -137,7 +137,9 @@ def create_images_router(
                     pname, _ = parse_provider_model(provider_model)
                 except ValueError as e:
                     raise HTTPException(status_code=400, detail=str(e))
-                api_key = verify_provider_access(api_bearer_token, pname)
+                api_key = verify_provider_access(
+                    api_bearer_token, pname, own_key=request.headers.get("x-provider-key")
+                )
 
                 try:
                     target = ImageTarget(provider_model, api_key=api_key)
@@ -153,7 +155,7 @@ def create_images_router(
                         raise HTTPException(status_code=401, detail=str(e))
                     except ImageGenerationError as e:
                         raise HTTPException(status_code=e.status_code, detail=e.body)
-                get_key_usage().note(api_bearer_token, provider_model)
+                get_key_usage().note(api_bearer_token, provider_model, api_key)
 
                 data_items = [item.to_dict() for item in items]
 
