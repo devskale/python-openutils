@@ -148,7 +148,14 @@ def add_key(service, api_key, cache_dir=None, backend_name=None):
 
 
 def list_keys(cache_dir=None, backend_name=None):
-    """List all service names from the active backend."""
+    """List all service names from the active backend.
+
+    Duplicate service names get a warning: the read path is first-wins
+    (find_record → records[0]), so duplicates silently shadow each other —
+    the classic accident is a rename that left the old record behind.
+    Intentional key pools belong in the consumer's config (e.g. uniinfer
+    instances overlay), never in duplicate backend records.
+    """
     store = CredentialStore(_resolve_cache_dir(cache_dir), backend_name)
     if not store.supports('list_keys'):
         return False
@@ -156,6 +163,17 @@ def list_keys(cache_dir=None, backend_name=None):
     for svc in services:
         print(svc)
     print(f"\nTotal: {len(services)} keys ({store.backend_name})", file=sys.stderr)
+    counts = {}
+    for svc in services:
+        counts[svc] = counts.get(svc, 0) + 1
+    dups = {svc: n for svc, n in counts.items() if n > 1}
+    for svc, n in sorted(dups.items()):
+        print(
+            f"WARNING: '{svc}' has {n} records — reads are first-wins. "
+            f"Typo or forgotten rename? (Intentional pools: consumer config,"
+            f" not duplicate records; 'credgoo --dedupe' removes shadowed ones.)",
+            file=sys.stderr,
+        )
     return True
 
 
