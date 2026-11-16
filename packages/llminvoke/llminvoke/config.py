@@ -405,7 +405,18 @@ def resolve_model(
     # nicht mehr.
     eff = _deep_merge(catalog, overlay)
 
-    primary_spec = eff.get("model", "tu@qwen-3.6-35b")
+    # Owner 2026-11-16 („alles via config"): KEIN hartkodierter Code-Default
+    # mehr — fehlt der model-Key in JEDER Config-Schicht (Registry default/
+    # packages/tasks UND Box-Overlay), ist das ein Config-Fehler → fail loud.
+    # Der frühere stille Fallback „tu@qwen-3.6-35b" verdeckte kaputte Configs.
+    primary_spec = eff.get("model")
+    if not primary_spec:
+        raise ValueError(
+            "resolve_model: kein model-Key in irgendeiner Config-Schicht "
+            "(Registry models.yml default/packages/tasks, Box-Overlay via "
+            "KONTEXT_MODELS_YML) — Code-Default bewusst entfernt (Owner "
+            "2026-11-16). Config reparieren: default.model in models.yml setzen."
+        )
     temperature = float(eff.get("temperature", 0.7))
     max_tokens = int(eff.get("max_tokens", 4096))
     retry = _parse_retry(eff.get("retry"), RetryPolicy())
