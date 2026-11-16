@@ -7,6 +7,8 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch, MagicMock
 
+import requests
+
 from credgoo import credgoo as mod
 from credgoo.store import (
     DEFAULT_CACHE_TTL_SECONDS,
@@ -24,6 +26,7 @@ from credgoo.store import (
 from credgoo.backends.base import CredgooBackend, UnsupportedOperation
 from credgoo.backends.gdrive import GdriveBackend
 from credgoo.backends.airtable import AirtableBackend, AirtableClient
+from credgoo.backends.cfworker import CfworkerBackend
 
 
 class TestCredentialMigration(unittest.TestCase):
@@ -322,6 +325,15 @@ class TestCacheKeyDerivation(unittest.TestCase):
 
     def test_airtable_no_token_returns_none(self):
         self.assertIsNone(AirtableBackend().cache_key({}))
+
+    def test_cfworker_derives_deterministically(self):
+        k1 = CfworkerBackend().cache_key({"token": "tokABC123"})
+        k2 = CfworkerBackend().cache_key({"token": "tokABC123"})
+        self.assertEqual(k1, k2)
+        self.assertEqual(len(k1), 32)
+        self.assertNotEqual(k1, CfworkerBackend().cache_key({"token": "tokXYZ789"}))
+        self.assertIsNone(CfworkerBackend().cache_key({}))
+        self.assertTrue(CfworkerBackend.cache_integrity)
 
 
 class TestCacheIntegrityMechanism(unittest.TestCase):
@@ -710,6 +722,12 @@ class TestBackendContract(unittest.TestCase):
         for cap in ("setup", "fetch_key", "add_key", "delete_key", "clear_key", "list_keys", "dedupe_keys"):
             self.assertTrue(hasattr(CredgooBackend, cap))
 
+    def test_cfworker_supports_all_but_dedupe(self):
+        b = CfworkerBackend()
+        for cap in ("fetch_key", "add_key", "delete_key", "clear_key", "list_keys"):
+            self.assertTrue(b.supports(cap), f"cfworker should support {cap}")
+        self.assertFalse(b.supports("dedupe_keys"), "service is the PK upstream — duplicates cannot exist")
+
 
 class TestMainCli(unittest.TestCase):
     def test_setup_backend_flag(self):
@@ -740,6 +758,91 @@ class TestMainCli(unittest.TestCase):
                     patch.object(mod, "get_api_key", return_value="sk-at") as mock:
                 mod.main()
             mock.assert_called_once_with("openai", cache_dir=Path(tmpdir), no_cache=False, backend_name="airtable")
+
+
+class TestCfworkerBackend(unittest.TestCase):
+    """The cfworker client maps the worker's JSON API onto the backend contract."""
+
+    CREDS = {"url": "https://credgoo.example.workers.dev", "token": "tok123"}
+
+    def _resp(self, body, status=200):
+        r = MagicMock()
+        r.status_code = status
+        r.json.return_value = body
+        r.text = ""
+        return r
+
+    def test_fetch_key_returns_value(self):
+        backend = CfworkerBackend()
+        resp = self._resp({"service": "openai", "key": "sk-abc123", "cleared_at": None})
+        with patch("credgoo.backends.cfworker.requests.get", return_value=resp):
+            self.assertEqual(backend.fetch_key("openai", self.CREDS), "sk-abc123")
+
+    def test_fetch_key_missing_creds(self):
+        self.assertIsNone(CfworkerBackend().fetch_key("openai", {}))
+
+    def test_fetch_key_not_found(self):
+        backend = CfworkerBackend()
+        with patch("credgoo.backends.cfworker.requests.get", return_value=self._resp({"error": "not found"}, 404)):
+            self.assertIsNone(backend.fetch_key("nope", self.CREDS))
+
+    def test_fetch_key_cleared_counts_as_missing(self):
+        backend = CfworkerBackend()
+        resp = self._resp({"service": "openai", "key": "", "cleared_at": "2026-01-01T00:00:00Z"})
+        with patch("credgoo.backends.cfworker.requests.get", return_value=resp):
+            self.assertIsNone(backend.fetch_key("openai", self.CREDS))
+
+    def test_fetch_key_transport_error(self):
+        with patch("credgoo.backends.cfworker.requests.get", side_effect=requests.exceptions.ConnectionError("x")):
+            self.assertIsNone(CfworkerBackend().fetch_key("openai", self.CREDS))
+
+    def test_fetch_key_urlencodes_service(self):
+        backend = CfworkerBackend()
+        resp = self._resp({"service": "tu/free", "key": "k"})
+        with patch("credgoo.backends.cfworker.requests.get", return_value=resp) as mock:
+            self.assertEqual(backend.fetch_key("tu/free", self.CREDS), "k")
+        self.assertIn("/v1/keys/tu%2Ffree", mock.call_args.args[0])
+
+    def test_add_key_puts(self):
+        backend = CfworkerBackend()
+        with patch("credgoo.backends.cfworker.requests.put", return_value=self._resp({"ok": True})) as mock:
+            self.assertTrue(backend.add_key("openai", "sk-1", self.CREDS))
+        self.assertEqual(mock.call_args.kwargs["json"], {"key": "sk-1"})
+
+    def test_add_key_server_error(self):
+        with patch("credgoo.backends.cfworker.requests.put", return_value=self._resp({"error": "boom"}, 500)):
+            self.assertFalse(CfworkerBackend().add_key("openai", "sk-1", self.CREDS))
+
+    def test_delete_key(self):
+        backend = CfworkerBackend()
+        with patch("credgoo.backends.cfworker.requests.delete", return_value=self._resp({"ok": True})):
+            self.assertTrue(backend.delete_key("openai", self.CREDS))
+        with patch("credgoo.backends.cfworker.requests.delete", return_value=self._resp({"error": "not found"}, 404)):
+            self.assertFalse(backend.delete_key("openai", self.CREDS))
+
+    def test_clear_key_posts(self):
+        backend = CfworkerBackend()
+        with patch("credgoo.backends.cfworker.requests.post", return_value=self._resp({"ok": True, "cleared": True})):
+            self.assertTrue(backend.clear_key("openai", self.CREDS))
+
+    def test_list_keys_sorts_services(self):
+        backend = CfworkerBackend()
+        resp = self._resp({"services": ["groq", "openai"], "count": 2})
+        with patch("credgoo.backends.cfworker.requests.get", return_value=resp):
+            self.assertEqual(backend.list_keys(self.CREDS), ["groq", "openai"])
+
+    def test_list_keys_error_returns_empty(self):
+        with patch("credgoo.backends.cfworker.requests.get", return_value=self._resp({"error": "unauthorized"}, 401)):
+            self.assertEqual(CfworkerBackend().list_keys(self.CREDS), [])
+
+
+class TestCfworkerResolution(unittest.TestCase):
+    def test_resolves_cfworker(self):
+        creds = {"default_backend": "cfworker", "cfworker": {"url": "https://w.example", "token": "t"}}
+        name, backend, backend_creds = _resolve_backend(creds)
+        self.assertEqual(name, "cfworker")
+        self.assertIsInstance(backend, CfworkerBackend)
+        self.assertEqual(backend_creds, {"url": "https://w.example", "token": "t"})
 
 
 class _FakeBackend(CredgooBackend):
