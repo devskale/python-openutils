@@ -554,9 +554,9 @@ class TestMemCacheL1(unittest.TestCase):
             with patch.object(AirtableBackend, "fetch_key", return_value="sk-1"):
                 store.get("openai")
             # Age the L1 entry past its TTL without touching the L2 file.
-            from credgoo.store import _L1_CACHE
+            from credgoo.store import _L1_CACHE, _l1_current_generation
             name = store._l1_name(_cache_key_name("airtable", "openai"))
-            _L1_CACHE[name] = ("sk-1", time.time() - 10_000)
+            _L1_CACHE[name] = ("sk-1", time.time() - 10_000, _l1_current_generation())
             with patch("credgoo.store.get_cached_api_key", return_value="sk-from-l2") as l2:
                 self.assertEqual(store.get("openai"), "sk-from-l2")
             self.assertEqual(l2.call_count, 1)

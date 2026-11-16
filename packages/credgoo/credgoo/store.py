@@ -336,30 +336,62 @@ def _mem_ttl_seconds():
 # TTL (7 days) — an L1 entry must never extend that window, only shorten it.
 # The 401-recovery path (uniinfer tu._refresh_credgoo_key) reads with
 # no_cache=True, which bypasses BOTH levels and goes straight to the backend.
-_L1_CACHE: dict[str, tuple[str, float]] = {}
+#
+# Concurrency (issue .work/issues/backlog/credgoo-cache-races.md): get() runs
+# on hot-loop threads while add()/delete() rotate keys on another. Two layers
+# keep the caches coherent across that:
+#   * a per-service lock serializes each get() against the full add()/delete()
+#     sequence, so no read can slip between the backend write and the cache
+#     re-prime (mid-write window);
+#   * a process-global generation counter makes L1 re-poisoning structurally
+#     impossible: mutations bump it, get() captures it on entry and stamps it
+#     into every L1 entry it writes, and reads discard entries from an older
+#     generation. The stamp is the START generation — stamping at put time
+#     would let a bump interleave between capture and put and launder the old
+#     key as fresh. L1 is process-global, so the generation is too.
+_L1_CACHE: dict[str, tuple[str, float, int]] = {}
 _L1_LOCK = threading.Lock()
+_L1_GENERATION = 0
+
+
+def _l1_current_generation() -> int:
+    """Current cache generation — captured by get() on entry."""
+    global _L1_GENERATION
+    with _L1_LOCK:
+        return _L1_GENERATION
+
+
+def _l1_bump_generation() -> None:
+    """Invalidate every pre-mutation L1 entry in one step (add/delete/clear)."""
+    global _L1_GENERATION
+    with _L1_LOCK:
+        _L1_GENERATION += 1
 
 
 def _l1_get(key_name: str, ttl: float | None) -> str | None:
-    """L1 hit, or None. Expired entries are dropped on read."""
+    """L1 hit, or None. Expired or pre-mutation-generation entries are dropped."""
     if ttl is None:
         return None
     with _L1_LOCK:
         entry = _L1_CACHE.get(key_name)
         if entry is None:
             return None
-        key, stored_at = entry
+        key, stored_at, generation = entry
+        if generation < _L1_GENERATION:
+            _L1_CACHE.pop(key_name, None)
+            return None
         if time.time() - stored_at > ttl:
             _L1_CACHE.pop(key_name, None)
             return None
         return key
 
 
-def _l1_put(key_name: str, api_key: str, ttl: float | None) -> None:
+def _l1_put(key_name: str, api_key: str, ttl: float | None, generation: int) -> None:
+    """Prime L1, stamped with the reader's START generation (not put time)."""
     if ttl is None:
         return
     with _L1_LOCK:
-        _L1_CACHE[key_name] = (api_key, time.time())
+        _L1_CACHE[key_name] = (api_key, time.time(), generation)
 
 
 def _l1_invalidate(key_name: str) -> None:
@@ -372,6 +404,29 @@ def _l1_clear() -> None:
     """Drop the whole L1 (test seam; also the escape hatch for a paranoid caller)."""
     with _L1_LOCK:
         _L1_CACHE.clear()
+
+
+# ---- Per-service mutation lock ----
+#
+# One lock per cached service entry, shared by every CredentialStore in the
+# process (the L2 file and L1 map are shared, so the lock must be too). get()
+# holds it for the whole read (L1 -> L2 -> backend fetch), add()/delete()/
+# clear() for their whole sequence — that closes the mid-write window where a
+# reader served the old key while the backend already held the new one. Locks
+# are never nested across services, and nothing inside the lock re-enters the
+# store, so there is no deadlock or reentrancy path.
+_SERVICE_LOCKS: dict[str, threading.Lock] = {}
+_SERVICE_LOCKS_GUARD = threading.Lock()
+
+
+def _service_lock(key_name: str) -> threading.Lock:
+    """The process-wide lock guarding one service's cache entries."""
+    with _SERVICE_LOCKS_GUARD:
+        lock = _SERVICE_LOCKS.get(key_name)
+        if lock is None:
+            lock = threading.Lock()
+            _SERVICE_LOCKS[key_name] = lock
+        return lock
 
 
 # ---- Backend resolution ----
@@ -446,24 +501,27 @@ class CredentialStore:
             return None
         key_name = _cache_key_name(self.backend_name, service)
         mem_ttl = _mem_ttl_seconds()
-        if not no_cache and self.enc_key:
-            hit = _l1_get(self._l1_name(key_name), mem_ttl)
-            if hit:
-                logger.debug("Using in-memory key for %s", key_name)
-                return hit
-            cached = get_cached_api_key(
-                self.backend_name, service, self.enc_key, self.cache_dir,
-                integrity=self.backend.cache_integrity,
-                ttl_seconds=_cache_ttl_seconds())
-            if cached:
-                _l1_put(self._l1_name(key_name), cached, mem_ttl)
-                return cached
-        api_key = self.backend.fetch_key(service, self.backend_creds)
-        if api_key and not no_cache and self.enc_key:
-            cache_api_key(self.backend_name, service, api_key, self.enc_key, self.cache_dir,
-                          integrity=self.backend.cache_integrity)
-            _l1_put(self._l1_name(key_name), api_key, mem_ttl)
-        return api_key
+        lock = _service_lock(key_name)
+        with lock:
+            generation = _l1_current_generation()
+            if not no_cache and self.enc_key:
+                hit = _l1_get(self._l1_name(key_name), mem_ttl)
+                if hit:
+                    logger.debug("Using in-memory key for %s", key_name)
+                    return hit
+                cached = get_cached_api_key(
+                    self.backend_name, service, self.enc_key, self.cache_dir,
+                    integrity=self.backend.cache_integrity,
+                    ttl_seconds=_cache_ttl_seconds())
+                if cached:
+                    _l1_put(self._l1_name(key_name), cached, mem_ttl, generation)
+                    return cached
+            api_key = self.backend.fetch_key(service, self.backend_creds)
+            if api_key and not no_cache and self.enc_key:
+                cache_api_key(self.backend_name, service, api_key, self.enc_key, self.cache_dir,
+                              integrity=self.backend.cache_integrity)
+                _l1_put(self._l1_name(key_name), api_key, mem_ttl, generation)
+            return api_key
 
     def _l1_name(self, key_name: str) -> str:
         """L1 cache key: the L2 entry name PLUS the encryption key's fingerprint.
@@ -480,31 +538,41 @@ class CredentialStore:
         """Add/update a key in the backend and prime the cache. Returns bool."""
         if not self.supports('add_key'):
             return False
-        ok = self.backend.add_key(service, api_key, self.backend_creds)
-        if ok:
-            _l1_invalidate(self._l1_name(_cache_key_name(self.backend_name, service)))
-            if self.enc_key:
-                cache_api_key(self.backend_name, service, api_key, self.enc_key, self.cache_dir,
-                              integrity=self.backend.cache_integrity)
+        key_name = _cache_key_name(self.backend_name, service)
+        with _service_lock(key_name):
+            ok = self.backend.add_key(service, api_key, self.backend_creds)
+            if ok:
+                _l1_invalidate(self._l1_name(key_name))
+                _l1_bump_generation()
+                if self.enc_key:
+                    cache_api_key(self.backend_name, service, api_key, self.enc_key, self.cache_dir,
+                                  integrity=self.backend.cache_integrity)
         return ok
+
     def delete(self, service):
         """Delete a key from the backend and drop its cache entry."""
         if not self.supports('delete_key'):
             return False
-        ok = self.backend.delete_key(service, self.backend_creds)
-        if ok:
-            _delete_cached_key(self.backend_name, service, self.cache_dir)
-            _l1_invalidate(self._l1_name(_cache_key_name(self.backend_name, service)))
+        key_name = _cache_key_name(self.backend_name, service)
+        with _service_lock(key_name):
+            ok = self.backend.delete_key(service, self.backend_creds)
+            if ok:
+                _delete_cached_key(self.backend_name, service, self.cache_dir)
+                _l1_invalidate(self._l1_name(key_name))
+                _l1_bump_generation()
         return ok
 
     def clear(self, service):
         """Blank a key in the backend and drop its cache entry."""
         if not self.supports('clear_key'):
             return False
-        ok = self.backend.clear_key(service, self.backend_creds)
-        if ok:
-            _delete_cached_key(self.backend_name, service, self.cache_dir)
-            _l1_invalidate(self._l1_name(_cache_key_name(self.backend_name, service)))
+        key_name = _cache_key_name(self.backend_name, service)
+        with _service_lock(key_name):
+            ok = self.backend.clear_key(service, self.backend_creds)
+            if ok:
+                _delete_cached_key(self.backend_name, service, self.cache_dir)
+                _l1_invalidate(self._l1_name(key_name))
+                _l1_bump_generation()
         return ok
 
     def list(self):
