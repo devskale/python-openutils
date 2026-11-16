@@ -24,10 +24,10 @@ Modes:
   direct  provider via ProviderFactory (no proxy; needs the provider's key)
 
 Usage:
-  uv run python testsuite/toolcall_probe.py --models tu@qwen-3.6-35b-vllm --runs 10
+  uv run python testsuite/toolcall_probe.py --models tu@qwen-3.8-27b --runs 10
   uv run python testsuite/toolcall_probe.py --models kilo@stepfun/step-5-preview-free,opencode@step-5-preview-free
-  uv run python testsuite/toolcall_probe.py --direct tu --models qwen-3.6-35b-vllm
-  uv run python testsuite/toolcall_probe.py --models tu@qwen-3.6-35b-vllm --stream
+  uv run python testsuite/toolcall_probe.py --direct tu --models qwen-3.8-27b
+  uv run python testsuite/toolcall_probe.py --models tu@qwen-3.8-27b --stream
 
 Exit code: 0 = clean · 1 = intermittent defects · 2 = broken/down.
 """

@@ -45,7 +45,7 @@ models:
     context_window: 131072
     max_output_tokens: 64000
     supports_thinking: true
-    description: "Qwen 3.6 35B via TU Aqueduct, vLLM-Deployment (production default) — identisches Modell zu tu@qwen-3.6-35b, separates, stabileres Deployment"
+    description: "Qwen 3.6 35B via TU Aqueduct, vLLM-Deployment — DEPRECATED/EINGESTELLT (Owner 2026-11-16: Deployment dauerhaft weg, 'no healthy deployments'). Karte nur noch Referenz; NICHT mehr in Backup-Ketten oder Task-Pins verwenden — Nachfolger tu@qwen-3.8-27b."
   tu@qwen-3.6-35b:
     context_window: 131072
     max_output_tokens: 64000
@@ -73,7 +73,7 @@ models:
   tu@qwen-3.5-397b:
     context_window: 131072
     supports_thinking: true
-    description: "Qwen 3.5 397B via TU Aqueduct — DEPRECATED/EINGESTELLT (2026-10-06: aqueduct 400). Karte bleibt als Referenz, nicht mehr aktivierbar. Strukt2meta-Kriterien laufen bis zu einem Nachfolger auf tu@qwen-3.6-35b-vllm."
+    description: "Qwen 3.5 397B via TU Aqueduct — DEPRECATED/EINGESTELLT (2026-10-06: aqueduct 400). Karte bleibt als Referenz, nicht mehr aktivierbar. Strukt2meta-Kriterien laufen auf tu@qwen-3.8-27b (Nachfolge-Pin)."
   tu@gemma-4-26b:
     context_window: 262000
     description: "ENTFERNT vom Gateway (Stand 2026-09-25) — nicht mehr verfügbar; Karte nur noch Referenz"
@@ -154,10 +154,9 @@ default:
   # `model:`-Zeile, mtime-Reload, kein Restart; Issue clients-yml-abschaltung);
   # Backups fließen aus jeder Schicht, env pinnt nur den Primary.
   backups:
-    # 2026-10-22: Aqueduct erster Backup (invers — DGX-Primary, Aqueduct faengt,
-    # inkl. des bekannten DGX-Synthese-Leerfalls).
-    - tu@qwen-3.6-35b-vllm
-    # 2026-10-30 (User): Kette hab → vllm → 3.8-27b (beide Aqueduct-Karten).
+    # 2026-11-16 (Owner): tu@qwen-3.6-35b-vllm ENTFERNT — Deployment dauerhaft
+    # weg ("no healthy deployments"), jeden Fehlversuch totschlagen kostet
+    # nur Zeit. Kette jetzt hab → 3.8-27b.
     - tu@qwen-3.8-27b
     # 2026-10-30 (User): gemini-flash-lite ENTFERNT — nicht DSGVO-konform;
     # Gemini darf nur offene Doks sehen (AAB/FB-Auszug), nie als genereller

@@ -31,12 +31,12 @@ LEGACY_FULL = {
     "default": {
         "base_url": "https://uniinfer.skale.dev/v1",
         "bearer": "t-test",
-        "model": "tu@qwen-3.6-35b-vllm",          # Routing → gestrichen
+        "model": "tu@qwen-3.8-27b",          # Routing → gestrichen
         "backups": ["tu@qwen-3.8-27b"],            # Routing → gestrichen
         "temperature": 0.99,                        # Sampling → gestrichen
     },
     "packages": {                                    # Task-Profile → gestrichen
-        "strukt2meta": {"model": "tu@qwen-3.6-35b-vllm"},
+        "strukt2meta": {"model": "tu@qwen-3.8-27b"},
         "agentos": {"tasks": {"queryRoute": {"thinking": "off"}}},
     },
 }
@@ -97,11 +97,11 @@ def test_box_models_yml_keeps_full_power(_fresh_caches, tmp_path, monkeypatch):
     box = _write_yaml(
         tmp_path,
         "box.yml",
-        {"default": {"base_url": "https://uniinfer.skale.dev/v1", "bearer": "t", "model": "tu@qwen-3.6-35b-vllm"}},
+        {"default": {"base_url": "https://uniinfer.skale.dev/v1", "bearer": "t", "model": "tu@qwen-3.8-27b"}},
     )
     monkeypatch.setenv("KONTEXT_MODELS_YML", box)
     r = cfg.resolve_model(package="pdf2md")
-    assert r.primary.model == "qwen-3.6-35b-vllm"
+    assert r.primary.model == "qwen-3.8-27b"
     assert r.base_url == "https://uniinfer.skale.dev/v1"
 
 

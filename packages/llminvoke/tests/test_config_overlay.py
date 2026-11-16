@@ -55,9 +55,9 @@ def test_deep_merge_list_replaces_not_concatenates():
 
 def test_overlay_choice_catalog_sampling_inherited(monkeypatch, tmp_path):
     """Overlay default picks the model; sampling comes from the CATALOG."""
-    _overlay(monkeypatch, tmp_path, {"default": {"model": "tu@qwen-3.6-35b-vllm"}})
+    _overlay(monkeypatch, tmp_path, {"default": {"model": "tu@qwen-3.8-27b"}})
     r = config.resolve_model()
-    assert r.model == "qwen-3.6-35b-vllm"
+    assert r.model == "qwen-3.8-27b"
     # catalog default profile: temperature 0.7, max_tokens 10000
     assert r.temperature == 0.7
     assert r.max_tokens == 10000
@@ -66,16 +66,16 @@ def test_overlay_choice_catalog_sampling_inherited(monkeypatch, tmp_path):
 def test_overlay_beats_catalog_at_any_level(monkeypatch, tmp_path):
     """Overlay default.model overrides a CATALOG task-pinned model
     (contract: overlay > catalog, any level)."""
-    _overlay(monkeypatch, tmp_path, {"default": {"model": "tu@qwen-3.6-35b-vllm"}})
-    # catalog md2blank.tasks.blank pins tu@qwen-3.6-35b-vllm … same value would
+    _overlay(monkeypatch, tmp_path, {"default": {"model": "tu@qwen-3.8-27b"}})
+    # catalog md2blank.tasks.blank pins tu@qwen-3.8-27b … same value would
     # prove nothing — use a task pin we can distinguish: strukt2meta.kriterien
     r = config.resolve_model(package="strukt2meta", task="kriterien")
-    assert r.model == "qwen-3.6-35b-vllm"  # overlay default, not the task pin
+    assert r.model == "qwen-3.8-27b"  # overlay default, not the task pin
 
 
 def test_overlay_task_routing_wins(monkeypatch, tmp_path):
     _overlay(monkeypatch, tmp_path, {
-        "default": {"model": "tu@qwen-3.6-35b-vllm"},
+        "default": {"model": "tu@qwen-3.8-27b"},
         "packages": {"pdf2md": {"tasks": {"vlm": {"model": "tu@other-model"}}}},
     })
     r = config.resolve_model(package="pdf2md", task="vlm")
@@ -132,7 +132,7 @@ def test_deprecated_clients_yml_endpoint_only(monkeypatch, tmp_path, caplog):
     die Endpoint-Domain reduziert — Sampling UND Routing gestrichen, Warnung
     nennt die Drops; Box-models.yml behält volle Macht."""
     _overlay(monkeypatch, tmp_path, {
-        "default": {"model": "tu@qwen-3.6-35b-vllm", "temperature": 0.99,
+        "default": {"model": "tu@qwen-3.8-27b", "temperature": 0.99,
                     "max_tokens": 64000, "backups": ["tu@legacy"],
                     "base_url": "https://legacy/v1", "bearer": "sk-legacy"},
     }, env="KONTEXT_CLIENTS_YML", name="clients.yml")
@@ -202,6 +202,6 @@ def test_mtime_hot_reload(monkeypatch, tmp_path):
 # ── client param compatibility ─────────────────────────────────────────
 
 def test_client_param_accepted_and_ignored(monkeypatch, tmp_path):
-    _overlay(monkeypatch, tmp_path, {"default": {"model": "tu@qwen-3.6-35b-vllm"}})
+    _overlay(monkeypatch, tmp_path, {"default": {"model": "tu@qwen-3.8-27b"}})
     r = config.resolve_model(client="some-deal")   # deprecated, must not raise
-    assert r.model == "qwen-3.6-35b-vllm"
+    assert r.model == "qwen-3.8-27b"

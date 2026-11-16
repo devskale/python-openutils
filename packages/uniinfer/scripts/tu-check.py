@@ -25,7 +25,7 @@ CHAT_MODELS = [
     "deepseek-v4-flash-284b",
     "qwen-3.5-397b",
     "qwen-3.6-35b",
-    "qwen-3.6-35b-vllm",
+    "qwen-3.8-27b",
 ]
 HEALTHY_S = 5.0    # <= this TTFB = healthy
 DEGRADED_S = 20.0  # <= this = degraded; above / no token / error = down
