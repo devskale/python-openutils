@@ -96,6 +96,12 @@ class Target:
             # the class default REQUIRES_API_KEY=True would 400 every request
             # even though the overlay says keyless — propagate the flag.
             kwargs["REQUIRES_API_KEY"] = False
+        if spec.preserve_multimodal is not None:
+            # Multimodal instance (vision-capable vLLM/gateway behind
+            # openai-compat): forward list content as-is; the class default
+            # flattens to text and silently drops image parts
+            # (issue hab-qwen-image-multimodal).
+            kwargs["PRESERVE_MULTIMODAL"] = spec.preserve_multimodal
         self.provider = ProviderFactory.get_provider(spec.provider, **kwargs)
         self._record_access = record_access
 

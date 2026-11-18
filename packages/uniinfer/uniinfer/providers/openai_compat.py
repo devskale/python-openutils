@@ -27,6 +27,12 @@ class OpenAICompatProvider(OpenAICompatibleChatProvider):
     ERROR_PROVIDER_NAME = "OpenAI-compat"
     DEFAULT_MODEL: Optional[str] = None
     # No CREDGOO_SERVICE: a custom instance defaults to its own alias name.
+    # OpenAI list content (incl. image_url) is this provider's native dialect
+    # (vLLM/Ollama/LM Studio all accept it); text-only models behind it answer
+    # with a loud backend error instead of the flatten's silent image drop
+    # (issue hab-qwen-image-multimodal). String-only legacy endpoints opt out
+    # per instance: preserve_multimodal: false.
+    PRESERVE_MULTIMODAL = True
 
     @classmethod
     def list_models(

@@ -30,6 +30,7 @@ _ENTRY_FIELDS = (
     "base_url",
     "credgoo_service",
     "requires_api_key",
+    "preserve_multimodal",
     "enabled",
     "default_model",
     "systemone_path",
@@ -54,6 +55,10 @@ class InstanceSpec:
         base_url: Endpoint URL, or None to use the class default.
         credgoo_service: Credgoo key service, or None to resolve per rules.
         requires_api_key: Whether completions need an API key (anonymous = False).
+        preserve_multimodal: None = provider class default; True/False forces
+            forwarding of OpenAI multimodal list content (image_url parts) instead
+            of the text-only flatten (issue hab-qwen-image-multimodal: hab@DGX
+            dropped images silently and hallucinated).
         enabled: False hides the instance from listing/dispatch.
         default_model: Default model id, or None.
         is_builtin: True if the alias names a registry provider (overridable, not deletable).
@@ -64,6 +69,7 @@ class InstanceSpec:
     base_url: Optional[str] = None
     credgoo_service: Optional[str] = None
     requires_api_key: bool = True
+    preserve_multimodal: Optional[bool] = None
     enabled: bool = True
     default_model: Optional[str] = None
     is_builtin: bool = False
@@ -292,6 +298,7 @@ def upsert_instance(
     base_url: Optional[str] = None,
     credgoo_service: Optional[str] = None,
     requires_api_key: Optional[bool] = None,
+    preserve_multimodal: Optional[bool] = None,
     enabled: Optional[bool] = None,
     default_model: Optional[str] = None,
     systemone_path: Optional[str] = None,
@@ -307,6 +314,7 @@ def upsert_instance(
         ("base_url", base_url),
         ("credgoo_service", credgoo_service),
         ("requires_api_key", requires_api_key),
+        ("preserve_multimodal", preserve_multimodal),
         ("enabled", enabled),
         ("default_model", default_model),
         ("systemone_path", systemone_path),

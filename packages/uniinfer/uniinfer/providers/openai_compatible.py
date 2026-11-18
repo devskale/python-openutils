@@ -279,6 +279,12 @@ class OpenAICompatibleChatProvider(ChatProvider):
         # instances overlay): drop the class-level key requirement.
         if kwargs.get("REQUIRES_API_KEY") is not None:
             self.REQUIRES_API_KEY = bool(kwargs["REQUIRES_API_KEY"])
+        # Multimodal-instance override (vision-capable endpoint behind this
+        # class, z.B. hab@DGX vLLM via the instances overlay): keep OpenAI list
+        # content (image_url parts) instead of the text-only flatten that
+        # silently drops images (issue hab-qwen-image-multimodal).
+        if kwargs.get("PRESERVE_MULTIMODAL") is not None:
+            self.PRESERVE_MULTIMODAL = bool(kwargs["PRESERVE_MULTIMODAL"])
 
     # ------------------------------------------------------------------ #
     # model listing — a template method. The mechanics (credgoo key,
