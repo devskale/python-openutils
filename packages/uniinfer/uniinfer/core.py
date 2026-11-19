@@ -621,6 +621,12 @@ class TTSRequest:
         response_format (str): The audio format (mp3, opus, aac, flac, wav, pcm).
         speed (float): The speed of the generated audio (0.25 to 4.0).
         instructions (str | None): Additional instructions for the TTS model.
+        language (str | None): Language name (Qwen3-TTS: Auto, Chinese, English,
+            Japanese, Korean, German, French, Russian, Portuguese, Spanish,
+            Italian) — steuert die Aussprache; ohne das Feld rät das Modell
+            (Auto) und liegt bei gemischtem Text daneben.
+        stream (bool): Request streamed audio delivery when the backend supports it.
+        stream_format (str | None): "audio" (raw bytes) or "sse" (events).
     """
 
     def __init__(
@@ -630,7 +636,10 @@ class TTSRequest:
         voice: str | None = None,
         response_format: str = "mp3",
         speed: float = 1.0,
-        instructions: str | None = None
+        instructions: str | None = None,
+        language: str | None = None,
+        stream: bool = False,
+        stream_format: str | None = None
     ):
         self.input = input
         self.model = model
@@ -638,6 +647,9 @@ class TTSRequest:
         self.response_format = response_format
         self.speed = speed
         self.instructions = instructions
+        self.language = language
+        self.stream = stream
+        self.stream_format = stream_format
 
 
 class TTSResponse:
@@ -746,6 +758,21 @@ class TTSProvider:
         """
         raise NotImplementedError(
             "TTS providers must implement the agenerate_speech method")
+
+    async def astream_speech(
+        self,
+        request: TTSRequest,
+        **provider_specific_kwargs
+    ):
+        """Stream speech audio chunks as they are synthesized.
+
+        Async generator yielding raw audio bytes. Default fallback: buffer the
+        full agenerate_speech response and yield it as ONE chunk — providers
+        without native streaming stay usable through the same seam, they just
+        don't get earlier audio. Override for true chunked streaming.
+        """
+        response = await self.agenerate_speech(request, **provider_specific_kwargs)
+        yield response.audio_content
 
 
 class STTRequest:

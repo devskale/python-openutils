@@ -39,10 +39,15 @@ class OpenAICompatTTSProvider(TTSProvider):
             "voice": request.voice or "ono_anna",
             "response_format": request.response_format or "wav",
         }
+        if request.language:
+            payload["language"] = request.language
         if request.speed and request.speed != 1.0:
             payload["speed"] = request.speed
         if request.instructions:
             payload["instructions"] = request.instructions
+        if request.stream:
+            payload["stream"] = True
+            payload["stream_format"] = request.stream_format or "audio"
         payload.update(provider_specific_kwargs)
         async with httpx.AsyncClient(timeout=180) as client:
             resp = await client.post(f"{self.base_url}/audio/speech",
@@ -56,6 +61,47 @@ class OpenAICompatTTSProvider(TTSProvider):
             provider="openai-compat",
             content_type=resp.headers.get("Content-Type", "audio/wav"),
         )
+
+    async def astream_speech(self, request: TTSRequest, **provider_specific_kwargs):
+        """Stream audio chunks while the upstream synthesizes.
+
+        Uses httpx streaming (no response buffering): bytes are yielded the
+        moment the upstream sends them, so a vLLM-Omni ``stream:true,
+        stream_format:"audio"`` response is audible at synthesis speed. The
+        request payload mirrors agenerate_speech (language/style included).
+        """
+        import httpx
+
+        headers = {"Content-Type": "application/json"}
+        if self.api_key:
+            headers["Authorization"] = f"Bearer {self.api_key}"
+        payload = {
+            "model": request.model,
+            "input": request.input,
+            "voice": request.voice or "ono_anna",
+            "response_format": request.response_format or "wav",
+            "stream": True,
+            "stream_format": request.stream_format or "audio",
+        }
+        if request.language:
+            payload["language"] = request.language
+        if request.speed and request.speed != 1.0:
+            payload["speed"] = request.speed
+        if request.instructions:
+            payload["instructions"] = request.instructions
+        payload.update(provider_specific_kwargs)
+        async with httpx.AsyncClient(timeout=180) as client:
+            async with client.stream(
+                "POST", f"{self.base_url}/audio/speech",
+                json=payload, headers=headers,
+            ) as resp:
+                if resp.status_code != 200:
+                    body = (await resp.aread()).decode(errors="replace")
+                    raise RuntimeError(
+                        f"openai-compat TTS upstream {resp.status_code}: {body[:300]}")
+                async for chunk in resp.aiter_bytes():
+                    if chunk:
+                        yield chunk
 
 
 class OpenAICompatSTTProvider(STTProvider):

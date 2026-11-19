@@ -97,6 +97,7 @@ class TTSTarget:
         response_format: str = "mp3",
         speed: float = 1.0,
         instructions: Optional[str] = None,
+        language: Optional[str] = None,
     ) -> TTSResult:
         from uniinfer import TTSRequest
 
@@ -111,12 +112,51 @@ class TTSTarget:
             response_format=response_format,
             speed=speed,
             instructions=instructions,
+            language=language,
         )
         response = await provider.agenerate_speech(request)
         return TTSResult(
             audio_content=response.audio_content,
             content_type=response.content_type,
         )
+
+    async def astream_synthesize(
+        self,
+        text: str,
+        *,
+        voice: Optional[str] = None,
+        response_format: str = "mp3",
+        speed: float = 1.0,
+        instructions: Optional[str] = None,
+        language: Optional[str] = None,
+        stream_format: Optional[str] = None,
+    ):
+        """Streamed twin of asynthesize: yields audio chunks as they arrive.
+
+        Same dispatch as asynthesize (instance base_url wins, registry
+        fallback), but calls the provider's astream_speech. Providers without
+        native streaming fall back to one buffered chunk (TTSProvider default)
+        — the seam stays uniform, callers never branch on provider type.
+        """
+        from uniinfer import TTSRequest
+
+        if self.base_url:
+            provider = self._provider_cls(api_key=self.api_key, base_url=self.base_url)
+        else:
+            provider = self._provider_cls(api_key=self.api_key)
+        request = TTSRequest(
+            input=text,
+            model=self.model_name,
+            voice=voice,
+            response_format=response_format,
+            speed=speed,
+            instructions=instructions,
+            language=language,
+            stream=True,
+            stream_format=stream_format or "audio",
+        )
+        async for chunk in provider.astream_speech(request):
+            yield chunk
 
 
 class STTTarget:

@@ -7,7 +7,7 @@ import logging
 from typing import Optional, Callable
 
 from fastapi import APIRouter, Depends, HTTPException, Request, File, Form, UploadFile
-from fastapi.responses import Response
+from fastapi.responses import Response, StreamingResponse
 from pydantic import BaseModel
 
 from uniinfer.auth import get_optional_proxy_token, verify_provider_access
@@ -22,9 +22,14 @@ class TTSRequestModel(BaseModel):
     model: str
     input: str
     voice: Optional[str] = None
-    response_format: Optional[str] = "mp3"
+    # None → pfad-spezifischer Default: mp3 (buffered) bzw. wav (streaming,
+    # roh streambarer Container; ffplay & Co. brauchen das)
+    response_format: Optional[str] = None
     speed: Optional[float] = 1.0
     instructions: Optional[str] = None
+    language: Optional[str] = None
+    stream: bool = False
+    stream_format: Optional[str] = None
 
 
 class STTResponseModel(BaseModel):
@@ -77,14 +82,34 @@ def create_audio_router(
                 except ValueError as e:
                     raise HTTPException(status_code=400, detail=str(e))
 
+            get_key_usage().note(api_bearer_token, request_input.model, api_key)
+            if request_input.stream:
+                # Live streaming: chunks flow the moment the upstream sends
+                # them (vLLM-Omni stream:true) — no proxy-side buffering. The
+                # media_type names the container format; "audio" stream_format
+                # delivers raw wav/pcm bytes, "sse" OpenAI speech.audio events.
+                fmt = request_input.response_format or "wav"
+                media = "audio/wav" if fmt in ("wav", "pcm") else f"audio/{fmt}"
+                return StreamingResponse(
+                    target.astream_synthesize(
+                        request_input.input,
+                        voice=request_input.voice,
+                        response_format=fmt,
+                        speed=request_input.speed or 1.0,
+                        instructions=request_input.instructions,
+                        language=request_input.language,
+                        stream_format=request_input.stream_format,
+                    ),
+                    media_type=media,
+                )
             result = await target.asynthesize(
                 request_input.input,
                 voice=request_input.voice,
                 response_format=request_input.response_format or "mp3",
                 speed=request_input.speed or 1.0,
                 instructions=request_input.instructions,
+                language=request_input.language,
             )
-            get_key_usage().note(api_bearer_token, request_input.model, api_key)
             return Response(content=result.audio_content, media_type=result.content_type)
         except HTTPException:
             raise
