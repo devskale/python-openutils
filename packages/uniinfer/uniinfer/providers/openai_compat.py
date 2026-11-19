@@ -52,9 +52,25 @@ class OpenAICompatProvider(OpenAICompatibleChatProvider):
             data = resp.json().get("data", []) or resp.json().get("models", [])
             out: list[ModelInfo] = []
             for m in data:
-                mid = m.get("id") if isinstance(m, dict) else str(m)
-                if mid:
-                    out.append(ModelInfo(id=mid, owned_by=cls.PROVIDER_ID))
+                if isinstance(m, dict):
+                    mid = m.get("id")
+                    if not mid:
+                        continue
+                    # Upstream owned_by is a real discriminator (DGX model-proxy
+                    # sends "sttts" for audio stack entries, "vllm" for vLLM)
+                    # — keep it; only fall back to our class id when absent.
+                    mi = ModelInfo(id=mid,
+                                   owned_by=m.get("owned_by") or cls.PROVIDER_ID,
+                                   raw=m)
+                    # Derive type early so audio models (asr/tts/supertonic)
+                    # never surface as chat candidates (issue
+                    # uniinfer-hab-audio-models-mislabeled-as-chat).
+                    derived = mi.derive_type()
+                    if derived != "chat":
+                        mi.type = derived
+                    out.append(mi)
+                elif m:
+                    out.append(ModelInfo(id=str(m), owned_by=cls.PROVIDER_ID))
             return out
         except Exception:
             return []

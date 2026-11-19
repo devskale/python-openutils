@@ -102,7 +102,13 @@ class ModelInfo:
         # Name-based — only high-confidence patterns
         if "whisper" in mid:
             return "stt"
+        # Fleet audio (sttts-Stack, DGX): nemotron-3.5-asr-streaming-0.6b, …
+        if "-asr" in mid or "asr-" in mid:
+            return "stt"
         if "kokoro" in mid or "piper-" in mid:
+            return "tts"
+        # supertonic-3 (Supertone TTS engine), qwen3-tts-customvoice, …
+        if "supertonic" in mid or "-tts" in mid or "tts-" in mid:
             return "tts"
 
         return "chat"
