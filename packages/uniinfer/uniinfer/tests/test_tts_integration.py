@@ -51,12 +51,13 @@ class TestTTSIntegration:
         assert len(api_key) > 10
 
     @pytest.mark.asyncio
-    async def test_tts_kokoro_af_heart(self, tts_provider):
-        """Test TTS with kokoro model and af_heart voice."""
+    async def test_tts_voxtral_de_female(self, tts_provider):
+        """Live-Test gegen TU (kokoro + Stimmen wurden 2026-11-24 abgeschaltet
+        — Nachfolger voxtral-4b-tts, DE-Stimme de_female)."""
         request = TTSRequest(
             input="Hello, this is a test of the text to speech system.",
-            model="kokoro",
-            voice="af_heart"
+            model="voxtral-4b-tts",
+            voice="de_female"
         )
 
         response = await tts_provider.agenerate_speech(request)
@@ -65,7 +66,7 @@ class TestTTSIntegration:
         assert response.audio_content is not None
         # audio may be empty for some voices
         assert response.provider == "tu"
-        assert response.model == "kokoro"
+        assert response.model == "voxtral-4b-tts"
 
     @pytest.mark.asyncio
     async def test_tts_kokoro_af_bella(self, tts_provider):

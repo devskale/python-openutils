@@ -45,11 +45,13 @@ class TuAITTSProvider(TTSProvider):
         endpoint = f"{self.BASE_URL}/audio/speech"
 
         payload = {
-            "model": request.model or "kokoro",
+            # kokoro + piper-thorsten werden am 2026-11-24 abgeschaltet
+            # (Aqueduct-Deprovisioning) — Default ist der Nachfolger.
+            "model": request.model or "voxtral-4b-tts",
             "input": request.input,
             "response_format": request.response_format or "mp3",
             "speed": request.speed or 1.0,
-            "voice": request.voice or "af_alloy"
+            "voice": request.voice or "de_female"
         }
         if request.instructions:
             payload["instructions"] = request.instructions
