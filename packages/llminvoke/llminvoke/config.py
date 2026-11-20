@@ -551,6 +551,9 @@ def classify_error(error: BaseException) -> str:
         return "auth_error"
     if any(k in combined for k in ("404", "not found", "model not")):
         return "not_found"
+    if ("empty_response" in combined or "empty stream" in combined
+            or "no chunks" in combined or "empty content" in combined):
+        return "empty_response"  # 200-Stream ohne Token (Präemption/Shadow) — transient per Design
     if any(k in combined for k in ("400", "bad request", "invalid")):
         return "bad_request"
     if any(k in combined for k in ("500", "502", "503", "504", "internal", "server error")):

@@ -424,7 +424,10 @@ def _try_model(
             text = extract_response_text(response)
             if text:
                 return text, response
-            err = RuntimeError("empty_response")  # empty = failure (Q8)
+            err = RuntimeError(
+                f"empty_response: {ref.provider}@{ref.model} lieferte 0 Tokens"
+                " (200-Stream ohne Chunks — Präemption/Rate-Limit-Shadow-Verdacht)"
+            )  # empty = failure (Q8); Klassifizierung: config.empty_response (transient)
         except Exception as exc:
             err = exc
 
@@ -852,7 +855,10 @@ def _start_stream(
             for chunk in stream:
                 if _chunk_has_payload(chunk):
                     return stream, chunk
-            err = RuntimeError("empty_response")  # stream yielded nothing
+            err = RuntimeError(
+                f"empty_response: {ref.provider}@{ref.model} lieferte 0 Tokens"
+                " (200-Stream ohne Chunks — Präemption/Rate-Limit-Shadow-Verdacht)"
+            )  # stream yielded nothing; Klassifizierung: config.empty_response (transient)
         except Exception as exc:
             err = exc
 

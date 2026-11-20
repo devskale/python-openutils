@@ -243,3 +243,22 @@ def test_gateway_bearer_fail_open(monkeypatch, tmp_path):
     r = config.resolve_model()
     assert r.base_url == config.DEFAULT_GATEWAY_URL
     assert r.bearer is None
+
+
+# ── empty_response als eigene Klasse (Vorfall 2026-11-20: 0-Token-Streams) ──
+
+def test_empty_response_klassifiziert_nicht_als_runtimeerror():
+    from llminvoke.config import classify_error, PERMANENT_ERRORS
+    err = RuntimeError("empty_response: hab@qwen3.6-35b lieferte 0 Tokens (200-Stream ohne Chunks)")
+    kind = classify_error(err)
+    assert kind == "empty_response"
+    assert kind not in PERMANENT_ERRORS  # transient per Design → retry + Backup
+
+
+def test_empty_stream_phrasen_erkannt():
+    from llminvoke.config import classify_error
+    for msg in ("Empty stream - no chunks received (possible preemption)",
+                "Stream completed with empty content"):
+        # Provider-Formen (tu-Healing-Meldungen) müssen auch matchen, wenn sie
+        # als Exception durchreichen
+        assert classify_error(RuntimeError(msg)) in ("empty_response",)
