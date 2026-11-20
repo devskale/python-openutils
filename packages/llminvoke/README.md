@@ -31,8 +31,32 @@ text = call_llm("prompt", config=cfg)
 | `call_llm_with_meta` | `(str, meta)` | ✅ backoff | ✅ chain | need to know WHICH model served |
 | `call_llm_with_usage` | `(str, usage)` | ✅ backoff | ✅ chain | token accounting |
 | `stream_llm` | `Iterator[str]` | before first token | before first token | streaming output |
+| `decide` | `{answers}` with probabilities | ✅ backoff (Retry-After) | ❌ (specialist by design) | **decisions/classification** — System-One models (LiquidAI d1 etc.), no token generation |
+| `invoke_llm` | raw response | ❌ | ❌ | escape hatch (tool-calling, custom loops) |
 | `invoke_llm` | raw response | ❌ | ❌ | escape hatch (tool-calling, custom loops) |
 | `create_provider` | `ChatProvider` | — | — | raw provider (tool-calling, custom loops) |
+
+### Decisions: `decide` (System-One)
+
+Classification/routing/triage questions go to decision models — typed
+questions with **probabilities per label** instead of begging a completion
+model for JSON (measured: ~0.2 s, no token generation, calibrated scores):
+
+```python
+from llminvoke import decide
+
+answers = decide(
+    page_text,
+    {"garbling": {"type": "choice",
+                  "instructions": "Ist dieser PDF-Text verstümmelt/garbled?",
+                  "criteria": {"fully": "unlesbar", "partially": "Teile", "no": "lesbar"}}},
+    model="hab@LiquidAI/d1-2B", package="pdf2md",
+)
+# → {"garbling": {"choice": "partially", "probabilities": {"fully": 0.32, …}}}
+```
+
+Routes via the gateway (`{base_url}/systemone`); endpoint contract:
+uniinfer `docs/systemone.md` (decision/extraction dialects).
 
 ### Which model served the call
 
