@@ -185,6 +185,8 @@ packages:
       vlm:
         model: hab@qwen3.6-35b
         max_tokens: 8192  # ganzseitige VLM-Neuschreibungen (polish) — 4k clippt dichte Scan-Seiten
+      decision:                    # System-One-Decision (llminvoke.decide)
+        model: hab@LiquidAI/d1-2B  # Garbling-Adjudikation (preflight Tier 3)
   md2blank:
     # (2026-10-09) war DOPPELT in dieser Datei — YAML last-wins hatte die
     # tasks fnamer/blank still verworfen; zusammengeführt (einziger Block jetzt).

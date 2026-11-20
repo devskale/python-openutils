@@ -593,7 +593,7 @@ def decide(
     state: str,
     questions: dict,
     *,
-    model: str,
+    model: str | None = None,
     package: str | None = None,
     client: str | None = None,
     task: str | None = None,
@@ -622,7 +622,7 @@ def decide(
     cfg = resolve_model(package=package, client=client, task=task)
     if not cfg.base_url:
         raise RuntimeError("decide(): keine base_url konfiguriert (Gateway-Default fehlt) — KONTEXT_MODELS_YML prüfen")
-    ref = ModelRef.parse(model)
+    ref = ModelRef.parse(model) if model else cfg.primary  # task-resolved oder explicit
     payload = {"model": str(ref), "state": state, "questions": questions}
     url = cfg.base_url.rstrip("/") + "/systemone"
 

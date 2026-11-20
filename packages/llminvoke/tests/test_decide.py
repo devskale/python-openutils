@@ -107,3 +107,21 @@ def test_gateway_default_greift(monkeypatch):
 
 if __name__ == "__main__":
     sys.exit(pytest.main([__file__, "-v"]))
+
+
+def test_task_resolved_model_wenn_kein_explicit(monkeypatch):
+    """model=None → resolve_model(package, task).primary — keine Hardcodierung
+    am Call-Site, models.yml ist Source of Truth."""
+    from llminvoke.config import ResolvedConfig, ModelRef, RetryPolicy
+
+    seen = {}
+
+    def _fake_post(url, bearer, payload, timeout=45.0):
+        seen["model"] = payload["model"]
+        return _ok_response()
+
+    monkeypatch.setattr(llminvoke, "_systemone_post", _fake_post)
+    cfg = ResolvedConfig(primary=ModelRef("hab", "LiquidAI/d1-2B"), retry=RetryPolicy(attempts=1), base_url="https://uniinfer.skale.dev/v1")
+    monkeypatch.setattr(llminvoke, "resolve_model", lambda **kw: cfg)
+    decide("x", {}, package="pdf2md", task="decision")  # kein model-Param!
+    assert seen["model"] == "hab@LiquidAI/d1-2B"
