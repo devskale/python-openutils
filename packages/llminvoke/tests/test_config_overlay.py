@@ -205,3 +205,41 @@ def test_client_param_accepted_and_ignored(monkeypatch, tmp_path):
     _overlay(monkeypatch, tmp_path, {"default": {"model": "tu@qwen-3.8-27b"}})
     r = config.resolve_model(client="some-deal")   # deprecated, must not raise
     assert r.model == "qwen-3.8-27b"
+
+
+# ── Gateway-Default (Vorfall 2026-11-20: hab@ „not registered" überall) ──
+
+def test_gateway_default_when_unconfigured(monkeypatch, tmp_path):
+    """Ohne jede base_url-Konfiguration: Standard-Gateway (löst provider@model,
+    auch Alias-Instanzen wie hab) + bearer via credgoo Service uniinfer."""
+    monkeypatch.delenv("OPENAI_BASE_URL", raising=False)
+    monkeypatch.delenv("KONTEXT_MODELS_YML", raising=False)
+    monkeypatch.delenv("KONTEXT_CLIENTS_YML", raising=False)
+    _overlay(monkeypatch, tmp_path, {})  # kein overlay-triple
+    monkeypatch.setattr(config, "_credgoo_get_api_key", lambda svc: "sk-gw" if svc == "uniinfer" else None, raising=False)
+    r = config.resolve_model()
+    assert r.base_url == config.DEFAULT_GATEWAY_URL
+    assert r.bearer == "sk-gw"
+
+
+def test_explicit_base_url_beats_gateway_default(monkeypatch, tmp_path):
+    monkeypatch.delenv("OPENAI_BASE_URL", raising=False)
+    _overlay(monkeypatch, tmp_path, {"default": {"base_url": "https://box/v1"}})
+    r = config.resolve_model()
+    assert r.base_url == "https://box/v1"
+    assert r.base_url != config.DEFAULT_GATEWAY_URL
+
+
+def test_gateway_bearer_fail_open(monkeypatch, tmp_path):
+    """credgoo ohne uniinfer-Service ⇒ bearer None (kein Crash — der 401 wird
+    dann laut sichtbar, statt die Auflösung zu töten)."""
+    monkeypatch.delenv("OPENAI_BASE_URL", raising=False)
+    _overlay(monkeypatch, tmp_path, {})
+
+    def _boom(svc):
+        raise RuntimeError("Service not found")
+
+    monkeypatch.setattr(config, "_credgoo_get_api_key", _boom, raising=False)
+    r = config.resolve_model()
+    assert r.base_url == config.DEFAULT_GATEWAY_URL
+    assert r.bearer is None

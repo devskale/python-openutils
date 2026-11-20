@@ -323,6 +323,25 @@ def _filter_dsgvo(refs: list[ModelRef], dsgvo_required: bool) -> list[ModelRef]:
 _ENV_REF_RE = re.compile(r"^\$\{?([A-Z_][A-Z0-9_]*)\}?$")
 
 
+# Standard-Gateway: löst provider@model auf (hab→dgx-vLLM, tu→Aqueduct) — Instanz-
+# Aliase, die die lokale ProviderFactory nicht kennt, werden so von JEDE Box aus
+# streambar (Vorfall 2026-11-20: Primary hab@ verbrannte überall mit "not
+# registered", jeder Call lief still aufs Backup tu@; bearer via credgoo
+# Service "uniinfer"). Explizite base_url (models.yml/clients.yml/env) gewinnt.
+DEFAULT_GATEWAY_URL = "https://uniinfer.skale.dev/v1"
+_GATEWAY_BEARER_SERVICE = "uniinfer"
+
+
+def _gateway_default_bearer() -> str | None:
+    """Gateway-Token via credgoo (Service uniinfer) — gecacht, fail-open None."""
+    if not _credgoo_get_api_key:
+        return None
+    try:
+        return _credgoo_get_api_key(_GATEWAY_BEARER_SERVICE) or None
+    except Exception:
+        return None
+
+
 def _resolve_bearer(ref: str | None) -> str | None:
     """Resolve a bearer ref to the actual key: credgoo:svc / ${ENV} / inline.
 
@@ -425,6 +444,13 @@ def resolve_model(
 
     # ── endpoint triple: env is the fallback, the overlay overrides ──
     base_url = eff.get("base_url") or (os.environ.get("OPENAI_BASE_URL", "").strip() or None)
+    gateway_default = False
+    if not base_url:
+        # Standard-Routing über den uniinfer-Gateway (auflöst provider@model,
+        # auch Alias-Instanzen wie hab). Ohne Default bleibt der Direkt-Pfad,
+        # der für Factory-unbekannte Provider mit "not registered" stirbt.
+        base_url = DEFAULT_GATEWAY_URL
+        gateway_default = True
     bare_model = bool(eff.get("bare_model", False))
     bearer_ref: str | None = eff.get("bearer") or (
         os.environ.get("OPENAI_API_KEY", "").strip() or None
@@ -474,6 +500,9 @@ def resolve_model(
         elif thinking in ("minimal", "low", "medium", "high"):
             task_kwargs["reasoning_effort"] = thinking
 
+    bearer = _resolve_bearer(bearer_ref)
+    if not bearer and gateway_default:
+        bearer = _gateway_default_bearer()
     return ResolvedConfig(
         primary=primary,
         backups=backup_refs,
@@ -484,7 +513,7 @@ def resolve_model(
         request_kwargs=task_kwargs,
         base_url=base_url,
         bare_model=bare_model,
-        bearer=_resolve_bearer(bearer_ref),
+        bearer=bearer,
     )
 
 
