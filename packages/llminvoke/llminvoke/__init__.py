@@ -50,6 +50,7 @@ __all__ = [
     "invoke_llm",
     "call_llm",
     "stream_llm",
+    "decide",
     "StreamPiece",
     "iter_llm_events",
     "create_provider",
@@ -196,10 +197,9 @@ def _invoke_via_openai_sdk(
     ChatCompletionResponse so the rest of llminvoke (extract/usage/alarm) is
     unchanged. Model id is ``provider@model`` (the proxy routes by prefix).
     """
+    import httpx
     from openai import OpenAI
     from uniinfer import ChatCompletionResponse
-
-    import httpx
     # Fail-fast on stalls: a read timeout (no bytes for 90s) beats a 300s total
     # hang when the upstream stalls (HTTP 000 — connection up, zero bytes).
     # llminvoke then retries (timeout is transient → _try_model backoff), and a
@@ -363,7 +363,7 @@ def with_retry(
     response, or ``None`` if exhausted/permanent (caller decides: backup
     chain, raise, or degrade loudly).
     """
-    from .config import RetryPolicy, classify_error, _extract_retry_after
+    from .config import _extract_retry_after, classify_error
 
     r = retry if isinstance(retry, RetryPolicy) else RetryPolicy()
     attempts = 1 if fail_fast else r.attempts
@@ -566,6 +566,85 @@ def _extract_served_meta(ref: ModelRef, response: object) -> dict:
     }
 
 
+def _systemone_post(url: str, bearer: str | None, payload: dict, timeout: float = 45.0) -> dict:
+    """POST an den System-One-Endpoint (Transport, testbar zu mocken)."""
+    import json as _json
+    import urllib.error
+    import urllib.request
+
+    req = urllib.request.Request(
+        url,
+        data=_json.dumps(payload, ensure_ascii=False).encode("utf-8"),
+        headers={"Content-Type": "application/json", **({"Authorization": f"Bearer {bearer}"} if bearer else {})},
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=timeout) as resp:
+            return _json.loads(resp.read().decode("utf-8"))
+    except urllib.error.HTTPError as e:
+        body = ""
+        try:
+            body = e.read().decode("utf-8", "replace")[:200]
+        except Exception:
+            pass
+        raise RuntimeError(f"HTTP {e.code}: {body}") from e
+
+
+def decide(
+    state: str,
+    questions: dict,
+    *,
+    model: str,
+    package: str | None = None,
+    client: str | None = None,
+    task: str | None = None,
+    max_attempts: int | None = None,
+    timeout: float = 45.0,
+) -> dict:
+    """System-One decision call (LiquidAI-d1-Familie u.a.): state + getypte
+    questions → ``{answers}`` mit Wahrscheinlichkeiten je Label — keine Token-
+    Generierung (gemessen ~0.2 s/Decision, Vorfall-Klasse: Grauzonen-
+    Adjudikation, gibberish-digit-mush 2026-11-20).
+
+    Routing über den Gateway (``{base_url}/systemone`` — uniioai-proxy →
+    nativer Endpoint, z.B. hab → d1-2B auf dgx) mit derselben Auflösung wie
+    call_llm (package/task-Defaults, Gateway-Default-base_url, credgoo-
+    bearer). ``model`` ist explizit (ModelRef-Form ``"hab@LiquidAI/d1-2B"``):
+    Decision-Modelle sind keine Chat-Defaults, Backups gibt es bewusst keine
+    (das Model IST der Spezialist) — transiente Fehler (429/5xx/network)
+    retryen nach der resolved RetryPolicy inkl. Retry-After.
+
+    Raises LLMChainExhausted bei Erschöpfung (fo-t7-Konvention).
+    Returns das ``answers``-Dict, z.B. ``{"garbling": {"type": "choice",
+    "choice": "no", "probabilities": {...}}}``.
+    """
+    from .config import _extract_retry_after, classify_error
+
+    cfg = resolve_model(package=package, client=client, task=task)
+    if not cfg.base_url:
+        raise RuntimeError("decide(): keine base_url konfiguriert (Gateway-Default fehlt) — KONTEXT_MODELS_YML prüfen")
+    ref = ModelRef.parse(model)
+    payload = {"model": str(ref), "state": state, "questions": questions}
+    url = cfg.base_url.rstrip("/") + "/systemone"
+
+    attempts = max_attempts or cfg.retry.attempts
+    err: BaseException = RuntimeError("not attempted")
+    for attempt in range(attempts):
+        try:
+            d = _systemone_post(url, cfg.bearer, payload, timeout=timeout)
+            answers = d.get("answers")
+            if not isinstance(answers, dict) or not answers:
+                raise RuntimeError(f"empty_response: systemone lieferte keine answers ({str(d)[:120]})")
+            return answers
+        except Exception as exc:
+            err = exc
+        kind = classify_error(err)
+        if attempt < attempts - 1:
+            ra = _extract_retry_after(err) if kind == "rate_limited" else None
+            time.sleep(cfg.retry.delay_for(attempt + 1, ra))
+    emit_alarm("alarm", ref.provider, ref.model, classify_error(err), str(err), package=package, client=client)
+    raise LLMChainExhausted(f"decide({ref}): {str(err)[:160]}")
+
+
 def call_llm_with_meta(
     prompt: str | None = None,
     *,
@@ -724,9 +803,8 @@ def _stream_via_openai_sdk(
     """
     from types import SimpleNamespace
 
-    from openai import OpenAI
-
     import httpx
+    from openai import OpenAI
     client = OpenAI(
         base_url=base_url, api_key=bearer or "missing",
         timeout=httpx.Timeout(connect=10.0, read=90.0, write=30.0, pool=10.0),
