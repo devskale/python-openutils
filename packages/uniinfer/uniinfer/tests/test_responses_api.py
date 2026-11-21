@@ -270,8 +270,11 @@ class TestCloudflareEmptyChoicesStream:
         mock_response.status_code = 200
         lines = [
             'data: {"choices": [], "usage": {"prompt_tokens": 1}}',
+            "",
             'data: {"choices": [{"delta": {"content": "ok"}}]}',
+            "",
             "data: [DONE]",
+            "",
         ]
 
         async def aiter_lines():

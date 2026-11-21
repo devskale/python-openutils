@@ -702,21 +702,15 @@ class OpenAICompatibleChatProvider(ChatProvider):
                             retry_after=parse_retry_after(response.headers) if response.status_code == 429 else None,
                         )
 
-                    async for line in response.aiter_lines():
-                        if not line:
-                            continue
-                        if line.startswith("data: "):
-                            line = line[6:].strip()
-                        elif line.startswith("data:"):
-                            line = line[5:].strip()
-                        else:
-                            continue
+                    from uniinfer.sse import DONE, sse_events_aiter
 
-                        if not line or line == "[DONE]":
+                    async for sse in sse_events_aiter(response.aiter_lines()):
+                        data_str = sse.data
+                        if not data_str or data_str == DONE:
                             continue
 
                         try:
-                            data = json.loads(line)
+                            data = json.loads(data_str)
                         except json.JSONDecodeError:
                             continue
 

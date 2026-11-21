@@ -257,13 +257,12 @@ class CloudflareProvider(ChatProvider):
                     error_msg = f"Cloudflare API error: {response.status_code} - {await response.aread()}"
                     raise map_provider_error("cloudflare", Exception(error_msg), status_code=response.status_code, response_body=error_msg)
 
-                async for line in response.aiter_lines():
-                    if line:
-                        chunk_data = line.strip()
-                        if chunk_data.startswith("data: "):
-                            chunk_data = chunk_data[6:]
+                from uniinfer.sse import DONE, sse_events_aiter
 
-                        if chunk_data == "[DONE]":
+                async for sse in sse_events_aiter(response.aiter_lines()):
+                    chunk_data = (sse.data or "").strip()
+                    if chunk_data:
+                        if chunk_data == DONE:
                             continue
 
                         try:

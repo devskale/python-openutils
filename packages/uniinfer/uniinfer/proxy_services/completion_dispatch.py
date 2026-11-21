@@ -285,18 +285,19 @@ async def guarded_stream_events(
     import json as _json
 
     from uniinfer.errors import ProviderError as _PE
+    from uniinfer.sse import DONE, sse_events
 
     def _decode(item: str) -> Optional[dict]:
-        if not item.startswith("data: "):
-            return None
-        payload = item[len("data: "):].strip()
-        if payload == "[DONE]" or not payload:
-            return None
-        try:
-            d = _json.loads(payload)
-        except ValueError:
-            return None
-        return d if isinstance(d, dict) else None
+        for ev in sse_events(item.splitlines()):
+            payload = ev.data
+            if not payload or payload == DONE:
+                continue
+            try:
+                d = _json.loads(payload)
+            except ValueError:
+                continue
+            return d if isinstance(d, dict) else None
+        return None
 
     _chain = list(plan.auto_chain) if plan.auto_chain is not None else None
     while True:

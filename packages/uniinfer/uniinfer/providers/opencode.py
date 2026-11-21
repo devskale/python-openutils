@@ -373,19 +373,14 @@ class OpenCodeProvider(OpenAICompatibleChatProvider):
                         status_code=response.status_code,
                         response_body=error_text,
                     )
-                async for line in response.aiter_lines():
-                    if not line:
-                        continue
-                    if line.startswith("data: "):
-                        line = line[6:].strip()
-                    elif line.startswith("data:"):
-                        line = line[5:].strip()
-                    else:
-                        continue
-                    if not line or line == "[DONE]":
+                from uniinfer.sse import DONE, sse_events_aiter
+
+                async for sse in sse_events_aiter(response.aiter_lines()):
+                    data_str = sse.data
+                    if not data_str or data_str == DONE:
                         continue
                     try:
-                        data = json.loads(line)
+                        data = json.loads(data_str)
                     except json.JSONDecodeError:
                         continue
                     last_chunks.append(data)
@@ -638,11 +633,11 @@ class OpenCodeProvider(OpenAICompatibleChatProvider):
                     status_code=response.status_code,
                     response_body=error_text,
                 )
-            async for line in response.aiter_lines():
-                if not line.startswith("data:"):
-                    continue
-                data_str = line[5:].strip()
-                if not data_str or data_str == "[DONE]":
+            from uniinfer.sse import DONE, sse_events_aiter
+
+            async for sse in sse_events_aiter(response.aiter_lines()):
+                data_str = sse.data
+                if not data_str or data_str == DONE:
                     continue
                 try:
                     data = json.loads(data_str)

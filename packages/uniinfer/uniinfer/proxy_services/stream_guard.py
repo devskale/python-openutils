@@ -165,15 +165,22 @@ class _PassObserver:
         self.saw_error = False
 
     def observe(self, event: str) -> None:
-        if not event.startswith("data: {"):
-            return  # keep-alive comments, [DONE], non-JSON frames
+        from uniinfer.sse import sse_events
+
+        # Self-emission observation (the relay's own chat-SSE strings): one
+        # event per string — decode through the canonical seam, keep-alives
+        # and [DONE] produce no data here.
+        events = [e for e in sse_events(event.splitlines()) if e.data]
+        if not events or not events[0].data.startswith("{"):
+            return
         # Cheap pre-filter: a chunk without any payload key substring cannot
         # be contentful (the relay only emits these keys for non-null values).
-        if not any(key in event for key in _PAYLOAD_KEYS):
-            if '"error"' not in event:
+        payload = events[0].data
+        if not any(key in payload for key in _PAYLOAD_KEYS):
+            if '"error"' not in payload:
                 return
         try:
-            data = json.loads(event[6:])
+            data = json.loads(payload)
         except ValueError:
             return
         if not isinstance(data, dict):
