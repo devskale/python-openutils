@@ -249,3 +249,63 @@ class TestRouter:
     def test_bad_model_400(self, client):
         r = client.post("/v1/responses", json={"model": "noproject", "input": "hi"})
         assert r.status_code in (400, 401, 500)
+
+
+class TestCloudflareEmptyChoicesStream:
+    """Regression: gpt-oss on CF emits SSE chunks with "choices": [] — the
+    provider stream parser indexed [0] and crashed ('list index out of range'),
+    killing the whole stream instead of skipping the chunk. Found live
+    2026-11-21 via /v1/responses stream validation."""
+
+    def test_empty_choices_chunk_is_skipped(self):
+        import asyncio
+        from unittest.mock import AsyncMock, MagicMock, patch
+
+        from uniinfer.core import ChatCompletionRequest
+        from uniinfer.providers.cloudflare import CloudflareProvider
+
+        provider = CloudflareProvider(api_key="k", account_id="acct")
+
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        lines = [
+            'data: {"choices": [], "usage": {"prompt_tokens": 1}}',
+            'data: {"choices": [{"delta": {"content": "ok"}}]}',
+            "data: [DONE]",
+        ]
+
+        async def aiter_lines():
+            for line in lines:
+                yield line
+
+        mock_response.aiter_lines = aiter_lines
+
+        class _FakeClient:
+            def stream(self, *a, **k):
+                return _Ctx(mock_response)
+
+        async def run():
+            chunks = []
+            with patch.object(provider, "_get_async_client", AsyncMock(return_value=_FakeClient())):
+                from uniinfer.core import ChatMessage
+
+                req = ChatCompletionRequest(
+                    messages=[ChatMessage(role="user", content="hi")], model="m"
+                )
+                async for c in provider.astream_complete(req):
+                    chunks.append(c)
+            return chunks
+
+        class _Ctx:
+            def __init__(self, resp):
+                self._r = resp
+
+            async def __aenter__(self):
+                return self._r
+
+            async def __aexit__(self, *a):
+                return False
+
+        chunks = asyncio.run(run())
+        assert len(chunks) == 1
+        assert chunks[0].message.content == "ok"

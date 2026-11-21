@@ -187,7 +187,8 @@ class CloudflareProvider(ChatProvider):
 
             if isinstance(result, dict):
                 if result.get("object") == "chat.completion":
-                    choice = result.get("choices", [{}])[0]
+                    _choices = result.get("choices") or [{}]
+                    choice = _choices[0] if _choices else {}
                     msg = choice.get("message", {})
                     content = msg.get("content", "") or ""
                     thinking = msg.get("reasoning_content")
@@ -270,8 +271,8 @@ class CloudflareProvider(ChatProvider):
                             chunk_text = ""
 
                             if isinstance(json_chunk, dict):
-                                if "choices" in json_chunk:
-                                    delta = json_chunk.get("choices", [{}])[0]
+                                if json_chunk.get("choices"):
+                                    delta = json_chunk["choices"][0]
                                     d = delta.get("delta", {})
                                     chunk_text = d.get("content", "") or ""
                                     if not chunk_text:
