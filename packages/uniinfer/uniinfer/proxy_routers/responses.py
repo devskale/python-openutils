@@ -50,6 +50,69 @@ def create_responses_router(parse_provider_model) -> APIRouter:
             unsupported = reject_unsupported(body)
             if unsupported:
                 raise HTTPException(status_code=400, detail=unsupported)
+
+            # Native fast-path (issue uniinfer-responses-api follow-up):
+            # base_url instances with a native /responses backend (e.g. hab →
+            # vLLM) get the body forwarded verbatim — unlocks server-side
+            # features the translation layer deliberately does not fake.
+            if request.headers.get("x-native-responses", "").lower() in ("1", "true"):
+                from uniinfer.config.instances import resolve_instance
+
+                try:
+                    _spec = resolve_instance(provider_model.split("@", 1)[0])
+                except Exception:
+                    _spec = None
+                _base = (getattr(_spec, "base_url", None) or "").rstrip("/")
+                if _base:
+                    import httpx
+
+                    from uniinfer.auth import verify_provider_access
+
+                    _alias = provider_model.split("@", 1)[0]
+                    _key = verify_provider_access(
+                        api_bearer_token, _alias,
+                        own_key=request.headers.get("x-provider-key"),
+                    )
+                    import json as _json
+
+                    body["model"] = provider_model.split("@", 1)[1]
+                    if body.get("stream"):
+                        async def _native_stream():
+                            async with httpx.AsyncClient(timeout=None) as _c:
+                                async with _c.stream(
+                                    "POST", f"{_base}/responses",
+                                    json=body,
+                                    headers={"Authorization": f"Bearer {_key}"},
+                                ) as _r:
+                                    if _r.status_code >= 400:
+                                        raise HTTPException(
+                                            status_code=_r.status_code,
+                                            detail=(await _r.aread())[:300],
+                                        )
+                                    async for _line in _r.aiter_bytes():
+                                        yield _line
+
+                        return StreamingResponse(
+                            _native_stream(), media_type="text/event-stream",
+                            headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+                        )
+                    async with httpx.AsyncClient(timeout=300) as _c:
+                        _r = await _c.post(
+                            f"{_base}/responses", json=body,
+                            headers={"Authorization": f"Bearer {_key}"},
+                        )
+                    if _r.status_code >= 400:
+                        raise HTTPException(
+                            status_code=_r.status_code, detail=_r.text[:300]
+                        )
+                    return JSONResponse(content=_r.json())
+                raise HTTPException(
+                    status_code=501,
+                    detail=("x-native-responses requires a base_url instance with "
+                            f"a native /responses backend (e.g. hab@…); "
+                            f"'{provider_model.split('@', 1)[0]}' is translated-only"),
+                )
+
             chat = request_to_chat(body)
 
             plan = resolve_dispatch(

@@ -336,3 +336,14 @@ class TestPydanticEventSchema:
         assert payload["type"] == "response.created"
         assert payload["response"]["id"] == "resp_1"
         assert payload["response"]["usage"] is None
+
+
+class TestNativeFastPath:
+    def test_non_baseurl_instance_501(self, client, monkeypatch):
+        r = client.post(
+            "/v1/responses",
+            json={"model": "tu@d1-3b", "input": "hi"},
+            headers={"x-native-responses": "true"},
+        )
+        assert r.status_code == 501
+        assert "translated-only" in r.json()["detail"]
