@@ -74,3 +74,15 @@ def test_discovery_link_header_has_describedby(client):
     link = r.headers.get("link", "")
     assert 'rel="describedby"' in link
     assert "/llms.txt" in link
+
+
+def test_contracts_md_served_and_linked(client):
+    r = client.get("/contracts.md")
+    assert r.status_code == 200
+    assert r.headers["content-type"].startswith("text/markdown")
+    assert "Agentic Contracts" in r.text
+    assert "4401" in r.text  # WS close codes contract present
+    body = client.get("/llms.txt").text
+    assert "/contracts.md" in body
+    manifest = client.get("/v1").json()
+    assert manifest["links"]["contracts"] == "/contracts.md"

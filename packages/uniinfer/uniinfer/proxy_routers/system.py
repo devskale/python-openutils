@@ -121,6 +121,14 @@ def create_system_router(version: str) -> APIRouter:
             raise HTTPException(status_code=404, detail="integration.md not found")
         return FileResponse(md_file_path, media_type="text/markdown")
 
+    @router.get("/contracts.md", include_in_schema=False)
+    async def get_agentic_contracts():
+        """Machine-stable agent contracts (discovery/auth/surfaces/reliability)."""
+        md_file_path = os.path.join(_SCRIPT_DIR, "..", "docs", "agentic-contracts.md")
+        if not os.path.exists(md_file_path):
+            raise HTTPException(status_code=404, detail="agentic-contracts.md not found")
+        return FileResponse(md_file_path, media_type="text/markdown")
+
     @router.get("/llms.txt", include_in_schema=False)
     async def get_llms_txt():
         """Agent index per llmstxt.org v2 — terse endpoint map + WS-STT contract."""

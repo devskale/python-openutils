@@ -103,6 +103,7 @@ def discovery_manifest(version: str) -> dict[str, Any]:
             "model_health": "/v1/health/models",
             "openapi": "/openapi.json",
             "guide": "/guide.md",
+            "contracts": "/contracts.md",
             "llms_txt": "/llms.txt",
             "realtime_stt": "/v1/audio/transcriptions/stream",
             "health": "/health",
@@ -162,6 +163,7 @@ Auth everywhere: `Authorization: Bearer <token>`, operator-issued — unlocks ev
 ## Docs
 
 - [Full integration guide (markdown)](/guide.md) — SDK usage, all endpoints, realtime STT client example
+- [Agentic contracts](/contracts.md) — machine-stable promises: discovery, identity, auth, surfaces, reliability, versioning
 - [Discovery manifest](/v1) — JSON entry point
 """
 
@@ -204,6 +206,7 @@ def provider_discovery(version: str) -> dict[str, Any]:
             "models": "/v1/models",
             "openapi": "/openapi.json",
             "guide": "/guide.md",
+            "contracts": "/contracts.md",
         },
     }
 

@@ -219,7 +219,11 @@ port) and `ssh amd 'sudo nginx -T | grep -B3 -A8 "server_name.*uniinfer"'`
 ### Agent discovery
 
 Agents can discover the API progressively. The first two steps are public,
-cached, local reads — they make no upstream/model calls and expose no secrets:
+cached, local reads — they make no upstream/model calls and expose no secrets.
+The machine-stable promises (identity, auth, surfaces, reliability,
+versioning) are codified in [`agentic-contracts.md`](agentic-contracts.md) —
+served live at `/contracts.md` and linked from `/llms.txt` and the `/v1`
+manifest:
 
 ```bash
 BASE=https://uniinfer.skale.dev
