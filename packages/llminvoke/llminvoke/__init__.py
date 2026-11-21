@@ -594,14 +594,18 @@ def _paced(channel: str = "systemone") -> None:
     Prozess-Takt (fail-open — ein Takt-Fehler darf Decisions nicht töten).
     """
     wait = 0.0
-    # Ebene 1: Prozess-Takt (Threads)
+    # Ebene 1: Prozess-Takt (Threads) — Reservierung INKL. Jitter, damit die
+    # Mindestabstände auch unter Jitter monoton bleiben (Vorfall: 0.023s-Lücke,
+    # späterer Thread zog weniger Jitter und rückte näher).
+    jitter = random.uniform(0, 0.05)
     with _decision_pace_lock:
         now = time.monotonic()
         if now >= _decision_pace_state["cooldown_until"]:
             earliest = _decision_pace_state["last"] + _DECISION_MIN_INTERVAL
             if now < earliest:
                 wait = earliest - now
-        _decision_pace_state["last"] = time.monotonic() + wait
+        _decision_pace_state["last"] = time.monotonic() + wait + jitter
+    wait += jitter
     # Ebene 2: Box-Takt (Prozesse) — flock-atomic read-modify-write
     try:
         import fcntl
@@ -621,18 +625,18 @@ def _paced(channel: str = "systemone") -> None:
                 else:
                     bearliest = blast + _DECISION_MIN_INTERVAL
                     bwait = max(0.0, bearliest - bnow)
-                new_last = bnow + bwait
+                new_last = bnow + bwait + jitter
                 fh.seek(0)
                 fh.truncate()
                 fh.write(_json.dumps({"last": new_last, "cooldown_until": bcd if bnow < bcd else 0.0}))
                 fh.flush()
             finally:
                 fcntl.flock(fh, fcntl.LOCK_UN)
-            wait = max(wait, bwait)
+            wait = max(wait, bwait + jitter)
     except OSError:
         pass  # fail-open: Prozess-Takt greift weiterhin
     if wait > 0:
-        time.sleep(wait + random.uniform(0, 0.05))   # Jitter entzerrt parallele Takte
+        time.sleep(wait)   # Jitter steckt bereits in der Reservierung — Abstände bleiben ≥ Intervall
 
 
 def _pace_note_rate_limit() -> None:
