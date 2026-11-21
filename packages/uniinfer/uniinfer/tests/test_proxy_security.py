@@ -22,8 +22,8 @@ def test_chat_completions_requires_auth(client):
 
 
 def test_chat_completions_success(client):
-    with patch("uniinfer.proxy_routers.chat.verify_provider_access", return_value="fake-key"), \
-         patch("uniinfer.proxy_routers.chat.Target") as mock_target_cls:
+    with patch("uniinfer.proxy_services.completion_dispatch.verify_provider_access", return_value="fake-key"), \
+         patch("uniinfer.proxy_services.completion_dispatch.Target") as mock_target_cls:
         mock_response = MagicMock()
         mock_response.message.content = "Hello!"
         mock_response.message.tool_calls = None

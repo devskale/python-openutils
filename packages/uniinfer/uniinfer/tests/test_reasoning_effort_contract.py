@@ -208,8 +208,9 @@ class TestHttpThinkShim:
 
         fake_target = MagicMock()
         fake_target.acomplete = fake_acomplete
-        monkeypatch.setattr(chat_mod, "Target", lambda *a, **k: fake_target)
-        monkeypatch.setattr(chat_mod, "verify_provider_access", lambda *a, **k: "k")
+        from uniinfer.proxy_services import completion_dispatch as _cd
+        monkeypatch.setattr(_cd, "Target", lambda *a, **k: fake_target)
+        monkeypatch.setattr(_cd, "verify_provider_access", lambda *a, **k: "k")
         return TestClient(app), captured
 
     def test_think_false_maps_to_reasoning_none(self, monkeypatch):

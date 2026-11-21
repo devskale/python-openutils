@@ -66,8 +66,8 @@ def test_router_nonstream_nested_usage_returns_200():
         "prompt_tokens_details": {"cached_tokens": 0},
     }
 
-    with patch("uniinfer.proxy_routers.chat.verify_provider_access", return_value="k"), \
-         patch("uniinfer.proxy_routers.chat.Target") as mt:
+    with patch("uniinfer.proxy_services.completion_dispatch.verify_provider_access", return_value="k"), \
+         patch("uniinfer.proxy_services.completion_dispatch.Target") as mt:
         mt.return_value.acomplete = AsyncMock(return_value=mock_response)
         client = TestClient(app)
         resp = client.post(
@@ -130,8 +130,8 @@ def test_router_stream_emits_terminal_usage_chunk():
     mock_target.provider_model = "tu@glm-test"
     mock_target.astream_complete = _fake_stream_with_usage
 
-    with patch("uniinfer.proxy_routers.chat.verify_provider_access", return_value="k"), \
-         patch("uniinfer.proxy_routers.chat.Target", return_value=mock_target):
+    with patch("uniinfer.proxy_services.completion_dispatch.verify_provider_access", return_value="k"), \
+         patch("uniinfer.proxy_services.completion_dispatch.Target", return_value=mock_target):
         client = TestClient(app)
         resp = client.post(
             "/v1/chat/completions",
@@ -163,8 +163,8 @@ def test_router_stream_omits_usage_when_not_requested():
     mock_target.provider_model = "tu@glm-test"
     mock_target.astream_complete = _fake_stream_with_usage
 
-    with patch("uniinfer.proxy_routers.chat.verify_provider_access", return_value="k"), \
-         patch("uniinfer.proxy_routers.chat.Target", return_value=mock_target):
+    with patch("uniinfer.proxy_services.completion_dispatch.verify_provider_access", return_value="k"), \
+         patch("uniinfer.proxy_services.completion_dispatch.Target", return_value=mock_target):
         client = TestClient(app)
         resp = client.post(
             "/v1/chat/completions",

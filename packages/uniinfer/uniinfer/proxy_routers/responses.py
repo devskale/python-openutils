@@ -123,7 +123,7 @@ def create_responses_router(parse_provider_model) -> APIRouter:
             request.state.provider_model = plan.provider_model
             if plan.routed_model:
                 request.state.routed_model = plan.routed_model
-            meter = make_meter(api_bearer_token, plan.provider_model, plan.provider_api_key, _t0)
+            meter = make_meter(api_bearer_token, plan, _t0)
             messages = normalize_roles(chat["messages"], plan.provider_name)
 
             if body.get("stream"):

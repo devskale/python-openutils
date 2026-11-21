@@ -61,6 +61,9 @@ class DispatchPlan:
     api_bearer_token: Optional[str] = field(default=None, repr=False)
     own_key: Optional[str] = field(default=None, repr=False)
     base_url: Optional[str] = field(default=None, repr=False)
+    # HTTP layers may set this to learn about auto-route fallbacks (headers,
+    # request.state) as they happen inside the service.
+    on_fallback: Optional[Callable[[str], None]] = field(default=None, repr=False)
 
 
 def token_hash(token: Optional[str]) -> Optional[str]:
@@ -98,11 +101,8 @@ def resolve_dispatch(
     from uniinfer.completion import parse_provider_model
     from uniinfer.proxy_services.router import resolve_auto, resolve_auto_candidates
 
+    original_model = provider_model
     provider_name, _ = parse_provider_model(provider_model)
-    provider_api_key = verify_provider_access(
-        api_bearer_token, provider_name, own_key=own_key
-    )
-    target = Target(provider_model, provider_api_key, base_url)
     auto_chain: Optional[list[str]] = None
     routed_model: Optional[str] = None
 
@@ -116,17 +116,20 @@ def resolve_dispatch(
             )
         provider_model, _route_meta = _resolved
         provider_name, _ = parse_provider_model(provider_model)
-        routed_model = target.provider_model
-        provider_api_key = verify_provider_access(
-            api_bearer_token, provider_name, own_key=own_key
-        )
-        target = Target(provider_model, provider_api_key, base_url)
+        routed_model = provider_model
+        # Fallback chain minus the already-tried head; re-resolved on every
+        # retry so parked models drop out of the chain live.
         chain = resolve_auto_candidates(
-            provider_model if routed_model is None else routed_model,
-            token_hash=token_hash(api_bearer_token),
+            original_model, token_hash=token_hash(api_bearer_token)
         )
         tried = {provider_model}
         auto_chain = [c for c in chain if c not in tried][:_AUTO_MAX_FALLBACKS]
+
+    # Auth targets the CONCRETE provider only (never the 'auto' alias).
+    provider_api_key = verify_provider_access(
+        api_bearer_token, provider_name, own_key=own_key
+    )
+    target = Target(provider_model, provider_api_key, base_url)
 
     return DispatchPlan(
         provider_name=provider_name,
@@ -160,6 +163,8 @@ def error_to_http_exception(
     if isinstance(e, RateLimitError):
         detail = f"{e} | Response: {e.response_body}" if e.response_body else str(e)
         _ra = getattr(e, "retry_after", None)
+        if meter:
+            meter(getattr(e, "status_code", 429) or 429, None, None)
         return HTTPException(
             status_code=getattr(e, "status_code", 429) or 429,
             detail=detail,
@@ -183,18 +188,18 @@ def error_to_http_exception(
     )
 
 
-def make_meter(
-    api_bearer_token: Optional[str],
-    provider_model: str,
-    provider_api_key: Optional[str],
-    t0: float,
-) -> Meter:
-    """Stats + key-usage recording with the chat path's exact semantics."""
+def make_meter(api_bearer_token: Optional[str], plan: "DispatchPlan", t0: float) -> Meter:
+    """Stats + key-usage recording with the chat path's exact semantics.
+
+    Reads model/key from the plan at CALL time so auto-route fallbacks
+    (which mutate the plan in-place) meter against the model that actually
+    served the request.
+    """
 
     def meter(status: int, latency_ms: Optional[float], usage: Optional[dict]) -> None:
-        get_key_usage().note(api_bearer_token, provider_model, provider_api_key)
+        get_key_usage().note(api_bearer_token, plan.provider_model, plan.provider_api_key)
         get_stats().record(
-            provider_model,
+            plan.provider_model,
             status=status,
             latency_ms=(latency_ms if latency_ms is not None
                         else (time.monotonic() - t0) * 1000),
@@ -202,6 +207,45 @@ def make_meter(
         )
 
     return meter
+
+
+def _advance_chain(plan: DispatchPlan, err: BaseException, *, dead: bool = False) -> Optional[str]:
+    """Park the failed model and re-resolve the next chain candidate in-place.
+
+    Returns the new provider_model, or None when the chain is exhausted
+    (caller re-raises ``err``). Mutates plan (model, key, target) and calls
+    back via ``plan.on_fallback`` so HTTP layers can update headers/state.
+    """
+    chain = plan.auto_chain
+    if not chain:
+        return None
+    from uniinfer.proxy_services.router import note_quota_hit
+
+    if dead:
+        from uniinfer.proxy_services.router import note_dead_upstream
+
+        note_dead_upstream(plan.provider_model, err)
+    else:
+        note_quota_hit(plan.provider_model, getattr(err, "retry_after", None))
+    _next = chain.pop(0)
+    logger.warning(
+        "[auto-route] %s on %s, falling through to %s",
+        "dead-upstream" if dead else "429",
+        plan.provider_model,
+        _next,
+    )
+    from uniinfer.completion import parse_provider_model as _ppm
+
+    _pn, _ = _ppm(_next)
+    plan.provider_name = _pn
+    plan.provider_model = _next
+    plan.provider_api_key = verify_provider_access(
+        plan.api_bearer_token, _pn, own_key=plan.own_key
+    )
+    plan.target = Target(_next, plan.provider_api_key, plan.base_url)
+    if plan.on_fallback:
+        plan.on_fallback(_next)
+    return _next
 
 
 async def guarded_complete(
@@ -216,48 +260,121 @@ async def guarded_complete(
     chat_template_kwargs: Optional[dict] = None,
     extra: Optional[dict] = None,
 ) -> "object":
-    """Non-stream complete with the empty-stream guard (masked-failure retry).
+    """Non-stream complete with the empty-stream guard AND service-level
+    auto-fallback (429 quota park + dead-upstream park), no HTTP re-entry.
 
-    Same semantics as the chat non-stream loop: a 200 completion with no
-    content and no tool_calls/thinking is a masked provider failure — retry
-    once (budget via env), then raise ProviderError so callers route around.
+    Same semantics as the chat non-stream loop always had: a 200 completion
+    with no content and no tool_calls/thinking is a masked provider failure —
+    retry once (budget via env), then raise ProviderError.
     """
+    from uniinfer.errors import ProviderError as _PE
+    from uniinfer.proxy_services.router import is_dead_upstream
+
     _guard_left = empty_guard_retry_budget() if empty_guard_enabled() else 0
     while True:
-        full_content = await plan.target.acomplete(
-            messages,
-            temperature=temperature,
-            max_tokens=max_tokens,
-            tools=tools,
-            tool_choice=tool_choice,
-            reasoning_effort=reasoning_effort,
-            chat_template_kwargs=chat_template_kwargs,
-            extra=extra,
-        )
-        if plan.auto_chain is not None:
-            from uniinfer.proxy_services.router import clear_dead_parks
+        try:
+            full_content = await plan.target.acomplete(
+                messages,
+                temperature=temperature,
+                max_tokens=max_tokens,
+                tools=tools,
+                tool_choice=tool_choice,
+                reasoning_effort=reasoning_effort,
+                chat_template_kwargs=chat_template_kwargs,
+                extra=extra,
+            )
+            if plan.auto_chain is not None:
+                from uniinfer.proxy_services.router import clear_dead_parks
 
-            clear_dead_parks(plan.provider_model)
-        if nonstream_masked_empty(full_content):
-            _attempts = empty_guard_retry_budget() + 1
-            if _guard_left > 0:
-                _guard_left -= 1
+                clear_dead_parks(plan.provider_model)
+            if nonstream_masked_empty(full_content):
+                _attempts = empty_guard_retry_budget() + 1
+                if _guard_left > 0:
+                    _guard_left -= 1
+                    emit_guard_alarm(
+                        "empty_stream",
+                        plan.provider_model,
+                        f"EMPTY-STREAM: non-stream completion empty "
+                        f"(retrying, attempt {empty_guard_retry_budget() - _guard_left}/{_attempts})",
+                    )
+                    continue
                 emit_guard_alarm(
                     "empty_stream",
                     plan.provider_model,
-                    f"EMPTY-STREAM: non-stream completion empty "
-                    f"(retrying, attempt {empty_guard_retry_budget() - _guard_left}/{_attempts})",
+                    f"EMPTY-STREAM: non-stream completion empty after {_attempts} attempt(s)",
                 )
-                continue
-            emit_guard_alarm(
-                "empty_stream",
-                plan.provider_model,
-                f"EMPTY-STREAM: non-stream completion empty after {_attempts} attempt(s)",
-            )
-            from uniinfer.errors import ProviderError as _PE
+                raise _PE(
+                    f"empty completion after {_attempts} attempt(s) — upstream returned "
+                    "200 with no content",
+                    status_code=502,
+                )
+            return full_content
+        except RateLimitError as e:
+            if _advance_chain(plan, e) is None:
+                raise
+        except _PE as e:
+            # Dead upstream ("Model is unavailable" / 404): the model is gone,
+            # not flaky — park long, auto-deprecate after repeats, fall through.
+            if plan.auto_chain is None or not is_dead_upstream(plan.provider_model, e):
+                raise
+            if _advance_chain(plan, e, dead=True) is None:
+                raise
 
-            raise _PE("empty completion (masked provider failure)")
-        return full_content
+
+async def guarded_stream_sse(
+    plan: DispatchPlan,
+    *,
+    messages: list[dict],
+    temperature: float = 0.7,
+    max_tokens: Optional[int] = None,
+    tools: Optional[list[dict]] = None,
+    tool_choice: Any = None,
+    reasoning_effort: Optional[str] = None,
+    chat_template_kwargs: Optional[dict] = None,
+    extra: Optional[dict] = None,
+    request_id: Optional[str] = None,
+    usage_note: Optional[Callable[[], None]] = None,
+) -> AsyncGenerator[str, None]:
+    """Chat-SSE relay with service-level 429 fallback (chat surface's seam).
+
+    Yields the chat-dialect SSE strings exactly as astream_guarded produces
+    them; open-time 429 parks the model and transparently restarts on the
+    next chain candidate — surfaces never re-enter their HTTP handler.
+    """
+    while True:
+        gen = astream_guarded(
+            target=plan.target,
+            messages=messages,
+            temp=temperature,
+            max_tok=max_tokens,
+            tools=tools,
+            tool_choice=tool_choice,
+            request_id=request_id,
+            reasoning_effort=reasoning_effort,
+            chat_template_kwargs=chat_template_kwargs,
+            extra=extra,
+            usage_note=usage_note,
+        )
+        try:
+            _first = await gen.__anext__()
+        except RateLimitError as e:
+            if _advance_chain(plan, e) is None:
+                raise
+            continue
+        except ProviderError as e:
+            # Dead upstream ("Model is unavailable" / 404): park long, fall
+            # through — parity with the non-stream path.
+            from uniinfer.proxy_services.router import is_dead_upstream
+
+            if plan.auto_chain is None or not is_dead_upstream(plan.provider_model, e):
+                raise
+            if _advance_chain(plan, e, dead=True) is None:
+                raise
+            continue
+        yield _first
+        async for item in gen:
+            yield item
+        return
 
 
 async def guarded_stream_events(
@@ -299,7 +416,6 @@ async def guarded_stream_events(
             return d if isinstance(d, dict) else None
         return None
 
-    _chain = list(plan.auto_chain) if plan.auto_chain is not None else None
     while True:
         gen = astream_guarded(
             target=plan.target,
@@ -317,27 +433,9 @@ async def guarded_stream_events(
         try:
             _first = await gen.__anext__()
         except RateLimitError as e:
-            if _chain:
-                from uniinfer.proxy_services.router import note_quota_hit
-
-                note_quota_hit(plan.provider_model, getattr(e, "retry_after", None))
-                _next = _chain.pop(0)
-                logger.warning(
-                    "[auto-route] stream 429 on %s, falling through to %s",
-                    plan.provider_model,
-                    _next,
-                )
-                from uniinfer.completion import parse_provider_model as _ppm
-
-                _pn, _ = _ppm(_next)
-                plan.provider_name = _pn
-                plan.provider_model = _next
-                plan.provider_api_key = verify_provider_access(
-                    plan.api_bearer_token, _pn, own_key=plan.own_key
-                )
-                plan.target = Target(_next, plan.provider_api_key, plan.base_url)
-                continue
-            raise
+            if _advance_chain(plan, e) is None:
+                raise
+            continue
         for item in (_first,):
             d = _decode(item)
             if d is None:

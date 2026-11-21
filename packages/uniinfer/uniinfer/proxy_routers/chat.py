@@ -1,4 +1,3 @@
-import hashlib
 import logging
 import time
 from typing import Any, AsyncGenerator, Callable
@@ -28,13 +27,6 @@ from uniinfer.proxy_schemas.chat import (
 )
 from uniinfer.proxy_services.key_usage import get_key_usage
 from uniinfer.proxy_services.stats import get_stats
-from uniinfer.proxy_services.stream_guard import (
-    astream_guarded,
-    emit_guard_alarm,
-    empty_guard_enabled,
-    empty_guard_retry_budget,
-    nonstream_masked_empty,
-)
 from uniinfer.proxy_services.streaming import (
     is_openai_strict_mode,
     normalize_nonstream_content,
@@ -74,49 +66,32 @@ def create_chat_router(
         target: Target | None = None
 
         try:
-            provider_name, _ = parse_provider_model(provider_model)
-            # Caller-supplied upstream key (X-Provider-Key): rides the caller's
-            # own quota when the provider allows it (auth still fully applies).
             _own_key = request.headers.get("x-provider-key")
-            # Caller identity for personal routing preferences: the bearer's
-            # sha256 maps to a token name (auth metadata sidecar) whose
-            # prefer/avoid section in routing_preferences.json steers the
-            # resolve. Computed once, threaded through resolve + chain.
-            _token_hash = (
-                hashlib.sha256(api_bearer_token.encode()).hexdigest()
-                if api_bearer_token
-                else None
+
+            # Dispatch resolution (parse + auth + auto-route + fallback chain)
+            # lives in the shared core — chat is a thin surface over it.
+            from uniinfer.proxy_services.completion_dispatch import resolve_dispatch
+
+            def _on_fallback(new_model: str) -> None:
+                nonlocal provider_model, target
+                request.state.provider_model = new_model
+                request.state.routed_model = new_model
+                provider_model = new_model
+                target = plan.target
+
+            plan = resolve_dispatch(
+                provider_model,
+                api_bearer_token,
+                own_key=_own_key,
+                base_url=base_url,
             )
-            # Auto-routing: resolve a virtual auto@<selector> model to a concrete
-            # provider@model BEFORE provider access / Target dispatch. The rest
-            # of the pipeline (stats, reliability, response shaping) then sees
-            # the concrete model; the original request is echoed in x-routed-model.
-            if provider_name == "auto":
-                from uniinfer.proxy_services.router import resolve_auto
-
-                _resolved = resolve_auto(provider_model, token_hash=_token_hash)
-                if _resolved is None:
-                    raise HTTPException(
-                        status_code=503,
-                        detail="auto-routing found no available free model "
-                        "(all excluded, degraded, parked, or over quota)",
-                    )
-                provider_model, _route_meta = _resolved
-                provider_name, _ = parse_provider_model(provider_model)
+            plan.on_fallback = _on_fallback
+            provider_name = plan.provider_name
+            provider_model = plan.provider_model
+            target = plan.target
+            if plan.routed_model:
                 request.state.routed_model = provider_model
-                request.state.provider_model = provider_model
-                # Fallback chain minus the already-tried head; re-resolved on
-                # every retry so parked models drop out of the chain live.
-                if not hasattr(request.state, "auto_chain"):
-                    from uniinfer.proxy_services.router import resolve_auto_candidates
-
-                    chain = resolve_auto_candidates(
-                        request_input.model, token_hash=_token_hash
-                    )
-                    tried = {provider_model}
-                    request.state.auto_chain = [c for c in chain if c not in tried][
-                        :_AUTO_MAX_FALLBACKS
-                    ]
+            request.state.provider_model = provider_model
             messages_dict = [msg.model_dump() for msg in request_input.messages]
             # OpenAI-compat: 'developer' is OpenAI's newer system-instructions role
             # (reasoning models; emitted by the official SDKs). Most backends
@@ -135,20 +110,7 @@ def create_chat_router(
             # the instance overlay / legacy extra_params; per-request base_url
             # (if provided) still wins as an explicit override.
 
-            provider_api_key = verify_provider_access(
-                api_bearer_token, provider_name, own_key=_own_key
-            )
-
-            # Auto-routed requests carry a fallback chain: on a quota-spent
-            # upstream (429/402) the failed model is parked (cooldown) and the
-            # next candidate is tried, up to _AUTO_MAX_FALLBACKS. Non-routed
-            # requests keep the original single-target behavior. None marks
-            # "not auto-routed" (vs [] = routed, chain exhausted).
-            _auto_chain = (
-                list(getattr(request.state, "auto_chain", []) or [])
-                if hasattr(request.state, "auto_chain")
-                else None
-            )
+            provider_api_key = plan.provider_api_key
 
             # Thinking control now lives in each provider (it reads
             # reasoning_effort off the request). The router only forwards the
@@ -164,14 +126,16 @@ def create_chat_router(
                 if not request_input.think:
                     reasoning_effort = "none"
 
-            target = Target(provider_model, provider_api_key, base_url)
-
             if request_input.stream:
-                _stream_gen = astream_guarded(
-                    target=target,
+                from uniinfer.proxy_services.completion_dispatch import (
+                    guarded_stream_sse,
+                )
+
+                _stream_gen = guarded_stream_sse(
+                    plan,
                     messages=messages_dict,
-                    temp=request_input.temperature,
-                    max_tok=request_input.get_effective_max_tokens(),
+                    temperature=request_input.temperature,
+                    max_tokens=request_input.get_effective_max_tokens(),
                     tools=request_input.tools,
                     tool_choice=request_input.tool_choice,
                     request_id=getattr(request.state, "request_id", None),
@@ -190,19 +154,9 @@ def create_chat_router(
                 try:
                     _first = await _stream_gen.__anext__()
                 except RateLimitError as e:
-                    if _auto_chain:
-                        from uniinfer.proxy_services.router import note_quota_hit
-
-                        note_quota_hit(provider_model, getattr(e, "retry_after", None))
-                        _next = _auto_chain.pop(0)
-                        logger.warning(
-                            "[auto-route] stream 429 on %s, falling through to %s",
-                            provider_model,
-                            _next,
-                        )
-                        return await chat_completions(
-                            request, request_input, api_bearer_token
-                        )
+                    # Fallback to the next chain candidate already happened in
+                    # the dispatch core (guarded_stream_sse); reaching this
+                    # handler means the chain is exhausted or not auto-routed.
                     _detail = (
                         f"{e} | Response: {e.response_body}"
                         if e.response_body
@@ -237,28 +191,9 @@ def create_chat_router(
                         },
                         headers=_headers,
                     )
-                except ProviderError as e:
-                    # Dead upstream ("Model is unavailable" / 404): the model
-                    # is gone, not flaky — park long, auto-deprecate after
-                    # repeats, fall through to the next candidate.
-                    from uniinfer.proxy_services.router import (
-                        is_dead_upstream,
-                        note_dead_upstream,
-                    )
-
-                    if _auto_chain and is_dead_upstream(provider_model, e):
-                        note_dead_upstream(provider_model, e)
-                        _next = _auto_chain.pop(0)
-                        logger.warning(
-                            "[auto-route] stream dead-upstream on %s, "
-                            "falling through to %s",
-                            provider_model,
-                            _next,
-                        )
-                        return await chat_completions(
-                            request, request_input, api_bearer_token
-                        )
-                    raise
+                # Dead-upstream fallback on prime also lives in the core now
+                # (guarded_stream_sse); an exhausted chain re-raises and lands
+                # in the outer error mapping below.
 
                 async def _relay() -> AsyncGenerator[str, None]:
                     yield _first  # the primed (welcome) chunk
@@ -278,108 +213,21 @@ def create_chat_router(
                     headers=_stream_headers,
                 )
 
-            full_content = None
-            # Empty-stream guard, non-stream variant: a 200 completion with no
-            # content (and no tool_calls/thinking that legitimize it) is a masked
-            # provider failure — retry once, then a real HTTP 502 so backup
-            # chains route around the upstream instead of parsing nothing.
-            _empty_guard_left = (
-                empty_guard_retry_budget() if empty_guard_enabled() else 0
+            # Non-stream dispatch (empty-stream guard + 429/dead-upstream
+            # fallback) lives in the shared core.
+            from uniinfer.proxy_services.completion_dispatch import guarded_complete
+
+            full_content = await guarded_complete(
+                plan,
+                messages=messages_dict,
+                temperature=request_input.temperature,
+                max_tokens=request_input.get_effective_max_tokens(),
+                tools=request_input.tools,
+                tool_choice=request_input.tool_choice,
+                reasoning_effort=reasoning_effort,
+                chat_template_kwargs=request_input.chat_template_kwargs,
+                extra=extras,
             )
-            while True:
-                try:
-                    full_content = await target.acomplete(
-                        messages_dict,
-                        temperature=request_input.temperature,
-                        max_tokens=request_input.get_effective_max_tokens(),
-                        tools=request_input.tools,
-                        tool_choice=request_input.tool_choice,
-                        reasoning_effort=reasoning_effort,
-                        chat_template_kwargs=request_input.chat_template_kwargs,
-                        extra=extras,
-                    )
-                    if _auto_chain is not None:
-                        from uniinfer.proxy_services.router import clear_dead_parks
-
-                        clear_dead_parks(provider_model)
-                    if nonstream_masked_empty(full_content):
-                        _attempts = empty_guard_retry_budget() + 1
-                        if _empty_guard_left > 0:
-                            _empty_guard_left -= 1
-                            emit_guard_alarm(
-                                "empty_stream",
-                                provider_model,
-                                f"EMPTY-STREAM: non-stream completion empty "
-                                f"(retrying, attempt {empty_guard_retry_budget() - _empty_guard_left}/{_attempts})",
-                            )
-                            continue
-                        emit_guard_alarm(
-                            "empty_stream",
-                            provider_model,
-                            f"EMPTY-STREAM: non-stream completion empty after {_attempts} attempt(s)",
-                        )
-                        get_key_usage().note(api_bearer_token, provider_model, provider_api_key)
-                        get_stats().record(
-                            provider_model,
-                            status=502,
-                            latency_ms=(time.monotonic() - _req_t0) * 1000,
-                            usage=None,
-                        )
-                        raise HTTPException(
-                            status_code=502,
-                            detail=(
-                                f"Provider Error ({provider_name}): empty completion "
-                                f"after {_attempts} attempt(s) — upstream returned "
-                                f"200 with no content"
-                            ),
-                        )
-                    break
-                except RateLimitError as e:
-                    if not _auto_chain:
-                        raise
-                    from uniinfer.proxy_services.router import note_quota_hit
-
-                    note_quota_hit(provider_model, getattr(e, "retry_after", None))
-                    _next = _auto_chain.pop(0)
-                    logger.warning(
-                        "[auto-route] 429 on %s, falling through to %s",
-                        provider_model,
-                        _next,
-                    )
-                    provider_model = _next
-                    provider_name, _ = parse_provider_model(provider_model)
-                    request.state.provider_model = provider_model
-                    request.state.routed_model = provider_model
-                    provider_api_key = verify_provider_access(
-                        api_bearer_token, provider_name, own_key=_own_key
-                    )
-                    target = Target(provider_model, provider_api_key, base_url)
-                except ProviderError as e:
-                    # Dead upstream ("Model is unavailable" / 404): the model
-                    # is gone, not flaky — park long, auto-deprecate after
-                    # repeats, fall through to the next candidate.
-                    from uniinfer.proxy_services.router import (
-                        is_dead_upstream,
-                        note_dead_upstream,
-                    )
-
-                    if not _auto_chain or not is_dead_upstream(provider_model, e):
-                        raise
-                    note_dead_upstream(provider_model, e)
-                    _next = _auto_chain.pop(0)
-                    logger.warning(
-                        "[auto-route] dead-upstream on %s, falling through to %s",
-                        provider_model,
-                        _next,
-                    )
-                    provider_model = _next
-                    provider_name, _ = parse_provider_model(provider_model)
-                    request.state.provider_model = provider_model
-                    request.state.routed_model = provider_model
-                    provider_api_key = verify_provider_access(
-                        api_bearer_token, provider_name, own_key=_own_key
-                    )
-                    target = Target(provider_model, provider_api_key, base_url)
 
             raw_content = full_content.message.content
             tool_calls = full_content.message.tool_calls

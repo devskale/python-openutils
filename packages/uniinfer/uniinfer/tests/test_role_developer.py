@@ -25,8 +25,8 @@ def _post_with_developer_role(model: str):
             thinking=None, finish_reason="stop", usage=None,
         )
 
-    with patch("uniinfer.proxy_routers.chat.verify_provider_access", return_value="k"), \
-         patch("uniinfer.proxy_routers.chat.Target") as mt:
+    with patch("uniinfer.proxy_services.completion_dispatch.verify_provider_access", return_value="k"), \
+         patch("uniinfer.proxy_services.completion_dispatch.Target") as mt:
         mt.return_value.acomplete = fake_acomplete
         client = TestClient(app)
         resp = client.post(
