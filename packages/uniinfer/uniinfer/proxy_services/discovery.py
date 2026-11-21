@@ -96,6 +96,7 @@ def discovery_manifest(version: str) -> dict[str, Any]:
             "models": "/v1/models",
             "live_instance_models": "/v1/models/{provider}",
             "chat_completions": "/v1/chat/completions",
+            "responses": "/v1/responses",
             "embeddings": "/v1/embeddings",
             "images": "/v1/images/generations",
             "routing_preview": "/v1/routing/auto",
@@ -139,6 +140,7 @@ Every endpoint that takes a `model` expects the strict form `alias@model`:
 - [GET /v1/providers](/v1/providers) — enabled provider instances (no auth)
 - [GET /v1/models](/v1/models) — model catalog (no auth); `/v1/models/{provider}` live listing (auth)
 - [POST /v1/chat/completions](/v1/chat/completions) — chat, stream + tools (auth)
+- [POST /v1/responses](/v1/responses) — OpenAI Responses dialect, translated onto EVERY chat provider; stateless v1 (input/instructions/tools/stream) (auth)
 - [POST /v1/embeddings](/v1/embeddings) — embeddings (auth)
 - [POST /v1/images/generations](/v1/images/generations) — image gen (auth)
 - [POST /v1/audio/speech](/v1/audio/speech) — TTS (auth)

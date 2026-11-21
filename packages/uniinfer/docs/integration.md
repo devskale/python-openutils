@@ -202,6 +202,7 @@ port) and `ssh amd 'sudo nginx -T | grep -B3 -A8 "server_name.*uniinfer"'`
 | `/v1` | GET | progressive discovery manifest (no auth) |
 | `/v1/providers` | GET | enabled provider instances, catalog-only (no auth) |
 | `/v1/chat/completions` | POST | chat (stream + non-stream, tools, thinking) |
+| `/v1/responses` | POST | OpenAI Responses API — normalized onto EVERY chat provider (see below) |
 | `/v1/systemone` | POST | System-One structured reads — decision (`questions`) + extraction (`fields`): [systemone.md](systemone.md) |
 | `/v1/embeddings` | POST | embeddings |
 | `/v1/models` | GET | catalog (with `speed` + `probed` fields when present; `fields=` projection) |
@@ -408,6 +409,23 @@ r = client.chat.completions.create(
     messages=[{"role": "user", "content": "Hello"}],
 )
 print(r.choices[0].message.content)
+```
+
+### Responses API (every chat provider)
+
+`POST /v1/responses` speaks the OpenAI Responses dialect and translates it onto
+the full chat-provider park (uniinfer is the normalization layer — native
+Responses backends get a fast-path follow-up, everything else is translated).
+
+v1 is stateless: `input` (string or items incl. `function_call` /
+`function_call_output` round-trips), `instructions`, `max_output_tokens`,
+`temperature`, `stream` (SSE `response.created` … `response.completed`),
+client-side function tools. Not translated (clean 400): `previous_response_id`,
+background, server-side tools (`web_search` & Co.).
+
+```bash
+curl -X POST .../v1/responses -H "Authorization: Bearer $TOKEN" \
+  -d '{"model":"tu@d1-3b","input":"Wetter in Wien?"}'
 ```
 
 ### Realtime STT (WebSocket streaming)
