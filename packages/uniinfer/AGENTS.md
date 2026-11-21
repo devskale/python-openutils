@@ -2,6 +2,17 @@
 
 **Package**: uniinfer (python-openutils) · **Repo map**: [../AGENTS.md](../AGENTS.md)
 
+## Identity — read before any design decision
+
+**uniinfer IS the normalization layer.** Consumers speak ONE interface; every
+provider's dialect (thinking knobs, audio shapes, tool formats, event streams)
+is translated here, never leaked upward. A new capability is a normalization
+onto it for **ALL providers** — native backends are a fast-path optimization,
+never the design. A passthrough-only proposal („only the 2 backends that can
+it natively get it, rest gets 501") is a **category error** here, no matter
+how much simpler it builds (incident: responses-api issue rev1, 2026-11-21).
+Canonical: [CONTEXT.md](CONTEXT.md) §Identity.
+
 ## Stack
 
 - Python 3.9+, **uv** for package management (not pip)
@@ -251,6 +262,8 @@ name and how the model id is spelled.
 - ✅ Always run tests + lint before committing
 - ✅ Use `map_provider_error()` for all provider error handling
 - ✅ Maintain OpenAI-compatible response formats
+- ✅ New surfaces = normalizations for all providers (see §Identity) — never
+      passthrough-only for native backends
 - ⚠️ Ask before modifying `core.py` public API (backward compat)
 - ⚠️ Ask before adding new dependencies
 - 🚫 Never commit real tokens or `.env` files
