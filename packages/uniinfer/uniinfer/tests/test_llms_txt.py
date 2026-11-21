@@ -44,7 +44,7 @@ def test_llms_txt_explains_model_id_format(client):
 def test_llms_txt_documents_own_key_override(client):
     body = client.get("/llms.txt").text
     assert "X-Provider-Key" in body
-    assert "accepts_own_key" in body
+    assert "no meta-bearer" in body
 
 
 def test_manifest_model_id_note_and_own_key(client):
@@ -53,14 +53,13 @@ def test_manifest_model_id_note_and_own_key(client):
     assert "X-Provider-Key" in manifest["auth"]["x_provider_key"]
 
 
-def test_providers_list_accepts_own_key_flag(client):
+def test_providers_list_has_no_own_key_flag(client):
+    """Own-key is universal since 2026-11-21 — a per-provider flag would be
+    constant True and pure noise; it was removed from the listing."""
     data = client.get("/v1/providers").json()["data"]
     assert data
     for p in data:
-        assert isinstance(p["accepts_own_key"], bool)
-    tu = next((p for p in data if p["id"] == "tu"), None)
-    if tu:
-        assert tu["accepts_own_key"] is True
+        assert "accepts_own_key" not in p
 
 
 def test_manifest_lists_realtime_stt_and_ws_auth_note(client):

@@ -11,7 +11,6 @@ from __future__ import annotations
 from typing import Any
 from urllib.parse import quote
 
-from uniinfer.auth import own_key_providers
 from uniinfer.config.instances import get_instances
 from uniinfer.proxy_services.models_registry import Catalog
 
@@ -87,9 +86,8 @@ def discovery_manifest(version: str) -> dict[str, Any]:
             ),
             "x_provider_key": (
                 "Optional X-Provider-Key header overrides the upstream bearer "
-                "for own-key-enabled providers (see /v1/providers: "
-                "accepts_own_key) — the request then rides the caller's own "
-                "upstream quota"
+                "for ANY provider — no meta-bearer needed for own-key-only "
+                "requests; the call then rides the caller's own upstream quota"
             ),
         },
         "links": {
@@ -147,7 +145,7 @@ Every endpoint that takes a `model` expects the strict form `alias@model`:
 - [POST /v1/audio/transcriptions](/v1/audio/transcriptions) — batch STT, multipart upload (auth)
 - [GET /openapi.json](/openapi.json) — OpenAPI 3 schema (HTTP endpoints only)
 
-Auth everywhere: `Authorization: Bearer <token>`, operator-issued. Per-request upstream override: `X-Provider-Key: <your-key>` replaces the gateway's pooled bearer for providers flagged `accepts_own_key` in [/v1/providers](/v1/providers) — the call then rides your own upstream quota.
+Auth everywhere: `Authorization: Bearer <token>`, operator-issued — unlocks every provider with pooled keys. Per-request override: `X-Provider-Key: <your-key>` replaces the pooled bearer for ANY provider; an own-key-only request needs no meta-bearer at all.
 
 ## Realtime STT (WebSocket — not in OpenAPI)
 
@@ -186,7 +184,6 @@ def provider_discovery(version: str) -> dict[str, Any]:
             "object": "provider",
             "kind": "builtin" if spec.is_builtin else "custom",
             "requires_auth": spec.requires_api_key,
-            "accepts_own_key": alias in own_key_providers(),
             "model_count": len(cached_models),
             "default_model": spec.default_model,
             "models_url": f"/v1/models?provider={quote(alias, safe='')}",

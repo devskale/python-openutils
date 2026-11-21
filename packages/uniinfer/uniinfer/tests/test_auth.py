@@ -128,14 +128,15 @@ def test_own_key_used_for_enabled_provider(mock_get_key, mock_requires, monkeypa
 
 @patch("uniinfer.auth.instance_requires_api_key")
 @patch("uniinfer.auth.get_provider_api_key")
-def test_own_key_ignored_for_disabled_provider(mock_get_key, mock_requires, monkeypatch):
-    """Header key ignored for providers not in UNIINFER_OWN_KEY_PROVIDERS."""
+def test_own_key_universal_without_env_gating(mock_get_key, mock_requires, monkeypatch):
+    """Own key wins for ANY provider (universal since 2026-11-21) — the old
+    UNIINFER_OWN_KEY_PROVIDERS allowlist no longer gates anything."""
     monkeypatch.setenv("UNIINFER_OWN_KEY_PROVIDERS", "tu")
+    monkeypatch.delenv("UNIINFER_OWN_KEY_PROVIDERS", raising=False)
     mock_requires.return_value = True
-    mock_get_key.return_value = "pooled-key"
     key = verify_provider_access("bearer@enc", "groq", own_key="sk-caller-own")
-    assert key == "pooled-key"
-    mock_get_key.assert_called_once()
+    assert key == "sk-caller-own"
+    mock_get_key.assert_not_called()
 
 
 @patch("uniinfer.auth.instance_requires_api_key")

@@ -49,6 +49,12 @@ def create_smoke_router() -> APIRouter:
             le=10,
             description="Number of models to smoke per provider.",
         ),
+        models: str = Query(
+            None,
+            description="Comma-separated bare model ids to smoke for the (single) "
+            "provider — replaces the per_provider catalog sample. Use for "
+            "modality-correct targeting; ids must exist in the provider's catalog.",
+        ),
         max_tokens: int = Query(
             DEFAULT_MAX_TOKENS,
             ge=16,
@@ -83,14 +89,24 @@ def create_smoke_router() -> APIRouter:
         }
 
         for provider_name in targets:
-            models = [
+            catalog_models = [
                 m["id"]
                 for m in provider_catalog[provider_name].get("models", [])
                 if m.get("id")
-            ][:per_provider]
-            provider_report: dict[str, Any] = {"models": {}, "selected": models}
-
-            for model_id in models:
+            ]
+            if models:
+                wanted = [m.strip() for m in models.split(",") if m.strip()]
+                unknown = [m for m in wanted if m not in catalog_models]
+                selected = [m for m in wanted if m in catalog_models]
+                provider_report: dict[str, Any] = {
+                    "models": {}, "selected": selected,
+                }
+                if unknown:
+                    provider_report["unknown_models"] = unknown
+            else:
+                selected = catalog_models[:per_provider]
+                provider_report = {"models": {}, "selected": selected}
+            for model_id in selected:
                 key = f"{provider_name}@{model_id}"
                 provider_report["models"][key] = await _smoke_one(
                     provider_name=provider_name,
@@ -102,7 +118,7 @@ def create_smoke_router() -> APIRouter:
                 )
 
             ok = sum(1 for r in provider_report["models"].values() if r["ok"])
-            provider_report["summary"] = f"{ok}/{len(models)} ok"
+            provider_report["summary"] = f"{ok}/{len(selected)} ok"
             report["providers"][provider_name] = provider_report
 
         total_ok = sum(

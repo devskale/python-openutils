@@ -145,41 +145,42 @@ def get_optional_proxy_token(
 
 
 def _own_key_providers() -> frozenset[str]:
-    """Providers where a caller may bring their own upstream key (X-Provider-Key).
+    """Deprecated: X-Provider-Key is accepted for every provider since 2026-11-21.
 
-    Env UNIINFER_OWN_KEY_PROVIDERS, comma-separated; default 'tu' (where the
-    per-key quota pressure is). Callers' own keys ride their OWN quota — the
-    proxy's pool keys are never touched for them.
+    Kept only so older imports/tests referencing it keep working; returns an
+    empty set and is no longer consulted by verify_provider_access.
     """
-    raw = os.getenv("UNIINFER_OWN_KEY_PROVIDERS", "tu")
-    return frozenset(p.strip() for p in raw.split(",") if p.strip())
+    return frozenset()
 
 
 def own_key_providers() -> frozenset[str]:
-    """Public read on _own_key_providers for discovery surfaces."""
-    return _own_key_providers()
+    """Deprecated no-op kept for import compatibility — own keys are universal.
+
+    X-Provider-Key is accepted for every provider (2026-11-21). Previously this
+    was gated by UNIINFER_OWN_KEY_PROVIDERS (default 'tu'); the env var is no
+    longer read.
+    """
+    return frozenset()
 
 
 def verify_provider_access(token: str, provider_name: str, own_key: str | None = None) -> str:
     """
     Verifies that the provided token can be used to retrieve an API key for the provider.
 
-    Hard gate (live finding 2026-08-26): bare (non-'@') tokens are rejected for
-    keyed providers. A bare string used to slip through as a "direct key" — but
-    keyed providers like TU are served from the process-wide POOLED client whose
-    Authorization header carries the SERVER's own credentials, so any junk
-    bearer got served on our quota once the pool was warm. Consumers must
-    present a credgoo combined token ('bearer@encryption'), which resolves
-    server-side via credgoo.
+    Two access modes:
+
+    - **Pooled**: operator-issued combined token ('bearer@encryption') →
+      credgoo-resolved upstream key. Allowlist/constraints apply.
+    - **Own key** (X-Provider-Key): the caller's key is used verbatim for
+      ANY provider — no meta-bearer required for own-key-only requests.
+      A bearer that IS sent must still be valid (own keys never launder a
+      bad bearer); the call rides the caller's own upstream quota.
 
     Args:
-        token: The bearer token (direct or credgoo combo).
+        token: The bearer token (direct or credgoo combo), or None for
+            own-key-only requests.
         provider_name: The name of the LLM provider.
-        own_key: Caller-supplied upstream key (X-Provider-Key header). When set
-            and the provider is enabled for own keys, it is returned as the
-            upstream key INSTEAD of resolving credgoo — auth (allowlist,
-            combo requirement, constraints) still fully applies. The key rides
-            the caller's own quota; pool keys are untouched.
+        own_key: Caller-supplied upstream key (X-Provider-Key header).
 
     Returns:
         str: The actual provider API key.
@@ -217,9 +218,11 @@ def verify_provider_access(token: str, provider_name: str, own_key: str | None =
                 "Direct provider keys are not accepted on this gateway; "
                 "send a credgoo combined token (bearer@encryption)."
             )
-        if own_key and provider_name in _own_key_providers():
-            # Caller-supplied upstream key (X-Provider-Key): auth has passed,
-            # the caller's own quota rides their own key — skip credgoo.
+        if own_key:
+            # Caller-supplied upstream key (X-Provider-Key): rides the caller's
+            # own quota on ANY provider. Auth above (allowlist, combo gate) has
+            # already run for whatever bearer WAS sent — an own key never
+            # launders a bad bearer.
             return own_key
         api_key = get_provider_api_key(token, provider_name)
         if not api_key and instance_requires_api_key(provider_name):
