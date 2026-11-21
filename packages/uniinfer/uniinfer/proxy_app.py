@@ -259,6 +259,9 @@ app.include_router(create_stats_router())
 app.include_router(create_usage_router())
 app.include_router(create_images_router(parse_provider_model))
 app.include_router(create_audio_router(parse_provider_model))
+from uniinfer.proxy_routers.responses import create_responses_router
+
+app.include_router(create_responses_router(parse_provider_model))
 app.include_router(create_system_router(UNIINFER_VERSION))
 app.include_router(create_systemone_router(parse_provider_model=parse_provider_model))
 
