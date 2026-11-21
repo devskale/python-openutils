@@ -19,27 +19,77 @@ except ImportError:
     HAS_GENAI = False
 
 
+def _quota_from_details(response_json: Any) -> dict:
+    """Structured path: google.rpc standard error details (AIP-193).
+
+    The genai SDK exposes the parsed error body as ``response_json`` with
+    ``error.details[]`` typed payloads. Quota facts live in one of two
+    standard detail payloads depending on surface:
+
+    - Generative Language API: ``ErrorInfo`` with ``metadata`` keys
+      ``quota_metric`` / ``quota_limit`` (strings)
+    - Cloud-style surfaces: ``QuotaFailure`` with ``violations[]`` carrying
+      quotaMetric / quotaValue
+
+    Message text is debug-only per AIP-193 — machine data lives in details.
+    """
+    if not isinstance(response_json, dict):
+        return {}
+    for det in (response_json.get("error") or {}).get("details") or []:
+        if not isinstance(det, dict):
+            continue
+        dtype = str(det.get("@type", ""))
+        info: dict = {}
+        if dtype.endswith("ErrorInfo"):
+            meta = det.get("metadata") or {}
+            if isinstance(meta, dict):
+                if meta.get("quota_metric"):
+                    info["quota_metric"] = str(meta["quota_metric"])
+                limit = str(meta.get("quota_limit", ""))
+                if limit.isdigit():
+                    info["quota_limit"] = int(limit)
+        elif dtype.endswith("QuotaFailure"):
+            for v in det.get("violations") or []:
+                if not isinstance(v, dict):
+                    continue
+                if v.get("quotaMetric"):
+                    info["quota_metric"] = str(v["quotaMetric"])
+                if str(v.get("quotaValue", "")).isdigit():
+                    info["quota_limit"] = int(v["quotaValue"])
+                break
+        if info:
+            return info
+    return {}
+
+
+_METRIC_MARKER = "quota metric '"
+_LIMIT_MARKER = "limit '"
+
+
 def _parse_gemini_quota(error: Exception) -> dict:
     """Extract quota info from a google-genai ClientError (429).
 
-    The error message typically contains text like:
+    Preferred source is the structured QuotaFailure detail (see
+    ``_quota_from_details``); the marker split on the human message is the
+    fallback for transports that only surface text:
       "Quota exceeded for quota metric 'GenerateRequestsPerDayPerModel-FreeTier' with limit '20'"
 
     Returns a dict with optional 'quota_metric' and 'quota_limit' keys.
     """
-    info = {}
+    info = _quota_from_details(getattr(error, "response_json", None))
+    if info:
+        return info
 
-    message = getattr(error, 'message', None) or str(error)
-
-    import re
-    metric_match = re.search(r"quota metric '([^']+)'", message)
-    if metric_match:
-        info['quota_metric'] = metric_match.group(1)
-
-    limit_match = re.search(r"limit '(\d+)'", message)
-    if limit_match:
-        info['quota_limit'] = int(limit_match.group(1))
-
+    message = getattr(error, "message", None) or str(error)
+    if _METRIC_MARKER in message:
+        rest = message.split(_METRIC_MARKER, 1)[1]
+        if "'" in rest:
+            info["quota_metric"] = rest.split("'", 1)[0]
+    if _LIMIT_MARKER in message:
+        rest = message.split(_LIMIT_MARKER, 1)[1]
+        digits = rest.split("'", 1)[0]
+        if digits.isdigit():
+            info["quota_limit"] = int(digits)
     return info
 
 
