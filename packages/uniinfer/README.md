@@ -5,10 +5,14 @@
 [![License](https://img.shields.io/badge/license-MIT-blue)](#)
 [![Providers](https://img.shields.io/badge/providers-26-success)](#)
 
-> **One interface for 20+ LLM providers** — chat, embeddings, TTS, STT, streaming,
-> tool-calling, and cross-provider reasoning control, behind a single API and an
-> OpenAI-compatible proxy. Free-tier-friendly.
+> **uniinfer IS the normalization layer.** One interface for 20+ LLM providers —
+> chat, embeddings, TTS, STT, streaming, tool-calling, and cross-provider
+> reasoning control. Every provider's dialect is translated *at this layer* and
+> never leaked to consumers; a new capability is a normalization for **all**
+> providers, not a passthrough for the few that happen to support it natively.
+> Free-tier-friendly.
 
+- 🧩 **Normalization layer** — uniinfer normalizes: dialects (thinking, audio, tools) are translated per provider behind one interface; consumers see one API, never a provider's native quirks. Passthrough-only designs are a category error here
 - 🌐 **26 providers, 1200+ models** — OpenAI, Anthropic, Gemini, Mistral, Groq, Ollama, vLLM (TU), OpenRouter, OpenCode/Zen, Kilo Gateway, and more
 - 🧠 **Unified thinking control** — `reasoning_effort` flips reasoning on/off across every provider's native dialect
 - 🔌 **OpenAI-compatible proxy** — drop-in for any OpenAI client; model id is `provider@model`

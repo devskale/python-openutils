@@ -3,6 +3,20 @@
 Domain glossary for uniinfer. Terms used in code, docs, and architecture
 reviews. Keep this current when concepts are named or sharpened.
 
+## Identity (the one non-negotiable)
+
+**uniinfer IS the normalization layer.** Consumers speak ONE interface; every
+provider's native dialect (thinking knobs, audio shapes, tool formats, event
+streams) is translated here and never leaks upward. Architectural consequence:
+when uniinfer adopts an externally-defined surface (e.g. OpenAI Responses),
+the build is a **normalization onto that surface for ALL providers**
+(chat→responses translation), with native backends as an optimization
+(fast-path), never as the design. Passthrough-only proposals invert this
+identity (incident 2026-11-21: responses-api issue rev1 recommended exactly
+that and was corrected by the owner). Review rule: any design that leaves
+providers "outside" a new surface is wrong here, regardless of how much
+simpler it is to build.
+
 ## Nouns
 
 - **Provider** — an LLM backend behind `ChatProvider` (ollama, tu/vLLM, zai,
