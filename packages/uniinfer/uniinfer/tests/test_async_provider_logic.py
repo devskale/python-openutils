@@ -195,8 +195,11 @@ async def test_openai_streaming(chat_request):
     
     async def mock_aiter():
         yield "data: " + json.dumps({"choices": [{"delta": {"content": "Hello"}}]})
+        yield ""
         yield "data: " + json.dumps({"choices": [{"delta": {"content": " world"}}]})
+        yield ""
         yield "data: [DONE]"
+        yield ""
 
     mock_response = MagicMock()
     mock_response.status_code = 200

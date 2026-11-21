@@ -18,9 +18,13 @@ from uniinfer.providers.opencode import OpenCodeProvider
 
 _SSE_OK = [
     'data: {"model":"space-bunny-free","choices":[{"index":0,"delta":{"role":"assistant"}}]}',
+    "",
     'data: {"model":"space-bunny-free","choices":[{"index":0,"delta":{"content":"ok"}}]}',
+    "",
     'data: {"model":"space-bunny-free","choices":[{"index":0,"delta":{},"finish_reason":"stop"}]}',
+    "",
     "data: [DONE]",
+    '',
 ]
 _ERR_BODY = '{"error":{"type":"FreeTierError","message":"nope"}}'
 

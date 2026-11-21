@@ -245,11 +245,17 @@ class _FakePostClient:
 async def test_chat_acomplete_aggregates_sse(monkeypatch):
     lines = [
         'data: {"model":"mimo-v2.5-free","choices":[{"index":0,"delta":{"role":"assistant","content":"Hel"}}]}',
+        "",
         'data: {"model":"mimo-v2.5-free","choices":[{"index":0,"delta":{"reasoning":"thinking..."}}]}',
+        "",
         'data: {"model":"mimo-v2.5-free","choices":[{"index":0,"delta":{"content":"lo"}}]}',
+        "",
         'data: {"model":"mimo-v2.5-free","choices":[{"index":0,"delta":{},"finish_reason":"stop"}]}',
+        "",
         'data: {"model":"mimo-v2.5-free","choices":[],"usage":{"prompt_tokens":10,"completion_tokens":2,"total_tokens":12}}',
+        "",
         "data: [DONE]",
+        '',
     ]
     p = OpenCodeProvider(api_key="test")
     monkeypatch.setattr(p, "_get_async_client", _awaitable(_FakeClient(lines)))
@@ -323,13 +329,18 @@ async def test_jev_rejects_non_json(monkeypatch):
 _RESPONSES_LINES = [
     "event: response.created",
     "data: " + json.dumps({"type": "response.created", "response": {"id": "resp_1", "model": "muse-spark-1.3-contributor-free"}}),
+    "",
     "event: response.output_text.delta",
     "data: " + json.dumps({"type": "response.output_text.delta", "delta": "PO"}),
+    "",
     "data: " + json.dumps({"type": "response.output_text.delta", "delta": "NG"}),
+    "",
     "event: response.output_item.done",
     "data: " + json.dumps({"type": "response.output_item.done", "item": {"type": "function_call", "call_id": "call_9", "name": "bash", "arguments": json.dumps({"cmd": "ls"})}}),
+    "",
     "event: response.completed",
     "data: " + json.dumps({"type": "response.completed", "response": {"usage": {"input_tokens": 100, "output_tokens": 5, "total_tokens": 105}}}),
+    "",
 ]
 
 
@@ -851,6 +862,8 @@ class TestEmptyCompletionRetry:
         async def lines():
             for ln in text.split("\n"):
                 yield ln
+                if ln.startswith("data:"):
+                    yield ""  # SSE event separator (spec: blank line)
 
         r = AsyncMock(spec=_httpx.Response)
         r.status_code = 200
