@@ -2,7 +2,7 @@
 
 Covers the Phase-1 llm-gateway contract: resolve_model surfaces base_url + bearer
 through env-fallback → default → package → task, and resolves bearer refs
-(credgoo:svc / ${ENV} / inline). See clients.yml.example + issue
+(credgoo:svc / ${ENV} / inline).
 uniinfer-proxy-as-llm-gateway.
 """
 import pytest
@@ -21,9 +21,7 @@ def _isolate(monkeypatch):
 
 
 def _clients(monkeypatch, tmp_path, data):
-    """Overlay-Seam für Endpoint-Tests: Box-models.yml (der ECHTE Pfad —
-    clients.yml ist DEPRECATED und auf Endpoint-Domain reduziert, s.
-    test_clients_yml_deprecated.py)."""
+    """Overlay-Seam für Endpoint-Tests: Box-models.yml (clients.yml-Legacy 2026-11-20 entfernt)."""
     import yaml
     p = tmp_path / "models.yml"
     p.write_text(yaml.safe_dump(data))
