@@ -11,7 +11,7 @@ import logging
 import os
 
 from fastapi import APIRouter, HTTPException, Request
-from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, Response
 
 from uniinfer.proxy_services.discovery import (
     discovery_headers,
@@ -120,6 +120,17 @@ def create_system_router(version: str) -> APIRouter:
         if not os.path.exists(md_file_path):
             raise HTTPException(status_code=404, detail="integration.md not found")
         return FileResponse(md_file_path, media_type="text/markdown")
+
+    @router.get("/llms.txt", include_in_schema=False)
+    async def get_llms_txt():
+        """Agent index per llmstxt.org v2 — terse endpoint map + WS-STT contract."""
+        from uniinfer.proxy_services.discovery import llms_txt_index
+
+        return Response(
+            llms_txt_index(),
+            media_type="text/markdown; charset=utf-8",
+            headers={"Cache-Control": "public, max-age=300"},
+        )
 
     @router.get("/", include_in_schema=False)
     async def root(request: Request):

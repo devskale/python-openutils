@@ -51,7 +51,8 @@ MODEL_FIELDS = (
 )
 
 _DISCOVERY_HEADERS = {
-    "Link": '</openapi.json>; rel="service-desc", </guide.md>; rel="help"',
+    "Link": ('</openapi.json>; rel="service-desc", </guide.md>; rel="help", '
+             '</llms.txt>; rel="describedby"'),
     "Cache-Control": "public, max-age=300",
 }
 
@@ -74,6 +75,10 @@ def discovery_manifest(version: str) -> dict[str, Any]:
             "header": "Authorization",
             "token_shape": "operator-issued combined token",
             "required_for": "keyed providers and live instance models",
+            "websocket_note": (
+                "WebSockets accept the bearer as ?token= query param "
+                "(browsers cannot set WS headers) or as Authorization header"
+            ),
         },
         "links": {
             "self": "/v1",
@@ -87,6 +92,8 @@ def discovery_manifest(version: str) -> dict[str, Any]:
             "model_health": "/v1/health/models",
             "openapi": "/openapi.json",
             "guide": "/guide.md",
+            "llms_txt": "/llms.txt",
+            "realtime_stt": "/v1/audio/transcriptions/stream",
             "health": "/health",
         },
         "next": [
@@ -94,6 +101,49 @@ def discovery_manifest(version: str) -> dict[str, Any]:
             {"rel": "service-desc", "href": "/openapi.json"},
         ],
     }
+
+
+def llms_txt_index() -> str:
+    """Markdown index for agents, per the llms.txt v2 proposal (llmstxt.org).
+
+    Stays small enough for one context window: terse endpoint map plus the
+    realtime-STT WebSocket protocol inline (OpenAPI cannot describe WS, so
+    this is the machine-readable home of that contract). Detail lives behind
+    the links and is fetched on demand.
+    """
+    return """# uniinfer
+
+> OpenAI-compatible multi-provider LLM gateway: chat, embeddings, images, TTS/STT and realtime streaming STT over one bearer token. Model ids are `provider@model`.
+
+## API
+
+- [GET /v1](/v1) — machine-readable discovery manifest (JSON, no auth)
+- [GET /v1/providers](/v1/providers) — enabled provider instances (no auth)
+- [GET /v1/models](/v1/models) — model catalog (no auth); `/v1/models/{provider}` live listing (auth)
+- [POST /v1/chat/completions](/v1/chat/completions) — chat, stream + tools (auth)
+- [POST /v1/embeddings](/v1/embeddings) — embeddings (auth)
+- [POST /v1/images/generations](/v1/images/generations) — image gen (auth)
+- [POST /v1/audio/speech](/v1/audio/speech) — TTS (auth)
+- [POST /v1/audio/transcriptions](/v1/audio/transcriptions) — batch STT, multipart upload (auth)
+- [GET /openapi.json](/openapi.json) — OpenAPI 3 schema (HTTP endpoints only)
+
+Auth everywhere: `Authorization: Bearer <token>`, operator-issued.
+
+## Realtime STT (WebSocket — not in OpenAPI)
+
+`WS /v1/audio/transcriptions/stream?model={provider@asr-model}&language={code}`
+
+- Auth: bearer as `?token=` query param (browsers cannot set WS headers) **or** `Authorization` header.
+- Client → server: binary frames, raw int16 PCM 16 kHz mono. Empty binary frame = end-of-audio.
+- Server → client: JSON `{"type":"partial","partial":true,"text":…}` while streaming, `{"type":"final","partial":false,"text":…}` after EOF.
+- Close codes: 4400 bad request · 4401 auth · 4404 unknown instance · 4502 upstream unreachable.
+- Tip: ~300 ms of lead-in silence improves first-word recognition.
+
+## Docs
+
+- [Full integration guide (markdown)](/guide.md) — SDK usage, all endpoints, realtime STT client example
+- [Discovery manifest](/v1) — JSON entry point
+"""
 
 
 def provider_discovery(version: str) -> dict[str, Any]:
