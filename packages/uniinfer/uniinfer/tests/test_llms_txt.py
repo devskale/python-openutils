@@ -33,6 +33,36 @@ def test_llms_txt_contains_ws_stt_contract(client):
         assert code in body
 
 
+def test_llms_txt_explains_model_id_format(client):
+    body = client.get("/llms.txt").text
+    assert "## Model ids" in body
+    assert "alias@model" in body
+    assert "rejected with 400" in body
+    assert "first `@` binds the alias" in body
+
+
+def test_llms_txt_documents_own_key_override(client):
+    body = client.get("/llms.txt").text
+    assert "X-Provider-Key" in body
+    assert "accepts_own_key" in body
+
+
+def test_manifest_model_id_note_and_own_key(client):
+    manifest = client.get("/v1").json()
+    assert "strict" in manifest["model_id_format_note"]
+    assert "X-Provider-Key" in manifest["auth"]["x_provider_key"]
+
+
+def test_providers_list_accepts_own_key_flag(client):
+    data = client.get("/v1/providers").json()["data"]
+    assert data
+    for p in data:
+        assert isinstance(p["accepts_own_key"], bool)
+    tu = next((p for p in data if p["id"] == "tu"), None)
+    if tu:
+        assert tu["accepts_own_key"] is True
+
+
 def test_manifest_lists_realtime_stt_and_ws_auth_note(client):
     manifest = client.get("/v1").json()
     assert manifest["links"]["realtime_stt"] == "/v1/audio/transcriptions/stream"

@@ -11,6 +11,7 @@ from __future__ import annotations
 from typing import Any
 from urllib.parse import quote
 
+from uniinfer.auth import own_key_providers
 from uniinfer.config.instances import get_instances
 from uniinfer.proxy_services.models_registry import Catalog
 
@@ -70,6 +71,11 @@ def discovery_manifest(version: str) -> dict[str, Any]:
         "version": version,
         "api": "/v1",
         "model_id_format": "provider@model",
+        "model_id_format_note": (
+            "strict: 'alias@model' with non-empty sides; bare model names "
+            "without '@' are rejected (400). The alias addresses a provider "
+            "instance — built-in ('mistral', 'groq', …) or fleet alias ('hab')."
+        ),
         "auth": {
             "type": "bearer",
             "header": "Authorization",
@@ -78,6 +84,12 @@ def discovery_manifest(version: str) -> dict[str, Any]:
             "websocket_note": (
                 "WebSockets accept the bearer as ?token= query param "
                 "(browsers cannot set WS headers) or as Authorization header"
+            ),
+            "x_provider_key": (
+                "Optional X-Provider-Key header overrides the upstream bearer "
+                "for own-key-enabled providers (see /v1/providers: "
+                "accepts_own_key) — the request then rides the caller's own "
+                "upstream quota"
             ),
         },
         "links": {
@@ -115,6 +127,14 @@ def llms_txt_index() -> str:
 
 > OpenAI-compatible multi-provider LLM gateway: chat, embeddings, images, TTS/STT and realtime streaming STT over one bearer token. Model ids are `provider@model`.
 
+## Model ids (canonical form)
+
+Every endpoint that takes a `model` expects the strict form `alias@model`:
+
+- `alias` — provider instance: built-in (`mistral`, `groq`, `openrouter`, …) or fleet alias (`hab` = dgx gateway).
+- `model` — the upstream model id, e.g. `mistral@mistral-medium-latest`, `hab@nemotron-3.5-asr-streaming-0.6b`.
+- Bare names without `@` are rejected with 400. `@` splits once, so model ids may contain `@` themselves — the first `@` binds the alias.
+
 ## API
 
 - [GET /v1](/v1) — machine-readable discovery manifest (JSON, no auth)
@@ -127,7 +147,7 @@ def llms_txt_index() -> str:
 - [POST /v1/audio/transcriptions](/v1/audio/transcriptions) — batch STT, multipart upload (auth)
 - [GET /openapi.json](/openapi.json) — OpenAPI 3 schema (HTTP endpoints only)
 
-Auth everywhere: `Authorization: Bearer <token>`, operator-issued.
+Auth everywhere: `Authorization: Bearer <token>`, operator-issued. Per-request upstream override: `X-Provider-Key: <your-key>` replaces the gateway's pooled bearer for providers flagged `accepts_own_key` in [/v1/providers](/v1/providers) — the call then rides your own upstream quota.
 
 ## Realtime STT (WebSocket — not in OpenAPI)
 
@@ -166,6 +186,7 @@ def provider_discovery(version: str) -> dict[str, Any]:
             "object": "provider",
             "kind": "builtin" if spec.is_builtin else "custom",
             "requires_auth": spec.requires_api_key,
+            "accepts_own_key": alias in own_key_providers(),
             "model_count": len(cached_models),
             "default_model": spec.default_model,
             "models_url": f"/v1/models?provider={quote(alias, safe='')}",

@@ -231,7 +231,11 @@ def create_audio_router(
             await _close(4404, f"instance '{alias}' has no base_url (no WS passthrough)")
             return
         try:
-            api_key = verify_provider_access(token if token else None, alias)
+            api_key = verify_provider_access(
+                token if token else None,
+                alias,
+                own_key=ws.headers.get("x-provider-key"),
+            )
         except HTTPException:
             await ws.accept()
             await _close(4401, "authentication failed")

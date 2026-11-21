@@ -242,6 +242,46 @@ def test_token_via_authorization_header(client, monkeypatch):
     assert seen["token"] == "hdr-token@x"
 
 
+def test_ws_forwards_x_provider_key(client, monkeypatch):
+    """X-Provider-Key on the WS handshake must reach verify_provider_access."""
+    from starlette.websockets import WebSocketDisconnect
+
+    seen = {}
+
+    class _Up:
+        def __aiter__(self):
+            return self
+
+        async def __anext__(self):
+            raise StopAsyncIteration
+
+        async def close(self):
+            pass
+
+    async def fake_connect(url, **kwargs):
+        seen["url"] = url
+        return _Up()
+
+    import websockets as ws_mod
+    from uniinfer import auth as auth_mod
+
+    def check(token, provider, own_key=None):
+        seen["own_key"] = own_key
+        return own_key or "pooled"
+
+    monkeypatch.setattr(ws_mod, "connect", fake_connect)
+    monkeypatch.setattr(auth_mod, "verify_provider_access", check)
+    _patch_instance(monkeypatch)
+
+    with pytest.raises(WebSocketDisconnect):
+        with client.websocket_connect(
+            WS_PATH + "?model=fakestt@m&token=t@t",
+            headers={"X-Provider-Key": "my-own-upstream-key"},
+        ) as ws:
+            ws.receive_json()
+    assert seen["own_key"] == "my-own-upstream-key"
+
+
 def test_upstream_unreachable_closes_4502(client, monkeypatch):
     from starlette.websockets import WebSocketDisconnect
 

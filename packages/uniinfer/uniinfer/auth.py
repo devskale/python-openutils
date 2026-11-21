@@ -155,6 +155,11 @@ def _own_key_providers() -> frozenset[str]:
     return frozenset(p.strip() for p in raw.split(",") if p.strip())
 
 
+def own_key_providers() -> frozenset[str]:
+    """Public read on _own_key_providers for discovery surfaces."""
+    return _own_key_providers()
+
+
 def verify_provider_access(token: str, provider_name: str, own_key: str | None = None) -> str:
     """
     Verifies that the provided token can be used to retrieve an API key for the provider.
