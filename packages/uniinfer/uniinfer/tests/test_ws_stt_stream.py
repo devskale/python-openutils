@@ -201,6 +201,47 @@ def test_scheme_translation_http_to_ws(client, monkeypatch):
     assert captured["url"].startswith("ws://[232:bc06::1]:3001/v1/audio/transcriptions/stream")
 
 
+def test_token_via_authorization_header(client, monkeypatch):
+    """Non-browser clients may send the bearer as header instead of ?token=."""
+    from starlette.websockets import WebSocketDisconnect
+
+    seen = {}
+
+    class _Up:
+        def __aiter__(self):
+            return self
+
+        async def __anext__(self):
+            raise StopAsyncIteration
+
+        async def close(self):
+            pass
+
+    async def fake_connect(url, **kwargs):
+        seen["url"] = url
+        return _Up()
+
+    import websockets as ws_mod
+
+    def check(token, provider, own_key=None):
+        seen["token"] = token
+        return "up-key"
+
+    monkeypatch.setattr(ws_mod, "connect", fake_connect)
+    from uniinfer import auth as auth_mod
+
+    monkeypatch.setattr(auth_mod, "verify_provider_access", check)
+    _patch_instance(monkeypatch)
+
+    with pytest.raises(WebSocketDisconnect):
+        with client.websocket_connect(
+            WS_PATH + "?model=fakestt@m",
+            headers={"Authorization": "Bearer hdr-token@x"},
+        ) as ws:
+            ws.receive_json()
+    assert seen["token"] == "hdr-token@x"
+
+
 def test_upstream_unreachable_closes_4502(client, monkeypatch):
     from starlette.websockets import WebSocketDisconnect
 

@@ -205,6 +205,9 @@ def create_audio_router(
 
         model = ws.query_params.get("model") or ""
         token = ws.query_params.get("token") or ""
+        header_auth = ws.headers.get("authorization") or ""
+        if not token and header_auth.lower().startswith("bearer "):
+            token = header_auth[7:]
         language = ws.query_params.get("language")
         if not model:
             await ws.accept()
