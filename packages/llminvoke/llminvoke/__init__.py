@@ -18,6 +18,8 @@ See ``config.py`` for the resolver + ``ResolvedConfig`` shape.
 from __future__ import annotations
 
 import os
+import random
+import threading
 import time
 from dataclasses import replace
 from typing import Iterator
@@ -566,12 +568,59 @@ def _extract_served_meta(ref: ModelRef, response: object) -> dict:
     }
 
 
+# ── Decision-Takt: prozessweiter Mindestabstand + 429-Cooldown ─────────
+# Vorfall klark0-systemone-retry-storm (2026-11-21): Batch-Parallelität
+# (Decisions sind ~0.2s schnell) lief >4 req/s gegen ein Bucket mit 240/min.
+# Der Takt gilt PRO PROZESS (Worker = 1 Prozess mit Threads): max ~4
+# Decisions/s, nach einer 429 gemeinsamer Cooldown (alle Threads bremsen).
+_DECISION_MIN_INTERVAL = 0.25          # s — ~4/s Deckel pro Prozess
+_DECISION_429_COOLDOWN = 5.0           # s — globaler Cooldown nach rate_limit
+_decision_pace_lock = threading.Lock()
+_decision_pace_state: dict[str, float] = {"last": 0.0, "cooldown_until": 0.0}
+
+
+def _paced(channel: str = "systemone") -> None:
+    """Blockiere, bis der prozessweite Decision-Takt es erlaubt.
+
+    Pure Timing-Funktion: schläft max. min-interval; bei gesetztem
+    ``rate_limited``-Cooldown (von derRetry-Schleife nach 429 gesetzt) warten
+    alle Caller bis zum Ablauf. Testbar via Zeitinjektion (monkeypatch der
+    Modul-Konstanten).
+    """
+    with _decision_pace_lock:
+        now = time.monotonic()
+        wait = 0.0
+        if now < _decision_pace_state["cooldown_until"]:
+            wait = _decision_pace_state["cooldown_until"] - now
+        else:
+            earliest = _decision_pace_state["last"] + _DECISION_MIN_INTERVAL
+            if now < earliest:
+                wait = earliest - now
+        _decision_pace_state["last"] = time.monotonic() + wait
+    if wait > 0:
+        time.sleep(wait + random.uniform(0, 0.05))   # Jitter entzerrt parallele Takte
+
+
+def _pace_note_rate_limit() -> None:
+    """Nach einer 429: gemeinsamen Cooldown für alle Threads setzen."""
+    with _decision_pace_lock:
+        _decision_pace_state["cooldown_until"] = time.monotonic() + _DECISION_429_COOLDOWN
+
+
 def _systemone_post(url: str, bearer: str | None, payload: dict, timeout: float = 45.0) -> dict:
-    """POST an den System-One-Endpoint (Transport, testbar zu mocken)."""
+    """POST an den System-One-Endpoint (Transport, testbar zu mocken).
+
+    Prozesweiter Decision-Takt (Vorfall klark0-systemone-retry-storm 2026-11-21:
+    Batch-Parallelität — viele Threads × kurze Decisions — sprengte das
+    gemeinsame Gateway-Bucket und erdrückte hab-Chat proxy-weit): min-Intervall
+    zwischen Decisions pro Prozess + globaler Cooldown nach 429, damit auch
+    parallele Caller gemeinsam bremsen statt sich gegenseitig das Bucket
+    wegzuziehen."""
     import json as _json
     import urllib.error
     import urllib.request
 
+    _paced("systemone")
     req = urllib.request.Request(
         url,
         data=_json.dumps(payload, ensure_ascii=False).encode("utf-8"),
@@ -638,6 +687,8 @@ def decide(
         except Exception as exc:
             err = exc
         kind = classify_error(err)
+        if kind == "rate_limited":
+            _pace_note_rate_limit()   # Decision-Takt: gemeinsamer Cooldown für alle Threads (Vorfall 2026-11-21)
         if attempt < attempts - 1:
             ra = _extract_retry_after(err) if kind == "rate_limited" else None
             time.sleep(cfg.retry.delay_for(attempt + 1, ra))
