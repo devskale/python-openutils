@@ -312,3 +312,27 @@ class TestCloudflareEmptyChoicesStream:
         chunks = asyncio.run(run())
         assert len(chunks) == 1
         assert chunks[0].message.content == "ok"
+
+
+class TestPydanticEventSchema:
+    def test_event_models_validate_at_construction(self):
+        from pydantic import ValidationError
+
+        from uniinfer.responses_translate import OutputTextDeltaEvent
+
+        OutputTextDeltaEvent(item_id="msg_1", output_index=0, content_index=0, delta="x")
+        with pytest.raises(ValidationError):
+            OutputTextDeltaEvent(item_id="msg_1", output_index="zero", content_index=0, delta="x")
+
+    def test_sse_serialization_matches_dict_shape(self):
+        from uniinfer.responses_translate import ResponseCreatedEvent, ResponseObject, _sse
+
+        obj = ResponseObject(
+            id="resp_1", created_at=1, status="in_progress", model="m", output=[]
+        )
+        wire = _sse(ResponseCreatedEvent(response=obj))
+        assert wire.startswith("event: response.created\ndata: ")
+        payload = json.loads(wire.split("data: ", 1)[1])
+        assert payload["type"] == "response.created"
+        assert payload["response"]["id"] == "resp_1"
+        assert payload["response"]["usage"] is None
