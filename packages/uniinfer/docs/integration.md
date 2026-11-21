@@ -209,6 +209,7 @@ port) and `ssh amd 'sudo nginx -T | grep -B3 -A8 "server_name.*uniinfer"'`
 | `/v1/catalog` | GET | raw nested catalog (no auth, daily refresh) |
 | `/v1/images/generations` | POST | image gen |
 | `/v1/audio/speech` / `/v1/audio/transcriptions` | POST | TTS / STT |
+| `/v1/audio/transcriptions/stream` | WS | realtime STT streaming (raw PCM in, partial/final JSON out; see below) |
 | `/v1/system/version` | GET | health / version |
 | `/v1/system/smoke` | POST | reachability smoke (`?providers=tu`) |
 | `/v1/system/capabilities` | GET | capability matrix `?model=provider@x[&save=true]` |
@@ -407,6 +408,39 @@ r = client.chat.completions.create(
     messages=[{"role": "user", "content": "Hello"}],
 )
 print(r.choices[0].message.content)
+```
+
+### Realtime STT (WebSocket streaming)
+
+`WS /v1/audio/transcriptions/stream` streams raw audio through an
+openai-compat instance (e.g. `hab@nemotron-3.5-asr-streaming-0.6b` → dgx
+sttts) and returns live partials. The protocol is the upstream's verbatim
+(see `~/code/sttts` on dgx — that server is the canonical source):
+
+- **Client → server:** binary frames with raw int16 PCM, 16 kHz mono;
+  an **empty binary frame** signals end-of-audio.
+- **Server → client:** JSON `{"type":"partial","partial":true,"text":…}`
+  while streaming, `{"type":"final","partial":false,"text":…}` after EOF.
+- **Query params:** `model` (instance alias), `token` (proxy bearer — browsers
+  cannot set WS headers), `language` (optional, default `auto`).
+- **Close codes:** 4400 bad request · 4401 auth failed · 4404 unknown instance
+  · 4502 upstream unreachable.
+
+```python
+import asyncio, json, websockets
+
+async def stream():
+    uri = ("wss://uniinfer.skale.dev/v1/audio/transcriptions/stream"
+           "?model=hab@nemotron-3.5-asr-streaming-0.6b"
+           f"&token={TOKEN}&language=de")
+    async with websockets.connect(uri) as ws:
+        while chunk := mic.read(3200):   # int16 PCM 16 kHz mono
+            await ws.send(chunk)
+        await ws.send(b"")              # end-of-audio
+        async for msg in ws:
+            evt = json.loads(msg)
+            if evt["type"] == "final":
+                return evt["text"]
 ```
 
 ---
