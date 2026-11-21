@@ -85,6 +85,22 @@ _DOCS_CACHE_TS = 0.0
 OPENCODE_UPSTREAM_TIMEOUT = _env_float("OPENCODE_UPSTREAM_TIMEOUT", 240.0)
 
 
+def _drop_tier_qualifier(name: str) -> str:
+    """Strip a trailing parenthesized tier qualifier from a docs-table name.
+
+    "mimo-v2.6-flash (free)" → "mimo-v2.6-flash". Mirrors the pricing table
+    semantics: only the LAST trailing group is dropped, inner content is
+    opaque ("(a)(b)" → "(a)"). str-based — no regex (issue uniinfer-sse-sota).
+    """
+    s = name.strip()
+    if s.endswith(")") and "(" in s:
+        idx = s.rfind("(")
+        inner = s[idx + 1 : -1]
+        if "(" not in inner and ")" not in inner:
+            s = s[:idx].rstrip()
+    return s
+
+
 def _parse_price_cell(cell: str) -> Optional[float]:
     """'Free' -> 0.0, '$0.042' -> 0.042, '-'/'' -> None."""
     cell = cell.strip()
@@ -126,7 +142,7 @@ def _parse_docs_mdx(text: str) -> dict[str, Any]:
             name, mid, endpoint = cells[0], cells[1], cells[2].strip("`")
             endpoints[mid] = {"name": name, "endpoint": endpoint, "sdk": cells[3].strip("`") if len(cells) > 3 else ""}
         elif mode == "pricing" and len(cells) >= 3:
-            name = re.sub(r"\s*\([^)]*\)\s*$", "", cells[0]).strip()  # drop tier qualifiers
+            name = _drop_tier_qualifier(cells[0])
             if name and name not in pricing_by_name:  # first row = base (≤) tier
                 pricing_by_name[name] = {
                     "input": _parse_price_cell(cells[1]),
