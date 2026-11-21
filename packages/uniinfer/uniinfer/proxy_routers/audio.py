@@ -6,7 +6,7 @@ extraction) lives in ``uniinfer.audio``; this module is the HTTP layer.
 import logging
 from typing import Optional, Callable
 
-from fastapi import APIRouter, Depends, HTTPException, Request, File, Form, UploadFile
+from fastapi import APIRouter, Depends, HTTPException, Request, File, Form, UploadFile, WebSocket, WebSocketDisconnect
 from fastapi.responses import Response, StreamingResponse
 from pydantic import BaseModel
 
@@ -183,5 +183,111 @@ def create_audio_router(
         except Exception as e:
             logger.exception("Unexpected error in transcribe_audio endpoint: %s", e)
             raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
+
+    @router.websocket("/v1/audio/transcriptions/stream")
+    async def stream_transcriptions(ws: WebSocket):
+        """Realtime STT passthrough: pipe raw PCM chunks to an openai-compat instance.
+
+        Query params: ``model`` (``alias@bare`` or bare alias), ``token`` (proxy
+        bearer — browsers cannot set WS headers), ``language`` (optional, default
+        upstream's). Protocol is the upstream's verbatim: binary frames in
+        (int16 PCM 16 kHz mono, empty binary frame = end-of-audio), JSON
+        ``partial``/``final`` messages out. Close codes: 4400 bad request,
+        4401 auth failed, 4404 unknown instance, 4502 upstream unreachable.
+        """
+        import asyncio
+
+        from uniinfer.auth import verify_provider_access
+        from uniinfer.config.instances import resolve_instance
+
+        async def _close(code: int, reason: str) -> None:
+            await ws.close(code=code, reason=reason)
+
+        model = ws.query_params.get("model") or ""
+        token = ws.query_params.get("token") or ""
+        language = ws.query_params.get("language")
+        if not model:
+            await ws.accept()
+            await _close(4400, "query param 'model' is required")
+            return
+        try:
+            alias, _bare = parse_model(model)
+        except Exception:
+            await ws.accept()
+            await _close(4400, f"invalid model spec: {model}")
+            return
+        try:
+            spec = resolve_instance(alias)
+        except Exception:
+            await ws.accept()
+            await _close(4404, f"unknown instance: {alias}")
+            return
+        base = (getattr(spec, "base_url", None) or "").rstrip("/")
+        if not base:
+            await ws.accept()
+            await _close(4404, f"instance '{alias}' has no base_url (no WS passthrough)")
+            return
+        try:
+            api_key = verify_provider_access(token if token else None, alias)
+        except HTTPException:
+            await ws.accept()
+            await _close(4401, "authentication failed")
+            return
+
+        import websockets
+
+        ws_base = base
+        if base.startswith("http://"):
+            ws_base = "ws://" + base[len("http://"):]
+        elif base.startswith("https://"):
+            ws_base = "wss://" + base[len("https://"):]
+        upstream_url = f"{ws_base}/audio/transcriptions/stream"
+        if language:
+            upstream_url += f"?language={language}"
+        headers = {"Authorization": f"Bearer {api_key}"}
+        try:
+            up = await websockets.connect(upstream_url, additional_headers=headers, max_size=2**22)
+        except Exception as e:
+            await ws.accept()
+            await _close(4502, f"upstream connect failed: {e}")
+            return
+
+        await ws.accept()
+
+        async def _pump_up() -> None:
+            async for msg in up:
+                if isinstance(msg, str):
+                    await ws.send_text(msg)
+                else:
+                    await ws.send_bytes(msg)
+
+        async def _pump_down() -> None:
+            while True:
+                msg = await ws.receive()
+                if msg["type"] == "websocket.disconnect":
+                    return
+                if msg.get("bytes") is not None:
+                    await up.send(msg["bytes"])
+                elif msg.get("text") is not None:
+                    await up.send(msg["text"])
+
+        pumps = [asyncio.create_task(_pump_up()), asyncio.create_task(_pump_down())]
+        try:
+            done, _pending = await asyncio.wait(pumps, return_when=asyncio.FIRST_COMPLETED)
+            for t in done:
+                t.result()
+        except WebSocketDisconnect:
+            pass
+        except Exception:
+            logger.exception("error in STT stream passthrough (%s)", alias)
+        finally:
+            for t in pumps:
+                t.cancel()
+            await asyncio.gather(*pumps, return_exceptions=True)
+            await up.close()
+            try:
+                await ws.close()
+            except Exception:
+                pass
 
     return router
