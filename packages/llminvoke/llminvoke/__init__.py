@@ -579,32 +579,85 @@ _decision_pace_lock = threading.Lock()
 _decision_pace_state: dict[str, float] = {"last": 0.0, "cooldown_until": 0.0}
 
 
-def _paced(channel: str = "systemone") -> None:
-    """Blockiere, bis der prozessweite Decision-Takt es erlaubt.
+def _pace_file_path() -> str:
+    """Box-globaler Takt-Speicher — Subprozesse (pdf2md-Job je Prozess)
+    teilen EINEN Takt je Maschine (Vorfall: 251/min trotz Prozess-Takt)."""
+    return os.environ.get("LLMINVOKE_DECISION_PACE_FILE", "/tmp/llminvoke-decision-pace.json")
 
-    Pure Timing-Funktion: schläft max. min-interval; bei gesetztem
-    ``rate_limited``-Cooldown (von derRetry-Schleife nach 429 gesetzt) warten
-    alle Caller bis zum Ablauf. Testbar via Zeitinjektion (monkeypatch der
-    Modul-Konstanten).
+
+def _paced(channel: str = "systemone") -> None:
+    """Blockiere, bis der Decision-Takt es erlaubt (prozess- UND box-global).
+
+    Zwei Ebenen (Vorfall 2026-11-21/251-min-Nachweis): in-memory Lock für
+    Threads desselben Prozesses + flock-geschützte Timestamp-Datei für alle
+    Subprozesse der Box. Fällt die Datei nicht (schreibbar), greift nur der
+    Prozess-Takt (fail-open — ein Takt-Fehler darf Decisions nicht töten).
     """
+    wait = 0.0
+    # Ebene 1: Prozess-Takt (Threads)
     with _decision_pace_lock:
         now = time.monotonic()
-        wait = 0.0
-        if now < _decision_pace_state["cooldown_until"]:
-            wait = _decision_pace_state["cooldown_until"] - now
-        else:
+        if now >= _decision_pace_state["cooldown_until"]:
             earliest = _decision_pace_state["last"] + _DECISION_MIN_INTERVAL
             if now < earliest:
                 wait = earliest - now
         _decision_pace_state["last"] = time.monotonic() + wait
+    # Ebene 2: Box-Takt (Prozesse) — flock-atomic read-modify-write
+    try:
+        import fcntl
+        import json as _json
+        path = _pace_file_path()
+        with open(path, "a+", encoding="utf-8") as fh:
+            fcntl.flock(fh, fcntl.LOCK_EX)
+            try:
+                fh.seek(0)
+                raw = fh.read().strip()
+                box = _json.loads(raw) if raw else {}
+                bnow = time.time()
+                bcd = float(box.get("cooldown_until", 0.0))
+                blast = float(box.get("last", 0.0))
+                if bnow < bcd:
+                    bwait = bcd - bnow
+                else:
+                    bearliest = blast + _DECISION_MIN_INTERVAL
+                    bwait = max(0.0, bearliest - bnow)
+                new_last = bnow + bwait
+                fh.seek(0)
+                fh.truncate()
+                fh.write(_json.dumps({"last": new_last, "cooldown_until": bcd if bnow < bcd else 0.0}))
+                fh.flush()
+            finally:
+                fcntl.flock(fh, fcntl.LOCK_UN)
+            wait = max(wait, bwait)
+    except OSError:
+        pass  # fail-open: Prozess-Takt greift weiterhin
     if wait > 0:
         time.sleep(wait + random.uniform(0, 0.05))   # Jitter entzerrt parallele Takte
 
 
 def _pace_note_rate_limit() -> None:
-    """Nach einer 429: gemeinsamen Cooldown für alle Threads setzen."""
+    """Nach einer 429: gemeinsamen Cooldown setzen — Prozess UND Box."""
     with _decision_pace_lock:
         _decision_pace_state["cooldown_until"] = time.monotonic() + _DECISION_429_COOLDOWN
+    try:
+        import fcntl
+        import json as _json
+        path = _pace_file_path()
+        with open(path, "a+", encoding="utf-8") as fh:
+            fcntl.flock(fh, fcntl.LOCK_EX)
+            try:
+                fh.seek(0)
+                raw = fh.read().strip()
+                box = _json.loads(raw) if raw else {}
+                box["cooldown_until"] = time.time() + _DECISION_429_COOLDOWN
+                fh.seek(0)
+                fh.truncate()
+                fh.write(_json.dumps(box))
+                fh.flush()
+            finally:
+                fcntl.flock(fh, fcntl.LOCK_UN)
+    except OSError:
+        pass
 
 
 def _systemone_post(url: str, bearer: str | None, payload: dict, timeout: float = 45.0) -> dict:

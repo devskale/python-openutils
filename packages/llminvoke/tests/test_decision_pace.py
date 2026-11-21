@@ -82,3 +82,26 @@ def test_decide_notes_rate_limit_on_429(monkeypatch):
             max_attempts=2,
         )
     assert li._decision_pace_state["cooldown_until"] > time.monotonic(), "429 hat keinen Cooldown gesetzt"
+
+
+def test_pace_box_global_across_processes(monkeypatch, tmp_path):
+    """Subprozesse teilen den Takt über die Datei (Vorfall: 251/min trotz
+    Prozess-Takt — pdf2md-Jobs sind je eigene Prozesse)."""
+    import subprocess
+    import sys
+
+    pace_file = tmp_path / "pace.json"
+    monkeypatch.setenv("LLMINVOKE_DECISION_PACE_FILE", str(pace_file))
+    monkeypatch.setattr(li, "_DECISION_MIN_INTERVAL", 0.12)
+    code = (
+        "import time, llminvoke as li; "
+        "li._decision_pace_state.update(last=0.0, cooldown_until=0.0); "
+        "li._paced(); print(time.time())"
+    )
+    procs = [subprocess.Popen([sys.executable, "-c", code], stdout=subprocess.PIPE, text=True) for _ in range(3)]
+    stamps = []
+    for p in procs:
+        out, _ = p.communicate(timeout=15)
+        stamps.append(float(out.strip()))
+    stamps.sort()
+    assert stamps[-1] - stamps[0] >= 0.12 - 0.04, f"Prozesse liefen ungetaktet: {stamps}"
