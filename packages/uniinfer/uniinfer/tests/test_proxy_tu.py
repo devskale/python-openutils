@@ -22,12 +22,6 @@ def _auth_headers():
 
 class TestTTSEndpoint:
 
-    @pytest.fixture
-    def client(self):
-        from fastapi.testclient import TestClient
-        from uniinfer.proxy_app import app
-        return TestClient(app, raise_server_exceptions=False)
-
     def test_tts_no_auth_returns_401(self, client):
         response = client.post("/v1/audio/speech", json={
             "model": "tu@kokoro", "input": "Hello"
@@ -62,12 +56,6 @@ class TestTTSEndpoint:
 # --- STT endpoint ---
 
 class TestSTTEndpoint:
-
-    @pytest.fixture
-    def client(self):
-        from fastapi.testclient import TestClient
-        from uniinfer.proxy_app import app
-        return TestClient(app, raise_server_exceptions=False)
 
     def test_stt_no_auth_returns_401(self, client):
         response = client.post(

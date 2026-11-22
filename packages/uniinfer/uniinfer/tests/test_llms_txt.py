@@ -8,12 +8,6 @@ import pytest
 from fastapi.testclient import TestClient
 
 
-@pytest.fixture()
-def client():
-    from uniinfer.proxy_app import app
-
-    return TestClient(app, raise_server_exceptions=False)
-
 
 def test_llms_txt_served_as_markdown(client):
     r = client.get("/llms.txt")

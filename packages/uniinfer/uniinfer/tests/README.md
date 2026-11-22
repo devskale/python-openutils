@@ -16,6 +16,14 @@ sind parametrisiert, keine „method_exists"-Einzelprüfungen mehr).
 | **Katalog & Infra** | test_generate_models_routine, test_update_models_watchdog, test_watchdog_memguard, test_capabilities_probes, test_health_index, test_stats_ttft | Refresh, Watchdog, Probes |
 | **Audio** | test_tts_stt_async, test_tts_integration, test_tts_streaming, test_audio_instance_alias, test_openai_compat_audio_typing | TTS/STT-Seams |
 
+**Harness (conftest.py — die geteilte Naht):** `client` (der eine
+TestClient-Shape), `live_server`/`live_server_mod` (uvicorn-Thread-Fabrik
+für echte Sockets/SSE), `sse_lines()` (SPEZ-korrekte Mock-Events mit
+Blank-Separator), `use_plan(plan)`/`fake_plan()` (Dispatch-Seam — NICHT
+`completion_dispatch`-Interna patchen; die zwei verbleibenden
+with-patch-Stellen (openai_passthrough/proxy_security/role_developer/
+usage_nested) sind legacy-stabil und wandern bei Berührung).
+
 Historie: 2026-11-21 bereinigt — 7 Legacy-Nicht-Test-Dateien entfernt
 (testEmbeddings lief als 3 ERRORs in jeder Suite mit), 34+9 flache
 Existenz-Checks zu parametrisierten Kontrakt-Tests verdichtet.

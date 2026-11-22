@@ -151,12 +151,6 @@ class TestProxyMiddleware:
 
 class TestProxyEndpoints:
 
-    @pytest.fixture
-    def client(self):
-        from fastapi.testclient import TestClient
-        from uniinfer.proxy_app import app
-        return TestClient(app, raise_server_exceptions=False)
-
     def test_chat_completions_endpoint_exists(self, client):
         response = client.post("/v1/chat/completions", json={
             "model": "openai@gpt-3.5-turbo",

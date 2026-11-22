@@ -186,12 +186,6 @@ class TestEventEmitter:
         assert payload["response"]["status"] == "failed"
 
 
-@pytest.fixture()
-def client():
-    from uniinfer.proxy_app import app
-
-    return TestClient(app, raise_server_exceptions=False)
-
 
 class _FakeFull:
     def __init__(self):

@@ -38,12 +38,6 @@ class FakeUpstream:
                 await websocket.send(json.dumps({"type": "partial", "partial": True, "text": f"chunk {len(msg)}"}))
 
 
-@pytest.fixture()
-def client():
-    from uniinfer.proxy_app import app
-
-    return TestClient(app, raise_server_exceptions=False)
-
 
 def _patch_instance(monkeypatch, base_url="http://127.0.0.1:1"):
     from uniinfer.config import instances as inst_mod

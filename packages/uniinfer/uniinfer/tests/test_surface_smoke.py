@@ -54,24 +54,8 @@ async def responses(request: Request):
 
 
 @pytest.fixture(scope="module")
-def base_url():
-    import uvicorn
-
-    s = socket.socket()
-    s.bind(("127.0.0.1", 0))
-    port = s.getsockname()[1]
-    s.close()
-
-    server = uvicorn.Server(
-        uvicorn.Config(app, host="127.0.0.1", port=port, log_level="error")
-    )
-    threading.Thread(target=server.run, daemon=True).start()
-    for _ in range(100):
-        if server.started:
-            break
-        time.sleep(0.05)
-    yield f"http://127.0.0.1:{port}"
-    server.should_exit = True
+def base_url(live_server_mod):
+    return live_server_mod(app)
 
 
 def run(coro):
