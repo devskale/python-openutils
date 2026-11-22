@@ -9,27 +9,19 @@ from uniinfer.providers.tu_stt import TuAISTTProvider
 
 
 class TestTuTTSAsync:
-    """Test async TTS provider."""
+    """TTS provider interface contract + behavior (behavior below is the
+    meat; the interface guarantees are one combined check, not three)."""
 
-    def test_agenerate_speech_method_exists(self):
-        """Test that agenerate_speech method exists."""
+    def test_interface_contract(self):
+        import inspect
+
+        from uniinfer.core import TTSProvider
+
         provider = TuAITTSProvider(api_key="test-key")
-        assert hasattr(provider, 'agenerate_speech')
-        assert callable(provider.agenerate_speech)
-
-    def test_generate_speech_is_wrapper(self):
-        """Test that sync generate_speech method wraps async."""
-        provider = TuAITTSProvider(api_key="test-key")
-
-        assert callable(provider.generate_speech)
-        assert callable(provider.agenerate_speech)
-
-    def test_list_models_is_sync(self):
-        """Test that list_models is still sync."""
-        provider = TuAITTSProvider(api_key="test-key")
-
-        assert hasattr(provider, 'list_models')
-        assert callable(provider.list_models)
+        assert isinstance(provider, TTSProvider)
+        assert inspect.iscoroutinefunction(provider.agenerate_speech), "agenerate_speech must be async"
+        assert callable(provider.generate_speech), "sync wrapper must exist"
+        assert callable(provider.list_models), "sync list_models must exist"
 
     @pytest.mark.asyncio
     async def test_agenerate_speech_success(self):

@@ -1,259 +1,63 @@
+"""ChatProvider interface contract — one parametrized test per guarantee.
+
+Replaces 34 per-provider "method exists / is async" assertions with the
+contract itself: every registered ChatProvider must implement the async
+completion interface with the right callable shapes. Depth over breadth —
+per-provider BEHAVIOR lives in the provider-specific test files.
 """
-Unit tests for async provider methods.
-"""
-import importlib.util
+import importlib
+import inspect
 
 import pytest
 
-from uniinfer.providers.openai import OpenAIProvider
-from uniinfer.providers.anthropic import AnthropicProvider
+PROVIDERS = {
+    "openai": ("uniinfer.providers.openai", "OpenAIProvider", {"api_key": "k"}),
+    "mistral": ("uniinfer.providers.mistral", "MistralProvider", {"api_key": "k"}),
+    "ollama": ("uniinfer.providers.ollama", "OllamaProvider", {}),
+    "gemini": ("uniinfer.providers.gemini", "GeminiProvider", {"api_key": "k"}),
+    "pollinations": (
+        "uniinfer.providers.pollinations",
+        "PollinationsProvider",
+        {},
+    ),
+}
 
-# anthropic is an optional extra ([project.optional-dependencies]); a bare
-# `uv sync` legitimately lacks it, so skip Anthropic-backed assertions rather
-# than fail on the provider's construction-time ImportError.
-_anthropic_available = importlib.util.find_spec("anthropic") is not None
-_skip_no_anthropic = pytest.mark.skipif(
-    not _anthropic_available,
-    reason="optional 'anthropic' extra not installed (uv sync --extra anthropic)",
-)
-from uniinfer.providers.mistral import MistralProvider
-from uniinfer.providers.ollama import OllamaProvider
-from uniinfer.providers.gemini import GeminiProvider
-from uniinfer.providers.pollinations import PollinationsProvider
-
-
-class TestOpenAIAsync:
-    """Test async methods for OpenAI provider."""
-
-    def test_acomplete_method_exists(self):
-        """Test that acomplete method exists."""
-        provider = OpenAIProvider(api_key="test-key")
-        assert hasattr(provider, 'acomplete')
-        assert callable(provider.acomplete)
-
-    def test_astream_complete_method_exists(self):
-        """Test that astream_complete method exists."""
-        provider = OpenAIProvider(api_key="test-key")
-        assert hasattr(provider, 'astream_complete')
-        assert callable(provider.astream_complete)
-
-    def test_acomplete_is_async(self):
-        """Test that acomplete is a coroutine function."""
-        import inspect
-        provider = OpenAIProvider(api_key="test-key")
-        assert inspect.iscoroutinefunction(provider.acomplete)
-
-    def test_astream_complete_is_async_generator(self):
-        """Test that astream_complete is an async generator function."""
-        import inspect
-        provider = OpenAIProvider(api_key="test-key")
-        assert inspect.isasyncgenfunction(provider.astream_complete)
+_OPTIONAL = {
+    "anthropic": ("uniinfer.providers.anthropic", "AnthropicProvider", {"api_key": "k"}),
+}
+for _name, (_mod, _cls, _kw) in _OPTIONAL.items():
+    if importlib.util.find_spec(_name) is not None:
+        PROVIDERS[_name] = (_mod, _cls, _kw)
 
 
-class TestAnthropicAsync:
-    """Test async methods for Anthropic provider."""
-
-    pytestmark = _skip_no_anthropic
-
-    def test_acomplete_method_exists(self):
-        """Test that acomplete method exists."""
-        provider = AnthropicProvider(api_key="test-key")
-        assert hasattr(provider, 'acomplete')
-        assert callable(provider.acomplete)
-
-    def test_astream_complete_method_exists(self):
-        """Test that astream_complete method exists."""
-        provider = AnthropicProvider(api_key="test-key")
-        assert hasattr(provider, 'astream_complete')
-        assert callable(provider.astream_complete)
-
-    def test_acomplete_is_async(self):
-        """Test that acomplete is a coroutine function."""
-        import inspect
-        provider = AnthropicProvider(api_key="test-key")
-        assert inspect.iscoroutinefunction(provider.acomplete)
-
-    def test_astream_complete_is_async_generator(self):
-        """Test that astream_complete is an async generator function."""
-        import inspect
-        provider = AnthropicProvider(api_key="test-key")
-        assert inspect.isasyncgenfunction(provider.astream_complete)
+def _make(alias):
+    mod_name, cls_name, kwargs = PROVIDERS[alias]
+    cls = getattr(importlib.import_module(mod_name), cls_name)
+    return cls(**kwargs)
 
 
-class TestMistralAsync:
-    """Test async methods for Mistral provider."""
+@pytest.mark.parametrize("alias", sorted(PROVIDERS))
+class TestChatProviderContract:
+    def test_async_completion_interface(self, alias):
+        """acomplete: coroutine · astream_complete: async generator · both
+        exist on every provider — the dispatch core depends on these shapes."""
+        p = _make(alias)
+        assert inspect.iscoroutinefunction(p.acomplete), "acomplete must be a coroutine function"
+        assert inspect.isasyncgenfunction(p.astream_complete), "astream_complete must be an async generator"
 
-    def test_acomplete_method_exists(self):
-        """Test that acomplete method exists."""
-        provider = MistralProvider(api_key="test-key")
-        assert hasattr(provider, 'acomplete')
-        assert callable(provider.acomplete)
+    def test_sync_completion_interface(self, alias):
+        p = _make(alias)
+        assert callable(p.complete)
+        assert callable(p.stream_complete)
 
-    def test_astream_complete_method_exists(self):
-        """Test that astream_complete method exists."""
-        provider = MistralProvider(api_key="test-key")
-        assert hasattr(provider, 'astream_complete')
-        assert callable(provider.astream_complete)
+    def test_list_models_classmethod(self, alias):
+        mod_name, cls_name, _ = PROVIDERS[alias]
+        cls = getattr(importlib.import_module(mod_name), cls_name)
+        assert callable(getattr(cls, "list_models", None))
 
-    def test_acomplete_is_async(self):
-        """Test that acomplete is a coroutine function."""
-        import inspect
-        provider = MistralProvider(api_key="test-key")
-        assert inspect.iscoroutinefunction(provider.acomplete)
+    def test_is_chat_provider(self, alias):
+        """The dispatch core instantiates through the ChatProvider seam —
+        every provider must sit under it (no duck-typing strays)."""
+        from uniinfer.core import ChatProvider
 
-    def test_astream_complete_is_async_generator(self):
-        """Test that astream_complete is an async generator function."""
-        import inspect
-        provider = MistralProvider(api_key="test-key")
-        assert inspect.isasyncgenfunction(provider.astream_complete)
-
-
-class TestOllamaAsync:
-    """Test async methods for Ollama provider."""
-
-    def test_acomplete_method_exists(self):
-        """Test that acomplete method exists."""
-        provider = OllamaProvider(base_url="http://localhost:11434")
-        assert hasattr(provider, 'acomplete')
-        assert callable(provider.acomplete)
-
-    def test_astream_complete_method_exists(self):
-        """Test that astream_complete method exists."""
-        provider = OllamaProvider(base_url="http://localhost:11434")
-        assert hasattr(provider, 'astream_complete')
-        assert callable(provider.astream_complete)
-
-    def test_acomplete_is_async(self):
-        """Test that acomplete is a coroutine function."""
-        import inspect
-        provider = OllamaProvider(base_url="http://localhost:11434")
-        assert inspect.iscoroutinefunction(provider.acomplete)
-
-    def test_astream_complete_is_async_generator(self):
-        """Test that astream_complete is an async generator function."""
-        import inspect
-        provider = OllamaProvider(base_url="http://localhost:11434")
-        assert inspect.isasyncgenfunction(provider.astream_complete)
-
-
-class TestPollinationsAsync:
-    """Test async methods for Pollinations provider."""
-
-    def test_acomplete_method_exists(self):
-        """Test that acomplete method exists."""
-        provider = PollinationsProvider(api_key="test-key")
-        assert hasattr(provider, 'acomplete')
-        assert callable(provider.acomplete)
-
-    def test_astream_complete_method_exists(self):
-        """Test that astream_complete method exists."""
-        provider = PollinationsProvider(api_key="test-key")
-        assert hasattr(provider, 'astream_complete')
-        assert callable(provider.astream_complete)
-
-    def test_acomplete_is_async(self):
-        """Test that acomplete is a coroutine function."""
-        import inspect
-        provider = PollinationsProvider(api_key="test-key")
-        assert inspect.iscoroutinefunction(provider.acomplete)
-
-    def test_astream_complete_is_async_generator(self):
-        """Test that astream_complete is an async generator function."""
-        import inspect
-        provider = PollinationsProvider(api_key="test-key")
-        assert inspect.isasyncgenfunction(provider.astream_complete)
-
-
-class TestGeminiAsync:
-    """Test async methods for Gemini provider."""
-
-    def test_acomplete_method_exists(self):
-        """Test that acomplete method exists."""
-        provider = GeminiProvider(api_key="test-key")
-        assert hasattr(provider, 'acomplete')
-        assert callable(provider.acomplete)
-
-    def test_astream_complete_method_exists(self):
-        """Test that astream_complete method exists."""
-        provider = GeminiProvider(api_key="test-key")
-        assert hasattr(provider, 'astream_complete')
-        assert callable(provider.astream_complete)
-
-    def test_acomplete_is_async(self):
-        """Test that acomplete is a coroutine function."""
-        import inspect
-        provider = GeminiProvider(api_key="test-key")
-        assert inspect.iscoroutinefunction(provider.acomplete)
-
-    def test_astream_complete_is_async_generator(self):
-        """Test that astream_complete is an async generator function."""
-        import inspect
-        provider = GeminiProvider(api_key="test-key")
-        assert inspect.isasyncgenfunction(provider.astream_complete)
-
-
-class TestSyncWrappers:
-    """Test that sync methods work as wrappers."""
-
-    def test_openai_complete_is_wrapper(self):
-        """Test that sync complete method wraps async."""
-        provider = OpenAIProvider(api_key="test-key")
-        assert hasattr(provider, 'complete')
-        assert callable(provider.complete)
-
-    @_skip_no_anthropic
-    def test_anthropic_complete_is_wrapper(self):
-        """Test that sync complete method wraps async."""
-        provider = AnthropicProvider(api_key="test-key")
-        assert hasattr(provider, 'complete')
-        assert callable(provider.complete)
-
-    def test_mistral_complete_is_wrapper(self):
-        """Test that sync complete method wraps async."""
-        provider = MistralProvider(api_key="test-key")
-        assert hasattr(provider, 'complete')
-        assert callable(provider.complete)
-
-    def test_ollama_complete_is_wrapper(self):
-        """Test that sync complete method wraps async."""
-        provider = OllamaProvider(base_url="http://localhost:11434")
-        assert hasattr(provider, 'complete')
-        assert callable(provider.complete)
-
-    def test_pollinations_complete_is_wrapper(self):
-        """Test that sync complete method wraps async."""
-        provider = PollinationsProvider(api_key="test-key")
-        assert hasattr(provider, 'complete')
-        assert callable(provider.complete)
-
-    def test_openai_stream_complete_is_wrapper(self):
-        """Test that sync stream_complete wraps async."""
-        provider = OpenAIProvider(api_key="test-key")
-        assert hasattr(provider, 'stream_complete')
-        assert callable(provider.stream_complete)
-
-    @_skip_no_anthropic
-    def test_anthropic_stream_complete_is_wrapper(self):
-        """Test that sync stream_complete wraps async."""
-        provider = AnthropicProvider(api_key="test-key")
-        assert hasattr(provider, 'stream_complete')
-        assert callable(provider.stream_complete)
-
-    def test_mistral_stream_complete_is_wrapper(self):
-        """Test that sync stream_complete wraps async."""
-        provider = MistralProvider(api_key="test-key")
-        assert hasattr(provider, 'stream_complete')
-        assert callable(provider.stream_complete)
-
-    def test_ollama_stream_complete_is_wrapper(self):
-        """Test that sync stream_complete wraps async."""
-        provider = OllamaProvider(base_url="http://localhost:11434")
-        assert hasattr(provider, 'stream_complete')
-        assert callable(provider.stream_complete)
-
-    def test_pollinations_stream_complete_is_wrapper(self):
-        """Test that sync stream_complete wraps async."""
-        provider = PollinationsProvider(api_key="test-key")
-        assert hasattr(provider, 'stream_complete')
-        assert callable(provider.stream_complete)
-
+        assert isinstance(_make(alias), ChatProvider)
