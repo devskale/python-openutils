@@ -20,7 +20,7 @@ def _hash(token: str) -> str:
 
 
 def _cli_main(argv):
-    path = Path(__file__).resolve().parents[2] / "scripts" / "unii-token.py"
+    path = Path(__file__).resolve().parents[3] / "scripts" / "unii-token.py"
     spec = importlib.util.spec_from_file_location("unii_token_cli", path)
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)

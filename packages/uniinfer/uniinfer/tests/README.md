@@ -1,10 +1,9 @@
-# Test-Suite — Domänenkarte
+# Test-Suite — Domänen-Verzeichnisse
 
-80 Dateien, ~820 Tests, komplett hermetisch (10 s Laufzeit). Navigation nach
-Domäne; Verhaltenstiefe statt Existenz-Checks ist die Norm (Kontrakt-Tests
-sind parametrisiert, keine „method_exists"-Einzelprüfungen mehr).
-
-| Domäne | Dateien (Auswahl) | Deckt |
+Die frühere Domänenkarte IST jetzt die Struktur (~820 Tests, hermetisch, 10 s):
+`auth/` · `catalog/` · `dispatch/` · `instances/` · `providers/` · `surfaces/`.
+Auswahl per Verzeichnis: `uv run pytest uniinfer/tests/providers` —
+conftest.py (Harness) liegt am tests/-Root und wirkt in alle Unterverzeichnisse.
 |---|---|---|
 | **Dispatch & Zuverlässigkeit** | test_completion_target, test_auto_router(+_e2e), test_stream_guard, test_retry_after, test_reliability, test_prime_timeout, test_stream_close_race | Target-Naht, Auto-Routing+Fallback, Empty-Guard, 429/Retry-After, Stream-Schutz |
 | **Oberflächen** | test_responses_api, test_systemone_router, test_proxy_tu, test_proxy_async, test_ws_stt_stream, test_surface_smoke | Chat/Responses/WS-STT/Systemone über HTTP inkl. SSE-Envelope |

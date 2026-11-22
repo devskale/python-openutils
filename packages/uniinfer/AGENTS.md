@@ -27,7 +27,8 @@ uv sync                                    # install deps from lockfile
 uv sync --extra all                        # install all optional provider deps
 
 uv run pytest                              # all tests
-uv run pytest uniinfer/tests/test_auth.py  # single file
+uv run pytest uniinfer/tests/auth          # domain dir
+uv run pytest uniinfer/tests/auth/test_auth.py  # single file
 uv run pytest -k "test_token_validation"   # by keyword
 uv run pytest -v --cov=uniinfer --cov-report=term-missing  # with coverage
 

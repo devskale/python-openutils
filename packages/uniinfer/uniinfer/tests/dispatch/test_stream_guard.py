@@ -29,7 +29,7 @@ from fastapi.testclient import TestClient
 from uniinfer import ChatCompletionRequest, ChatCompletionResponse, ChatMessage
 from uniinfer.core import ChatProvider, ModelInfo
 from uniinfer.errors import ProviderError, RateLimitError
-from conftest import ScriptedChatProvider
+from uniinfer.tests.conftest import ScriptedChatProvider
 from uniinfer.factory import ProviderFactory
 from uniinfer.proxy_services.stream_guard import (
     _PassObserver,
