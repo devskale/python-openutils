@@ -2,7 +2,7 @@ import json
 import logging
 import os
 import re
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any
 
 _REDACT_KEYS = (
@@ -98,7 +98,7 @@ def log_raw_response(
 
     log_path = log_file or os.path.join(log_dir, "provider_raw_responses.log")
     event: dict[str, Any] = {
-        "ts": datetime.utcnow().isoformat() + "Z",
+        "ts": datetime.now(timezone.utc).replace(tzinfo=None).isoformat() + "Z",
         "provider": provider,
         "operation": operation,
         "data": redact_data(raw_response),

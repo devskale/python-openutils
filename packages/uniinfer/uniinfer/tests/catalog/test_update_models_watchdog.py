@@ -11,6 +11,7 @@ uniinfer-update-models-watchdog-kill). Contract:
 """
 
 import asyncio
+import inspect
 
 import pytest
 from fastapi import FastAPI
@@ -129,5 +130,5 @@ def test_status_running_from_inprocess_lock(client, monkeypatch):
 
 def test_trigger_models_refresh_coroutine_signature():
     """trigger/status are awaitables usable from the app's event loop."""
-    assert asyncio.iscoroutinefunction(reg.trigger_models_refresh)
-    assert asyncio.iscoroutinefunction(reg.models_refresh_status)
+    assert inspect.iscoroutinefunction(reg.trigger_models_refresh)
+    assert inspect.iscoroutinefunction(reg.models_refresh_status)
