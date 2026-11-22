@@ -16,6 +16,8 @@ from unittest.mock import MagicMock
 import pytest
 from fastapi.testclient import TestClient
 
+from uniinfer.core import ChatCompletionResponse, ChatMessage, ChatProvider
+
 
 # ── HTTP surface ────────────────────────────────────────────────────────
 
@@ -177,3 +179,93 @@ def live_server_mod():
         return f"http://127.0.0.1:{port}"
 
     return _start
+
+
+# ── Scripted chat provider (candidate C: two adapters made the seam real) ──
+
+
+class ScriptedChatProvider(ChatProvider):
+    """Declarative fake for router/dispatch tests: script the behavior, not
+    the class. Covers the two recurring shapes (fail-429-first, empty-first)
+    plus the plain echo; genuinely new behaviors stay local subclasses.
+
+        ScriptedChatProvider("prov", script=["429", "empty", "ok"])
+
+    Script entries: "ok" (content), "empty" (content=None + stop),
+    "429" (RateLimitError), "dead" (ProviderError unavailable). Past the
+    script, the last entry repeats (or "ok").
+    """
+
+    PROVIDER_ID = "scripted"
+    REQUIRES_API_KEY = False
+    BASE_URL = ""
+    # CLASS state: the factory re-instantiates per Target, so per-instance
+    # counters would reset every request (the classic fake-provider trap).
+    _STATE: dict[str, dict] = {}
+
+    def __init__(self, provider_id: str, script: list[str] | None = None):
+        self.PROVIDER_ID = provider_id
+        ScriptedChatProvider._STATE.setdefault(
+            provider_id, {"i": 0, "calls": 0, "script": list(script or ["ok"])}
+        )
+
+    @classmethod
+    def reset(cls, provider_id: str | None = None, script: list[str] | None = None) -> None:
+        """(Re)arm the script — tests call this in setup instead of mutating
+        class attributes."""
+        if provider_id is None:
+            cls._STATE.clear()
+        elif script is not None:
+            cls._STATE[provider_id] = {"i": 0, "calls": 0, "script": list(script)}
+        else:
+            cls._STATE.pop(provider_id, None)
+
+    def _next(self, request):
+        st = ScriptedChatProvider._STATE[self.PROVIDER_ID]
+        st["calls"] += 1
+        idx = min(st["i"], len(st["script"]) - 1)
+        st["i"] += 1
+        op = st["script"][idx]
+        model = getattr(request, "model", "fake-1")
+        if op == "429":
+            from uniinfer.errors import RateLimitError
+
+            raise RateLimitError("scripted quota spent", status_code=429,
+                                 response_body="{}", retry_after=900.0)
+        if op == "dead":
+            from uniinfer.errors import ProviderError
+
+            raise ProviderError(
+                'scripted dead: {"message":"Upstream request failed: '
+                'Model is unavailable."}',
+                status_code=400,
+                response_body='{"message":"Model is unavailable."}',
+            )
+        content = None if op == "empty" else op
+        finish = "stop" if op == "empty" else None
+        return ChatCompletionResponse(
+            message=ChatMessage(role="assistant", content=content),
+            provider=self.PROVIDER_ID, model=model,
+            usage={"prompt_tokens": 1, "completion_tokens": 1, "total_tokens": 2},
+            raw_response={}, finish_reason=finish,
+        )
+
+    def complete(self, request, **kwargs):
+        return self._next(request)
+
+    async def acomplete(self, request, **kwargs):
+        return self._next(request)
+
+    def stream_complete(self, request, **kwargs):
+        resp = self._next(request)
+        if resp.message.content is not None:
+            yield resp
+        yield ChatCompletionResponse(
+            message=ChatMessage(role="assistant", content=None),
+            provider=self.PROVIDER_ID, model=resp.model, usage={},
+            raw_response={}, finish_reason="stop",
+        )
+
+    async def astream_complete(self, request, **kwargs):
+        for chunk in self.stream_complete(request, **kwargs):
+            yield chunk

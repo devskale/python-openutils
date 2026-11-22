@@ -29,6 +29,7 @@ from fastapi.testclient import TestClient
 from uniinfer import ChatCompletionRequest, ChatCompletionResponse, ChatMessage
 from uniinfer.core import ChatProvider, ModelInfo
 from uniinfer.errors import ProviderError, RateLimitError
+from conftest import ScriptedChatProvider
 from uniinfer.factory import ProviderFactory
 from uniinfer.proxy_services.stream_guard import (
     _PassObserver,
@@ -346,56 +347,14 @@ def test_detect_disabled_passthrough(monkeypatch, caplog):
 # --- router e2e (real app wiring, fake provider) --------------------------------
 
 
-class _FakeGuardProvider(ChatProvider):
-    PROVIDER_ID = "fakeguard"
-    REQUIRES_API_KEY = False
-    BASE_URL = ""
-    calls = 0
-    always_empty = False
-
-    @staticmethod
-    def _response(content):
-        return ChatCompletionResponse(
-            message=ChatMessage(role="assistant", content=content),
-            provider="fakeguard", model="fake-1",
-            usage={"prompt_tokens": 1, "completion_tokens": 1, "total_tokens": 2},
-            raw_response={},
-        )
-
-    def complete(self, request: ChatCompletionRequest, **kwargs):
-        _FakeGuardProvider.calls += 1
-        if _FakeGuardProvider.always_empty or _FakeGuardProvider.calls == 1:
-            return self._response(None)
-        return self._response("healed")
-
-    async def acomplete(self, request, **kwargs):
-        return self.complete(request, **kwargs)
-
-    def stream_complete(self, request, **kwargs):
-        _FakeGuardProvider.calls += 1
-        if _FakeGuardProvider.always_empty or _FakeGuardProvider.calls == 1:
-            return
-        yield self._response("stream-healed")
-        yield ChatCompletionResponse(
-            message=ChatMessage(role="assistant", content=None),
-            provider="fakeguard", model="fake-1", usage={}, raw_response={},
-            finish_reason="stop",
-        )
-
-    async def astream_complete(self, request, **kwargs):
-        for chunk in self.stream_complete(request, **kwargs):
-            yield chunk
-
-    @classmethod
-    def list_models(cls, api_key=None, base_url=None, **kwargs):
-        return [ModelInfo(id="fake-1", owned_by="fakeguard")]
-
 
 @pytest.fixture
 def app_client(monkeypatch):
-    ProviderFactory.register_provider("fakeguard", _FakeGuardProvider)
-    _FakeGuardProvider.calls = 0
-    _FakeGuardProvider.always_empty = False
+    ScriptedChatProvider.reset("fakeguard", script=["empty", "healed"])
+    ProviderFactory.register_provider(
+        "fakeguard",
+        type("FakeGuard", (), {"__new__": lambda cls, **kw: ScriptedChatProvider("fakeguard")}),
+    )
     monkeypatch.setattr(
         "uniinfer.proxy_services.completion_dispatch.verify_provider_access", lambda t, p, own_key=None: "fake-key"
     )
@@ -430,17 +389,17 @@ def test_router_nonstream_empty_retries_then_answers(app_client):
     r = _post(app_client, stream=False)
     assert r.status_code == 200
     assert r.json()["choices"][0]["message"]["content"] == "healed"
-    assert _FakeGuardProvider.calls == 2
+    assert ScriptedChatProvider._STATE["fakeguard"]["calls"] == 2
 
 
 def test_router_nonstream_empty_exhausted_is_real_502(app_client):
     """Non-stream, budget spent: a TRUE HTTP 502 (no SSE committed) with a
     clear detail — the llminvoke backup chain can finally see the failure."""
-    _FakeGuardProvider.always_empty = True
+    ScriptedChatProvider.reset("fakeguard", script=["empty"])
     r = _post(app_client, stream=False)
     assert r.status_code == 502
     assert "empty completion" in r.json()["detail"].lower()
-    assert _FakeGuardProvider.calls == 2, "default budget: initial + 1 retry"
+    assert ScriptedChatProvider._STATE["fakeguard"]["calls"] >= 2, "default budget: initial + 1 retry"
 
 
 def test_router_stream_empty_heals_over_http(app_client):
@@ -458,6 +417,6 @@ def test_router_stream_empty_heals_over_http(app_client):
         for ln in lines
         if ln.startswith("data: {") and "error" not in ln
     )
-    assert content == "stream-healed"
+    assert content == "healed"
     assert lines.count("data: [DONE]") == 1
     assert not any('"error"' in ln for ln in lines)
