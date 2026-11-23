@@ -30,3 +30,10 @@ build-backend = "hatchling.build"
 dev = [
     "pytest>=8.4.2",
 ]
+
+[tool.uv]
+# Ein zu altes uv soll LAUT verweigern, statt Locks still zurückzudrehen: vor
+# 0.12.23 schrieb uv Lock-Revision 3, seither 5 — gemischte Versionen machten
+# aus jedem `uv lock` ein Format-Pingpong (Issue uv-lock-revision-pingpong-uniinfer;
+# hier begann es: uniinfer/uv.lock pendelte zwischen 5 und 3).
+required-version = ">=0.12.23"
