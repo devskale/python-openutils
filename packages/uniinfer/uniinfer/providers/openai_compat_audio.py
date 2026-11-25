@@ -36,9 +36,13 @@ class OpenAICompatTTSProvider(TTSProvider):
         payload = {
             "model": request.model,
             "input": request.input,
-            "voice": request.voice or "ono_anna",
             "response_format": request.response_format or "wav",
         }
+        # voice nur mitschicken, wenn gesetzt — der Upstream entscheidet
+        # über seinen eigenen Default (tts_server: default_voice), statt hier
+        # eine Phantom-Stimme zu injizieren, die upstream 400/500 wirft.
+        if request.voice:
+            payload["voice"] = request.voice
         if request.language:
             payload["language"] = request.language
         if request.speed and request.speed != 1.0:
@@ -78,11 +82,12 @@ class OpenAICompatTTSProvider(TTSProvider):
         payload = {
             "model": request.model,
             "input": request.input,
-            "voice": request.voice or "ono_anna",
             "response_format": request.response_format or "wav",
             "stream": True,
             "stream_format": request.stream_format or "audio",
         }
+        if request.voice:
+            payload["voice"] = request.voice
         if request.language:
             payload["language"] = request.language
         if request.speed and request.speed != 1.0:

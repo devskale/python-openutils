@@ -77,6 +77,18 @@ class TestTTSAlias:
         assert captured["json"]["voice"] == "ono_anna"
         assert captured["headers"]["Authorization"] == "Bearer sk-hab-upstream"
 
+    def test_keine_voice_kein_key(self, client, monkeypatch):
+        """Ohne voice KEIN voice-Feld — der Upstream wählt seinen eigenen
+        Default (tts_server default_voice). Früher: Phantom-Fallback
+        'ono_anna', die upstream mit 400/500 ablehnte."""
+        captured = {}
+        _patch(monkeypatch, captured)
+        r = client.post("/v1/audio/speech", json={
+            "model": "hab@/models/Qwen3-TTS-12Hz-1.7B-CustomVoice",
+            "input": "Guten Tag"})
+        assert r.status_code == 200, r.text
+        assert "voice" not in captured["json"]
+
 
 class TestSTTAlias:
     def test_hab_instance_stt(self, client, monkeypatch):
