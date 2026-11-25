@@ -41,6 +41,17 @@ def test_llms_txt_documents_own_key_override(client):
     assert "no meta-bearer" in body
 
 
+def test_llms_txt_documents_token_acquisition(client):
+    """Token-Hunt-Regression (2026-11-25): 'operator-issued' allein schickt
+    Agenten auf Key-Suche über stale Caches. llms.txt muss den credgoo-Weg
+    UND die Cache-Falle nennen — Selbstbeschreibung statt AGENTS.md-Regel."""
+    body = client.get("/llms.txt").text
+    assert "credgoo uniinfer" in body
+    assert "--no-cache" in body
+    assert "credgoo's cache" in body
+    assert "no-auth routes validate nothing" in body
+
+
 def test_manifest_model_id_note_and_own_key(client):
     manifest = client.get("/v1").json()
     assert "strict" in manifest["model_id_format_note"]

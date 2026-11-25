@@ -148,7 +148,7 @@ Every endpoint that takes a `model` expects the strict form `alias@model`:
 - [POST /v1/audio/transcriptions](/v1/audio/transcriptions) — batch STT, multipart upload (auth)
 - [GET /openapi.json](/openapi.json) — OpenAPI 3 schema (HTTP endpoints only)
 
-Auth everywhere: `Authorization: Bearer <token>`, operator-issued — unlocks every provider with pooled keys. Per-request override: `X-Provider-Key: <your-key>` replaces the pooled bearer for ANY provider; an own-key-only request needs no meta-bearer at all.
+Auth everywhere: `Authorization: Bearer <token>`, operator-issued — unlocks every provider with pooled keys. Operator machines fetch the current gateway token with `credgoo uniinfer` (refresh with `--no-cache` when a cached one 401s; `~/.config/api_keys/api_keys.json` is only credgoo's cache). `/v1/models` and other no-auth routes validate nothing — a 200 there proves no token. Per-request override: `X-Provider-Key: <your-key>` replaces the pooled bearer for ANY provider; an own-key-only request needs no meta-bearer at all.
 
 ## Realtime STT (WebSocket — not in OpenAPI)
 
