@@ -297,3 +297,54 @@ def test_router_nonstreaming_unchanged():
     r = client.post("/v1/audio/speech", json={
         "model": "hab@x", "input": "text"})
     assert r.status_code in (400, 401, 500)
+
+
+class _LateErrorProvider:
+    """Wirft NACH Stream-Beginn — wie der Phonon-Server bei unbekannter Stimme."""
+
+    def __init__(self, api_key=None, base_url=None):
+        pass
+
+    async def astream_speech(self, request):
+        yield b"\xdf\xff\xdc\xff"
+        raise RuntimeError("openai-compat TTS upstream 400: unknown voice 'Nope'")
+
+
+def test_router_stream_error_not_swallowed():
+    """Upstream-Fehler im Stream duerfen nicht still abbrechen (IncompleteRead,
+    Vorfall 2026-11-26): der Proxy schreibt einen X-TTS-Error-JSON-Chunk."""
+    client = _router_client()
+
+    class _InstSpec:
+        alias = "hab"
+        provider = "openai-compat"
+        base_url = "http://127.0.0.1:9/v1"
+        requires_api_key = False
+
+    import uniinfer.proxy_routers.audio as audio_router
+    import uniinfer.config.instances as instances
+
+    orig_resolve = instances.resolve_instance
+    orig_verify = audio_router.verify_provider_access
+    instances.resolve_instance = lambda a: _InstSpec()
+    audio_router.verify_provider_access = lambda token, alias, own_key=None: "k"
+
+    import uniinfer.audio as audio_mod
+    orig_registry = audio_mod._TTS_REGISTRY
+    dotted = f"{_LateErrorProvider.__module__}.{_LateErrorProvider.__name__}"
+    audio_mod._TTS_REGISTRY = {**orig_registry, "openai-compat": dotted}
+
+    try:
+        with client.stream("POST", "/v1/audio/speech", json={
+            "model": "hab@qwen3-tts", "input": "Hallo Welt",
+            "voice": "Nope", "stream": True, "stream_format": "audio",
+        }) as resp:
+            assert resp.status_code == 200
+            body = b"".join(resp.iter_bytes())
+            assert body.startswith(b"\xdf\xff\xdc\xff")
+            assert b'"X-TTS-Error"' in body
+            assert b"unknown voice" in body
+    finally:
+        instances.resolve_instance = orig_resolve
+        audio_router.verify_provider_access = orig_verify
+        audio_mod._TTS_REGISTRY = orig_registry

@@ -3,6 +3,7 @@
 The dispatch logic (provider resolution, request building, dispatch, response
 extraction) lives in ``uniinfer.audio``; this module is the HTTP layer.
 """
+import json
 import logging
 from typing import Optional, Callable
 
@@ -93,15 +94,35 @@ def create_audio_router(
                 # wuerde Clients zu blindem 44-Byte-Header-Schnitt verleiten
                 # (Vorfall 2026-11-26).
                 media = f"audio/{fmt}"
+
+                async def _erroring_stream(upstream, fmt):
+                    """Upstream-Fehler NICHT verschlucken: der HTTP-Status ist
+                    schon 200 (StreamingResponse laeuft), aber der Client soll
+                    einen erkennbaren Fehler bekommen statt eines stillen
+                    Abbruchs (IncompleteRead, Vorfall 2026-11-26: unbekannte
+                    Stimme). Fehler werden als JSON-Zeile in den Stream
+                    geschrieben — erkennbar an 'X-TTS-Error' am Zeilenanfang."""
+                    try:
+                        async for chunk in upstream:
+                            yield chunk
+                    except Exception as e:
+                        msg = str(e).replace("\n", " ")[:500]
+                        logger.error("TTS stream upstream error: %s", msg)
+                        yield (f'{{"X-TTS-Error": {json.dumps(msg)}}}\n'
+                               .encode())
+
                 return StreamingResponse(
-                    target.astream_synthesize(
-                        request_input.input,
-                        voice=request_input.voice,
-                        response_format=fmt,
-                        speed=request_input.speed or 1.0,
-                        instructions=request_input.instructions,
-                        language=request_input.language,
-                        stream_format=request_input.stream_format,
+                    _erroring_stream(
+                        target.astream_synthesize(
+                            request_input.input,
+                            voice=request_input.voice,
+                            response_format=fmt,
+                            speed=request_input.speed or 1.0,
+                            instructions=request_input.instructions,
+                            language=request_input.language,
+                            stream_format=request_input.stream_format,
+                        ),
+                        fmt,
                     ),
                     media_type=media,
                 )
