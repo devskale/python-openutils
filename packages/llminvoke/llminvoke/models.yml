@@ -24,9 +24,6 @@ providers:
   wwhb:
     dsgvo: true
     description: "wwhb — DSGVO-konform (incoming)"
-  gemini:
-    dsgvo: false
-    description: "Google Gemini"
   openrouter:
     dsgvo: false
     description: "OpenRouter — Multi-Provider"
@@ -83,42 +80,6 @@ models:
   tu@mistral-small-3.2-24b:
     context_window: 16384
     description: "ENTFERNT vom Gateway (Stand 2026-09-25) — nicht mehr verfügbar; Karte nur noch Referenz"
-  gemini@models/gemini-2.5-pro:
-    context_window: 1048576
-    max_output_tokens: 8192
-    description: "Gemini 2.5 Pro"
-  gemini@models/gemini-flash-lite-latest:
-    context_window: 1048576
-    max_output_tokens: 65536
-    supports_thinking: true
-    description: "Gemini Flash-Lite (Latest-Alias) — default cross-provider-backup: antwortet auch wenn die grosse flash-gen 503-high-demand hat (gateway-sweep 2026-09-24)."
-  gemini@models/gemini-flash-latest:
-    context_window: 1048576
-    max_output_tokens: 65536
-    supports_thinking: true
-    description: "Gemini Flash (Latest-Alias — rollt auf die aktuelle Flash-Generation, live getestet 2026-09-24). Cross-provider-default-backup."
-  gemini@models/gemini-3.8-flash:
-    context_window: 1048576
-    max_output_tokens: 65536
-    supports_thinking: true
-    description: "Gemini 3.8 Flash — aktuellste nummerierte Flash-Generation (live getestet 2026-09-24)."
-  gemini@models/gemini-3.5-flash:
-    context_window: 1048576
-    max_output_tokens: 65536
-    supports_thinking: true
-    description: "Gemini 3.5 Flash — stable getestete Generation, saubere kurze Antworten (live getestet 2026-09-24)."
-  gemini@models/gemini-2.5-flash:
-    context_window: 1048576
-    max_output_tokens: 8192
-    description: "Gemini 2.5 Flash"
-  gemini@models/gemini-2.5-flash-lite:
-    context_window: 1048576
-    max_output_tokens: 8192
-    description: "Gemini 2.5 Flash Lite"
-  gemini@gemma-4-31b-it:
-    context_window: 262000
-    max_output_tokens: 8192
-    description: "Gemma 4 31B IT via Gemini"
   groq@qwen/qwen3-32b:
     context_window: 131072
     max_output_tokens: 32768
@@ -158,10 +119,9 @@ default:
     # weg ("no healthy deployments"), jeden Fehlversuch totschlagen kostet
     # nur Zeit. Kette jetzt hab → 3.8-27b.
     - tu@qwen-3.8-27b
-    # 2026-10-30 (User): gemini-flash-lite ENTFERNT — nicht DSGVO-konform;
-    # Gemini darf nur offene Doks sehen (AAB/FB-Auszug), nie als genereller
-    # Backup (könnte Bieter-Unterlagen empfangen). Cross-Provider-Anchor
-    # bewusst geopfert; Gemini bleibt im Katalog für offene-Dok-Tasks.
+    # 2026-10-30 (User): gemini-flash-lite ENTFERNT — nicht DSGVO-konform.
+    # 2026-11-26 (User): Gemini GANZ raus — Katalog und Team-Einstellungen
+    # führen nur mehr tu@/hab@-Modelle (und DSGVO-freie Dritte).
   temperature: 0.7
   max_tokens: 10000
   retry:
@@ -222,9 +182,9 @@ packages:
             enable_thinking: false
   agentos:
     # 2026-10-30 (User): Vergabedaten-Default — agentos verarbeitet Bieter-
-    # Unterlagen; die Backup-Kette wird auf DSGVO-Provider gefiltert (Gemini &
-    # Co. fallen selbst heraus, falls jemand sie später wieder in defaults
-    # aufnimmt). Offene-Dok-Tasks (AAB/FB) können das pro Task lockern.
+    # Unterlagen; die Backup-Kette wird auf DSGVO-Provider gefiltert (nicht-
+    # DSGVO-Provider fallen selbst heraus). 2026-11-26: Gemini ganz aus dem
+    # Katalog entfernt (User-Entscheid).
     dsgvo_required: true
     # 2026-11-06 (User): 0.7 → 0.2 — Bewertungsvarianz war zu hoch (Vorfall
     # Z_PREIS_001 Ortlieb: Per-Doc-Assessor halluzinierte bei 0.7 nicht
