@@ -226,6 +226,7 @@ def clear_key(service, cache_dir=None, backend_name=None):
 
 def main():
     parser = argparse.ArgumentParser(
+        prog="credgoo",  # auch bei `python -m credgoo`; sonst heißt es dort „__main__.py"
         description="Retrieve API keys securely from your chosen backend")
     parser.add_argument(
         "service", nargs="?", help="Service name to retrieve the API key for")
