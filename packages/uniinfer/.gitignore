@@ -21,6 +21,8 @@ logs/
 # Runtime-generated (server-local, not source)
 uniinfer/models/_speed_results.json
 uniinfer/models/model_overrides.json
+# Laufzeit-State des Gateways (ModelsRegistry schreibt ihn); Vorlage: type_overrides.default.json
+uniinfer/models/type_overrides.json
 uniinfer/models/models.json
 uniinfer/models/_stale_models.json
 uniinfer/models/_model_history.json
