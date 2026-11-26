@@ -179,6 +179,17 @@ def _router_client():
     return TestClient(app)
 
 
+class _PcmStreamingProvider:
+    """Liefert rohe s16le-Samples OHNE RIFF-Kopf (wie der Phonon-Server)."""
+
+    def __init__(self, api_key=None, base_url=None):
+        pass
+
+    async def astream_speech(self, request):
+        yield b"\xdf\xff\xdc\xff"
+        yield b"more-pcm"
+
+
 class _RouterStreamingProvider:
     """Modul-level (Registry will dotted paths): streamed 2-Chunk-Antwort."""
 
@@ -230,6 +241,47 @@ def test_router_streams_audio(client=None):
             assert resp.headers["content-type"] == "audio/wav"
             body = b"".join(resp.iter_bytes())
             assert body == b"RIFF-headeraudio-bytes"
+    finally:
+        instances.resolve_instance = orig_resolve
+        audio_router.verify_provider_access = orig_verify
+        audio_mod._TTS_REGISTRY = orig_registry
+
+
+def test_router_streams_pcm_content_type():
+    """stream:true + response_format:pcm muss 'audio/pcm' melden, nicht
+    'audio/wav' (Vorfall 2026-11-26: Client schnitt blind 44 B WAV-Kopf ab
+    und zerstoerte den Stream-Anfang, weil der Content-Type log)."""
+    client = _router_client()
+
+    class _InstSpec:
+        alias = "hab"
+        provider = "openai-compat"
+        base_url = "http://127.0.0.1:9/v1"
+        requires_api_key = False
+
+    import uniinfer.proxy_routers.audio as audio_router
+    import uniinfer.config.instances as instances
+
+    orig_resolve = instances.resolve_instance
+    orig_verify = audio_router.verify_provider_access
+    instances.resolve_instance = lambda a: _InstSpec()
+    audio_router.verify_provider_access = lambda token, alias, own_key=None: "k"
+
+    import uniinfer.audio as audio_mod
+    orig_registry = audio_mod._TTS_REGISTRY
+    dotted = f"{_PcmStreamingProvider.__module__}.{_PcmStreamingProvider.__name__}"
+    audio_mod._TTS_REGISTRY = {**orig_registry, "openai-compat": dotted}
+
+    try:
+        with client.stream("POST", "/v1/audio/speech", json={
+            "model": "hab@qwen3-tts", "input": "Hallo Welt",
+            "voice": "sohee", "response_format": "pcm",
+            "stream": True, "stream_format": "audio",
+        }) as resp:
+            assert resp.status_code == 200
+            assert resp.headers["content-type"] == "audio/pcm"
+            body = b"".join(resp.iter_bytes())
+            assert body == b"\xdf\xff\xdc\xffmore-pcm"
     finally:
         instances.resolve_instance = orig_resolve
         audio_router.verify_provider_access = orig_verify

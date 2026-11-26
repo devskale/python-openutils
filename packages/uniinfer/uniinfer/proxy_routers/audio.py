@@ -89,7 +89,10 @@ def create_audio_router(
                 # media_type names the container format; "audio" stream_format
                 # delivers raw wav/pcm bytes, "sse" OpenAI speech.audio events.
                 fmt = request_input.response_format or "wav"
-                media = "audio/wav" if fmt in ("wav", "pcm") else f"audio/{fmt}"
+                # pcm ist raw s16le OHNE Container-Kopf — 'audio/wav' hier
+                # wuerde Clients zu blindem 44-Byte-Header-Schnitt verleiten
+                # (Vorfall 2026-11-26).
+                media = f"audio/{fmt}"
                 return StreamingResponse(
                     target.astream_synthesize(
                         request_input.input,
